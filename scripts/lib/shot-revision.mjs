@@ -14,7 +14,8 @@
 // any number of files.
 
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 
@@ -379,16 +380,36 @@ const literalSpecs = (paths) => `${paths.map((p) => `:(literal)${p}`).join("\0")
  * committed. The repository's hooks run. Resolves to {hash, short}, the new commit, without
  * blocking the process while git and its hooks run (seconds on this repository). Rejects with
  * an Error with git's own words when git refuses: a hook, nothing to commit, an empty message.
+ *
+ * `contents`, [{path, text}], commits a file of `paths` with `text` in place of what the working
+ * tree holds (a page's size changes without its other edits, shot-sizes.mjs): the file holds
+ * `text` while git commits it, and what it held is put back after, whether git committed or not.
+ * Meanwhile a copy of what it held waits in a folder under the temp folder, which is removed
+ * once every file is put back, so that a process killed in between loses nothing.
  */
-export async function commitPaths(root, { paths, added = [], message }) {
+export async function commitPaths(root, { paths, added = [], message, contents = [] }) {
   if (!paths.length) throw new Error("no file to commit");
   const top = path.resolve((await gitSaying(["rev-parse", "--show-toplevel"], root)).trim());
   if (added.length) await gitSaying(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], top, literalSpecs(added));
-  await gitSaying(
-    ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],
-    top,
-    literalSpecs(paths),
-  );
+  const held = [];
+  const keepDir = contents.length ? mkdtempSync(path.join(tmpdir(), "shot-commit-held-")) : null;
+  try {
+    for (const [k, { path: p, text }] of contents.entries()) {
+      const file = path.join(top, p);
+      const bytes = readFileSync(file);
+      writeFileSync(path.join(keepDir, `${k}-${path.basename(file)}`), bytes);
+      held.push([file, bytes]);
+      writeFileSync(file, text);
+    }
+    await gitSaying(
+      ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],
+      top,
+      literalSpecs(paths),
+    );
+  } finally {
+    for (const [file, bytes] of held) writeFileSync(file, bytes);
+    if (keepDir) rmSync(keepDir, { recursive: true, force: true });
+  }
   const hash = (await gitSaying(["rev-parse", "HEAD"], top)).trim();
   return { hash, short: (await gitSaying(["rev-parse", "--short=8", hash], top)).trim() };
 }

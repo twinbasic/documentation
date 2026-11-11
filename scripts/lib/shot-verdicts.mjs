@@ -22,6 +22,9 @@
 //   a replay's SVG  decideSvg against the file's PNG; dropped when that PNG is no longer the one
 //                   the replay compared it with
 //
+// Each change to a dark picture's file sets the declared size of every reference to it on the
+// pages from its pixels and its scale, which the manifest records with its build (shot-sizes.mjs).
+//
 // A verdict as it arrives is applied as the run decided it: the run judged it with the same
 // inputs. What was applied is in the stage's review/ (shot-stage.mjs), which the server shows in
 // place of the run's own verdicts.
@@ -35,6 +38,7 @@ import {
   applySvg,
   heldOf,
   heldPictures,
+  heldScale,
   holdPicture,
   restoreSvg,
   setHeldPart,
@@ -47,6 +51,7 @@ import { bundleFollowsSvg, decidePicture, decideSvg, svgFollowsPng } from "./sho
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
 import { restoreFromRevision } from "./shot-revision.mjs";
 import { optionOf, runPaths } from "./shot-session.mjs";
+import { isDark, referenceIndex, syncSizes } from "./shot-sizes.mjs";
 import {
   pngVerdict,
   readReviewed,
@@ -113,11 +118,23 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     cache.set(`${n}\u0000${r.out}`, r);
   };
 
-  const hold = (n, out, m) => holdPicture(heldDir(n), docsRoot, out, bundlesRoot, m.entry(out)?.build ?? null);
+  const hold = (n, out, m) =>
+    holdPicture(heldDir(n), docsRoot, out, bundlesRoot, m.entry(out)?.build ?? null, m.entry(out)?.scale ?? null);
   function unhold(n, out, m) {
+    const scale = heldScale(heldDir(n), out);
     const build = unholdPicture(heldDir(n), docsRoot, out, bundlesRoot);
     if (build === null) m.clearBuild(out);
-    else if (build !== undefined) m.setBuild(out, build);
+    else if (build !== undefined) m.setBuild(out, build, scale);
+    if (build !== undefined) resize(out, m);
+  }
+
+  // The pages that show a dark picture declare the size its file now has (shot-sizes.mjs), set
+  // after each change to the file. The index of which pages show which picture is read once.
+  let index = null;
+  function resize(out, m) {
+    if (!isDark(out)) return;
+    index ??= referenceIndex(docsRoot);
+    syncSizes(docsRoot, [out], (o) => m.entry(o), { index });
   }
 
   // The dark picture a light capture of the run `n` is compared with, as shoot_docs.mjs
@@ -178,6 +195,7 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
           decision: fate,
           review,
           build: staged.build,
+          scale: staged.scale ?? null,
           diffs: staged.diffs ?? [],
           staged: { capture: staged.capture, strength },
         }),
@@ -191,8 +209,10 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
       rev,
       { svg, bundlesRoot },
     );
-    if (written(part.state)) m.setBuild(out, part.build);
+    // a verdict staged before scales were recorded leaves the manifest's as it is
+    if (written(part.state)) m.setBuild(out, part.build, part.scale ?? undefined);
     if (applied.removed) m.clearBuild(out);
+    resize(out, m);
     return { ...part, restoredSvg: applied.svg };
   }
 
@@ -399,6 +419,7 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
         else writeFileSync(path.join(docsRoot, file), atRevision);
         if (first !== undefined) setHeldPart(heldDir(first), out, part, atRevision);
       }
+      if (parts.includes("png")) resize(out, m);
       if (first !== undefined) {
         unhold(first, out, m);
         reapply(out, layersOf(out, first, true), m);

@@ -185,6 +185,7 @@ import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
+import { syncSizes } from "./lib/shot-sizes.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, restoreSvg, svgOf } from "./lib/shot-apply.mjs";
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
 import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
@@ -615,6 +616,12 @@ if (values.cleanup) {
       remove: `; its SVG ${values.dryRun ? "would be removed" : "removed"}, as ${found.short} has none`,
     }[fates.get(out).fate];
     console.log(`${out}: ${verb} as ${found.short} has it${svgText}`);
+  }
+  // a picture put back may be of another size than the pages say: they follow its pixels
+  try {
+    syncPageSizes(plan.reset, { dryRun: values.dryRun });
+  } catch (e) {
+    die(2, `the pages' picture sizes could not be set: ${e.message}`);
   }
   for (const { out, error } of plan.unreadable) console.error(`${out}: not compared: ${error}`);
   const n = (list, one, many = `${one}s`) => `${list.length} ${list.length === 1 ? one : many}`;
@@ -15096,7 +15103,7 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
       name,
       `${themed}: the dark picture's pixels, but for a capture's noise: ${removed ? "removed" : "not written"}${review}`,
     );
-    reportPicture(name, themed, png, fate, reference, []);
+    reportPicture(name, themed, png, fate, reference, [], null, scale);
     return { kept: null, holds: null };
   }
   // a run now and then settles on the other version of a capture's noise for every
@@ -15122,13 +15129,15 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
   // A picture put back as the revision has it takes the revision's SVG with it, or loses its
   // SVG when the revision has none, so that the pair stays matched.
   const applied = applyPicture(outRoot, themed, fate, revision, { dryRun });
-  if (fate.state === "new" || fate.state === "updated") recordBuild(themed, BUILD);
+  if (fate.state === "new" || fate.state === "updated") recordBuild(themed, BUILD, scale);
+  if (!dryRun && theme === "dark" && (fate.state === "new" || fate.state === "updated" || fate.state === "restored"))
+    resized.add(themed);
   count(theme, state);
   say(
     name,
     `${themed}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other}${review})`,
   );
-  reportPicture(name, themed, png, fate, reference, diffs.filter(Boolean), applied.svg);
+  reportPicture(name, themed, png, fate, reference, diffs.filter(Boolean), applied.svg, scale);
   const holds = fate.write ?? was;
   if (fate.state === "restored") {
     const text = {
@@ -15148,12 +15157,13 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
 // judged against, and why it needs a look (reviewPicture, lib/shot-queue.mjs); with --stage
 // the capture and its strength map are staged and the verdict written (lib/shot-stage.mjs).
 // `diffs` names the difference pictures written, and `restoredSvg` is what becomes of the SVG
-// of a picture put back as the revision has it (restorePictures).
-function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = null) {
+// of a picture put back as the revision has it (restorePictures); `scale` the capture's, which
+// the review tool records with the build.
+function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = null, scale = SCALE) {
   if (!stageRoot && !values.events) return;
   const review = reviewPicture(fate, png, reference, entryOf(themed));
   const files = stageRoot ? stageCapture(stageRoot, themed, png, review.strength) : null;
-  const part = { ...pngVerdict({ decision: fate, review, build: BUILD, diffs, staged: files }), restoredSvg };
+  const part = { ...pngVerdict({ decision: fate, review, build: BUILD, scale, diffs, staged: files }), restoredSvg };
   if (stageRoot) writeVerdict(stageRoot, themed, "png", part);
   event("picture", { job: name, out: themed, ...part });
 }
@@ -15161,12 +15171,27 @@ function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = 
 // The manifest's record of the build a picture's file was taken on: `build` for a capture
 // written, null for a file removed. A picture whose file stays (unchanged, noise, restored)
 // keeps the build it has. Saved at once: the jobs share the manifest, and keep is synchronous.
-// With --stage the verdict carries the build, and the review tool records it.
-function recordBuild(out, build) {
+// With --stage the verdict carries the build, and the review tool records it. `scale` is the
+// capture's (keep's), which the manifest records when it is not SCALE.
+function recordBuild(out, build, scale = undefined) {
   if (!manifest || stageRoot) return;
   if (build === null) manifest.clearBuild(out);
-  else manifest.setBuild(out, build);
+  else manifest.setBuild(out, build, scale);
   manifest.save();
+}
+
+// The dark pictures this run wrote under docs/, or put back as the revision has them: the pages
+// that show them are given their sizes at the run's end (syncPageSizes). With --stage the review
+// tool does it as it applies each verdict.
+const resized = new Set();
+
+// Sets the declared size of every reference to the pictures `outs` from their files and their
+// scales (lib/shot-sizes.mjs), and says which pages changed. Only for the pictures under docs/,
+// whose pages are there too (the manifest is read only then).
+function syncPageSizes(outs, { dryRun = false } = {}) {
+  if (!manifest || !outs.length) return;
+  for (const { page, outs: shown } of syncSizes(outRoot, outs, entryOf, { dryRun }))
+    console.log(`${page}: the size of ${shown.join(", ")} ${dryRun ? "would be set" : "set"} from its pixels`);
 }
 
 // A `once` picture has no light file: one left from before is removed, and its SVG. With
@@ -15554,6 +15579,12 @@ async function runJob(job) {
     }
   };
   await Promise.all(Array.from({ length: Math.min(jobCount, jobs.length) }, worker));
+}
+try {
+  syncPageSizes([...resized]);
+} catch (e) {
+  complain("sizes", `the pages' picture sizes could not be set: ${e.message}`);
+  failed = Math.max(failed, 1);
 }
 console.log(`${((Date.now() - t0) / 1000).toFixed(1)} s`);
 for (const theme of THEMES) {

@@ -502,20 +502,24 @@ const svgAllowance = (entry) => !!(entry?.svg?.bar || entry?.svg?.ignore);
  * What a commit of the session takes: `pictures` reviewPictures', `changes` what the working
  * tree changed ([{path, status}], paths from the repository's root: shot-revision.mjs's
  * workingChanges), `docsPrefix` the pictures' folder from the repository's root with a closing
- * slash ("docs/"), `manifestPath` the manifest's ("test/shots/manifest.json"), and `entry(out)`
- * a picture's entry in the manifest, or null.
+ * slash ("docs/"), `manifestPath` the manifest's ("test/shots/manifest.json"), `entry(out)`
+ * a picture's entry in the manifest, or null, and `pages(outs)` the pages whose declared sizes of
+ * the dark pictures `outs` (paths under docs/) the commit sets: [{path, outs, partial}], `path`
+ * from the repository's root, `partial` when the page has other changes, which stay in the
+ * working tree (the server's sizedPages, shot-sizes.mjs).
  *
  * Returns {files, leftOut, counts, build, undecided}: `files` the files to commit, [{path,
- * status, out, part, why}], `part` "png", "svg" or "manifest" and `why` what the session did to
- * it; `leftOut` the working tree's other changes ([{path, status}]); `counts` {changed, created,
- * taken, kept, dropped, svgWritten, svgByAllowance, svgByReview, svgRemoved, outsideKept,
- * manifest}; `build` the newest build a PNG committed was taken on, or null; and `undecided` the
+ * status, out, part, why}], `part` "png", "svg", "page" or "manifest" and `why` what the session
+ * did to it; `leftOut` the working tree's other changes ([{path, status}]), a page whose sizes
+ * alone are committed among them; `counts` {changed, created, taken, kept, dropped, svgWritten,
+ * svgByAllowance, svgByReview, svgRemoved, outsideKept, pages, manifest}; `build` the newest build
+ * a PNG committed was taken on, or null; and `undecided` the
  * pictures changed outside the session's runs that no review has kept or put back, none of whose
  * files is taken (undecidedRefusal). A file changed outside the runs that a review kept is
  * taken, and its picture counted in `outsideKept`. A PNG kept at the baseline by a review is
  * counted (`kept`) though it has nothing to commit, as its decision is in the manifest.
  */
-export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry = () => null }) {
+export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry = () => null, pages = () => [] }) {
   const status = new Map(changes.map((c) => [c.path, c.status]));
   const files = [];
   const counts = {
@@ -529,6 +533,7 @@ export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry 
     svgByReview: 0,
     svgRemoved: 0,
     outsideKept: 0,
+    pages: 0,
     manifest: false,
   };
   let build = null;
@@ -595,9 +600,22 @@ export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry 
     counts.manifest = true;
     take(manifestPath, "manifest", "the review's decisions and allowances, and the builds");
   }
+  // the pages that show a dark picture committed declare its new size (WIP.ShotReview.md, rule 4)
+  const shown = files
+    .filter((f) => f.part === "png" && f.status !== "deleted" && !/\.light\.png$/i.test(f.out))
+    .map((f) => f.out);
+  const partial = new Set();
+  for (const page of shown.length ? pages(shown) : []) {
+    if (!status.has(page.path)) continue;
+    counts.pages++;
+    if (page.partial) partial.add(page.path);
+    const named = page.outs.map((o) => o.split("/").pop()).join(", ");
+    take(page.path, "page", `the size of ${named}${page.partial ? ", without the page's other changes" : ""}`);
+  }
   files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const committed = new Set(files.map((f) => f.path));
-  return { files, leftOut: changes.filter((c) => !committed.has(c.path)), counts, build, undecided };
+  const leftOut = changes.filter((c) => !committed.has(c.path) || partial.has(c.path));
+  return { files, leftOut, counts, build, undecided };
 }
 
 // Why a file changed outside the runs is committed.
@@ -637,7 +655,8 @@ export function commitMessage({ counts: c, build }) {
     svgs.push(`${many(c.svgWritten, "SVG")} written${by.length ? ` (${by.join(", ")})` : ""}`);
   }
   if (c.svgRemoved) svgs.push(c.svgWritten ? `${c.svgRemoved} removed` : `${many(c.svgRemoved, "SVG")} removed`);
-  const parts = [pictures.join(", "), svgs.join(", ")].filter(Boolean).join("; ");
+  const sizes = c.pages ? `their sizes set on ${many(c.pages, "page")}` : "";
+  const parts = [pictures.join(", "), svgs.join(", "), sizes].filter(Boolean).join("; ");
   if (!parts) return c.manifest ? "Screenshot review: the manifest's decisions and allowances" : null;
   const changes = c.changed || c.taken || c.dropped;
   const what =

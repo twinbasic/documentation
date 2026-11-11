@@ -738,7 +738,7 @@ commit left them behind. Four rules, so that nobody has to remember how the tool
    back. Done (2026-11-09).
 4. **When a picture's size changes, the tool updates its pages' `{:width height}`** in the same
    commit (owner: make the edits), and a build check fails a shot whose declared size is not its
-   pixels' half.
+   pixels' half. Done (2026-11-11), below.
 
 And (c), owner: **a checkout's bundle cache is filled from the main checkout's** on first use
 (`git rev-parse --git-common-dir`), so that a new worktree does not redraw every SVG whose bundle
@@ -759,6 +759,19 @@ hash of the file's text), and the applier honours it only while that still holds
 BETA 1042 retake's 108 SVGs changed outside the runs: 47 of the files drew as HEAD's; a replay
 from the bundles the tool's retake had cached put back 101 (they drew HEAD's SVGs), and left 7
 for a review.
+
+**Rule 4, the declared sizes** (2026-11-11). `scripts/lib/shot-sizes.mjs` holds it all:
+
+| Part | Where it is |
+|---|---|
+| The size | `shownSize([w, h], scale)`, round(pixels ÷ scale); `scaleOf(entry)`, the manifest's `scale` or `SHOT_SCALE` (2, defined in `shot-manifest.mjs`). The manifest records `scale` only when it is not 2: `setBuild(out, build, scale)` sets it with the build (undefined leaves it, 2 or null removes it), `clearBuild` drops both. The fifteen pictures of program windows were backfilled from what their pages declared: twelve at 1.5 (a display at 150%), the three compiler boxes at 1 (a window unaware of the display's scaling draws at 96 DPI). `shoot_docs.mjs`'s `keep` passes its scale to `recordBuild` and to the verdict (`pngVerdict`'s `scale`), and the applier records it |
+| A reference | `pictureRefs(text, page)`: an image, `![alt](src)`, whose source is a PNG, outside code (`maskCode`), with or without its attribute list; `targetOf(page, src)` resolves the source from the page's folder (from docs/ for one starting with a slash). On 2026-11-11 every one of the 331 references to a picture of the table had the form `{:width="N" height="N"}`, one with ` png` after it |
+| Setting them | `withShownSizes(text, page, sizeOf)` changes only the two numbers, or adds the list to an image without one, every other character kept (CRLF too); `referenceIndex(docsRoot)` (the pages that show each picture, through `markdownFilesSync`, 0.2 to 0.5 s over the whole tree) and `syncSizes(docsRoot, outs, entry, {index, dryRun})`, for the dark pictures among `outs`, from their files |
+| Who sets them | `shoot_docs.mjs` at the end of a run without `--stage`, for each dark picture new, updated or restored (`resized`, `syncPageSizes`), and after `--cleanup` for each picture put back; the review tool's applier after each change to a dark picture's file (`resize`: a layer applied or undone, a picture put back), with the index read once per applier. A page that starts showing a picture while the tool is open is not in its index until the next session: the gate finds it |
+| The commit | the server's `sizedPages(outs)`, commitPlan's `pages`: for each dark PNG committed, each page whose text at the baseline (HEAD, since a commit needs the baseline to be HEAD) declares another size than the file's, and whose working copy git reports changed; the text committed is the baseline's with those sizes set, in the working file's line endings. `commitPaths(root, {contents})` writes it into the file, commits, and puts the working text back whatever git did, a copy of it kept meanwhile under `%TEMP%\shot-commit-held-*`. A page with other changes is listed under Left out as well, and its file's row says "without the page's other changes"; the message ends "their sizes set on N pages" |
+| The gate | `scripts/check_shot_sizes.mjs` in `check.bat` and the `run-gates` action: every reference to a dark picture of the manifest declares `shownSize` of its file (`sizeMismatches`). It covers the manifest's pictures only, as the owner put it: 105 of the 312 dark pictures of the table once the BETA 1042 retake is in, every picture written since the manifest began. A picture that is in the table but not yet in the manifest gets an entry the next time a run writes it |
+
+Fixed by hand with `syncSizes` (`fix-sizes`, a scratch script): Help_Hover (881 × 492, its pixels 1778 × 990), and the FAQ's release picture (891 for 1752 px since the BETA 1034 retake), which `ide-1042`'s commit e835f0db fixes the same way. History_2, History_3 and Variables_Tooltip, which the resume note listed as 1 px off, declare their pixels' half both on `staging` and on `ide-1042`: every picture of the table but those two did on 2026-11-11, at scale 2 or its manifest's.
 
 ## Open
 

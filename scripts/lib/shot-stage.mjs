@@ -130,16 +130,18 @@ const regionsOf = (regions) =>
 /**
  * The png part of a verdict, as a --stage file and an --events record carry it: what
  * decidePicture decided (`decision`, its `write` left out), the regions and the look
- * reviewPicture found (`review`), the build the capture was taken on, the difference
- * pictures written (their names in the diffs folder), and the files staged (stageCapture),
- * or null.
+ * reviewPicture found (`review`), the build the capture was taken on and its scale (the
+ * device pixels to a CSS pixel: 2 for a page, the display's DPI over 96 for a program's window;
+ * null when not said), the difference pictures written (their names in the diffs folder), and
+ * the files staged (stageCapture), or null.
  */
-export function pngVerdict({ decision, review, build, diffs = [], staged = null }) {
+export function pngVerdict({ decision, review, build, scale = null, diffs = [], staged = null }) {
   const { write, ...rest } = decision;
   return {
     ...rest,
     writes: write !== null && write !== undefined,
     build,
+    scale,
     look: review?.look ?? null,
     ...regionsOf(review?.regions ?? null),
     diffs,

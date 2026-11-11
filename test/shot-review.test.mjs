@@ -830,6 +830,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       svgByReview: 1,
       svgRemoved: 2,
       outsideKept: 0,
+      pages: 0,
       manifest: true,
     });
     // F, changed outside the runs and not decided, holds the commit back
@@ -868,6 +869,57 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     );
     assert.equal(commitMessage({ counts: counts({}), build: null }), null);
     assert.deepEqual(commitPlan({ pictures, changes: [], docsPrefix: "docs/", manifestPath: "m.json" }).files, []);
+  });
+
+  test("a commit takes the size of each dark picture committed on the pages that show it, without their other changes", () => {
+    const I = "IDE/Images/";
+    const pictures = [
+      { out: `${I}A.png`, png: { state: "updated", by: "rule", build: 1501 }, svg: null },
+      { out: `${I}A.light.png`, png: { state: "updated", by: "rule", build: 1501 }, svg: null },
+      { out: `${I}B.light.png`, png: { state: "dark", by: "rule" }, svg: null },
+    ];
+    const changes = [
+      ["docs/IDE/Images/A.png", "modified"],
+      ["docs/IDE/Images/A.light.png", "modified"],
+      ["docs/IDE/Images/B.light.png", "deleted"],
+      ["docs/IDE/One.md", "modified"],
+      ["docs/IDE/Two.md", "modified"],
+    ].map(([p, status]) => ({ path: p, status }));
+    const asked = [];
+    const plan = commitPlan({
+      pictures,
+      changes,
+      docsPrefix: "docs/",
+      manifestPath: "test/shots/manifest.json",
+      pages: (outs) => {
+        asked.push(outs);
+        return [
+          { path: "docs/IDE/One.md", outs: [`${I}A.png`], partial: false },
+          { path: "docs/IDE/Two.md", outs: [`${I}A.png`], partial: true },
+          // HEAD's sizes are wrong, but the working tree has not changed the page: not the session's
+          { path: "docs/IDE/Three.md", outs: [`${I}A.png`], partial: false },
+        ];
+      },
+    });
+    // only the dark picture committed is asked about: a light one is not shown by name, a removed one not at all
+    assert.deepEqual(asked, [[`${I}A.png`]]);
+    assert.deepEqual(
+      plan.files.filter((f) => f.part === "page").map((f) => [f.path, f.why]),
+      [
+        ["docs/IDE/One.md", "the size of A.png"],
+        ["docs/IDE/Two.md", "the size of A.png, without the page's other changes"],
+      ],
+    );
+    // a page whose other changes stay is listed as left out too
+    assert.deepEqual(
+      plan.leftOut.map((c) => c.path),
+      ["docs/IDE/Two.md"],
+    );
+    assert.equal(plan.counts.pages, 2);
+    assert.equal(
+      commitMessage(plan),
+      "Screenshots retaken on BETA 1501: 2 pictures changed, 1 light picture removed; their sizes set on 2 pages",
+    );
   });
 
   test("an address encodes each segment of a path, and a loupe crops and enlarges its region", () => {
@@ -1294,6 +1346,57 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       fs.readdirSync(path.dirname(file)).filter((f) => f.endsWith(".tmp")),
       [],
     );
+  });
+
+  test("the pages that show a picture declare the size its file has, at the scale its capture records, as each layer is applied and undone", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-sizes-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(docs, A), OLD);
+    const page = path.join(docs, "IDE", "Page.md");
+    const text = (w, h) => `# Page\r\n\r\n![A](Images/A.png){:width="${w}" height="${h}"}\r\n\r\nOther text.\r\n`;
+    fs.writeFileSync(page, text(20, 15));
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = { hash: base, short: "aaaaaaaa", bytes: () => OLD, read: () => new Map() };
+    const manifestFile = path.join(root, "manifest.json");
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(manifestFile),
+    });
+    // a program's window taken at 150%: 60 x 45 device pixels, shown at 40 x 30
+    const WIDE = Buffer.from(encodePng({ width: 60, height: 45, rgba: new Uint8Array(60 * 45 * 4).fill(90) }));
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    const stage = runPaths(root, 1).stage;
+    const fate = {
+      state: "updated",
+      write: WIDE,
+      against: "revision",
+      size: { w: 60, h: 45 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    };
+    writeVerdict(
+      stage,
+      A,
+      "png",
+      pngVerdict({ decision: fate, review: null, build: 1501, scale: 1.5, staged: stageCapture(stage, A, WIDE, null) }),
+    );
+    assert.equal(applier.arrive(1, A, "png"), true);
+    assert.equal(fs.readFileSync(page, "utf8"), text(40, 30));
+    assert.deepEqual(openManifest(manifestFile).entry(A), { build: 1501, scale: 1.5 });
+    // the run undone: the picture, its scale and the page as they were
+    const { failed } = applier.undo(1);
+    assert.equal(failed.size, 0);
+    assert.deepEqual(fs.readFileSync(path.join(docs, A)), OLD);
+    assert.equal(fs.readFileSync(page, "utf8"), text(20, 15));
+    // (an entry left with nothing in it is not written)
+    assert.equal(openManifest(manifestFile).entry(A), null);
   });
 
   test("an SVG a run found the same picture as the baseline's goes back to its bytes, one the same as the file's stays, while that still holds", (t) => {
@@ -2571,6 +2674,10 @@ if (cleanupArgs.includes("--cleanup")) {
     fs.mkdirSync(path.join(repo, "test", "shots"), { recursive: true });
     fs.writeFileSync(path.join(docs, A), flat(false));
     fs.writeFileSync(path.join(repo, "other.txt"), "o\n");
+    // a page that declares a wrong size for A: the run's verdict on A sets it, and the commit takes that
+    const pageFile = path.join(docs, "IDE", "Page.md");
+    const pageText = (size, line) => `![A](Images/A.png){:width="${size[0]}" height="${size[1]}"}\n\n${line}\n`;
+    fs.writeFileSync(pageFile, pageText([1, 1], "Old line."));
     git("add", ".");
     git("commit", "-q", "-m", "x");
     const script = path.join(reviewRoot, "fake-run.mjs");
@@ -2615,19 +2722,23 @@ if (cleanupArgs.includes("--cleanup")) {
       const handle = app.start({ tool: "shoot_docs", args: ["--only", "A|B"] });
       await until("A's SVG verdict", () => app.model().pictures.find((p) => p.out === A)?.svg);
       fs.writeFileSync(path.join(repo, "other.txt"), "changed\n");
-      const files = ["docs/IDE/Images/A.png", "docs/IDE/Images/A.svg", "test/shots/manifest.json"];
-      const message = "Screenshots retaken on BETA 1501: 1 picture changed; 1 SVG written";
+      // A is 40 x 30 device pixels, shown at 20 x 15
+      assert.equal(fs.readFileSync(pageFile, "utf8"), pageText([20, 15], "Old line."));
+      const files = ["docs/IDE/Images/A.png", "docs/IDE/Images/A.svg", "docs/IDE/Page.md", "test/shots/manifest.json"];
+      const message = "Screenshots retaken on BETA 1501: 1 picture changed; 1 SVG written; their sizes set on 1 page";
 
       // nothing is committed while a run runs
       let page = await get(hrefs.commitPage);
       assert.match(
         page,
-        /<button type="submit" disabled title="run 1 is running: commit once it has ended">Commit 3 files</,
+        /<button type="submit" disabled title="run 1 is running: commit once it has ended">Commit 4 files</,
       );
       assert.match((await post(hrefs.commit, { message, files }))[1].error, /run 1 is running/);
       handle.stop();
       await handle.exited;
       await until("the run's end", () => !app.live().length);
+      // the page edited besides: the commit takes its size alone
+      fs.writeFileSync(pageFile, pageText([20, 15], "Edited line."));
 
       // the files the session changed, its default message, and the other change left out
       page = await get(hrefs.commitPage);
@@ -2636,13 +2747,21 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.match(page, /<form class="commit" id="commit" data-keep data-busy="committing\.\.\."/);
       assert.ok(page.includes('from.closest("[data-busy]")?.dataset.busy || "applying..."'));
       assert.ok(page.includes(`data-default="${message}">${message}</textarea>`));
-      assert.match(page, /<button type="submit">Commit 3 files</);
+      assert.match(page, /<button type="submit">Commit 4 files</);
+      assert.ok(
+        page.includes(
+          "<tr><td><code>docs/IDE/Page.md</code></td><td>modified</td><td>the size of A.png, without the page's other changes</td></tr>",
+        ),
+      );
       assert.ok(
         page.includes(
           `<tr><td><code><a href="/picture/IDE/Images/A.png">docs/IDE/Images/A.png</a></code></td><td>modified</td><td>changed by the tool's verdict</td></tr>`,
         ),
       );
-      assert.match(page, /<h2>Left out \(1\)<\/h2>[\s\S]*<li><code>other\.txt<\/code> modified<\/li>/);
+      assert.match(
+        page,
+        /<h2>Left out \(2\)<\/h2>[\s\S]*<li><code>docs\/IDE\/Page\.md<\/code> modified<\/li><li><code>other\.txt<\/code> modified<\/li>/,
+      );
       assert.match(await get("/"), /<a href="\/commit">Commit<\/a>/);
 
       // refused: another list of files than the session's, and an empty message
@@ -2664,7 +2783,12 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.match(page, /<span class="status" role="status">committing\.\.\.<\/span>/);
       assert.match(page, /Committing the session: <q>Screenshots: A<\/q>/);
       assert.match(page, /data-default="Screenshots: A" readonly>Screenshots: A<\/textarea>/);
-      assert.match(page, /<button type="submit" disabled title="the session is being committed">Commit 3 files</);
+      assert.match(page, /<button type="submit" disabled title="the session is being committed">Commit 4 files</);
+      // the page holds its size-only text while git commits it (the hook holds git)
+      await until(
+        "the page to hold its size-only text",
+        () => fs.readFileSync(pageFile, "utf8") === pageText([20, 15], "Old line."),
+      );
       assert.match(await get("/"), /Committing the session: <q>Screenshots: A<\/q>/);
       assert.match(await get(hrefs.runs), /<p class="notice">Committing the session/);
       assert.match(await get(`/picture/${A}`), /disabled title="the session is being committed: a new run starts/);
@@ -2683,9 +2807,11 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: A");
       assert.equal(
         git("show", "--name-status", "--format=", "HEAD"),
-        "M\tdocs/IDE/Images/A.png\nA\tdocs/IDE/Images/A.svg\nA\ttest/shots/manifest.json\n",
+        "M\tdocs/IDE/Images/A.png\nA\tdocs/IDE/Images/A.svg\nM\tdocs/IDE/Page.md\nA\ttest/shots/manifest.json\n",
       );
-      assert.equal(git("status", "--porcelain"), " M other.txt\n");
+      assert.equal(git("show", "HEAD:docs/IDE/Page.md"), pageText([20, 15], "Old line."));
+      assert.equal(fs.readFileSync(pageFile, "utf8"), pageText([20, 15], "Edited line."));
+      assert.equal(git("status", "--porcelain"), " M docs/IDE/Page.md\n M other.txt\n");
       assert.deepEqual([app.session().data.baseline.hash, app.session().data.runs], [done.hash, []]);
       assert.deepEqual(app.model().pictures, []);
       page = await get(hrefs.commitPage);

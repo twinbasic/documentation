@@ -65,7 +65,7 @@ Exit codes: **0** every link is reachable and every anchor exists, **1** a link 
     node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
                                 [--stock-axe] [--minified]
 
-Automated accessibility scan of the built site, and the second of `check.bat`'s four steps (right after [`check_tree_fresh.mjs`](#check-tree-fresh)). It loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against sixteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 72 audits in all. The page list is derived, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) keeps it representative.
+Automated accessibility scan of the built site, and the second of `check.bat`'s five steps (right after [`check_tree_fresh.mjs`](#check-tree-fresh)). It loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against sixteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 72 audits in all. The page list is derived, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) keeps it representative.
 
 This script only reports. The scan itself --- page list, themes and viewports, blocked requests, axe run options, source patches and state audits --- lives in [`scripts/lib/axe-scan.mjs`](#axe-scan), shared with `sweep_a11y.mjs` and `check_a11y_fingerprint.mjs`. Change the scan there, not here.
 
@@ -204,6 +204,17 @@ Renders every committed diagram with the real webfont and fails if a label sits 
 It needs a browser, so it lives in `check.bat` rather than the build. Run it after touching any `.dot`, `builder/dot-metrics.mjs`, or `builder/inter-metrics.json`.
 
 Exit codes: **0** every diagram's text fits its boxes, or no diagram was found; **1** the text of at least one diagram sits outside its box; **2** the gate could not run: a refused command line, no browser, or a crash.
+
+## check_shot_sizes.mjs
+{: #check-shot-sizes }
+
+    node scripts/check_shot_sizes.mjs [--docs <dir>] [--manifest <file>]
+
+`check.bat`'s last gate. Every page that shows a screenshot recorded in `test/shots/manifest.json` must declare the size its pixels are shown at, `{:width="..." height="..."}`: its width and height in pixels divided by its scale, rounded. The scale is 2 for a picture of the IDE's page, which [`shoot_docs.mjs`](Tools-IDE#shoot-docs) takes at twice its size. For a picture of a program's window it is the display's DPI over 96, which the manifest records as the picture's `scale`. A wrong size makes the picture blurred or stretched, and the build, which checks only that the link resolves, stays green.
+
+The screenshot tools set these sizes themselves whenever they write a picture: `shoot_docs.mjs` at the end of a run and after `--cleanup`, and the [screenshot review tool](Tools-IDE#shot-review) as it applies each verdict. The review tool's commit takes a page's size changes without its other edits. So the gate catches a size typed by hand, a picture copied in, or a page that starts showing a picture after it was taken. Each failure names the page, the line, and the size to write. It reads the pages and the pictures' PNG headers, not the built site, so it needs no browser.
+
+Exit codes: **0** every reference declares its picture's size; **1** at least one reference declares another size; **2** the gate could not run: a refused command line, a manifest that cannot be read, or a crash.
 
 ## check_a11y_fingerprint.mjs
 {: #check-a11y-fingerprint }

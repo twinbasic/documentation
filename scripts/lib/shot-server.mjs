@@ -44,6 +44,7 @@ import {
 } from "./shot-pages.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { commitPaths, workingChanges } from "./shot-revision.mjs";
+import { referenceIndex, shownSizeOfFile, withShownSizes } from "./shot-sizes.mjs";
 import { createApplier } from "./shot-verdicts.mjs";
 import {
   allPictures,
@@ -1015,21 +1016,53 @@ export function createReviewServer({
     const up = path.dirname(file);
     return up === file ? file : path.join(real(up), path.basename(file));
   };
+  // `contents` maps a page whose picture sizes the commit sets (its path from the repository's
+  // root) to the text it is committed with: the baseline's, which is HEAD's, with the sizes of the
+  // pictures committed set (shot-sizes.mjs), in the working file's line endings.
   function commitState() {
     try {
       const { top, changes } = workingChanges(repoRoot);
       const rel = (file) => path.relative(real(top), real(file)).replace(/\\/g, "/");
+      const contents = new Map();
       const plan = commitPlan({
         pictures: model().pictures,
         changes,
         docsPrefix: `${rel(docsRoot)}/`,
         manifestPath: rel(manifest().file),
         entry,
+        pages: (outs) => sizedPages(outs, rel, contents),
       });
-      return { plan, message: commitMessage(plan), error: null };
+      return { plan, message: commitMessage(plan), error: null, contents };
     } catch (e) {
-      return { plan: null, message: null, error: e.message };
+      return { plan: null, message: null, error: e.message, contents: new Map() };
     }
+  }
+  // The pages whose declared sizes of the dark pictures `outs` differ at the baseline from their
+  // files' (commitPlan's `pages`), each text to commit put in `contents`.
+  function sizedPages(outs, rel, contents) {
+    const lf = (s) => s.replace(/\r\n/g, "\n");
+    const index = referenceIndex(docsRoot);
+    const sizes = new Map(outs.map((o) => [o, shownSizeOfFile(docsRoot, o, entry(o))]));
+    const byPage = new Map();
+    for (const o of outs)
+      for (const page of index.get(o) ?? []) {
+        if (!byPage.has(page)) byPage.set(page, []);
+        byPage.get(page).push(o);
+      }
+    const found = [];
+    for (const [page, pageOuts] of [...byPage].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      const file = path.join(docsRoot, page);
+      const head = revision.bytes(page);
+      if (!head || !existsSync(file)) continue;
+      const headText = lf(head.toString("utf8"));
+      const sized = withShownSizes(headText, page, (o) => (pageOuts.includes(o) ? sizes.get(o) : null));
+      if (sized === headText) continue;
+      const working = readFileSync(file, "utf8");
+      const p = rel(file);
+      contents.set(p, working.includes("\r\n") ? sized.replace(/\n/g, "\r\n") : sized);
+      found.push({ path: p, outs: pageOuts.sort(), partial: lf(working) !== sized });
+    }
+    return found;
   }
   // Why the session cannot be committed now, or null: a commit under way, a run, or a baseline
   // that is not HEAD.
@@ -1050,7 +1083,7 @@ export function createReviewServer({
   function commit(body) {
     const refused = commitRefusal();
     if (refused) throw new Error(refused);
-    const { plan, error } = commitState();
+    const { plan, error, contents: texts } = commitState();
     if (error) throw new Error(`git could not be read: ${error}`);
     const undecided = undecidedRefusal(plan);
     if (undecided) throw new Error(undecided);
@@ -1062,8 +1095,12 @@ export function createReviewServer({
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new Error("the message is empty");
     const added = plan.files.filter((f) => f.status === "added").map((f) => f.path);
+    // a page's picture sizes go without its other changes
+    const contents = plan.files
+      .filter((f) => f.part === "page")
+      .map((f) => ({ path: f.path, text: texts.get(f.path) }));
     const done = (async () => {
-      const made = await commitPaths(repoRoot, { paths, added, message });
+      const made = await commitPaths(repoRoot, { paths, added, message, contents });
       let next;
       try {
         next = onCommit({ ...made, message });

@@ -97,7 +97,8 @@ digraph tools_groups {
         s5 [label="check_dot_fit"]      s6 [label="check_a11y"]
         s7 [label="pick_a11y_sample"]   s8 [label="axe-scan"]
         s9 [label="check_a11y_fingerprint"] s10 [label="sweep_a11y"]
-        s1 -> s3 -> s5 -> s7 -> s9
+        s11 [label="check_shot_sizes"]
+        s1 -> s3 -> s5 -> s7 -> s9 -> s11
         s2 -> s4 -> s6 -> s8 -> s10
         { rank=same; s3 s4 }
         { rank=same; s5 s6 }
@@ -290,6 +291,8 @@ digraph tools_groups {
          tooltip="Gates any change to what the accessibility scan runs, by comparing the findings of two schemes over the full page, theme and viewport matrix."]
     s10 [URL="Tools-Site-Checks#sweep-a11y"
          tooltip="Runs the accessibility scan over every page in both themes and both viewports. It takes about twenty minutes, so no commit gate runs it."]
+    s11 [URL="Tools-Site-Checks#check-shot-sizes"
+         tooltip="Fails a page whose declared size for a screenshot is not the picture's pixels divided by the scale it was taken at."]
 
     c1 [URL="Tools-Compiler#tbbuild"
         tooltip="Compiles a .twinproj in the IDE on a private desktop and prints its diagnostics. Windows only."]

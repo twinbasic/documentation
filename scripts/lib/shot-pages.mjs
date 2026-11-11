@@ -1916,6 +1916,7 @@ export function commitHtml({
       ["SVGs written", `${c.svgWritten}${by.length ? ` (${by.join(", ")})` : ""}`],
       ["SVGs removed", c.svgRemoved],
       ["Pictures kept from outside the runs", c.outsideKept ?? 0],
+      ["Pages whose picture sizes are set", c.pages ?? 0],
       ["The manifest", c.manifest ? "changed" : "unchanged"],
     ];
     const fileRow = (f) =>
@@ -1943,7 +1944,7 @@ ${plan.files.map(fileRow).join("\n")}
     const shown = plan.leftOut.slice(0, LEFT_OUT_SHOWN);
     const more = plan.leftOut.length - shown.length;
     sections.push(`<h2>Left out (${plan.leftOut.length})</h2>
-<p>The working tree's other changes, which the commit does not take.</p>
+<p>The working tree's other changes, which the commit does not take. A page whose picture sizes it sets is here too when it has other changes: the commit takes its sizes alone, and the rest stays in the working tree.</p>
 <ul class="left">${shown.map((c) => `<li><code>${esc(c.path)}</code> ${esc(c.status)}</li>`).join("")}${more ? `<li>and ${more} more</li>` : ""}</ul>`);
   }
   if (archived.length)
