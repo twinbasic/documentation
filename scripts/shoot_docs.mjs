@@ -13005,7 +13005,14 @@ async function webPage(c, url, width) {
     deviceScaleFactor: SCALE,
     mobile: false,
   });
-  const nav = await c.send("Page.navigate", { url });
+  // A navigation Chrome aborts is made again: the first, a moment after Chrome has started, was
+  // aborted in some retakes (net::ERR_ABORTED), and the page stayed at about:blank (2026-11-11).
+  let nav;
+  for (let tries = 1; ; tries++) {
+    nav = await c.send("Page.navigate", { url });
+    if (nav?.errorText !== "net::ERR_ABORTED" || tries === 3) break;
+    await sleep(1000);
+  }
   if (nav?.errorText) throw new Error(`${url} could not be loaded: ${nav.errorText}`);
   const loaded = `document.readyState === "complete" && document.fonts.status === "loaded" && [...document.images].every((i) => i.complete)`;
   if (
