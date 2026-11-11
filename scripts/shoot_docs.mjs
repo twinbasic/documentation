@@ -13005,7 +13005,8 @@ async function webPage(c, url, width) {
     deviceScaleFactor: SCALE,
     mobile: false,
   });
-  await c.send("Page.navigate", { url });
+  const nav = await c.send("Page.navigate", { url });
+  if (nav?.errorText) throw new Error(`${url} could not be loaded: ${nav.errorText}`);
   const loaded = `document.readyState === "complete" && document.fonts.status === "loaded" && [...document.images].every((i) => i.complete)`;
   if (
     !(await waitFor(c, () => c.evaluate(`location.href !== "about:blank" && ${loaded}`), {
@@ -13013,7 +13014,12 @@ async function webPage(c, url, width) {
       interval: 250,
     }))
   ) {
-    throw new Error(`${url} did not finish loading`);
+    const state = await c
+      .evaluate(
+        `JSON.stringify({ href: location.href, ready: document.readyState, fonts: document.fonts.status, images: [...document.images].filter((i) => !i.complete).map((i) => (i.loading === "lazy" ? "lazy " : "") + (i.currentSrc || i.src)) })`,
+      )
+      .catch((e) => e.message);
+    throw new Error(`${url} did not finish loading: ${state}`);
   }
   await quiet(c);
 }
@@ -13080,10 +13086,11 @@ const webView2Shot = {
         { type: "arrow", from: { of: WV2_CARD, at: "left", dx: -44 }, to: { of: WV2_CARD, at: "left", dx: -2 } },
         { type: "ring", on: { css: "button", text: "x86" } },
       ]);
-      // The Version list's arrow, an 8 by 9 inline SVG, changes a pixel by more than a
-      // capture's noise from frame to frame, with animations and transitions off.
+      // The Version and Architecture lists' arrows, 8 by 9 inline SVGs, change a pixel by more
+      // than a capture's noise from frame to frame, with animations and transitions off (the
+      // Architecture one too since 2026-11-11, when it alone failed every retake).
       return await capture(c, "webview2", await pageClip(c, union(area, box), WV2_WIDTH), {
-        unsteady: [{ on: { css: "#version .px-dropdown__icon" } }],
+        unsteady: [{ on: { css: "#version .px-dropdown__icon" } }, { on: { css: "#architecture .px-dropdown__icon" } }],
       });
     } finally {
       await unannotate(c);
