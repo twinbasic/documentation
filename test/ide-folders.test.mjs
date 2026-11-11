@@ -42,6 +42,14 @@ describe("the defaults hook in a page", () => {
         stored.push(`read ${file}`);
         return `real ${file}`;
       },
+      GetVB6RecentProjects: async () => {
+        stored.push("the user's VB6 list");
+        return "C:\\Users\\someone\\a.vbp";
+      },
+      GetRecentsList: async () => {
+        stored.push("the user's list");
+        return "C:\\Users\\someone\\a.twinproj";
+      },
     };
   });
 
@@ -96,6 +104,20 @@ describe("the defaults hook in a page", () => {
     await host.ReadFileDataBase64("RemoveRecentsList:C:\\Users\\someone\\a.twinproj");
     assert.deepEqual(stored, []);
     assert.ok(!window.__tbDefaults.keys.some((k) => k.includes("\\")), "a key, never a path, is recorded");
+  });
+
+  test("the lists read by a host method of their own, VB6's and the old one, are the page's own", async () => {
+    const host = globalThis.hostAppObject;
+    stored.length = 0;
+    assert.equal(await host.GetVB6RecentProjects("ignoreMe"), "");
+    assert.equal(await host.GetRecentsList(), "");
+    window.__tbVb6Recents = "C:\\Projects\\Old.vbp";
+    window.__tbRecents = "C:\\Projects\\Alpha.twinproj";
+    assert.equal(await host.GetVB6RecentProjects("ignoreMe"), "C:\\Projects\\Old.vbp");
+    assert.equal(await host.GetRecentsList(), "C:\\Projects\\Alpha.twinproj");
+    delete window.__tbVb6Recents;
+    delete window.__tbRecents;
+    assert.deepEqual(stored, [], "the host's own lists are never read");
   });
 
   test("control: any other file is read from the host", async () => {

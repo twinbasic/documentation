@@ -17,7 +17,8 @@
 //   * A second proxy stands under the hook, on the host object itself, and records any of those
 //     calls that reached it in `through`, and drops it too. The record of a run is that list and
 //     the counts of what was blocked; shoot_docs fails on any entry in `through`.
-//   * The Recent lists are answered empty, so no path of the user's comes into the page.
+//   * The Recent lists are the hook's to answer, empty here, so no path of the user's comes into
+//     the page.
 //
 // An answer comes after a real call to the host. The page's theme files are read by host calls
 // made before GENERAL is asked for, so the host answers them first, and a first start draws its
@@ -91,7 +92,6 @@ function pageGuard(cfg) {
             return target.GetIDESetting("LICENCEAGREEMENTV3").then(() => cfg.settings[key]);
           };
         }
-        if (name === "GetRecentsList" || name === "GetVB6RecentProjects") return () => Promise.resolve("");
         if (STOPPED.has(name)) return stopped(name);
         return target[name];
       },

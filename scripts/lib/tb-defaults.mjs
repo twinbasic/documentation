@@ -102,6 +102,17 @@ export function pageHook(answers) {
             return member.apply(target, a);
           };
         }
+        // The two recent lists read by a host method of their own: VB6's (GetVB6RecentProjects, the
+        // New / Open Project dialog's Recent (VB6) section, BETA 1042 still) and, before BETA 1042,
+        // twinBASIC's (GetRecentsList). Each is the page's own, `window.__tbVb6Recents` and
+        // `window.__tbRecents`, or none, so no tool has to answer them itself.
+        if (name === "GetVB6RecentProjects" || name === "GetRecentsList") {
+          const own = name === "GetVB6RecentProjects" ? "__tbVb6Recents" : "__tbRecents";
+          return () => {
+            marker.keys.push(name);
+            return Promise.resolve(typeof window[own] === "string" ? window[own] : "");
+          };
+        }
         if (name !== "GetIDESetting") return (...a) => member.apply(target, a);
         return (...a) => {
           const key = String(a[0]);

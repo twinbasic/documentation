@@ -83,12 +83,13 @@ Measured:
   name without "Sample N.", so the tool finds a sample by `fp2Item.name` and anchors on the
   name as drawn (`SAMPLE_TITLE`). `.fp2-content` is what scrolls.
 - **What the user's machine leaks into a picture**, and the answer for each:
-  - the recent-projects lists (twinBASIC and VB6) read the user's registry: overridden in the
-    page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written. BETA
-    1033's New / Open Project dialog reads the twinBASIC list from `hostAppObject.GetRecentsList`
-    itself, as it opens, so `PAGE_DEFAULTS` answers that call from `window.__shotRecents`
-    (`setRecents`, which a shot calls before it opens the dialog), and that dialog's remembered
-    section, the setting `NEWFRONTPAGE`, is neither read nor saved;
+  - the recent-projects lists (twinBASIC and VB6) read the user's registry: every tool's IDE has
+    them answered by the defaults hook (`scripts/lib/tb-defaults.mjs`), from the page's
+    `window.__tbRecents` and `window.__tbVb6Recents`, or empty, whichever way the build asks
+    (`GetRecentsList` and `GetVB6RecentProjects` on the host object, and since BETA 1042
+    `ReadFileDataBase64("GetRecentsList")`), nothing read or written. A shot sets them before it
+    opens the New / Open Project dialog (`setRecents`), and that dialog's remembered section, the
+    setting `NEWFRONTPAGE`, is neither read nor saved (`PAGE_DEFAULTS`);
   - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
     tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
     private APPDATA — see Machine state in the pictures. The IDE is started with
@@ -174,8 +175,10 @@ Measured:
   the import log, reads `\.` as an escape. A capture fails when the real folder is in the page's
   text, its text boxes, the SVG or a window's texts: what cannot be rewritten is fixed, and the guard
   is not relaxed. `startTidy` sweeps the folder's `ProjectState` entries; `asTempFolder` allows
-  exactly this one folder outside the temp folder, so two checkouts' shoot_docs runs at once
-  would refuse each other's.
+  a `.claude\tbshots` folder outside the temp folder, any checkout's, by name, so that a dead run's
+  record from another worktree, or one spelt by a subst drive, is swept by the next run to start
+  alone; a dead record naming any other folder is dropped with a note rather than blocking every
+  run after it.
 - **The reference is the picture at `HEAD`, then the file** (owner; `pictureFate` in
   `scripts/lib/shot-revision.mjs`). Compared with the file alone, a picture drifted from
   `HEAD` over the runs of one retake, each step within noise of the file before it, and a run
@@ -632,7 +635,7 @@ setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Star
 - **`starting`**: Enter Licence Key, the search, Recent (VB6) and the three New Project Options
   boxes, each cancelled, so that no ActiveX project is ever made; the shot checks the licence box
   is empty. The picker `OpenProjectVBP` is answered from `__shotAnswers`, VB6's list from
-  `__shotVb6Recents` (`PAGE_DEFAULTS`). A box's clip starts at the next whole CSS pixel: it can
+  `__tbVb6Recents`, which the defaults hook answers. A box's clip starts at the next whole CSS pixel: it can
   start half a pixel into the progress box behind it.
 - **`starting-new`**: a new Standard EXE and an import, each made again by its take, since a take
   leaves the project changed. Its compiler starts on `licenceKey = ""` in the page, as in

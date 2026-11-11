@@ -1300,22 +1300,18 @@ async function fixPageSize(c) {
 // the options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
   const blocked = (window.__shotBlocked = new Set(["RemoveRecentsList"]));
-  // The New / Open Project dialog (BETA 1033's) reads the recent list from the host object
-  // itself, and remembers the section it was left on as the setting NEWFRONTPAGE: the list is
-  // the tool's own (window.__shotRecents, setRecents), the section is never read or saved.
-  // VB6's list is __shotVb6Recents, and a native picker a shot goes through is answered from __shotAnswers.
-  window.__shotRecents = [];
-  // Since BETA 1042 the dialog reads the list through ReadFileDataBase64("GetRecentsList"),
-  // which the defaults hook (scripts/lib/tb-defaults.mjs), the outer wrapper of the host
-  // object, answers from __tbRecents before this proxy sees the call: setRecents sets both.
+  // The New / Open Project dialog remembers the section it was left on as the setting
+  // NEWFRONTPAGE, which is never read or saved here. Its recent lists, twinBASIC's and VB6's,
+  // are answered by the defaults hook (scripts/lib/tb-defaults.mjs), the outer wrapper of the
+  // host object, from __tbRecents (setRecents) and __tbVb6Recents, before this proxy sees a
+  // call. A native picker a shot goes through is answered from __shotAnswers.
   window.__tbRecents = "";
-  window.__shotVb6Recents = "";
+  window.__tbVb6Recents = "";
   window.__shotAnswers = {};
   const FRONT_PAGE = "NEWFRONTPAGE";
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
-      if (key === "GetRecentsList") return async () => window.__shotRecents.join("?");
       if (Object.hasOwn(window.__shotAnswers, key)) return async () => window.__shotAnswers[key];
       const member = Reflect.get(target, key);
       if (key === "GetIDESetting" || key === "SaveIDESetting") {
@@ -1342,7 +1338,6 @@ const PAGE_DEFAULTS = `(() => {
   activePanelLayoutName = "<DEFAULT>";
   customKeyboardShortcutGroups = {};
   activeKeyboardShortcutGroupNames = "";
-  window.HostGetVB6RecentProjects = (done) => done(window.__shotVb6Recents);
   window.HostGetRecentsList = (e) => {
     e.classList.add("frontPageListViewLIST");
     listviewFromArray(e, [], () => {});
@@ -1356,8 +1351,7 @@ const PAGE_DEFAULTS = `(() => {
 // The recent list the New / Open Project dialog shows, from the next time it opens: the
 // projects' paths, each shown as both its name and its path.
 const setRecents = (c, paths) =>
-  c.evaluate(`window.__shotRecents = ${JSON.stringify(paths)};
-window.__tbRecents = ${JSON.stringify(paths.join("?"))};
+  c.evaluate(`window.__tbRecents =${JSON.stringify(paths.join("?"))};
 window.HostGetRecentsList = (e) => {
   e.classList.add("frontPageListViewLIST");
   listviewFromArray(e, ${JSON.stringify(paths.map((p) => ({ name: p, projectPath: p })))}, () => {});
@@ -14129,14 +14123,14 @@ const startingShots = [
     out: ST_IMAGE("Recent_VB6"),
     setup: "starting",
     async take({ c }) {
-      await c.evaluate(`window.__shotVb6Recents = ${JSON.stringify(VB6_RECENTS.join("?"))}`);
+      await c.evaluate(`window.__tbVb6Recents = ${JSON.stringify(VB6_RECENTS.join("?"))}`);
       try {
         return await inNewProject(c, async () => {
           await dialogSection(c, "Recent (VB6)");
           return dialogShot(c, "Recent_VB6");
         });
       } finally {
-        await c.evaluate(`window.__shotVb6Recents = ""`);
+        await c.evaluate(`window.__tbVb6Recents = ""`);
       }
     },
   },
