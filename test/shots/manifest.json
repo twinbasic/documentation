@@ -5,6 +5,7 @@
       "build": 1034
     },
     "Features/Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png": {
+      "scale": 1.5,
       "png": {
         "decision": {
           "keep": "old",
@@ -13,16 +14,20 @@
       }
     },
     "Features/Images/0aeb25f6-d864-4ebb-a9f5-bbd7b5d242e8.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/3fa1cf2b-0af5-44ae-ae6a-3c0662f51f57.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/4829696d-788b-40ee-bebd-5afa44477460.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/4ad9c774-b31d-47d3-9963-6d99ac4f37bb.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/4c8b881e-1216-4819-a558-d2ce20f47fcd.light.png": {
       "build": 1042
@@ -55,16 +60,20 @@
       }
     },
     "Features/Images/599a66ad-31d5-449f-bbf5-00963fe9aa2a.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/5fc60b7b-4f54-445c-8504-451019b7ec55.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/80185a8d-2952-415f-bc02-ec3ddea89568.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/85f25aa2-abc8-4d42-8510-078f8ee4a324.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Images/IDE-FeatureMap.light.png": {
       "build": 1042
@@ -93,6 +102,7 @@
     },
     "Features/Images/bc9f3756-a14b-4ee7-b819-6822497b640a.png": {
       "build": 1034,
+      "scale": 1.5,
       "png": {
         "decision": {
           "keep": "new",
@@ -107,7 +117,8 @@
       "build": 1042
     },
     "Features/Images/fddbffa9-2b71-47f5-b925-e67fc66b9e5c.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "Features/Packages/Images/6ad7a172-0e1b-4276-ac89-042681552507.light.png": {
       "build": 1042
@@ -283,7 +294,8 @@
       "build": 1042
     },
     "IDE/Forms/Images/Preview_Window.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1.5
     },
     "IDE/Forms/Images/Properties_ColourPicker.light.png": {
       "build": 1042
@@ -453,7 +465,8 @@
       "build": 1042
     },
     "IDE/Starting/Images/Damaged_Box.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1
     },
     "IDE/Starting/Images/Error_Reporting.light.png": {
       "build": 1034
@@ -486,7 +499,8 @@
       "build": 1034
     },
     "IDE/Starting/Images/Missing_File_Box.png": {
-      "build": 1034
+      "build": 1034,
+      "scale": 1
     },
     "IDE/Starting/Images/New_Standard_EXE.light.png": {
       "build": 1042
@@ -549,7 +563,8 @@
       "build": 1034
     },
     "IDE/Troubleshooting/Images/Missing_DLL_Box.png": {
-      "build": 1042
+      "build": 1042,
+      "scale": 1
     },
     "IDE/Troubleshooting/Images/Native_Exception.light.png": {
       "build": 1042
