@@ -118,7 +118,7 @@ These keys work only while the focus is in the panel:
 
 A search that reaches the end of its scope with **Down** asks **End of search scope has been reached; do you want to continue from the beginning?** With **Up** it asks **Beginning of search scope has been reached; do you want to continue from the end?** The buttons are **Yes** and **No**.
 
-A search with **All**, a project search, and **Replace All** end with **The specified region has been searched.** After a **Replace All**, a second box says how many replacements were made: **N replacements were made.**, or **1 replacement was made.** With no scope ticked, the panel says **Scope not selected**.
+A search with **All**, a project search, and **Replace All** end with **The specified region has been searched.** After a **Replace All**, a second box says how many replacements were made: **N replacements were made.**, or **1 replacement was made.** In a project search, one box says both, and in how many files: **The specified region has been searched. N replacements were made in M files.** (see [Search the whole project](#search-the-whole-project)). With no scope ticked, the panel says **Scope not selected**.
 
 <!-- test: bug find-scope-stuck-selected-text -->
 > [!NOTE] BETA 1042
@@ -180,7 +180,7 @@ A project search:
 - always goes down, whatever **Direction** says;
 - opens each file that holds a match in a tab. The tab is a preview tab when **Single-Click Preview** is on.
 
-**Replace All** does not work in a project search. The panel says **Sorry, Replace-All not yet supported in project-scope**. Use **Replace** and **Find Next** to go through the matches one at a time, or switch to **Current File** and repeat the replacement in each file.
+**Replace All** in a project search replaces every match in the project's `.twin`, `.bas`, `.cls` and `.md` files at once, wherever the search started. It opens each file that holds a match in a tab and makes the replacements there, so <kbd>Ctrl</kbd>+<kbd>Z</kbd> in a file's tab takes back the replacements made in that file. One box then says **The specified region has been searched.** and how many replacements were made in how many files, such as **8 replacements were made in 2 files.** A file that could not be changed is listed in the box with the reason. **Replace All** never changes the packages, even with **Inside Packages** ticked, and like the search it does not look in forms.
 
 ## Quick Find
 

@@ -11,8 +11,11 @@
 //   "After a search in Selected Text, the scope stays on a greyed Selected Text, and Find Next stops
 //   at once" (bugs/find-scope-stuck-selected-text)
 //
-// The project in probes/code-find holds one file, Finder.twin, whose first word, Module, is at
-// line 1, column 1. Each test starts the search from a place it sets, with the options it needs
+// Last, it checks Replace All in Current Project, as docs/IDE/Code/Finding.md describes it under
+// "Search the whole project" (BETA 1036 made it work; it changes both files of the project).
+//
+// The project in probes/code-find holds Finder.twin, whose first word, Module, is at line 1,
+// column 1, and Sums.twin, a second file for the Replace All. Each test starts the search from a place it sets, with the options it needs
 // set by clicking their boxes, and records what each press of Find Next gives: the selection, an
 // IDE message box (answered No when it has a No, else OK) or a javascript alert.
 //
@@ -41,6 +44,7 @@ import {
   answerMessageBox,
   clickAt,
   editorState,
+  editorText,
   messageBoxes,
   openFile,
   pressKey,
@@ -302,5 +306,45 @@ scenario("the Find / Replace panel", (lane) => {
     t.diagnostic(`Find Next: ${JSON.stringify(r)}`);
     assert.equal(r.length, 1);
     assert.ok(isBox(r[0], END_OF_SCOPE), `Find Next did not stop at once: ${JSON.stringify(r)}`);
+  });
+
+  // Last, since it changes both files. Up to BETA 1034 Replace All in Current Project only said
+  // "Sorry, Replace-All not yet supported in project-scope"; BETA 1036 made it work.
+  test("Replace All in Current Project replaces in every file, each opened in a tab, and says how many in how many files", async (t) => {
+    await setOptions({});
+    await clickElement(`${F}.findScopeProjectButton`, "Current Project");
+    await setFind("total");
+    await clickElement(`${F}.replaceWithInput`, "Replace With");
+    await pressKey(c, "a", { ctrl: true });
+    await typeText(c, "sum");
+    await clickElement(`${F}.replaceAllButton`, "the Replace All button");
+    const boxes = await waitFor(c, async () => {
+      const b = await messageBoxes(c);
+      return b.length ? b : null;
+    });
+    assert.ok(boxes, "Replace All showed no message box");
+    const said = boxes.at(-1).text.replace(/\s+/g, " ").trim();
+    t.diagnostic(`the box: ${said}`);
+    assert.equal(c.dialogs.splice(0).length, 0, "Replace All raised a javascript alert");
+    // Finder.twin holds total five times, Sums.twin three times
+    assert.equal(said, "The specified region has been searched. 8 replacements were made in 2 files.");
+    await answerMessageBox(c, "OK");
+    await sleep(400);
+    for (const [file, n] of [
+      [FILE, 5],
+      ["/CodeFindProbe/Sources/Sums.twin", 3],
+    ]) {
+      await openFile(c, file);
+      const text = await editorText(c);
+      assert.doesNotMatch(text, /total/i, `${file} still holds total`);
+      assert.equal(text.match(/\bsum\b/g)?.length, n, `${file} does not hold sum ${n} times`);
+    }
+    // the replacements are edits in the open file, undone with Ctrl+Z
+    await setCursor(c, 1, 1);
+    await pressKey(c, "z", { ctrl: true });
+    await sleep(500);
+    const undone = await editorText(c);
+    t.diagnostic(`after Ctrl+Z in Sums.twin: ${(undone.match(/total/g) ?? []).length} total`);
+    assert.equal(undone.match(/\btotal\b/g)?.length, 3, "Ctrl+Z did not undo the replacements in Sums.twin");
   });
 });
