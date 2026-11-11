@@ -41,7 +41,7 @@ import {
   svgVerdict,
   writeVerdict,
 } from "../lib/shot-stage.mjs";
-import { BUNDLE_CACHE, BUNDLE_VERSION, renderBundle, writeBundle } from "./bundle.mjs";
+import { BUNDLE_CACHE, BUNDLE_VERSION, defaultBundleCache, renderBundle, writeBundle } from "./bundle.mjs";
 import {
   captureWatcher,
   capturesFolder,
@@ -227,6 +227,9 @@ function readCapture(file) {
   return capture;
 }
 
+// A worktree's default cache is filled from the main checkout's the first time, once the command
+// line has passed.
+if (values.bundles === undefined) defaultBundleCache("chromeshot");
 const manifest = outRoot === docs ? openManifest(MANIFEST) : null;
 const words = privateWords({ file: values.words ? path.resolve(values.words) : PRIVATE_FILE });
 useSubsetCache(path.join(bundleCache, "subsets"));

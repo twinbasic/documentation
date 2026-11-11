@@ -243,7 +243,7 @@ import {
   waitForCompile,
 } from "./lib/tb-ide.mjs";
 import { IDE_DRIVER } from "./lib/tb-session.mjs";
-import { BUNDLE_CACHE, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
+import { BUNDLE_CACHE, defaultBundleCache, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
 import { QUIET_CSS } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, sameSvgAs, sameWhy } from "./svgshot/keep.mjs";
@@ -531,7 +531,8 @@ const staged = stageRoot ? stageFolders(stageRoot) : null;
 const diffsRoot = staged ? staged.diffs : values.diffs === undefined ? null : path.resolve(values.diffs);
 // With --svg, each picture's bundle (svgshot/bundle.mjs), for replay.mjs: never under docs,
 // since a bundle holds the Windows user name.
-const bundleCache = path.resolve(values.bundles ?? DEFAULT_BUNDLES);
+// A worktree's default cache is filled from the main checkout's the first time --svg uses it.
+const bundleCache = path.resolve(values.bundles ?? (values.svg ? defaultBundleCache("shoot_docs") : DEFAULT_BUNDLES));
 const bundlesRoot = !values.svg ? null : staged ? staged.bundles : bundleCache;
 // path.relative gives an absolute path across drives, which is outside docs and does not start with "..".
 for (const [option, root] of [

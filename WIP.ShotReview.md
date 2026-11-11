@@ -743,7 +743,12 @@ commit left them behind. Four rules, so that nobody has to remember how the tool
 And (c), owner: **a checkout's bundle cache is filled from the main checkout's** on first use
 (`git rev-parse --git-common-dir`), so that a new worktree does not redraw every SVG whose bundle
 it lacks. The cache is never committed: a bundle can hold the Windows user name, and the main
-checkout's is 58 MB that a retake rewrites.
+checkout's is 58 MB that a retake rewrites. Done (2026-11-12): `seedBundleCache` in
+`scripts/svgshot/bundle.mjs`, called through `defaultBundleCache` by `shoot_docs.mjs --svg`,
+`replay.mjs`, `chromeshot.mjs` and `shot_review.mjs` whenever no `--bundles` names another cache,
+once the command line has passed. It copies only when the worktree has no cache at all (one
+emptied has been used), never links (writeBundle rewrites a file in place), and copies into a
+folder beside it renamed into place, so a copy cut short leaves nothing that looks used.
 
 Order: 2 and 3, then 4, then (c), then 1.
 

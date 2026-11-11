@@ -28,7 +28,7 @@ import { listIdes } from "./lib/tb-install.mjs";
 import { openManifest } from "./lib/shot-manifest.mjs";
 import { changedBetween, openRevision, revisionOf } from "./lib/shot-revision.mjs";
 import { baselineAt as baselineInRepo, startGitReader } from "./lib/shot-git-worker.mjs";
-import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
+import { defaultBundleCache } from "./svgshot/bundle.mjs";
 import { browserTable, listShots, runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
 import { acquireLock, archiveRoot, listArchived, openSession, REVIEW_ROOT, sessionPaths } from "./lib/shot-session.mjs";
@@ -139,6 +139,8 @@ let release = () => {};
 exitOnCrash(() => release());
 
 const paths = sessionPaths(REVIEW_ROOT);
+// The bundle cache, a worktree's filled from the main checkout's the first time.
+const bundlesRoot = defaultBundleCache("shot_review");
 // The baseline a commit makes: the commit, and the newest build its manifest records.
 const baselineAt = (commit) => baselineInRepo(REPO_ROOT, commit);
 
@@ -160,7 +162,7 @@ if (values.archived !== undefined) {
       session,
       revision: openRevision(DOCS_DIR, session.data.baseline.hash),
       manifest: () => openManifest(),
-      bundlesRoot: BUNDLE_CACHE,
+      bundlesRoot,
       archived: () => listArchived(REVIEW_ROOT),
       shots: async () => [...(await listShots()), ...browserTable()],
       readOnly: true,
@@ -189,7 +191,7 @@ if (values.archived !== undefined) {
     session,
     revision: openRevision(DOCS_DIR, session.data.baseline.hash),
     manifest: () => openManifest(),
-    bundlesRoot: BUNDLE_CACHE,
+    bundlesRoot,
     head: () => git.head(),
     baselineOf: (rev) => baselineAt(revisionOf(DOCS_DIR, rev)),
     revisionAt: (hash) => openRevision(DOCS_DIR, hash),

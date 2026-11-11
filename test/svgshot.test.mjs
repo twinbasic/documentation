@@ -50,6 +50,7 @@ import {
   pngHash,
   readBundle,
   renderBundle,
+  seedBundleCache,
   trimSnapshot,
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
@@ -3177,6 +3178,47 @@ describe("the picture at a git revision", () => {
     });
     assert.throws(() => revisionOf("/r/docs", "nope", git), /no revision nope/);
     assert.throws(() => revisionOf("/r/docs", "-x", git), /not a revision/);
+  });
+
+  test("a worktree's bundle cache is filled from the main checkout's once, and copied, never linked (seedBundleCache)", (t) => {
+    const main = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-seed-"));
+    t.after(() => fs.rmSync(main, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: main, stdio: ["ignore", "pipe", "ignore"] });
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    fs.writeFileSync(path.join(main, "a.txt"), "a\n");
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const wt = path.join(main, ".claude", "worktrees", "w");
+    git("worktree", "add", "-q", "-b", "w", wt);
+    const mainCache = path.join(main, ".svgshot-bundles");
+    const wtCache = path.join(wt, ".svgshot-bundles");
+    // none in the main checkout: nothing to copy, and nothing made
+    assert.equal(seedBundleCache(wtCache, { repo: wt }), null);
+    assert.ok(!fs.existsSync(wtCache));
+    fs.mkdirSync(path.join(mainCache, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(mainCache, "IDE", "Images", "A.png.json.br"), "bundle");
+    // the main checkout's own cache is never seeded from itself
+    assert.equal(seedBundleCache(path.join(main, "elsewhere", ".svgshot-bundles"), { repo: main }), null);
+    assert.equal(fs.realpathSync(seedBundleCache(wtCache, { repo: wt })), fs.realpathSync(mainCache));
+    const copied = path.join(wtCache, "IDE", "Images", "A.png.json.br");
+    assert.equal(fs.readFileSync(copied, "utf8"), "bundle");
+    assert.ok(!fs.readdirSync(wt).some((f) => f.includes(".filling-")), "no folder left from the copy");
+    // a copy: rewriting the worktree's file leaves the main checkout's as it was
+    fs.writeFileSync(copied, "changed");
+    assert.equal(fs.readFileSync(path.join(mainCache, "IDE", "Images", "A.png.json.br"), "utf8"), "bundle");
+    // once there, even emptied, it has been used: never seeded again
+    fs.rmSync(path.join(wtCache, "IDE"), { recursive: true });
+    assert.equal(seedBundleCache(wtCache, { repo: wt }), null);
+    assert.deepEqual(fs.readdirSync(wtCache), []);
+    // outside a git working tree: nothing
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-seed-none-"));
+    t.after(() => fs.rmSync(bare, { recursive: true, force: true }));
+    assert.equal(seedBundleCache(path.join(bare, ".svgshot-bundles"), { repo: bare }), null);
   });
 
   test("reads a revision's files in one process and puts a text file back as a checkout writes it", (t) => {

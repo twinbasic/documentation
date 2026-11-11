@@ -25,7 +25,7 @@ import {
   withUsageError,
 } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
-import { BUNDLE_CACHE, listBundles } from "./bundle.mjs";
+import { BUNDLE_CACHE, defaultBundleCache, listBundles } from "./bundle.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { applySvg, restoreSvg, svgOf } from "../lib/shot-apply.mjs";
 import { hashOf, MANIFEST, openManifest } from "../lib/shot-manifest.mjs";
@@ -180,6 +180,9 @@ if (outRoot === path.resolve(REPO_ROOT, "docs")) {
     process.exit(2);
   }
 }
+// A worktree's default cache is filled from the main checkout's the first time; a child process
+// (SVGSHOT_REPLAY_SHARD) finds the cache its parent filled.
+if (values.bundles === undefined) defaultBundleCache("replay");
 if (!existsSync(bundlesRoot)) {
   console.error(`replay: no bundle cache at ${bundlesRoot}; shoot_docs.mjs --svg writes it`);
   process.exit(2);
