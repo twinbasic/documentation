@@ -562,6 +562,25 @@ whose test commits were then thrown away with the worktree's branch:
   checks: `git status` and the plan) and 0.4 s at the end (`onCommit`: the session archived, the
   next one opened); making those asynchronous too is not worth it.
 
+**The pages never wait on git** (owner, 2026-11-11). A run's progress on the pages came late
+(about a minute late on a session of 132 pictures), and a page fetched again by hand showed it no
+sooner. The server read HEAD's baseline (7 git processes) and the pictures changed from the
+baseline (5 more) with `execFileSync`, at most once a second but on nearly every page drawn, since
+each page in the browser fetches itself again on each update a run sends. Each read held the
+server's only thread for 1 to 2 s, so the run's events waited in its pipe behind the pages. A
+profile of a 60-picture replay with two pages open: 12 s of 70 in git for the overview. Now:
+
+| Part | Where it is |
+|---|---|
+| The reads | `scripts/lib/shot-git-worker.mjs`: `startGitReader({docsDir, repoRoot})` runs `head()` and `changed(baseline)`, the same sync code, in a worker thread, and answers with promises; `baselineAt(repoRoot, commit)` is shared with `shot_review.mjs` |
+| The value kept | `kept(read, fallback, onChange)` in `shot-server.mjs`: serves the last value at once and reads again once it is a second old; when a read's promise gives another value, every page is told to fetch itself (`{outs: [], runs: true}`). `again()` replaces the resets: the next call reads again, and a read under way is not kept. A `head` or `changed` that answers at once (the tests') is read as before |
+
+The same replay afterwards: the overview drawn in 0.03 to 0.13 s during the run (0.6 s at most,
+where it had taken 1.5 to 3 s), its count rising by about 16 pictures a second on the runs page,
+and the run's end shown 4 s after it ended (9 s before; a minute in the earlier run). The 4 s left
+is each verdict's arrival, which keeps what the picture held (`holdPicture`): its bundle is
+recompressed with brotli at quality 9, about 0.1 s a picture, in the server's thread.
+
 Nothing of the plan is left. The two small things left after step 9 are fixed:
 
 - **The manifest keeps its line endings.** `openManifest().save` wrote LF, so a manifest checked

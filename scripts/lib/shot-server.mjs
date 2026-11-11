@@ -135,6 +135,53 @@ const MOST_BODY = 256 * 1024;
 const TAIL_LINES = 8;
 
 /**
+ * A value `read()` gives, kept for a second: the function returned gives the value kept, and
+ * reads it again first once it is older than that. `read` answers at once, or with a promise
+ * (shot-git-worker.mjs's reads, which git answers in a worker thread, so that no page waits on
+ * git): then the value kept is given meanwhile, and `onChange()` is called once the promise gives
+ * another. A read that throws or rejects gives `fallback`. Its `again()` has the next call read
+ * again; a promise under way then is not kept, and is read again once it settles.
+ */
+export function kept(read, fallback, onChange) {
+  let at = 0;
+  let value = fallback;
+  let pending = false;
+  let generation = 0;
+  const get = () => {
+    if (pending || Date.now() - at <= 1000) return value;
+    let r;
+    try {
+      r = read();
+    } catch {
+      r = fallback;
+    }
+    if (typeof r?.then !== "function") {
+      at = Date.now();
+      value = r;
+      return value;
+    }
+    pending = true;
+    const asked = generation;
+    Promise.resolve(r)
+      .catch(() => fallback)
+      .then((v) => {
+        pending = false;
+        if (asked !== generation) return get();
+        at = Date.now();
+        const differs = JSON.stringify(v) !== JSON.stringify(value);
+        value = v;
+        if (differs) onChange();
+      });
+    return value;
+  };
+  get.again = () => {
+    at = 0;
+    generation++;
+  };
+  return get;
+}
+
+/**
  * The server of the session `session` (openSession): `revision` the baseline as openRevision
  * gives it, `manifest()` the manifest as it is now (openManifest), `docsRoot` the pictures'
  * folder, `bundlesRoot` the bundle cache (or null), `head()` the baseline HEAD would make
@@ -144,7 +191,8 @@ const TAIL_LINES = 8;
  * gives it, `changedBetween(a, b)` the pictures that differ between two commits (a Set of paths
  * under docs/; null: every picture is taken to differ), `changed()` the pictures whose PNG or
  * SVG differs from the baseline ([{out, status, parts}], changedPictures' with `svgs`; one with
- * no `parts` is its PNG's), `ides` the installs a retake can be run
+ * no `parts` is its PNG's); `head()` and `changed()` may answer with a promise instead, read in
+ * another thread (kept), `ides` the installs a retake can be run
  * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
  * meant for a person, `browser` where a browser retake works ({captures, extension, noOpen},
  * runOf's), and `command` the probes' stand-in for the tools a run starts (startRun).
@@ -196,33 +244,20 @@ export function createReviewServer({
   // commits and `done` its promise; null when none is. git runs as a child process, so the
   // server goes on answering while it and the repository's hooks run.
   let committing = null;
-  // HEAD as it is now, when it is not the baseline: read again at most once a second. While a
-  // commit is under way HEAD moves to it before the session is closed, which is no news.
-  let headSeen = { at: 0, value: null };
+  // A value read from git that changed, every page fetched again: the runs' and the pictures'.
+  const gitChanged = () => sse.send("update", { outs: [], runs: true });
+  // The baseline HEAD would make, read again at most once a second (kept).
+  const headSeen = kept(head, null, gitChanged);
+  // HEAD as it is now, when it is not the baseline. While a commit is under way HEAD moves to it
+  // before the session is closed, which is no news.
   const headNow = () => {
     if (committing) return null;
-    if (Date.now() - headSeen.at > 1000) {
-      let value = null;
-      try {
-        const h = head();
-        value = h && h.hash !== session.data.baseline.hash ? h : null;
-      } catch {}
-      headSeen = { at: Date.now(), value };
-    }
-    return headSeen.value;
+    const h = headSeen();
+    return h && h.hash !== session.data.baseline.hash ? h : null;
   };
-  // The pictures changed outside the session's runs: read again at most once a second.
-  let changedSeen = { at: 0, value: [] };
-  const outside = () => {
-    if (Date.now() - changedSeen.at > 1000) {
-      let value = [];
-      try {
-        value = changed();
-      } catch {}
-      changedSeen = { at: Date.now(), value };
-    }
-    return changedSeen.value;
-  };
+  // The pictures changed outside the session's runs: read again at most once a second (kept).
+  const changedSeen = kept(changed, [], gitChanged);
+  const outside = () => changedSeen();
   // run n -> {record, live, handle, events, facts, verdicts}
   const runs = new Map();
   const loadRuns = () => {
@@ -478,7 +513,7 @@ export function createReviewServer({
       r.handle = null;
       if (record.tool === "cleanup") {
         // what it put back is no longer changed: every page that shows a picture may differ
-        changedSeen = { at: 0, value: [] };
+        changedSeen.again();
         sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
       } else sse.send("update", { outs: listedOf(r), runs: true });
     });
@@ -538,7 +573,7 @@ export function createReviewServer({
     if (r.live) throw new Error(`run ${n} is running: stop it first, then remove it`);
     const { outs, later, failed } = applier.undo(n);
     // the pictures it put back may no longer differ from the baseline, or may now
-    changedSeen = { at: 0, value: [] };
+    changedSeen.again();
     if (failed.size) {
       sse.send("update", { outs, runs: true });
       const [out, why] = failed.entries().next().value;
@@ -853,7 +888,7 @@ export function createReviewServer({
     }
     applier.putBack(p.out, p.outsideParts);
     session.keepOutside(p.out, null);
-    changedSeen = { at: 0, value: [] };
+    changedSeen.again();
     maps.clear();
     measures.clear();
     const error = applier.errors.get(p.out);
@@ -939,8 +974,8 @@ export function createReviewServer({
     if (b.hash === session.data.baseline.hash) return;
     revision = revisionAt(b.hash);
     session.moveBaseline(b);
-    headSeen = { at: 0, value: null };
-    changedSeen = { at: 0, value: [] };
+    headSeen.again();
+    changedSeen.again();
     maps.clear();
     measures.clear();
   }
@@ -1032,8 +1067,8 @@ export function createReviewServer({
       revision = next.revision;
       applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
       loadRuns();
-      headSeen = { at: 0, value: null };
-      changedSeen = { at: 0, value: [] };
+      headSeen.again();
+      changedSeen.again();
       maps.clear();
       measures.clear();
       lastCommit = { ...made, message, archive: next.archive };

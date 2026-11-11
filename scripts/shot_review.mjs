@@ -13,7 +13,6 @@
 // is archived, and the tool goes on with the next one, whose baseline is the new commit;
 // --archived opens an archived session again, read-only.
 
-import path from "node:path";
 import {
   die,
   exitOnCrash,
@@ -26,20 +25,13 @@ import {
 } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { listIdes } from "./lib/tb-install.mjs";
-import { MANIFEST, openManifest, parseManifest } from "./lib/shot-manifest.mjs";
-import { changedBetween, changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
+import { openManifest } from "./lib/shot-manifest.mjs";
+import { changedBetween, openRevision, revisionOf } from "./lib/shot-revision.mjs";
+import { baselineAt as baselineInRepo, startGitReader } from "./lib/shot-git-worker.mjs";
 import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
 import { browserTable, listShots, runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
-import {
-  acquireLock,
-  archiveRoot,
-  listArchived,
-  newestBuild,
-  openSession,
-  REVIEW_ROOT,
-  sessionPaths,
-} from "./lib/shot-session.mjs";
+import { acquireLock, archiveRoot, listArchived, openSession, REVIEW_ROOT, sessionPaths } from "./lib/shot-session.mjs";
 
 const DEFAULT_PORT = 4180;
 
@@ -148,11 +140,7 @@ exitOnCrash(() => release());
 
 const paths = sessionPaths(REVIEW_ROOT);
 // The baseline a commit makes: the commit, and the newest build its manifest records.
-const baselineAt = ({ hash, short }) => {
-  const bytes = openRevision(REPO_ROOT, hash).bytes(path.relative(REPO_ROOT, MANIFEST).replace(/\\/g, "/"));
-  const pictures = bytes ? parseManifest(bytes.toString("utf8")).pictures : {};
-  return { hash, short, build: newestBuild(pictures) };
-};
+const baselineAt = (commit) => baselineInRepo(REPO_ROOT, commit);
 
 let app;
 let session;
@@ -195,16 +183,18 @@ if (values.archived !== undefined) {
     die(2, `shot_review: ${e.message}`);
   }
   session = openSession(REVIEW_ROOT, () => baselineAt(head));
+  // What the pages ask of git each second, read in a thread of its own (shot-git-worker.mjs).
+  const git = startGitReader({ docsDir: DOCS_DIR, repoRoot: REPO_ROOT });
   app = createReviewServer({
     session,
     revision: openRevision(DOCS_DIR, session.data.baseline.hash),
     manifest: () => openManifest(),
     bundlesRoot: BUNDLE_CACHE,
-    head: () => baselineAt(revisionOf(DOCS_DIR, "HEAD")),
+    head: () => git.head(),
     baselineOf: (rev) => baselineAt(revisionOf(DOCS_DIR, rev)),
     revisionAt: (hash) => openRevision(DOCS_DIR, hash),
     changedBetween: (a, b) => changedBetween(DOCS_DIR, a, b),
-    changed: () => changedPictures(DOCS_DIR, session.data.baseline.hash, undefined, { svgs: true }).pictures,
+    changed: () => git.changed(session.data.baseline.hash),
     ides: listIdes(),
     onLine: (run, line) => console.log(`run ${run.n}: ${line}`),
     // The commit closes the session: archived with its lock, and the next one held and made with

@@ -77,7 +77,8 @@ import {
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
 import { browserTable, kindOf, onlyOf, runArgs, runOf } from "../scripts/lib/shot-runs.mjs";
-import { createReviewServer } from "../scripts/lib/shot-server.mjs";
+import { createReviewServer, kept } from "../scripts/lib/shot-server.mjs";
+import { startGitReader } from "../scripts/lib/shot-git-worker.mjs";
 import { openRevision } from "../scripts/lib/shot-revision.mjs";
 
 describe("the screenshot review's session (shot-session.mjs)", () => {
@@ -2687,6 +2688,93 @@ if (cleanupArgs.includes("--cleanup")) {
       for (const h of app.live()) h.kill();
       await app.close();
       await archivedApp?.close();
+    }
+  });
+});
+
+describe("what the screenshot review reads from git while it serves its pages (kept, shot-git-worker.mjs)", () => {
+  const settle = () => new Promise((r) => setImmediate(r));
+
+  test("a read that answers at once is read again once it is a second old, or at once after again()", () => {
+    let reads = 0;
+    const get = kept(
+      () => ++reads,
+      0,
+      () => assert.fail("no change is told for a read that answers at once"),
+    );
+    assert.equal(get(), 1);
+    assert.equal(get(), 1);
+    get.again();
+    assert.equal(get(), 2);
+    const thrown = kept(
+      () => {
+        throw new Error("no git");
+      },
+      "fallback",
+      () => {},
+    );
+    assert.equal(thrown(), "fallback");
+  });
+
+  test("a read that answers with a promise gives the value kept meanwhile, and tells of another once it settles", async () => {
+    let answer = ["A"];
+    let resolveNext = null;
+    let changes = 0;
+    const get = kept(
+      () => new Promise((r) => (resolveNext = () => r(answer))),
+      [],
+      () => changes++,
+    );
+    // the page is drawn at once with what is kept, while git is read
+    assert.deepEqual(get(), []);
+    assert.deepEqual(get(), [], "one read at a time");
+    resolveNext();
+    await settle();
+    assert.deepEqual(get(), ["A"]);
+    assert.equal(changes, 1);
+    // the same answer again tells of nothing
+    get.again();
+    get();
+    resolveNext();
+    await settle();
+    assert.equal(changes, 1);
+    // again() while a read is under way: that read is not kept, and git is read again
+    get.again();
+    get();
+    const stale = resolveNext;
+    get.again();
+    answer = ["B"];
+    stale();
+    await settle();
+    await settle();
+    assert.deepEqual(get(), ["A"], "the read from before again() is not kept");
+    resolveNext();
+    await settle();
+    assert.deepEqual(get(), ["B"]);
+    assert.equal(changes, 2);
+    // a read that fails gives the fallback
+    const failing = kept(
+      () => Promise.reject(new Error("no git")),
+      "none",
+      () => {},
+    );
+    failing();
+    await settle();
+    assert.equal(failing(), "none");
+  });
+
+  test("the worker reads HEAD's baseline and the pictures changed from it in this working tree", async () => {
+    const git = startGitReader({ docsDir: path.join(REPO_ROOT, "docs"), repoRoot: REPO_ROOT });
+    try {
+      const hash = execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_ROOT, encoding: "utf8" }).trim();
+      const head = await git.head();
+      assert.equal(head.hash, hash);
+      assert.equal(head.short, hash.slice(0, head.short.length));
+      assert.ok(head.build === null || Number.isInteger(head.build), JSON.stringify(head));
+      assert.ok(Array.isArray(await git.changed(hash)));
+      await assert.rejects(git.changed("no-such-revision"), /no revision no-such-revision/);
+    } finally {
+      await git.close();
     }
   });
 });
