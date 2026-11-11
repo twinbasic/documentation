@@ -12154,6 +12154,26 @@ const PACKAGE_IMAGE = (name) => `Features/Packages/Images/${name}.png`;
 // A settingsShot taken once the compiler has said which references it could not load: the
 // dialog marks them as it opens, and the compiler says so a little after the project has
 // compiled.
+// The first time Project Settings opens on a project whose linked package is missing, the IDE
+// offers to download it, in a box over the dialog ("Linked Package is missing on this machine:
+// ... Download it now from TWINSERV?"), a moment after the dialog has opened. It covered the
+// row in the dark picture, from BETA 1033 to 1042, while the light one, taken on the dialog's
+// second opening, had none, so that the two themes were refused as saying different things.
+// Answered Cancel, as a reader who keeps the reference's error does; looked for on the first
+// opening in an IDE only, since the IDE asks once.
+const LINKED_PROMPT = "Linked Package is missing on this machine";
+const linkedPromptSeen = new WeakSet();
+async function cancelLinkedPrompt(c) {
+  if (linkedPromptSeen.has(c)) return;
+  linkedPromptSeen.add(c);
+  const shown = () =>
+    c.evaluate(
+      `[...document.querySelectorAll(".modalDialogContainer")].filter((m) => m.getBoundingClientRect().width).pop()?.innerText.includes(${JSON.stringify(LINKED_PROMPT)}) ?? false`,
+    );
+  if (!(await waitFor(c, shown, { timeout: 5000, interval: 100 }))) return;
+  await closeModal(c, "Cancel");
+}
+
 function missingLinkedShot(out, options) {
   const shot = settingsShot(out, options);
   return {
@@ -12604,6 +12624,7 @@ const packageServerShots = [
     setup: "settings-linked",
     command: LIBRARY_REFERENCES,
     clipOf: async (_m, c) => {
+      await cancelLinkedPrompt(c);
       const error = await waitFor(c, () => shownRect(c, `${ENABLED_ROW_OF(OLEGUIDS)} .referencesListError`), {
         timeout: 10000,
         interval: 200,
