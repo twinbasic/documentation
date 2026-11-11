@@ -241,6 +241,7 @@ import {
   sleep,
   waitForCompile,
 } from "./lib/tb-ide.mjs";
+import { IDE_DRIVER } from "./lib/tb-session.mjs";
 import { BUNDLE_CACHE, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
 import { QUIET_CSS } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
@@ -11840,7 +11841,19 @@ async function startFusion(run) {
   const settings = JSON.parse(readFileSync(file, "utf8"));
   settings["project.fusionBuildPath"] = PACKAGE_BUILD_PATH;
   writeFileSync(file, JSON.stringify(settings, null, "\t"));
-  return run.lane.open(src);
+  const { lane } = run;
+  const c = await lane.open(src);
+  // On BETA 1042 the first project an IDE opens empties the DEBUG CONSOLE twice, the second time
+  // after the compiler has said that it built the host, whose line is then gone for good
+  // (BUGS-TO-REPORT.md, console-cleared-at-open). A second project's open empties it once,
+  // before its build, as on BETA 1034: the same project is opened again, from a copy beside it.
+  const again = path.join(path.dirname(lane.project), "again", path.basename(lane.project));
+  mkdirSync(path.dirname(again), { recursive: true });
+  cpSync(lane.project, again);
+  const r = await IDE_DRIVER.switchTo(c, again);
+  if (r.asked !== 1) throw new Error("File > Open Project did not ask for the Fusion project's copy");
+  lane.checkCompile(await waitForCompile(c, { project: again }), "the Fusion project's copy");
+  return c;
 }
 
 // The DEBUG CONSOLE as the project's load leaves it, the line that says the host was built its
@@ -11863,10 +11876,9 @@ const fusionShot = {
         },
         { timeout: 60000, interval: 200 },
       );
-      if (!text?.includes(FUSION_LINE)) {
-        throw new Error(
-          `the compiler did not build the Fusion host: ${JSON.stringify(text?.match(/.*Fusion.*/)?.[0])}`,
-        );
+      if (!text) throw new Error("the DEBUG CONSOLE said nothing of the Fusion host in 60 s");
+      if (!text.includes(FUSION_LINE)) {
+        throw new Error(`the compiler did not build the Fusion host: ${JSON.stringify(text.match(/.*Fusion.*/)?.[0])}`);
       }
       await nameUserAsUserIn(c, ".debugConsoleOuter");
       await fixConsoleTimes(c);
