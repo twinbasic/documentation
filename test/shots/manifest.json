@@ -176,6 +176,12 @@
     "IDE/AddIns/Images/Help_KeyEditor.png": {
       "build": 1042
     },
+    "IDE/AddIns/Images/Help_LayoutEditor.light.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_LayoutEditor.png": {
+      "build": 1042
+    },
     "IDE/AddIns/Images/Help_Settings.light.png": {
       "build": 1042
     },

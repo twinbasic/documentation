@@ -30,7 +30,7 @@ Switches the arrangement of the panels, and saves and manages arrangements. See 
 Opens a dialog that lists the built-in layouts, which are read-only, and the saved ones. See [Manage layouts](../../Customising/Panel-Layouts#manage-layouts).
 
 > [!ADDIN] With the Help Add-In
-> The [Help Add-In](../../AddIns/Help#finding-text-in-the-shortcut-editors) adds a find to the dialog's text.
+> The dialog shows each layout as a picture of the IDE window instead of text: see [The panel layout editor](../../AddIns/Help#the-panel-layout-editor). The [Help Add-In](../../AddIns/Help#finding-text-in-the-shortcut-editors) also adds a find to the dialog's text.
 
 ## Panel Features
 

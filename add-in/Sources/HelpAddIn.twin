@@ -55,6 +55,8 @@ Private Class HelpAddIn
     Private KeysHost As HtmlElement         ' where addinkeys.js is put in
     Private FindHost As HtmlElement         ' where textfind.js is put in
     Private EditorHost As HtmlElement       ' where keyeditor.js is put in
+    Private LayoutBox As HtmlElement        ' the pane's Panel layout editor checkbox
+    Private LayoutHost As HtmlElement       ' where layouteditor.js is put in
     Private CommandText As String           ' the commands' descriptions, for keyeditor.js; "" until first needed
     Private Referenced As Collection        ' the project's packages, keyed by name; Nothing if unknown
     Private DetachButton As HtmlElement
@@ -74,6 +76,7 @@ Private Class HelpAddIn
     Private KeysOn As Boolean               ' what the Ctrl or Alt shortcuts box holds, in either view
     Private FindOn As Boolean               ' what the Find in the shortcut editors box holds, in either view
     Private EditorOn As Boolean             ' what the Keyboard shortcut editor box holds, in either view
+    Private LayoutOn As Boolean             ' what the Panel layout editor box holds, in either view
     Private SummaryHtml As String           ' what ShowSummary shows
     Private ShowingSummary As Boolean       ' the summary shows in place of the page
 
@@ -93,8 +96,8 @@ Private Class HelpAddIn
     ' The window's settings: whether it is detached, whether it is shown, and
     ' where it is, in pixels.
     Private Const WINDOW_SECTION As String = "Window"
-    ' The settings of the page-side fixes: addinkeys.js, textfind.js and
-    ' keyeditor.js.
+    ' The settings of the page-side fixes: addinkeys.js, textfind.js,
+    ' keyeditor.js and layouteditor.js.
     Private Const FIXES_SECTION As String = "Fixes"
 
     Public Sub New(ByVal Host As Host)
@@ -294,6 +297,7 @@ Private Class HelpAddIn
         KeysOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "AddinKeys", "1") = "1"
         FindOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "TextFind", "1") = "1"
         EditorOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "KeyEditor", "1") = "1"
+        LayoutOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "LayoutEditor", "1") = "1"
         Set Pane = Host.ToolWindows.Add("tbDocsHelp", PANE_ID)
         Pane.Title = "TWINBASIC HELP"
         Pane.ApplyCss StrConv(LoadResDataInternal("pane.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
@@ -367,6 +371,13 @@ Private Class HelpAddIn
                             EditorBox.AddEventListener("change", AddressOf EditorToggled)
                             .ChildDomElements.Add("helpKeyEditorText", "span").Properties.innerText = "Keyboard shortcut editor"
                         End With
+                        With SettingsPanel.ChildDomElements.Add("helpLayoutEditorLabel", "label")
+                            Set LayoutBox = .ChildDomElements.Add("helpLayoutEditorOn", "input")
+                            LayoutBox.Properties.type = "checkbox"
+                            LayoutBox.Properties.checked = LayoutOn
+                            LayoutBox.AddEventListener("change", AddressOf LayoutToggled)
+                            .ChildDomElements.Add("helpLayoutEditorText", "span").Properties.innerText = "Panel layout editor"
+                        End With
                     End With
                 End With
                 Set SettingsShade = .ChildDomElements.Add("helpSettingsShade", "div")
@@ -411,6 +422,11 @@ Private Class HelpAddIn
                 Set EditorHost = .ChildDomElements.Add("helpKeyEditor", "div")
                 EditorHost.Properties.style.display = "none"
                 ApplyFix EditorHost, "keyeditor.js", EditorOn
+                ' A picture of each layout in place of the text of Manage
+                ' Panel Layouts (layouteditor.js).
+                Set LayoutHost = .ChildDomElements.Add("helpLayoutEditor", "div")
+                LayoutHost.Properties.style.display = "none"
+                ApplyFix LayoutHost, "layouteditor.js", LayoutOn
             End With
         End With
         Set ResultIds = New Collection
@@ -512,6 +528,25 @@ Private Class HelpAddIn
         ApplyFix EditorHost, "keyeditor.js", isOn
         EditorBox.Properties.checked = isOn
         If Detached Then PostToWindow "keyeditor:" & IIf(isOn, "1", "0")
+    End Sub
+
+    Private Sub LayoutToggled(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        SetLayoutEditor LayoutBox.Properties.checked
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Turns the panel layout editor on or off, from the pane's box or the
+    ' window's, and shows it in both. Off, an open Manage Panel Layouts dialog
+    ' gets the IDE's text area back.
+    Private Sub SetLayoutEditor(ByVal isOn As Boolean)
+        LayoutOn = isOn
+        SaveSetting SETTINGS_APP, FIXES_SECTION, "LayoutEditor", IIf(isOn, "1", "0")
+        ApplyFix LayoutHost, "layouteditor.js", isOn
+        LayoutBox.Properties.checked = isOn
+        If Detached Then PostToWindow "layouteditor:" & IIf(isOn, "1", "0")
     End Sub
 
     ' Only the packages the project references are offered until the box is
@@ -1032,6 +1067,8 @@ Private Class HelpAddIn
                 SetFind payload = "1"
             Case "keyeditor"
                 SetEditor payload = "1"
+            Case "layouteditor"
+                SetLayoutEditor payload = "1"
             Case "attach"
                 Attach
             Case "close"
@@ -1070,6 +1107,7 @@ Private Class HelpAddIn
         HelpWin.Post "addinkeys:" & IIf(KeysOn, "1", "0")
         HelpWin.Post "textfind:" & IIf(FindOn, "1", "0")
         HelpWin.Post "keyeditor:" & IIf(EditorOn, "1", "0")
+        HelpWin.Post "layouteditor:" & IIf(LayoutOn, "1", "0")
         HelpWin.Post "search:" & SearchText
         PostResults
         If ShowingSummary Then

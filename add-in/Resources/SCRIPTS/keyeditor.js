@@ -8,9 +8,10 @@
 // keeps the dialog's copy and turns on Save Changes. Save, Cancel, Add New and
 // Delete are the IDE's. A JSON button at the bottom shows the text area again.
 //
-// It replaces the global showConfigEditor with a function that changes only
-// the call for this dialog (showManageKeyboardShortcuts calls it by name), and
-// is put in only while the IDE has the "coming soon" pane. Running this again
+// It changes only the call of the global showConfigEditor for this dialog
+// (showManageKeyboardShortcuts calls it by name), through the one replacement
+// of that function the help add-in's scripts share (see hookOf), and is put
+// in only while the IDE has the "coming soon" pane. Running this again
 // takes out what an earlier run put in: the original function goes back, and an
 // open dialog gets its text area back. It puts in nothing when it is turned
 // off. The add-in puts the commands' descriptions, { command: text }, in place
@@ -62,7 +63,6 @@ if (
       ["release", "When released"],
       ["repeatonly", "Only while held"],
     ];
-    var original = showConfigEditor.tbDocsOriginal || showConfigEditor;
     var live = true;
     var mounts = [];
 
@@ -1150,16 +1150,44 @@ if (
       };
     };
 
-    var wrapped = function (opts) {
-      try {
-        if (live && opts && opts.title === TITLE) adapt(opts);
-      } catch (err) {
-        console.error(err);
-      }
-      return original.apply(this, arguments);
+    // ---- the one replacement of showConfigEditor ----
+    // Each script of the add-in that changes a dialog of showConfigEditor
+    // claims that dialog's title here; the replacement calls its adapter, then
+    // the IDE's function. layouteditor.js has the same two functions.
+    var hookOf = function () {
+      var h = window.tbDocsConfigEditors;
+      if (h && window.showConfigEditor === h.dispatch) return h;
+      var current = window.showConfigEditor;
+      var nh = { original: current.tbDocsOriginal || current, adapters: (h && h.adapters) || {} };
+      nh.dispatch = function (opts) {
+        try {
+          var a =
+            opts && typeof opts.title === "string" && Object.prototype.hasOwnProperty.call(nh.adapters, opts.title)
+              ? nh.adapters[opts.title]
+              : null;
+          if (a) a(opts);
+        } catch (err) {
+          console.error(err);
+        }
+        return nh.original.apply(this, arguments);
+      };
+      nh.dispatch.tbDocsOriginal = nh.original;
+      window.showConfigEditor = nh.dispatch;
+      window.tbDocsConfigEditors = nh;
+      return nh;
     };
-    wrapped.tbDocsOriginal = original;
-    window.showConfigEditor = wrapped;
+    var unhook = function (title) {
+      var h = window.tbDocsConfigEditors;
+      if (!h) return;
+      delete h.adapters[title];
+      if (Object.keys(h.adapters).length) return;
+      if (window.showConfigEditor === h.dispatch) window.showConfigEditor = h.original;
+      window.tbDocsConfigEditors = null;
+    };
+    var hook = hookOf();
+    hook.adapters[TITLE] = function (opts) {
+      if (live) adapt(opts);
+    };
 
     var style = document.getElementById("tbDocsKeyEditorStyle");
     if (!style) {
@@ -1252,10 +1280,10 @@ if (
     ].join("\n");
 
     window.tbDocsKeyEditor = {
-      original: original,
+      original: hook.original,
       off: function () {
         live = false;
-        if (window.showConfigEditor === wrapped) window.showConfigEditor = original;
+        unhook(TITLE);
         mounts.forEach(function (r) {
           if (r.node.isConnected) r.undo();
         });

@@ -4,6 +4,21 @@ What changed in the twinBASIC Documentation Help add-in, newest first. The versi
 DLL's (its file properties show it). The documentation the add-in shows and its index of
 symbols change with every build of the documentation and are not listed here.
 
+## 1.3.0 (2026-11-12)
+
+- **Window > Panel Layouts > Manage Panel Layouts** shows each layout as a picture of the IDE
+  window, at the IDE's own proportions, in place of its text: a tile for every docked panel, in
+  its groups, and every floating panel over them. Clicking a tile or a group shows a box beside
+  the picture where its size, its direction (side by side, or one above another) and its place
+  among its neighbours are changed, and where a panel is floated, docked again or taken out of the
+  layout. Splitters and floating panels are dragged. A panel the layout lacks, the tool window of
+  a loaded add-in included, is docked by clicking it and then an edge of a tile. **Use the current
+  arrangement** replaces the layout with the panels as the IDE shows them now. A layout with no
+  Editor, a panel in it twice, or an id that is not a panel is marked as a problem. The **JSON**
+  button shows the layout's text; Save Changes and Cancel are the IDE's.
+- The settings panel has a new box, ticked by default: **Panel layout editor**. Unticking it gives
+  Manage Panel Layouts its text back, at once.
+
 ## 1.2.0 (2026-11-12)
 
 - **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts** shows each group as a table of

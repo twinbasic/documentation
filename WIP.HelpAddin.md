@@ -1350,14 +1350,21 @@ not: a restart saves a harness about a second against opening a new IDE.
       and by `test/ide-js.test.mjs`), and put in place of the script's `$COMMANDS$` marker by
       `ApplyFix`.
 14. **A panel layout editor** (owner, 2026-11-12: Manage Panel Layouts in the spirit of item
-    13, on by default). **Not started**: a mockup only, `.claude/mockups/panel-layout-editor.html`
-    (gitignored). Planned as `Resources/SCRIPTS/layouteditor.js`, put in by `BuildPane` as
-    item 13's script is, with a settings row of its own (`Fixes`, `LayoutEditor`, on by
-    default), and tested by an `ide-test` lane `layouteditor` that puts the script
-    into a bare IDE, as `keyeditor` does. Facts below are from BETA 1042's `main.js`.
-    - **Reached** through the same `showConfigEditor` replacement as item 13, for the call
-      titled *Manage Panel Layouts*. The two scripts must share one wrapper, each claiming its
-      own title, so that neither wraps the other's and turning one off leaves the other in.
+    13, on by default). **The editor is done (add-in 1.3.0); the help's detached state per
+    layout is not** (the last two bullets). `Resources/SCRIPTS/layouteditor.js`, put in by
+    `BuildPane` as item 13's script is, with a settings row of its own (`Fixes`,
+    `LayoutEditor`, on by default; the window's box follows through `layouteditor:<1|0>`),
+    tested by the `ide-test` lane `layouteditor` (`test/ide/layouteditor.test.mjs`, the script
+    put into a bare IDE with layouts set in the page, as `keyeditor` does) and by the `help`
+    lanes (the settings box). Picture `Help_LayoutEditor` from `shoot_docs`' help setup.
+    Facts below are from BETA 1042's `main.js`.
+    - **Reached** through one replacement of `showConfigEditor` that both scripts share,
+      `window.tbDocsConfigEditors` (`hookOf` and `unhook`, the same code in each script): each
+      claims its dialog's title in `adapters`, and the replacement calls that adapter before
+      the IDE's function. Neither wraps the other's, turning one off leaves the other in, and
+      the IDE's function goes back when the last is off. The editor returns a node of its own
+      in place of the IDE's text area, which it holds, hidden; turned off, the text area takes
+      the node's place again.
     - **The layout stays the IDE's.** `showManagePanelLayouts` edits a copy of
       `customPanelLayouts`, each entry `{layoutData, floatingData}` as JSON strings; its text
       area shows `{docked, floating}`, and its `oninput` stores `JSON.stringify` of those two

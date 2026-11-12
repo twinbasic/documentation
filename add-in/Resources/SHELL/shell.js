@@ -3,12 +3,12 @@
 // way is "verb:payload", split at the first colon.
 //
 // Page to add-in: ready, search:<text>, enter, pick:<entry>, hover:<1|0>,
-// allpackages:<1|0>, addinkeys:<1|0>, textfind:<1|0>, keyeditor:<1|0>, attach, browser, frame:<src> (the frame has loaded src),
+// allpackages:<1|0>, addinkeys:<1|0>, textfind:<1|0>, keyeditor:<1|0>, layouteditor:<1|0>, attach, browser, frame:<src> (the frame has loaded src),
 // and from the title bar drag (start moving the window), minimize, maxrestore,
 // close.
 // Add-in to page: theme:<group> a line break and <css>, search:<text>,
 // results:<html>, page:<url>, summary:<html>, hover:<1|0>, hoverdisabled:<1|0>,
-// allpackages:<1|0>, addinkeys:<1|0>, textfind:<1|0>, keyeditor:<1|0>, browser:<1|0 enabled>, focus:, chrome:<custom|native>
+// allpackages:<1|0>, addinkeys:<1|0>, textfind:<1|0>, keyeditor:<1|0>, layouteditor:<1|0>, browser:<1|0 enabled>, focus:, chrome:<custom|native>
 // (whether the page draws the title bar), state:<min|max|normal> (the window's).
 (function () {
   var host = window.chrome.webview;
@@ -24,6 +24,7 @@
   var keysOn = byId("helpKeysOn");
   var findOn = byId("helpFindOn");
   var keyEditorOn = byId("helpKeyEditorOn");
+  var layoutEditorOn = byId("helpLayoutEditorOn");
   var settings = byId("helpSettings");
   var settingsWrap = byId("helpSettingsWrap");
   var settingsPanel = byId("helpSettingsPanel");
@@ -88,6 +89,7 @@
   keysOn.addEventListener("change", function () { post("addinkeys:" + (keysOn.checked ? "1" : "0")); });
   findOn.addEventListener("change", function () { post("textfind:" + (findOn.checked ? "1" : "0")); });
   keyEditorOn.addEventListener("change", function () { post("keyeditor:" + (keyEditorOn.checked ? "1" : "0")); });
+  layoutEditorOn.addEventListener("change", function () { post("layouteditor:" + (layoutEditorOn.checked ? "1" : "0")); });
 
   // The settings panel opens under the gear, with the shade over the rest of
   // the window so that a click anywhere else closes it. A press over the
@@ -181,6 +183,7 @@
       case "addinkeys": keysOn.checked = payload === "1"; break;
       case "textfind": findOn.checked = payload === "1"; break;
       case "keyeditor": keyEditorOn.checked = payload === "1"; break;
+      case "layouteditor": layoutEditorOn.checked = payload === "1"; break;
       case "browser": browser.disabled = payload !== "1"; break;
       case "focus": search.focus(); break;
       case "chrome": setChrome(payload); break;

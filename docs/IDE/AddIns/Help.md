@@ -80,7 +80,7 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: five boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins, Find in the shortcut editors and Keyboard shortcut editor are ticked.](Images/Help_Settings.png){:width="480" height="209"}
+![The top of the help pane with the settings open under the gear: six boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins, Find in the shortcut editors, Keyboard shortcut editor and Panel layout editor are ticked.](Images/Help_Settings.png){:width="480" height="234"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.
@@ -96,6 +96,9 @@ The gear opens the settings. A click anywhere else, or Esc, closes them.
 
 **Keyboard shortcut editor**
 : Shows the groups of **Manage Keyboard Shortcuts** as a table of commands: see [The keyboard shortcut editor](#the-keyboard-shortcut-editor). On by default. Turned off, the dialog shows the IDE's own pane again at once.
+
+**Panel layout editor**
+: Shows the layouts of **Manage Panel Layouts** as a picture: see [The panel layout editor](#the-panel-layout-editor). On by default. Turned off, the dialog shows the layout's text again at once.
 
 The settings, the last page shown and the help window's place are kept in the registry, under `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\tbDocsHelp`. After the IDE restarts, the pane shows the page it showed last.
 
@@ -183,6 +186,42 @@ No keys
 Each change is written into the group's text: **Save Changes** saves it, and **Cancel** discards it. The built-in group is read-only, and its rows open no editor. The **JSON** button at the bottom shows the group's text, as the IDE shows it with **Edit as JSON** ticked, and **Table** shows the table again. A group whose text is not valid JSON is shown as text until it is corrected. Entries for a command the IDE does not have are listed at the top of the table, where a group of your own can remove them.
 
 In the table, Esc closes the open editor, then clears the search, and never closes the dialog. Ctrl+F goes to the search box. While the table is on, the dialog's text leaves out its last line, which promises a proper editor. The setting **Keyboard shortcut editor** turns the table off, and gives the dialog its own pane and text back.
+
+## The panel layout editor
+
+On its own, **Window > Panel Layouts > Manage Panel Layouts** shows each layout as JSON text. While this add-in is loaded, the dialog shows the selected layout as a picture instead: a small IDE window, at the proportions of the IDE's own, with every docked panel in its place and every floating panel over them. [Panel layouts](../Customising/Panel-Layouts) explains the layouts and their text.
+
+![Manage Panel Layouts with the layout Mine selected: a picture of the IDE window with the Toolbar across the top, the Toolbox, the Editor and the row of the Debug Console, Diagnostics, Call Stack and Variables, and a column at the right holding Project Explorer, Properties and the Help add-in's pane, TWINBASIC HELP. Watches floats over the Editor. The Toolbox is selected, and the box beside the picture shows where it is and its width, 13% of its group. Above the picture are the panels the layout lacks, and the button Use the current arrangement; under it are the Picture and JSON buttons.](Images/Help_LayoutEditor.png){:width="1016" height="642"}
+
+Each tile shows the panel's name and its size: a share of its group, *takes the rest* or *fits its contents*. Clicking a tile selects it, and clicking the gap round a group selects the group. The box beside the picture then shows what can be changed:
+
+Where
+: The groups that hold the panel, from the whole window inwards. Clicking one selects it.
+
+Its members are
+: For a group: **Side by side** or **One above another**. In the layout's text these are `vertical` and `horizontal`.
+
+Its width, Its height
+: **The rest** gives the panel the room its neighbours leave, **A share** a percentage of its group, and **To fit** as much as its contents need.
+
+Move left, Move right, Move up, Move down
+: Swaps the panel with its neighbour.
+
+Make it float
+: Takes the panel out of its group and floats it where the IDE floats a panel it shows: 100 pixels from the left and from the top, 300 wide and 500 high. A group left with one member is replaced by it.
+
+Remove from this layout
+: Takes the panel out of the layout.
+
+A floating panel's box has its place in the IDE window, in pixels, and **Dock it...**. Dragging a splitter between two tiles resizes them, and dragging a floating panel by its title moves it.
+
+The panels the layout lacks are listed above the picture, the tool windows of the add-ins that are loaded among them. Clicking one, or **Dock it...**, then clicking near an edge of a tile docks the panel on that side of it: in the tile's group when the group's members run that way, or in a new group of the two. **Make it float** floats it instead.
+
+**Use the current arrangement** replaces the layout with the panels as the IDE shows them now.
+
+A tile of an add-in's window that no loaded add-in has is marked *not loaded*. That is no problem: the IDE keeps the window's place, empty and marked *(currently unavailable)*, until the add-in opens it. The line under the picture counts the layout's panels and its problems: a layout with no Editor, a panel in it twice, or an id that is not a panel of the IDE. A layout with a problem is marked with **!** in the list.
+
+Each change is written into the layout's text: **Save Changes** saves it, and **Cancel** discards it. The built-in layouts are read-only. The **JSON** button at the bottom shows the layout's text, and **Picture** shows the picture again. A layout whose text is not valid JSON is shown as text until it is corrected. In the picture, Esc ends what is being done --- docking a panel, then the selection --- and never closes the dialog. The setting **Panel layout editor** turns the picture off, and gives the dialog its text back.
 
 ## Getting the add-in
 

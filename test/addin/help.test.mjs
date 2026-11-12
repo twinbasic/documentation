@@ -967,11 +967,13 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   const windowAllBox = () => win.evaluate(`document.getElementById("helpAllPackages").checked`);
   // The page-side fixes: a box each in the settings panel, and what the fix's
   // script leaves on the IDE's page while it is on. What the keyboard shortcut
-  // editor does is test/ide/keyeditor.test.mjs's to test.
+  // editor and the panel layout editor do is test/ide/keyeditor.test.mjs's and
+  // test/ide/layouteditor.test.mjs's to test.
   const FIXES = [
     { box: "helpKeysOn", global: "tbDocsAddinKeys", label: "Ctrl and Alt shortcuts of add-ins" },
     { box: "helpFindOn", global: "tbDocsTextFind", label: "Find in the shortcut editors" },
     { box: "helpKeyEditorOn", global: "tbDocsKeyEditor", label: "Keyboard shortcut editor" },
+    { box: "helpLayoutEditorOn", global: "tbDocsLayoutEditor", label: "Panel layout editor" },
   ];
   const paneFixBox = (id) => inPane(c, `return root.querySelector("#helpSettingsPanel #${id}")?.checked ?? null;`);
   const windowFixBox = (id) => win.evaluate(`document.getElementById(${JSON.stringify(id)}).checked`);

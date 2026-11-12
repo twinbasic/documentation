@@ -13690,6 +13690,55 @@ function helpTakes(ctx) {
     }
   });
 
+  // The add-in's panel layout editor in Manage Panel Layouts: a layout set in the page only (the
+  // IDE has --no-save-ide-settings), <DEFAULT> with the help pane docked under Properties and
+  // Watches floating, with the Toolbox selected.
+  shoot("LayoutEditor", async () => {
+    const saved = await c.evaluate("JSON.stringify(customPanelLayouts)");
+    await c.evaluate(`(() => {
+  const d = JSON.parse(builtInPanelLayouts["<DEFAULT>"].layoutData);
+  const column = d.content[1].content[1].content;
+  column[0].size = "35%";
+  column.push({ id: "ADDIN_tbDocsHelpPane", variableSize: false, size: "35%" });
+  customPanelLayouts = {
+    Mine: { layoutData: JSON.stringify(d), floatingData: JSON.stringify([{ id: "WATCHES", left: 560, top: 170, width: 320, height: 340 }]) },
+  };
+})()`);
+    try {
+      return await inDialog(
+        c,
+        { command: "tbPanels_ShowManagePanelLayouts", title: "Manage Panel Layouts", close: "Cancel" },
+        async () => {
+          const clickIn = async (js, what) => {
+            if (!(await c.evaluate(`(() => { const e = ${js}; if (!e) return false; e.click(); return true; })()`))) {
+              throw new Error(`the layout editor has no ${what}`);
+            }
+          };
+          await clickIn(
+            `[...document.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === "Mine")`,
+            "layout Mine",
+          );
+          await clickIn(`document.querySelector('.tbLeDock .tbLeTile[title="TOOLBOX"]')`, "Toolbox tile");
+          if (!(await waitFor(c, () => c.evaluate(`!!document.querySelector('.tbLeInsp [data-act="pct"]')`)))) {
+            throw new Error("the edit box does not show the Toolbox's share");
+          }
+          await dialogStill(c);
+          // The dialog's rounded top corners, as for KeyEditor.
+          const m = await c.evaluate(`(() => {
+            const r = [...document.querySelectorAll(".modalDialogContainer")].pop().getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width };
+          })()`);
+          const corner = (x) => ({ on: { rect: { x, y: m.y, width: 5, height: 5 } }, pad: 1 });
+          return dialogShot(c, "LayoutEditor", undefined, null, {
+            unsteady: [corner(m.x), corner(m.x + m.width - 5)],
+          });
+        },
+      );
+    } finally {
+      await c.evaluate(`customPanelLayouts = JSON.parse(${JSON.stringify(saved)})`);
+    }
+  });
+
   return takes;
 }
 
@@ -14821,9 +14870,19 @@ const helpShot = (name) => ({
 });
 
 const SHOTS = [
-  ...["Pane", "Hover", "Search", "Choices", "Description", "Settings", "Toolbar", "Window", "Find", "KeyEditor"].map(
-    helpShot,
-  ),
+  ...[
+    "Pane",
+    "Hover",
+    "Search",
+    "Choices",
+    "Description",
+    "Settings",
+    "Toolbar",
+    "Window",
+    "Find",
+    "KeyEditor",
+    "LayoutEditor",
+  ].map(helpShot),
   aboutShot,
   servicesShot,
   servicesTooltipShot,
