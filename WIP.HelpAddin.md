@@ -1331,8 +1331,17 @@ not: a restart saves a harness about a second against opening a new IDE.
       which stops each at its own elements; Esc there closes the editor, then clears the
       search. Ctrl+F goes to the table's search, and the table removes `textfind.js`'s bar when
       it shows.
-    - **Its colours are fixed**: the pane it is in is white in every theme
-      (`.configEditorRHS`).
+    - **Its look is the IDE's** (owner, 2026-11-12: fit in with the IDE's controls, and respect
+      each theme's shape of button). Its buttons are the dialog's buttons, from the theme's
+      `--themeDialogButton*` variables (`.msgBoxButton`), so they are square in Dark and Light
+      and rounded in Aurora, with the theme's focus ring. Everything else is taken from the
+      IDE Options and Project Settings dialogs (`tips_injectCss` and `tbps_injectCss` in
+      main.js), which are the same in every theme: the No / Yes control for a choice of one
+      (the filters, Keep / Replace, Table / JSON), their text boxes and drop-downs, their
+      section title (a 4px `#4271ae` bar) for a prefix, their option rows, their yellow banner
+      for a note and their red error line for an error; a plain key is drawn as the dialog's
+      `<pre>`, and the glyphs are codicons. The pane is white in every theme
+      (`.configEditorRHS`), so text and fields are dark on white whatever the theme.
     - **The header's last line**, *ps. in future we'll have a proper editor for this* (owner,
       2026-11-12), is taken out of the options' `info` while the table is on, and put back
       into an open dialog's `.configEditorInfoHeader` when it is turned off.

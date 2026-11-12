@@ -527,14 +527,14 @@ if (
         var keys = p && Array.isArray(p.value) ? p.value : [];
         h +=
           '<div class="tbKeLine"><span class="tbKeLabel">Keys from earlier groups</span><span class="tbKeSeg" role="group" aria-label="Keys from earlier groups">' +
-          '<button class="tbKeBtn" data-act="mode" data-mode="add" aria-pressed="' + (mode === "add") + '">Keep them, and add these</button>' +
-          '<button class="tbKeBtn" data-act="mode" data-mode="replace" aria-pressed="' + (mode === "replace") + '">Replace them with these</button></span></div>';
-        h += '<div class="tbKeLine"><span class="tbKeLabel">This group</span>';
+          '<button class="tbKeSegBtn" data-act="mode" data-mode="add" aria-pressed="' + (mode === "add") + '">Keep them, and add these</button>' +
+          '<button class="tbKeSegBtn" data-act="mode" data-mode="replace" aria-pressed="' + (mode === "replace") + '">Replace them with these</button></span></div>';
+        h += '<div class="tbKeLine"><span class="tbKeLabel">This group</span><span class="tbKeVals">';
         keys.forEach(function (raw, i) {
           h += keyEditHtml(s, raw, i, "key", p.name);
         });
         if (!keys.length) h += '<span class="tbKeNone">' + (mode === "replace" ? "no keys: the command has none" : "none") + "</span>";
-        h += captureHtml(s, { kind: "key" }) + "</div>";
+        h += captureHtml(s, { kind: "key" }) + "</span></div>";
       }
       if (ARG_COMMANDS[cmd] || withArgs.length) {
         h += '<div class="tbKeLine"><span class="tbKeLabel">With an argument</span><span class="tbKeArgs">';
@@ -575,7 +575,7 @@ if (
         h += '<option value="' + o[0] + '"' + (o[0] === t ? " selected" : "") + (blocked ? " disabled" : "") + ">" + o[1] + "</option>";
       });
       h += "</select>";
-      h += '<button class="tbKeX" data-act="remove" data-kind="' + kind + '" data-name="' + esc(name) + '" data-i="' + i + '" aria-label="Remove ' + esc(keyLabel(k)) + '" title="Remove">&#215;</button></span>';
+      h += '<button class="tbKeX" data-act="remove" data-kind="' + kind + '" data-name="' + esc(name) + '" data-i="' + i + '" aria-label="Remove ' + esc(keyLabel(k)) + '" title="Remove"><span class="codicon codicon-close" aria-hidden="true"></span></button></span>';
       return h;
     };
 
@@ -709,11 +709,12 @@ if (
         var shut = !filtering && s.collapsed[name];
         h +=
           '<div class="tbKeHead" role="button" tabindex="0" aria-expanded="' + !shut + '" data-act="fold" data-prefix="' + esc(name) + '">' +
-          '<span class="tbKeFold">' + (shut ? "&#9656;" : "&#9662;") + "</span> " + esc(name) + ' <span class="tbKeCount">' + g.rows.length + "</span></div>";
+          '<span class="tbKeFold codicon codicon-chevron-' + (shut ? "right" : "down") + '" aria-hidden="true"></span>' +
+          '<span class="tbKeHeadName">' + esc(name) + '</span> <span class="tbKeCount">' + g.rows.length + "</span></div>";
         if (shut) return;
         g.rows.forEach(function (r) {
           var open = !m.readonly && s.open === r.cmd;
-          var cls = "tbKeRow" + (m.readonly ? "" : " tbKeEditable") + (r.model.changed ? " tbKeChanged" : "") + (open ? " tbKeOpen" : "");
+          var cls = "tbKeRow" + (m.readonly ? "" : " tbKeEditable") + (r.model.changed && !m.readonly ? " tbKeChanged" : "") + (open ? " tbKeOpen" : "");
           var rest = g.prefix ? r.cmd.slice(g.prefix.length) : r.cmd;
           h +=
             '<div class="' + cls + '" data-cmd="' + esc(r.cmd) + '"' +
@@ -741,7 +742,9 @@ if (
       if (m.readonly && s.filter === "changed") s.filter = "all";
       m.filters.innerHTML = f
         .map(function (x) {
-          return '<button class="tbKeChip" data-filter="' + x[0] + '" aria-pressed="' + (s.filter === x[0]) + '">' + x[1] + " " + x[2] + "</button>";
+          return (
+            '<button class="tbKeSegBtn tbKeChip" data-filter="' + x[0] + '" aria-pressed="' + (s.filter === x[0]) + '">' + x[1] + ' <span class="tbKeCount">' + x[2] + "</span></button>"
+          );
         })
         .join("");
       m.keyButton.setAttribute("aria-pressed", String(!!(s.keySearch || (s.capture && s.capture.kind === "search"))));
@@ -949,12 +952,12 @@ if (
       top.innerHTML =
         '<div class="tbKeBar"><input class="tbKeSearch" aria-label="Find a command" spellcheck="false">' +
         '<button class="tbKeBtn tbKeKeyFind" title="Find the commands of a key: press it next" aria-label="Find the commands of a key">Find a key</button>' +
-        '<span class="tbKeFilters" role="group" aria-label="Show"></span></div>' +
+        '<span class="tbKeFilters tbKeSeg" role="group" aria-label="Show"></span></div>' +
         '<div class="tbKeList"></div>';
       var foot = document.createElement("div");
       foot.className = "tbKe tbKeFoot";
       foot.innerHTML =
-        '<span class="tbKeSeg" role="group" aria-label="View"><button class="tbKeBtn" data-view="table">Table</button><button class="tbKeBtn" data-view="json">JSON</button></span>' +
+        '<span class="tbKeSeg" role="group" aria-label="View"><button class="tbKeSegBtn" data-view="table">Table</button><button class="tbKeSegBtn" data-view="json">JSON</button></span>' +
         '<span class="tbKeStatus" aria-live="polite"></span>';
       node.insertBefore(top, area);
       node.appendChild(foot);
@@ -1164,56 +1167,88 @@ if (
       style.id = "tbDocsKeyEditorStyle";
       document.head.appendChild(style);
     }
-    // The pane the table is in is white whatever the theme (styles.css,
-    // .configEditorRHS), so the table has colours of its own for it.
+    // The look is the IDE's own. Buttons are the dialog's buttons, from the
+    // theme's variables, so that they take each theme's shape (square in Dark
+    // and Light, rounded in Aurora). Everything else follows the IDE Options
+    // and Project Settings dialogs (tips_injectCss and tbps_injectCss in
+    // main.js), whose accent, controls and section titles are the same in
+    // every theme. The pane the table is in is white whatever the theme
+    // (styles.css, .configEditorRHS), so its text and fields are dark on white.
+    var ACCENT = "#4271ae";
+    var BTN =
+      "background:var(--themeDialogButtonsBackColor,#fbfdff);color:var(--themeDialogButtonForeColor,#000);" +
+      "border-top:var(--themeDialogButtonBorderTop,1px solid #9b9b9b);border-left:var(--themeDialogButtonBorderLeft,1px solid #9b9b9b);" +
+      "border-right:var(--themeDialogButtonBorderRight,1px solid #5e5e5e);border-bottom:var(--themeDialogButtonBorderBottom,1px solid #5e5e5e);" +
+      "border-radius:var(--themeDialogButtonBorderRadius,0);box-shadow:var(--themeDialogButtonBoxShadow,2px 2px 3px #7c7c7c78)";
+    var FOCUS = "var(--themeDialogButtonFocusWidth,2px) solid var(--themeDialogButtonFocusRectColor,#6d6dc3)";
+    var MONO = "font-family:Consolas,Menlo,monospace";
     style.textContent = [
       ".tbKe{color:#1e1e1e;font-size:inherit}",
       ".tbKeTop{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;background:#fff}",
-      ".tbKeBar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px;border-bottom:1px solid #d4d4d4}",
-      ".tbKe input.tbKeSearch{flex:1 1 200px;min-width:140px;height:24px;box-sizing:border-box;padding:0 6px;border:1px solid #a0a0a0;border-radius:3px;background:#fff;color:#1e1e1e;font:inherit}",
-      ".tbKeBtn,.tbKeChip{height:24px;padding:0 8px;border:1px solid #a0a0a0;border-radius:3px;background:#f3f3f3;color:#1e1e1e;font:inherit;cursor:pointer;white-space:nowrap}",
-      ".tbKeChip{border-radius:12px;color:#444}",
-      ".tbKeBtn:hover,.tbKeChip:hover{background:#e6e6e6}",
-      ".tbKeBtn[aria-pressed=true],.tbKeChip[aria-pressed=true]{background:#dde8f6;border-color:#4a7cc0;color:#1d4f91}",
-      ".tbKeFilters{display:inline-flex;gap:4px;flex-wrap:wrap}",
-      ".tbKeSeg{display:inline-flex}.tbKeSeg .tbKeBtn{border-radius:0}.tbKeSeg .tbKeBtn+.tbKeBtn{border-left:0}",
-      ".tbKeSeg .tbKeBtn:first-child{border-radius:3px 0 0 3px}.tbKeSeg .tbKeBtn:last-child{border-radius:0 3px 3px 0}",
+      ".tbKeBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px;border-bottom:1px solid rgba(128,128,128,.35)}",
+      // Text boxes and drop-downs, as the settings dialogs draw them.
+      ".tbKe input.tbKeSearch,.tbKe input.tbKeArgText,.tbKe input.tbKeCapture,.tbKe select.tbKeTiming{box-sizing:border-box;height:26px;padding:0 6px;border:1px solid #999;border-radius:4px;background:#fff;color:#1e1e1e;font:inherit;outline:none}",
+      ".tbKe input.tbKeSearch{flex:1 1 200px;min-width:140px;padding:0 10px}",
+      ".tbKe input.tbKeArgText{width:12em;" + MONO + "}",
+      ".tbKe input.tbKeCapture{width:16em;border-color:" + ACCENT + ";background:#eef3ff;box-shadow:0 0 0 2px rgba(66,113,174,.25)}",
+      ".tbKe input.tbKeSearch:focus,.tbKe input.tbKeArgText:focus,.tbKe select.tbKeTiming:focus{border-color:" + ACCENT + ";box-shadow:0 0 0 2px rgba(66,113,174,.25)}",
+      // Buttons: the dialog's own.
+      ".tbKeBtn{box-sizing:border-box;height:26px;padding:0 10px;margin:0 2px 2px 0;font:inherit;cursor:pointer;white-space:nowrap;" + BTN + "}",
+      ".tbKeBtn:hover{background-color:#ebeff5;filter:brightness(1.3)}",
+      ".tbKeBtn[aria-pressed=true]{background:" + ACCENT + ";color:#fff}",
+      ".tbKe .tbKeBtn:focus-visible{outline:" + FOCUS + ";outline-offset:2px}",
+      // A choice of one: the settings dialogs' No / Yes control.
+      ".tbKeSeg{display:inline-flex;flex-wrap:wrap;border:1px solid #999;border-radius:4px;overflow:hidden;background:#fff}",
+      ".tbKeSegBtn{box-sizing:border-box;height:24px;padding:0 10px;margin:0;border:0;border-right:1px solid #999;border-radius:0;background:#fff;color:#1e1e1e;font:inherit;cursor:pointer;white-space:nowrap;user-select:none}",
+      ".tbKeSegBtn:last-child{border-right:0}",
+      ".tbKeSegBtn:hover{background:rgba(128,128,128,.15)}",
+      ".tbKeSegBtn[aria-pressed=true]{background:" + ACCENT + ";color:#fff}",
+      ".tbKe .tbKeSegBtn:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--themeDialogButtonFocusRectColor,#6d6dc3),inset 0 0 0 3px #fff}",
+      ".tbKeCount{font-size:80%;opacity:.6;font-weight:normal}",
+      ".tbKeSegBtn[aria-pressed=true] .tbKeCount{opacity:.8}",
       ".tbKeList{flex:1 1 auto;min-height:0;overflow:auto}",
-      ".tbKeHead{position:sticky;top:0;z-index:1;padding:3px 6px;background:#ececec;border-bottom:1px solid #d4d4d4;font-family:monospace;color:#444;cursor:pointer;user-select:none}",
-      ".tbKeStrayHead{position:static;cursor:default;font-family:inherit}",
-      ".tbKeCount{color:#888}.tbKeFold{display:inline-block;width:1em}",
-      ".tbKeRow{display:grid;grid-template-columns:minmax(0,34%) minmax(0,26%) minmax(0,1fr);gap:8px;padding:4px 6px;border-bottom:1px solid #ececec;align-items:start}",
-      ".tbKeEditable{cursor:pointer}.tbKeEditable:hover{background:#f4f7fb}",
-      ".tbKeChanged{box-shadow:inset 3px 0 #4a7cc0}",
-      ".tbKeOpen{background:#f4f7fb}",
-      ".tbKeCmd{font-family:monospace;overflow-wrap:anywhere}.tbKePre{color:#8a8a8a}",
-      ".tbKeDesc{color:#505050}.tbKeDesc code{font-family:monospace}",
-      ".tbKeKey{display:inline-block;margin:1px 3px 1px 0;padding:0 4px;border:1px solid #c4c4c4;border-radius:3px;background:#f6f6f6;color:#333;font-family:monospace;font-size:90%;white-space:nowrap}",
-      ".tbKeMine{background:#dde8f6;border-color:#7ea3d6;color:#1d4f91}",
-      ".tbKeGone{background:transparent;border-style:dashed;color:#999;text-decoration:line-through}",
-      ".tbKeClash{background:#fdf0d5;border-color:#d9a640;color:#7a4b00}",
-      ".tbKeWarn{background:#fdf0d5;border-color:#d9a640;color:#7a4b00;border-style:dashed}",
-      ".tbKeDead{background:#fbe3e3;border-color:#d77;color:#8a1f1f;text-decoration:line-through}",
-      ".tbKeWhen,.tbKeArg{color:#666}",
-      ".tbKeNone{color:#888;font-style:italic}",
-      ".tbKeLater{margin-top:2px;color:#7a4b00;font-size:90%}",
-      ".tbKeEditor{grid-column:1/-1;margin:4px 0 2px;padding:8px;border:1px solid #c4c4c4;border-radius:4px;background:#fff;cursor:default}",
-      ".tbKeLine{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}",
-      ".tbKeEnd{margin:6px 0 0}.tbKeGrow{flex:1}",
-      ".tbKeLabel{width:11em;color:#505050}",
-      ".tbKeKeyEdit{display:inline-flex;align-items:center;gap:2px;margin-right:6px}",
-      ".tbKe select.tbKeTiming{height:22px;font:inherit;border:1px solid #a0a0a0;border-radius:3px;background:#fff;color:#1e1e1e}",
-      ".tbKeX{width:20px;height:20px;padding:0;border:0;background:transparent;color:#8a1f1f;font:inherit;cursor:pointer}",
-      ".tbKe input.tbKeCapture{width:16em;height:24px;box-sizing:border-box;padding:0 6px;border:1px solid #4a7cc0;border-radius:3px;background:#eef4fc;color:#1d4f91;font:inherit}",
+      // A prefix's heading: the settings dialogs' section title.
+      ".tbKeHead{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:4px;padding:4px 8px 4px 4px;border-left:4px solid " + ACCENT + ";background:#f5f5f5;font-weight:600;cursor:pointer;user-select:none}",
+      ".tbKeHeadName{" + MONO + "}.tbKeHead .tbKeCount{margin-left:auto}",
+      ".tbKeFold{font-size:14px;opacity:.7}",
+      ".tbKeStrayHead{position:static;display:block;padding-left:8px;border-left-color:#c62828;cursor:default}",
+      // The rows: the settings dialogs' option rows.
+      ".tbKeRow{display:grid;grid-template-columns:minmax(0,34%) minmax(0,26%) minmax(0,1fr);gap:8px;padding:6px 8px;border-bottom:var(--themeDialogConfigRowBorderBottom,1px solid rgba(128,128,128,.25));align-items:start}",
+      ".tbKeEditable{cursor:pointer}.tbKeEditable:hover{background:rgba(128,128,128,.06)}",
+      ".tbKeChanged{box-shadow:inset 3px 0 rgba(66,113,174,.5)}",
+      ".tbKeOpen,.tbKeOpen:hover{background:rgba(128,128,128,.09)}",
+      ".tbKeCmd{" + MONO + ";overflow-wrap:anywhere}.tbKePre{opacity:.5}",
+      ".tbKeDesc{color:#5a5a5a}.tbKeDesc code{" + MONO + "}",
+      // A key: plain as the dialog's <pre>, and in colour when it says something.
+      ".tbKeKey{display:inline-block;margin:1px 3px 1px 0;padding:0 4px;border:1px solid transparent;border-radius:3px;background:rgba(127,127,127,.2);color:#1e1e1e;" + MONO + ";font-size:90%;white-space:nowrap}",
+      ".tbKeMine{background:rgba(66,113,174,.14);border-color:" + ACCENT + ";color:#2b4f80}",
+      ".tbKeGone{background:transparent;border:1px dashed #999;color:#888;text-decoration:line-through}",
+      ".tbKeClash{background:#fff3cd;border-color:#b8860b;color:#6b4e00}",
+      ".tbKeWarn{background:#fff3cd;border:1px dashed #b8860b;color:#6b4e00}",
+      ".tbKeDead{background:#fdecea;border-color:#c62828;color:#8e1c1c;text-decoration:line-through}",
+      ".tbKeWhen,.tbKeArg{opacity:.75}",
+      ".tbKeNone{color:#777;font-style:italic}",
+      ".tbKeLater{margin-top:2px;color:#6b4e00;font-size:90%}",
+      ".tbKeEditor{grid-column:1/-1;margin:6px 0 2px;padding:10px;border:1px solid rgba(128,128,128,.45);border-radius:4px;background:#fff;cursor:default}",
+      ".tbKeLine{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}",
+      ".tbKeEnd{margin:8px 0 0}.tbKeGrow{flex:1}",
+      ".tbKeLabel{flex:0 0 13em;align-self:flex-start;line-height:26px;font-weight:600}",
+      ".tbKeVals{display:flex;flex:1 1 0;min-width:0;gap:6px;align-items:center;flex-wrap:wrap}",
+      ".tbKeKeyEdit{display:inline-flex;align-items:center;gap:3px;margin-right:8px}",
+      ".tbKeX{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:4px;background:transparent;color:#c62828;cursor:pointer}",
+      ".tbKeX:hover{background:rgba(128,128,128,.15)}",
+      ".tbKe .tbKeX:focus-visible{outline:" + FOCUS + ";outline-offset:0}",
       ".tbKeArgs{display:flex;flex-direction:column;gap:4px}.tbKeArgLine{display:flex;gap:6px;align-items:center;flex-wrap:wrap}",
-      ".tbKe input.tbKeArgText{width:12em;height:24px;box-sizing:border-box;padding:0 6px;border:1px solid #a0a0a0;border-radius:3px;background:#fff;color:#1e1e1e;font-family:monospace}",
-      ".tbKeNote{margin:4px 0;padding:5px 8px;border-radius:3px;background:#fdf0d5;color:#7a4b00}",
-      ".tbKeInfo{background:#eef2f7;color:#334}.tbKeError{background:#fbe3e3;color:#8a1f1f}",
-      ".tbKeTop>.tbKeList>.tbKeNote{margin:6px}",
-      ".tbKeEmpty{padding:16px;color:#888}",
+      // Notes: the settings dialogs' banner, and their error line for an error.
+      ".tbKeNote{margin:6px 0;padding:6px 10px;border:1px dashed #b8860b;border-radius:4px;background:#fff3cd;color:#3d2e00;font-size:95%}",
+      ".tbKeInfo{border:1px solid rgba(128,128,128,.35);background:rgba(128,128,128,.08);color:#1e1e1e}",
+      ".tbKeError{border:0;background:#c62828;color:#fff}.tbKeError code{color:#fff}",
+      ".tbKeTop>.tbKeList>.tbKeNote{margin:8px}",
+      ".tbKeEmpty{padding:16px;color:#777}",
+      // The foot: the grey of the IDE's own Edit as JSON bar.
       ".tbKeFoot{display:flex;gap:10px;align-items:center;padding:6px 8px;background:#b5b5b5}",
-      ".tbKeStatus{color:#1e1e1e}.tbKeBad{color:#8a1f1f;font-weight:bold}",
-      ".tbKe :focus-visible{outline:2px solid #4a7cc0;outline-offset:-2px}",
+      ".tbKeStatus{color:#1e1e1e}.tbKeBad{color:#8e1c1c;font-weight:bold}",
+      ".tbKe [role=button]:focus-visible{outline:" + FOCUS + ";outline-offset:-2px}",
     ].join("\n");
 
     window.tbDocsKeyEditor = {

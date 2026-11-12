@@ -15,7 +15,10 @@ symbols change with every build of the documentation and are not listed here.
   released). The table finds commands by name, description or key, or by the key you press, and
   marks a key that another command also has, and one that can never run. The **JSON** button at
   the bottom shows the group's text, as the IDE's own pane does; Save Changes and Cancel are the
-  IDE's. The dialog's text no longer ends with the line promising a proper editor.
+  IDE's. The dialog's text no longer ends with the line promising a proper editor. The table
+  looks like the rest of the IDE: its buttons are the dialog's own, in the shape the theme gives
+  them (rounded in Aurora, square in Dark and Light), and its other controls, headings and notes
+  are those of the IDE's options and Project Settings.
 - The settings panel has a new box, ticked by default: **Keyboard shortcut editor**. Unticking it
   gives Manage Keyboard Shortcuts its own pane and text back, at once.
 

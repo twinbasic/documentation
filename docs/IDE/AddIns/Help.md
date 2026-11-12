@@ -146,14 +146,14 @@ The search goes round past the end, and ignores case. The text scrolls to show e
 
 On its own, **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts** shows each group of shortcuts as JSON text, and with **Edit as JSON** cleared only the line *Keyboard editor coming soon*. While this add-in is loaded, the dialog shows the selected group as a table instead, with a row for every command of the IDE. [Keyboard shortcuts](../Customising/Keyboard-Shortcuts) explains the groups and how they are layered.
 
-![Manage Keyboard Shortcuts with the group Mine selected and the Changed here filter on: four rows under their prefixes tbDebug_, tbDebugConsole_ and tbEditor_. tbEditor_ClipboardCut shows Shift+Delete struck through and Ctrl+X in blue. The row for tbEditor_ToggleWordWrap is open: Alt+Z from the built-in group, and Ctrl+D added by this group in orange, with a note that Ctrl+D is also tbEditor_AddSelectionToNextFindMatch in the built-in group. Under the table are the Table and JSON buttons.](Images/Help_KeyEditor.png){:width="1016" height="723"}
+![Manage Keyboard Shortcuts with the group Mine selected and the Changed here filter on: four rows under their prefixes tbDebug_, tbDebugConsole_ and tbEditor_. tbEditor_ClipboardCut shows Shift+Delete struck through and Ctrl+X in blue. The row for tbEditor_ToggleWordWrap is open: Alt+Z from the built-in group, and Ctrl+D added by this group in yellow, with a note that Ctrl+D is also tbEditor_AddSelectionToNextFindMatch in the built-in group. Under the table are the Table and JSON buttons.](Images/Help_KeyEditor.png){:width="1016" height="723"}
 
 A row has the command's name, its keys, and a line on what the command does, from the [keyboard shortcuts reference](../Reference/Keyboard-Shortcuts). The rows are grouped by the prefix of the command's name; clicking a prefix folds its rows. In a group of your own, the keys of a row show what the earlier groups give the command and what this group changes:
 
 - a grey key comes from an earlier group;
 - a blue key is set by this group;
 - a dashed key that is struck through is one this group removes;
-- an orange key is also bound to another command, and a group of your own made one of the two bindings. Its tooltip names the other command and the group. The IDE runs each command bound to a key whose context applies, in its own order, until one of them ends the key's handling. Keys that the built-in group gives to several commands are not marked, since those commands apply in different places;
+- a yellow key is also bound to another command, and a group of your own made one of the two bindings. Its tooltip names the other command and the group. The IDE runs each command bound to a key whose context applies, in its own order, until one of them ends the key's handling. Keys that the built-in group gives to several commands are not marked, since those commands apply in different places;
 - a red key that is struck through can never run, such as a key the IDE has no name for, or a key with Ctrl or Alt that runs when released. Its tooltip says why.
 
 The conflicts are found across every group that is switched on, the group shown and any group added in the dialog included. A row also says when a later group changes the command again, since this group's keys are then not the ones that apply.
