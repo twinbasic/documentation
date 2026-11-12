@@ -1349,6 +1349,76 @@ not: a restart saves a harness about a second against opening a new IDE.
       `Resources/KEYS/commands.json` by `ide_js.mjs keymap --update` (and compared by `--check`
       and by `test/ide-js.test.mjs`), and put in place of the script's `$COMMANDS$` marker by
       `ApplyFix`.
+14. **A panel layout editor** (owner, 2026-11-12: Manage Panel Layouts in the spirit of item
+    13, on by default). **Not started**: a mockup only, `.claude/mockups/panel-layout-editor.html`
+    (gitignored). Planned as `Resources/SCRIPTS/layouteditor.js`, put in by `BuildPane` as
+    item 13's script is, with a settings row of its own (`Fixes`, `LayoutEditor`, on by
+    default), and tested by an `ide-test` lane `layouteditor` that puts the script
+    into a bare IDE, as `keyeditor` does. Facts below are from BETA 1042's `main.js`.
+    - **Reached** through the same `showConfigEditor` replacement as item 13, for the call
+      titled *Manage Panel Layouts*. The two scripts must share one wrapper, each claiming its
+      own title, so that neither wraps the other's and turning one off leaves the other in.
+    - **The layout stays the IDE's.** `showManagePanelLayouts` edits a copy of
+      `customPanelLayouts`, each entry `{layoutData, floatingData}` as JSON strings; its text
+      area shows `{docked, floating}`, and its `oninput` stores `JSON.stringify` of those two
+      members back and turns on Save Changes. The editor hides the text area, reads it, and
+      writes every change into it with an `input` event, as item 13 does; Picture / JSON at
+      the bottom shows the IDE's own text area again. Text that is not JSON is shown as text.
+    - **How a layout is read** (`restoreDockConfig`): `flexBasis` is `size` (`0%` when
+      missing) and `flexGrow` is 1 when `variableSize` is true, else 0. `vertical` makes a
+      `dockGroupVertical`, whose members are **side by side** (its splitter resizes widths);
+      `horizontal` puts them **one above another**. The editor names the directions in words,
+      never by the JSON's names, and shows one size choice that writes both fields: *Takes the
+      rest* (`true`, `0%`), *A share* (`false`, a percentage), *Fits its contents* (`false`,
+      `fit-content`; the toolbar is forced to it in a `horizontal` group).
+    - **The picture** is drawn at the IDE window's proportions (owner), from `rootTop`'s size;
+      floating panels at their pixels on the same scale. Tiles are selected by a click, a group
+      by the gap round it; splitters drag; the edit box sets direction and size, moves a member
+      earlier or later, floats it or removes it. A panel not in the layout is docked by
+      clicking an edge of a tile: into the tile's group when the direction matches, else into
+      a new group of the other direction round the two. A group left with one member is
+      replaced by it, which takes the group's size; a group with no member that takes the rest
+      gives it to its last member.
+    - **Use the current arrangement** (owner): a button for a layout of your own, which
+      replaces it with `getPanelsConfiguration()` as `saveCurrentPanelLayoutAs` stores it
+      (`docked[0]` and `floating`). Cancel undoes it, as any change.
+    - **Problems** (owner: a layout without the Editor is one), counted in the status line and
+      marked in the list: no `EDITOR`; a panel listed twice; an id that is neither a built-in
+      panel nor `ADDIN_...`, which `restorePanelConfiguration` reports with an *unknown panel
+      type* alert when docked, and `restoreFloatingConfig` turns into a numbered
+      `testDockedElement` when floating.
+    - **Add-in windows** (owner: offered). An add-in's tool window is `ADDIN_<id>`, the id
+      being `ToolWindows.Add`'s second argument (ours `tbDocsHelpPane`). The loaded ones are
+      `toolWindowsById`, named by their header. An `ADDIN_` id no loaded add-in has is not a
+      problem: applying the layout makes a placeholder with `createToolWindowById`, which
+      shows *(currently unavailable)* until the add-in opens its window and takes the place.
+      Windows given no id all share `ADDIN_`, so the editor does not offer them.
+    - **The help's detached state is kept per layout, by the add-in** (owner), never in the
+      layout's JSON. A member at the top of the dialog's text is dropped at Save Changes; one
+      inside a panel's entry survives, and the restore ignores it. But
+      `saveCurrentPanelLayoutAs` and the current arrangement (`savePanelsConfiguration`,
+      setting `LAYOUTv2`, written at every panel change) are built again from the window by
+      `getDockedPanelConfig` and `getFloatingPanelsConfig`, which write only the id, the sizes
+      and the position, so anything extra is lost at the next save; and a later IDE may check
+      the JSON. Planned: a settings section per layout (`Layouts\<name>`, the name encoded,
+      since a layout name may hold `\`) with `Detached` and the window's place in screen
+      pixels; the page script wraps `setActivePanelLayoutName` and `saveCurrentPanelLayoutAs`
+      and tells the add-in, through a hidden element as hover help does, which layout was
+      applied or saved; the add-in then detaches, attaches or moves its window. Sections of
+      deleted layouts go at Save Changes. *Custom Layout (Unsaved)* keeps today's one `Window`
+      section. The edit box of the Help panel has a grey *With the Help Add-In* box: *In this
+      panel* or *In its own window*, and the window's place.
+    - **What Detach does to the pane:** `Pane.Visible = False` reaches
+      `toolWindowSetVisible`. A docked pane keeps its place, its body hidden and
+      *(currently unavailable)* shown, which the picture shows; a floating one is hidden, and
+      `getFloatingPanelsConfig` leaves out hidden floating panels, so a layout saved from the
+      window while the help is detached has no help pane. The add-in records where the pane
+      was.
+    - **Re-attaching in the editor floats the pane** (owner, 2026-11-12): choosing *In this
+      panel* for a layout whose help is in its own window takes the pane out of the dock (as
+      *Make it float* does), or adds it when the layout lacks it, and floats it at the window's
+      size, placed where the window was and kept inside the IDE window. The user can dock it
+      again.
 
 **Lookup:**
 
