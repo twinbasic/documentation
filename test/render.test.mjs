@@ -724,6 +724,22 @@ describe("figurePlugin", () => {
     assert.doesNotMatch(render("![x](Images/B.png)"), /data-tall/);
   });
 
+  test("a picture marked secondary is shown at 3/4 of its size in the column, Zoom told by how much", () => {
+    // 1016px wide: the column shows it at 736, so it is drawn at 552, its pair alike.
+    const html = render('![x](Images/A.png){:width="1016" height="723" secondary}');
+    assert.match(html, /^<div class="fig-wrap" data-kind="picture" data-tall data-scale="0.75">/);
+    const sizes = [...html.matchAll(/<img [^>]*width="(\d+)" height="(\d+)"/g)].map((m) => `${m[1]}x${m[2]}`);
+    assert.deepEqual(sizes, ["552x393", "552x393"]);
+    assert.doesNotMatch(html, /secondary/);
+    // Narrower than the column: 3/4 of its own size.
+    assert.match(render('![x](Images/B.png){:width="400" height="200" secondary}'), /width="300" height="150"/);
+    // Not a figure: the word goes, the size stays.
+    const inText = render('See ![x](Images/B.png){:width="400" height="200" secondary} here.');
+    assert.match(inText, /width="400" height="200"/);
+    assert.doesNotMatch(inText, /secondary|data-scale/);
+    assert.doesNotMatch(render('![x](Images/B.png){:width="400" height="200"}'), /data-scale/);
+  });
+
   test("a diagram is inlined, tall or short by its own size in pt", () => {
     const tall = render("![d](Images/D.svg)");
     assert.match(tall, /^<div class="fig-wrap" data-kind="diagram" data-tall>/);

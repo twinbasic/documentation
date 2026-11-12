@@ -27,7 +27,7 @@ Switches the arrangement of the panels, and saves and manages arrangements. See 
 
 ### Manage Panel Layouts...
 
-Opens a dialog that lists the built-in layouts, which are read-only, and the saved ones. See [Manage layouts](../../Customising/Panel-Layouts#manage-layouts).
+Opens a dialog that lists the built-in layouts, which are read-only, and the saved ones. See [Manage layouts](../../Customising/Panel-Layouts#manage-layouts). The [Help Add-In](../../AddIns/Help#finding-text-in-the-shortcut-editors) adds a find to its text.
 
 ## Panel Features
 
@@ -43,7 +43,7 @@ Switches groups of keyboard shortcuts on and off. See [Keyboard shortcuts](../..
 
 ### Manage Keyboard Shortcuts
 
-Opens a dialog that lists the built-in group, which is read-only, and the groups that have been created, and shows each as JSON text. See [Manage keyboard shortcuts](../../Customising/Keyboard-Shortcuts#manage-keyboard-shortcuts) and [The text of a group](../../Customising/Keyboard-Shortcuts#the-text-of-a-group).
+Opens a dialog that lists the built-in group, which is read-only, and the groups that have been created, and shows each as JSON text. See [Manage keyboard shortcuts](../../Customising/Keyboard-Shortcuts#manage-keyboard-shortcuts) and [The text of a group](../../Customising/Keyboard-Shortcuts#the-text-of-a-group). With the [Help Add-In](../../AddIns/Help#the-keyboard-shortcut-editor) loaded, the dialog shows each group as a table of commands instead.
 
 [Keyboard shortcuts](../Keyboard-Shortcuts) lists the built-in group in tables.
 

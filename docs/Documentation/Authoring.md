@@ -829,6 +829,8 @@ An image that stands alone in its paragraph is shown as a *figure*: the image wi
 
 Give a picture its `{:width="..." height="..."}`. A figure at least as tall as the bar stood on end gets the bar beside it, in the margin of a wide window and in view while the figure scrolls past. A shorter figure gets the bar above it or at its top right. A picture with no stated size is treated as short, however tall it is.
 
+A picture of something the page mentions only in passing --- on an IDE page, what an add-in adds to the IDE --- can be shown smaller: put `secondary` in its attribute block, `{:width="1016" height="723" secondary}`. The page keeps the picture's own size, and the build shows it at three quarters of the size it would otherwise have in the column. **Zoom** shows it as large as it would show it without the word. The build takes the word out of the page.
+
 ### A picture in both themes
 
 A screenshot of the IDE shows one of its themes, and the site has two. To give a picture a version for the light theme, save it beside the first one under the same name with `.light` before the extension:
