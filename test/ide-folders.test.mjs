@@ -15,10 +15,10 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { after, afterEach, before, describe, test } from "node:test";
 import { shutdownIde, shutdownIdeAsync } from "../scripts/lib/tb-ide.mjs";
 import { removeTreeAsync } from "../scripts/lib/tb-ide-copy.mjs";
-import { BLANKED_KEYS, checkDefaults, pageHook } from "../scripts/lib/tb-defaults.mjs";
+import { BLANKED_KEYS, checkDefaults, fixesWithout, IDE_FIXES, pageHook } from "../scripts/lib/tb-defaults.mjs";
 
 describe("the defaults hook in a page", () => {
   const saved = { location: globalThis.location, window: globalThis.window, fetch: globalThis.fetch };
@@ -124,6 +124,60 @@ describe("the defaults hook in a page", () => {
     stored.length = 0;
     assert.equal(await globalThis.hostAppObject.ReadFileDataBase64("C:\\x.bin"), "real C:\\x.bin");
     assert.deepEqual(stored, ["read C:\\x.bin"]);
+  });
+});
+
+describe("the IDE's defects fixed in the page (IDE_FIXES)", () => {
+  const saved = { location: globalThis.location, window: globalThis.window };
+  // The page as main.js leaves it: `var debugConsoleContent;`, then the list assigned to it.
+  const run = (fixes, list) => {
+    pageHook(BLANKED_KEYS, fixes);
+    globalThis.debugConsoleContent = list;
+    return { list: globalThis.debugConsoleContent, fixes: window.__tbDefaults.fixes };
+  };
+
+  before(() => {
+    Object.defineProperty(globalThis, "location", { configurable: true, value: { pathname: "/ide/main.htm" } });
+    globalThis.window = globalThis;
+  });
+
+  afterEach(() => {
+    delete globalThis.debugConsoleContent;
+    delete globalThis.hostAppObject;
+    delete globalThis.__tbDefaults;
+  });
+
+  after(() => {
+    Object.defineProperty(globalThis, "location", { configurable: true, value: saved.location });
+    globalThis.window = saved.window;
+  });
+
+  test("console-cleared-at-open: the console's list starts with its cached-heights flag false (BETA 1042)", () => {
+    const list = {};
+    const got = run(IDE_FIXES, list);
+    assert.equal(got.list, list, "the page reads back the list main.js assigned");
+    assert.equal(list.useCachedItemHeights, false);
+    assert.deepEqual(got.fixes, ["console-cleared-at-open"]);
+  });
+
+  test("control: a list that already has the flag (BETA 1034, or a fixed build) is left alone and nothing is fixed", () => {
+    const list = { useCachedItemHeights: true };
+    const got = run(IDE_FIXES, list);
+    assert.equal(list.useCachedItemHeights, true);
+    assert.deepEqual(got.fixes, []);
+  });
+
+  test("control: left unfixed, the list keeps its flag unset", () => {
+    const list = {};
+    const got = run(fixesWithout(["console-cleared-at-open"]), list);
+    assert.equal(got.list, list);
+    assert.equal("useCachedItemHeights" in list, false);
+    assert.deepEqual(got.fixes, []);
+  });
+
+  test("a slug that names no fix is refused, so a caller still naming a removed fix fails", () => {
+    assert.throws(() => fixesWithout(["no-such-defect"]), /names no IDE fix: no-such-defect/);
+    assert.deepEqual(fixesWithout(), IDE_FIXES);
   });
 });
 

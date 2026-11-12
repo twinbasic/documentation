@@ -22,6 +22,13 @@
 // debugging port in TB_DOCS_HELP_WINDOW_PORT, which only the test switch
 // allows, and prints "window page <src>" when the frame in it has loaded.
 //
+// BETA 1042 empties the DEBUG CONSOLE a second time as the first project
+// opens (BUGS-TO-REPORT.md, console-cleared-at-open), which would erase the
+// add-in's loaded line. Every tool's IDE has that defect fixed in its page
+// (IDE_FIXES, scripts/lib/tb-defaults.mjs), so the lanes run on the plain
+// install; a setup that fails with "never printed its loaded line" and an
+// empty console means that fix no longer takes.
+//
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
@@ -350,7 +357,15 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // server, whose port changes with every start, or the site this file serves.
   async function pagesOrigin(mark) {
     const loaded = await waitFor(c, async (c) => (await addinLines(c, mark)).some((l) => l.startsWith("loaded")));
-    assert.ok(loaded, "the add-in never printed its loaded line");
+    if (!loaded) {
+      const tail = (await linesSince(c, mark)).filter((l) => l).slice(-20);
+      assert.fail(
+        `the add-in never printed its loaded line; the DEBUG CONSOLE's last lines: ${JSON.stringify(tail)}` +
+          (tail.length
+            ? ""
+            : ` (an empty console is console-cleared-at-open: the page's fixes were ${JSON.stringify(await c.evaluate("window.__tbDefaults?.fixes ?? null"))})`),
+      );
+    }
     const serving = (await addinLines(c, mark)).filter((l) => l.startsWith("serving") || l.startsWith("not serving"));
     if (!offline) {
       assert.deepEqual(serving, [], "the add-in built without the archive serves it");

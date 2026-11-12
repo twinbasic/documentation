@@ -1270,6 +1270,23 @@ main.htm" rather than reload a page that has not. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
 
+**The same script fixes defects of the IDE that would mislead every tool** (`IDE_FIXES` in
+`tb-defaults.mjs`, each named by its BUGS-TO-REPORT.md entry's slug and applying that entry's
+`bugs/<slug>/fix.js` in the page rather than to the install). The first is
+*console-cleared-at-open*: BETA 1042 empties the DEBUG CONSOLE a second time as the first project
+opens, which erased an add-in's loaded line and failed `help`, `help-offline`, `keys-help` and
+`parent` on the plain install (2026-11-12; before that they were judged on a patched copy, which
+every other tool reading the console at an open had no way to use). The console's list is assigned to
+`debugConsoleContent`, a `var` of `main.js` with no initialiser, so the setter the script puts on
+`window` stays and sees the assignment; it sets the list's `useCachedItemHeights` to `false` when the
+build left it unset, which is the fix's one line. **A fix never hides its defect:** it acts only where
+the build still has the defect (BETA 1034's list, or a fixed build's, has the flag set, and is left
+alone), it is listed in `__tbDefaults.fixes` only when it acted, and the lane that asserts the defect
+leaves it out (`unfixed`, which `launchIde` and `Lane.open`/`openNoProject` take), so `bug_repro.mjs
+verify` still judges the plain build. When the entry is retired, its fix goes from `IDE_FIXES`, and the
+lane's `unfixed` then throws until it goes too. `try-help-addin` (`userSettings`) has no hook, so no
+fixes: it is the user's own IDE. `test/ide-folders.test.mjs` tests the fix and its controls.
+
 ## A private IDE for every lane
 
 **The compiler loads every DLL in `<install>\addins\win32` or `\win64` as it starts.** A
