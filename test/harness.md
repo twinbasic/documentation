@@ -287,6 +287,10 @@ open, as one finding ("was not judged"), against its first sample, and goes on w
 batches; a canary batch that meets it is a finding of its canary.
 `package_tests.mjs` passes its own limit for a test case's run (`--timeout`, 60 s by default),
 because a case's run time is the package's own: tbRegExp's step-limit cases take about 16 s.
+The `help-offline` add-in lane gives its build of the help add-in the file's `compile` plus 20 s
+(`ARCHIVE_COMPILE_MS` in `test/addin/help.test.mjs`), that build alone: the ~60 MB help archive
+it embeds holds the compiler's start, and on BETA 1042 that compile settles 8.0--9.7 s after the
+project opens, against 1--2 s for the add-in without it.
 
 **Overrides**, in seconds: **an option beats a variable, which beats the file**, which beats a
 built-in default (tblaunch only). A tool has the options of the phases it runs.

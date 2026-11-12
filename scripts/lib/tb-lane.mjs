@@ -206,10 +206,13 @@ export class Lane {
    * @param {string} [o.arch]  the build target, "win32" (the default) or "win64"
    * @param {boolean} [o.show]  build on the user's desktop; by default where the
    *   lane opens its IDEs
+   * @param {number} [o.timeout]  milliseconds for the compile phase (default
+   *   waitForCompile's: test/harness.json's compile), for an add-in whose compile
+   *   is known to take longer, with the reason at the call
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   buildAddin's result; it throws, with an exitCode, when the add-in does not build
    */
-  async buildAddin(src, { arch = "win32", show = this.show } = {}) {
+  async buildAddin(src, { arch = "win32", show = this.show, timeout } = {}) {
     if (this.run) throw new Error(`lane ${this.name}: close the open project before building an add-in`);
     return buildAddin({
       ide: this.copy(),
@@ -219,6 +222,7 @@ export class Lane {
       arch,
       show,
       appdata: this.appdataDir(),
+      timeout,
     });
   }
 
@@ -231,11 +235,12 @@ export class Lane {
    * @param {object} [o]
    * @param {string} [o.arch]  as for buildAddin
    * @param {boolean} [o.show]  as for buildAddin
+   * @param {number} [o.timeout]  as for buildAddin
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   as buildAddin
    */
-  async addAddin(src, { arch = "win32", show = this.show } = {}) {
-    const built = await this.buildAddin(src, { arch, show });
+  async addAddin(src, { arch = "win32", show = this.show, timeout } = {}) {
+    const built = await this.buildAddin(src, { arch, show, timeout });
     this.placeAddin(built.dll, { arch });
     return built;
   }

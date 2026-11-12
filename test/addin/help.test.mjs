@@ -34,6 +34,7 @@ import { helpArchiveSkips } from "../../builder/help-archive-step.mjs";
 import { createStaticHandler } from "../../builder/static-files.mjs";
 import { writeHelpArchive } from "../../lib/help-archive.mjs";
 import { attach } from "../../scripts/lib/tb-cdp.mjs";
+import { timeoutMs } from "../../scripts/lib/harness-settings.mjs";
 import { leaseSlot, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
@@ -67,6 +68,16 @@ const FRESH_GATE = path.join(ROOT, "scripts", "check_tree_fresh.mjs");
 // "serving site.zip, <n> files, at <origin>", which the add-in prints when it
 // has the archive.
 const SERVING = /^serving site\.zip, \d+ files, at (http:\/\/localhost:\d+)$/;
+// What the offline lane's build of the add-in adds to the compile limit, in
+// milliseconds. Embedding the archive (about 60 MB) holds the compiler's start
+// for the whole of it: on BETA 1042, from the project reported open to the
+// compile settled took 8.0 to 9.7 s (TB_TIMINGS; the compile itself 6 ms, the
+// rest before compilationStarted), against 1 to 2 s for the add-in without
+// it, so test/harness.json's 10 s compile, which every other compile meets
+// with room, timed this one out now and then. The allowance is about twice the
+// archive's share and goes on top of the file's limit (or TB_COMPILE_TIMEOUT),
+// for this one build only (test/harness.md, Timeouts).
+const ARCHIVE_COMPILE_MS = 20 * 1000;
 const HOST = path.join(HERE, "helphost");
 const FILE = "/HelpHost/Sources/Cases.twin";
 const PANE = "tbDocsHelpPane";
@@ -401,7 +412,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
         assert.fail(`writeHelpArchive failed: ${err.message}${err.problems ? `\n${err.problems.join("\n")}` : ""}`);
       }
     }
-    await lane.addAddin(src);
+    await lane.addAddin(src, offline ? { timeout: timeoutMs("compile") + ARCHIVE_COMPILE_MS } : {});
     // A port the add-in is told before it binds it, so one the broker hands out
     // (WIP.Broker.md); held, with its slot, until this process ends.
     ({ port: windowPort } = await leaseSlot({ tag: "help.test detached window", port: true }));

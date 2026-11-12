@@ -924,6 +924,12 @@ phase keep their numbers in the code: the licence and overlay before a press (`p
 a crash's file name (`awaitCrashName`, 5 s), `waitForCompile`'s 5 s stand-still and 300 ms
 early quiet, the two seconds a failure line is given before a build is taken as failed, and the
 operation waits of the lanes and `shoot_docs`.
+One compile has more than the file's limit: the `help-offline` lane's build of the help add-in,
+which embeds the ~60 MB help archive, gets the file's `compile` plus 20 s (`ARCHIVE_COMPILE_MS`
+in `test/addin/help.test.mjs`, through `Lane.addAddin`'s `timeout`). The archive holds the
+compiler's start: on BETA 1042 that compile settled 8.0 to 9.7 s after the project opened (the
+compile itself 6 ms), the add-in without it 1 to 2 s, so the 10 s limit failed the lane now and
+then ("did not settle within 10 s").
 
 ### Timing each phase: `TB_TIMINGS`
 
