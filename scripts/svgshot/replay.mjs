@@ -34,6 +34,7 @@ import { SVG_FAITHFUL } from "../lib/shot-policy.mjs";
 import { reviewSvg } from "../lib/shot-queue.mjs";
 import { stageFolders, stageRefusal, stageSvg, svgVerdict, writeVerdict } from "../lib/shot-stage.mjs";
 import { onStop, writeRecord } from "../lib/record-lines.mjs";
+import { sessionRun } from "../lib/shot-front.mjs";
 import { judgeSvg, sameSvgAs, sameWhy } from "./keep.mjs";
 import { privateWords } from "./private-list.mjs";
 import {
@@ -94,6 +95,13 @@ command that takes them again.
   --jobs N         processes drawing at once, each with a browser of its own
                    (default: half the logical processors, at most 8)
   -h, --help       print this text and exit
+
+A run that would write under docs (no --stage, no --out elsewhere) is a run of the
+screenshot review session (scripts/lib/shot-front.mjs): handed to the review tool
+when it is open for this checkout and followed here, else run here in the session
+as the tool runs it, staged, its verdicts applied under docs as they arrive and
+recorded for a review. It is compared with the session's baseline, and takes no
+--diffs or --bundles. Ctrl+C stops it as the tool's Stop does.
 
 Exit codes:
   0  every picture was drawn again: written, unchanged, or left as a PNG; a run
@@ -187,6 +195,10 @@ if (!existsSync(bundlesRoot)) {
   console.error(`replay: no bundle cache at ${bundlesRoot}; shoot_docs.mjs --svg writes it`);
   process.exit(2);
 }
+// A run that writes under docs is a run of the screenshot review session (lib/shot-front.mjs):
+// handed to the review tool when it is open, else run here in the session, as the tool runs it,
+// once the command line has passed every check.
+await sessionRun({ tool: "replay", writes: !stageRoot && !SHARD && outRoot === path.join(REPO_ROOT, "docs") });
 const WORDS = privateWords();
 // The fonts' cuts are kept beside the bundles: a picture drawn again mostly cuts what it did.
 useSubsetCache(path.join(bundlesRoot, "subsets"));

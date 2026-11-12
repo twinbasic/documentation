@@ -15,6 +15,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -76,7 +77,8 @@ import {
 } from "../scripts/lib/shot-pages.mjs";
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
-import { browserTable, kindOf, onlyOf, runArgs, runOf } from "../scripts/lib/shot-runs.mjs";
+import { browserTable, kindOf, onlyOf, runArgs, runOf, terminalRunOf } from "../scripts/lib/shot-runs.mjs";
+import { announceServer, handToTool, openTool } from "../scripts/lib/shot-front.mjs";
 import { createReviewServer, kept } from "../scripts/lib/shot-server.mjs";
 import { startGitReader } from "../scripts/lib/shot-git-worker.mjs";
 import { openRevision } from "../scripts/lib/shot-revision.mjs";
@@ -1967,6 +1969,101 @@ onStop(process.stdin, () => {
       await app.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  test("takes a run typed in a terminal and streams it there (shot-front.mjs's handToTool)", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs);
+    const script = path.join(root, "fake-run.mjs");
+    fs.writeFileSync(script, FAKE);
+    const revision = stubRevision("a", { [A]: flat(false) });
+    const session = openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 }));
+    const app = createReviewServer({
+      session,
+      revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      command: { script },
+    });
+    let forget = () => {};
+    try {
+      // where the tool listens, for a terminal to find; a tool whose process has ended is none
+      assert.equal(openTool(root), null);
+      forget = announceServer(await app.listen(0), root);
+      const open = openTool(root);
+      assert.equal(open.pid, process.pid);
+      assert.equal(
+        openTool(root, () => false),
+        null,
+      );
+      const lines = [];
+      const said = [];
+      const hand = (args) =>
+        handToTool({
+          name: "shoot_docs",
+          open,
+          tool: "shoot_docs",
+          args,
+          interrupt: false,
+          out: (l) => lines.push(l),
+          err: (l) => said.push(l),
+        });
+      // an option the session gives is refused, and no run is made
+      assert.equal(await hand(["--only", "A|B", "--diffs", "d"]), 2);
+      assert.match(said.pop(), /refused the run: --diffs is not for a run of the session/);
+      assert.equal(session.data.runs.length, 0);
+      // a run: started with the session's baseline, its lines streamed, stopped as Ctrl+C stops it
+      const code = hand(["--only", "A|B"]);
+      await until("the run's SVG verdict", () => app.model().pictures.find((p) => p.out === A)?.svg);
+      assert.deepEqual(session.data.runs[0].args, ["--only", "A|B", "--against", revision.hash]);
+      for (const h of app.live()) h.stop();
+      assert.equal(await code, 0);
+      assert.ok(lines.includes(`taking ${A}`), lines.join("\n"));
+      assert.match(lines[0], /^shoot_docs: run 1 of the session, handed to the review tool/);
+      assert.ok(fs.existsSync(path.join(docs, A)), "its verdict applied under docs before the terminal returns");
+      // following a run that has ended sends its log and its exit at once
+      const after = [];
+      const ended = await new Promise((resolve) => {
+        http.get(`http://127.0.0.1:${open.port}/api/run/1/follow`, (res) => {
+          let text = "";
+          res.on("data", (d) => {
+            text += d;
+          });
+          res.on("end", () => resolve(text));
+        });
+      });
+      after.push(...ended.trim().split("\n"));
+      assert.equal(after.at(-1), '@@shot-exit {"exit":0}');
+    } finally {
+      forget();
+      for (const h of app.live()) h.kill();
+      await app.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+    assert.ok(!fs.existsSync(path.join(root, "server.json")));
+  });
+
+  test("a terminal's run keeps its command line, its --against the session's baseline (terminalRunOf)", () => {
+    const baseline = { hash: "c".repeat(40), short: "cccccccc" };
+    assert.deepEqual(terminalRunOf("replay", ["--only", "x"], baseline), {
+      tool: "replay",
+      args: ["--only", "x", "--against", baseline.hash],
+    });
+    assert.deepEqual(terminalRunOf("cleanup", ["--cleanup", "--against=cccccccc"], baseline).args, [
+      "--cleanup",
+      "--against=cccccccc",
+    ]);
+    assert.throws(
+      () => terminalRunOf("replay", ["--against", "HEAD~1"], baseline),
+      /compared with the session's baseline, cccccccc/,
+    );
+    for (const option of ["--stage", "--events", "--diffs", "--bundles", "--out", "--against-disk"])
+      assert.throws(
+        () => terminalRunOf("shoot_docs", [`${option}=x`], baseline),
+        new RegExp(`^Error: ${option} is not for`),
+      );
+    assert.throws(() => terminalRunOf("nope", [], baseline), /no such tool/);
   });
 
   test("follows a run as it reports, serves its pages and files to the loopback host only, and reads the run back", async () => {

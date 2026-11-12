@@ -29,6 +29,7 @@ import { openManifest } from "./lib/shot-manifest.mjs";
 import { changedBetween, openRevision, revisionOf } from "./lib/shot-revision.mjs";
 import { baselineAt as baselineInRepo, startGitReader } from "./lib/shot-git-worker.mjs";
 import { defaultBundleCache } from "./svgshot/bundle.mjs";
+import { announceServer } from "./lib/shot-front.mjs";
 import { browserTable, listShots, runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
 import { acquireLock, archiveRoot, listArchived, openSession, REVIEW_ROOT, sessionPaths } from "./lib/shot-session.mjs";
@@ -83,6 +84,10 @@ for it: the tool brings the extension up to date, opens the picture's page in th
 default browser, says on its runs page what to set up, and takes in the capture
 when the browser saves it. A capture it refuses is said why, and waited for again.
 
+A run of one of those tools typed in a terminal that would write under docs is
+handed to this tool while it is open (scripts/lib/shot-front.mjs), shows on its
+runs page as any other, and is followed in that terminal, whose Ctrl+C stops it.
+
 A retake is scripts/shoot_docs.mjs, a replay scripts/svgshot/replay.mjs and a
 browser retake scripts/svgshot/chromeshot.mjs --take,
 each run with --stage, a folder of the session, and --events; a retake and a
@@ -136,7 +141,12 @@ if (values.jobs !== undefined && values.retake === undefined && values.replay ==
 if (values.ide !== undefined && values.retake === undefined) die(2, "shot_review: --ide is for --retake");
 
 let release = () => {};
-exitOnCrash(() => release());
+// What forgets that this tool is open for the session (announceServer), once it listens.
+let forget = () => {};
+exitOnCrash(() => {
+  forget();
+  release();
+});
 
 const paths = sessionPaths(REVIEW_ROOT);
 // The bundle cache, a worktree's filled from the main checkout's the first time.
@@ -226,6 +236,8 @@ try {
 console.log(
   `screenshot review: http://127.0.0.1:${listening}/ (${values.archived === undefined ? "the session" : `the archived session ${values.archived}, read-only,`} of ${session.data.baseline.short}, ${session.data.runs.length} runs)`,
 );
+// A screenshot run typed in a terminal is handed to this tool while it is open (lib/shot-front.mjs).
+if (values.archived === undefined) forget = announceServer(listening);
 
 for (const kind of ["retake", "replay", "browser"]) {
   if (values[kind] === undefined) continue;
@@ -243,9 +255,12 @@ process.on("SIGINT", async () => {
   const live = app.live();
   if (closing) {
     for (const h of live) h.kill();
+    forget();
     release();
     process.exit(0);
   }
+  // no terminal's run is handed to a tool that is closing
+  forget();
   closing = true;
   if (live.length) {
     console.log("stopping the runs: Ctrl+C again ends their processes at once, which skips putting the registry back");

@@ -729,7 +729,8 @@ commit left them behind. Four rules, so that nobody has to remember how the tool
    `chromeshot.mjs --take` and `--cleanup`, typed in a terminal or started from the tool. A
    terminal run hands itself to the tool when the tool is open for the checkout, and otherwise
    opens the session itself (owner: open it itself, not refuse), runs the code the tool runs and
-   records the run. There is no mode that writes under `docs/` outside a session.
+   records the run. There is no mode that writes under `docs/` outside a session. Done
+   (2026-11-12), below.
 2. **The tool shows every picture file that differs from the baseline**, PNG and SVG, light
    pictures included: each is explained by what a layer of the session wrote, or shown as changed
    outside the runs with Keep and Put back. Done (2026-11-09).
@@ -751,6 +752,19 @@ emptied has been used), never links (writeBundle rewrites a file in place), and 
 folder beside it renamed into place, so a copy cut short leaves nothing that looks used.
 
 Order: 2 and 3, then 4, then (c), then 1.
+
+**Rule 1, every run a session run** (2026-11-12):
+
+| Part | Where it is |
+|---|---|
+| The run handling | `scripts/lib/shot-host.mjs`, `createRunHost`: the runs of a session, a run started (`startRun`), its events kept, its verdicts applied through the applier in the order they arrive, one per turn of the event loop, and its end once they are. The server took it out of its own body; it adds its pages' updates as callbacks |
+| A tool's entry | `sessionRun` in `scripts/lib/shot-front.mjs`, called by `shoot_docs.mjs` (twice: before the clean-up block for `--cleanup`, after the IDE is found for a retake), `replay.mjs` (after the cache check) and `chromeshot.mjs` (after the revision is read): after every check that needs no IDE, so that a mistake in the command line is said as before and no run is recorded for it (`check_cli`'s 1,459 cases reach none). It returns at once when the run writes nothing under `docs/` (`--stage`, `--out` elsewhere, `--list`, `--cleanup --dry-run`, a replay's shard) or is a session's run already (`SHOT_SESSION_RUN`, which `startRun` sets in its child) |
+| The tool open | `shot_review.mjs` writes `.shot-review/server.json`, `{pid, port}`, once it listens (not for `--archived`), and removes it as it closes; `openTool` takes it while its process lives. `handToTool` POSTs `{tool, args}` to `/api/terminal-run` with the tool's own Origin, then follows `/api/run/<n>/follow`: the run's log, its lines as they come, and `@@shot-exit {exit}` once its verdicts are applied. Ctrl+C posts the run's stop, a second its kill |
+| The tool closed | `runHere`: the session's lock taken (a refusal names the holder), the session opened as the tool opens it, verdicts left unapplied applied, the run started through the host, its lines printed on the stream they came on, the lock given back at its end |
+| The command line | `terminalRunOf` (shot-runs.mjs) keeps it as typed and adds `--against <baseline>`; it refuses `--stage`, `--events`, `--diffs`, `--bundles`, `--out`, `--against-disk`, and an `--against` that is not the baseline |
+| Named captures | `chromeshot.mjs <capture>...` takes `--stage`, `--events` and `--against` too, each capture a job (named as in `chrome/shots.mjs`), so a session can run it; its file paths, `--words`, `--captures` and `--extension` are passed as full paths, since a run starts in the repository's root |
+
+Checked on the `tooling-1042` worktree: a replay of one picture and a `--cleanup` from a terminal each made a run of the worktree's session and applied it, `--cleanup --dry-run` made none, and `test/shot-review.test.mjs` hands a run to a server with a stand-in tool and follows it.
 
 **An SVG that draws the same pixels is the same picture** (owner, 2026-11-09): keep.mjs's
 `sameSvgAs`, which `shoot_docs.mjs --svg`, `replay.mjs` and `chromeshot.mjs` ask before an SVG is written, draws

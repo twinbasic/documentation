@@ -189,6 +189,7 @@ import { syncSizes } from "./lib/shot-sizes.mjs";
 import { applyPicture, applySvg, dropPicture, restorePictures, restoreSvg, svgOf } from "./lib/shot-apply.mjs";
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
 import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
+import { sessionRun } from "./lib/shot-front.mjs";
 import {
   holdsRoot,
   rootBoxesBackJs,
@@ -452,6 +453,14 @@ which takes the rule's place for those bytes only (--cleanup too).
                    Takes --only, and none of the other options
   -h, --help       print this text and exit
 
+A run that would write under docs (no --stage, no --out elsewhere; --cleanup
+without --dry-run among them) is a run of the screenshot review session
+(scripts/lib/shot-front.mjs): handed to the review tool when it is open for this
+checkout and followed here, else run here in the session as the tool runs it,
+staged, its verdicts applied under docs as they arrive and recorded for a review.
+It is compared with the session's baseline, and takes no --diffs, --bundles or
+--against-disk. Ctrl+C stops it as the tool's Stop does; a second ends it at once.
+
 Exit codes:
   0  every picture was written or was unchanged (with --cleanup: every modified
      picture was compared); a run stopped (--events) exits as for the pictures
@@ -568,6 +577,20 @@ if (outRoot === path.resolve(DEFAULT_OUT)) {
 }
 const entryOf = (out) => manifest?.entry(out) ?? null;
 
+// A run that writes under docs is a run of the screenshot review session (lib/shot-front.mjs):
+// handed to the review tool when it is open, else run here in the session, as the tool runs it.
+// It is made once the command line has passed every check that needs no IDE started, so that a
+// mistake in it is said as before and no run is recorded for it.
+const writesDocs = !stageRoot && !values.list && !values.dryRun && outRoot === path.resolve(DEFAULT_OUT);
+if (values.cleanup && writesDocs) {
+  try {
+    openRevision(outRoot, AGAINST);
+  } catch (e) {
+    die(2, e.message);
+  }
+  await sessionRun({ tool: "cleanup", name: "shoot_docs", writes: true });
+}
+
 // --cleanup: no IDE. Every PNG git reports modified against the revision that is within a
 // capture's noise of the revision's goes back to the revision's bytes, with its SVG.
 if (values.cleanup) {
@@ -652,6 +675,7 @@ if (!values.list && (!ide || !existsSync(ide))) {
       "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
   );
 }
+await sessionRun({ tool: "shoot_docs", writes: writesDocs });
 
 const USER = userInfo().username;
 const USER_PATTERN = USER.replace(/[.*+?^$|()[\]{}\\]/g, "\\$&");
