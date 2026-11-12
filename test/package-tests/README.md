@@ -149,6 +149,10 @@ until it ends, so `tbrun` reports the cases after it `not run` and the run sends
 new IDE. A slow case that is meant to return is kept well under the limit. The run writes `RunAll.twin` again
 whenever the cases or `expect.json` change.
 
+A fault of the harness can end a whole run: the IDE's page shows `chrome-error://` in place of the
+IDE, and every case after it fails or is not run. Run it again before believing such a run, and
+before `--update` writes anything from it.
+
 `expect.json`:
 
 ```json
