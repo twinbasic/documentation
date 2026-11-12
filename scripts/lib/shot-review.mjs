@@ -117,10 +117,30 @@ function owes(run, v) {
 }
 
 /**
- * The SVG states that change the file: written or removed. "unchanged" and "not written"
- * leave it as it is.
+ * The SVG states that change the file: written, removed, or put back as the baseline has it
+ * ("restored": an SVG that draws the same pixels as the baseline's, keep.mjs's sameSvgAs).
+ * "unchanged" and "not written" leave it as it is.
  */
-export const SVG_CHANGES = new Set(["new", "updated", "removed"]);
+export const SVG_CHANGES = new Set(["new", "updated", "removed", "restored"]);
+
+/** A picture's two files, as a part of a verdict names them. */
+export const PARTS = ["png", "svg"];
+
+// The PNG states after which the session has decided what the file holds: written, put back as
+// the baseline has it (with its SVG), or removed (with its SVG).
+const PNG_DECIDED = new Set(["new", "updated", "restored", "dark", "once"]);
+
+/**
+ * Which files of its picture a layer's verdict `v` ({png, svg} as applied) decided, {png, svg}:
+ * the PNG when it was written, put back or removed; the SVG when it was written or removed, or
+ * its PNG was any of those (an SVG goes with its PNG: one the layer left as it was, beside a PNG
+ * it wrote, is the SVG it judged). An SVG that stayed beside a PNG that stayed was not decided:
+ * whatever it holds is what the layer found, a change from outside the session's runs included.
+ */
+export function wroteOf(v) {
+  const png = PNG_DECIDED.has(v?.png?.state);
+  return { png, svg: png || SVG_CHANGES.has(v?.svg?.state) };
+}
 
 /**
  * Whether `p` is a picture of program windows, of which no SVG is drawn (svgVerdict's
@@ -159,6 +179,8 @@ export function groupOf(p, exists) {
     case "once":
       return exists(p.out) ? "deleted" : "unchanged";
   }
+  // an SVG put back as the baseline has it, the same picture to the pixel: no change to look at
+  if (p.svg?.state === "restored") return "noise";
   return SVG_CHANGES.has(p.svg?.state) ? "changed" : "unchanged";
 }
 
@@ -169,16 +191,23 @@ export function groupOf(p, exists) {
  * verdict from the newest run that gave it one, and its SVG verdict from the newest run since
  * then: an SVG changes with its PNG, so a retake's PNG verdict drops an older SVG's.
  *
- * `outside` lists the pictures under docs/ that differ from the baseline ([{out, status}], as
- * changedPictures gives them): those no run reported are in a group of their own, with
- * `outside` their status. A PNG verdict judged against the revision (`against`) of another
+ * `outside` lists the pictures under docs/ whose PNG or SVG differs from the baseline ([{out,
+ * status, parts}], as changedPictures gives them with `svgs`; an entry with no `parts` is its
+ * PNG's). A file that differs and that no layer of the session decided (wroteOf) was changed
+ * outside the session's runs, whether a run reported the picture or not: its picture is in a
+ * group of its own, `outside` saying what changed (the status for a picture no run reported, else
+ * "SVG modified" and the like), `outsideParts` which files, and `outsideKept` whether
+ * `outsideKept(out, parts)` says a review kept them as they are (the session's record, against
+ * the files' bytes). Nothing changed outside is committed until a review keeps it or puts it
+ * back. A PNG verdict judged against the revision (`against`) of another
  * baseline than `baseline` (its `baseline`, which the review tool records as it applies it)
  * needs a look, `why` "baseline", when `stale(out, hash)` says the picture differs between that
  * commit and the baseline: the picture it was judged against has changed. A move to a commit
  * that changed no picture leaves every verdict as it was.
  *
  * Returns {pictures, groups}: each picture {out, png, svg, failed, retake, skipped, progress,
- * outside, group, measure}, `png` and `svg` with the run that gave them as `run`, `failed` and
+ * outside, outsideParts, outsideKept, group, measure}, `png` and `svg` with the run that gave
+ * them as `run`, `failed` and
  * `retake` {run, error | why} or null, `skipped` the run that did not take it, or null;
  * `progress` whether a run that is running still owes it a verdict; `measure` how much it
  * changed, from `measure(p)`, which orders the Changed group, most first. `groups` is GROUPS
@@ -186,7 +215,14 @@ export function groupOf(p, exists) {
  */
 export function reviewPictures(
   runs,
-  { exists = () => false, measure = () => 0, outside = [], baseline = null, stale = () => true } = {},
+  {
+    exists = () => false,
+    measure = () => 0,
+    outside = [],
+    baseline = null,
+    stale = () => true,
+    outsideKept = () => false,
+  } = {},
 ) {
   const byOut = new Map();
   const at = (out) => {
@@ -200,9 +236,13 @@ export function reviewPictures(
         skipped: null,
         progress: false,
         outside: null,
+        outsideParts: [],
+        outsideKept: false,
       });
     return byOut.get(out);
   };
+  // which of a picture's files a layer of the session wrote (wroteOf), over every layer
+  const mine = new Map();
   for (const run of [...runs].sort((a, b) => a.n - b.n)) {
     const { facts, n } = run;
     for (const [out, v] of run.verdicts) {
@@ -212,6 +252,9 @@ export function reviewPictures(
         p.svg = v.svg ? { run: n, ...v.svg } : null;
       } else if (v.svg) p.svg = { run: n, ...v.svg };
       if (v.png || v.svg) Object.assign(p, { failed: null, retake: null, skipped: null });
+      const wrote = wroteOf(v);
+      const had = mine.get(out) ?? { png: false, svg: false };
+      mine.set(out, { png: had.png || wrote.png, svg: had.svg || wrote.svg });
     }
     for (const [out, error] of facts.failed) at(out).failed = { run: n, error };
     for (const [out, why] of facts.retakes) at(out).retake = { run: n, why };
@@ -230,7 +273,18 @@ export function reviewPictures(
         p.failed = { run: n, error: `its job, ${facts.jobOf.get(out)}, failed: ${job.error}` };
     }
   }
-  for (const { out, status } of outside) if (!byOut.has(out)) at(out).outside = status;
+  for (const change of outside) {
+    const { out, status } = change;
+    const parts = change.parts ?? { png: status, svg: null };
+    const reported = byOut.has(out);
+    const wrote = mine.get(out) ?? { png: false, svg: false };
+    const unexplained = PARTS.filter((part) => parts[part] && !wrote[part]);
+    if (!unexplained.length) continue;
+    const p = at(out);
+    p.outside = reported ? unexplained.map((part) => `${part.toUpperCase()} ${parts[part]}`).join(", ") : status;
+    p.outsideParts = unexplained;
+    p.outsideKept = !!outsideKept(out, unexplained);
+  }
   const pictures = [...byOut.values()].sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
   for (const p of pictures) {
     if (
@@ -435,8 +489,9 @@ export function allPictures({ shots, exists, entry = () => null, verdicts = () =
 // run of it reported, and the manifest; of those, a commit takes the ones git reports changed.
 // A clean-up's pictures are not among them: it puts a picture back as the baseline has it, and
 // the session is committed only while its baseline is HEAD, so what a clean-up put back has
-// nothing to commit. A picture changed outside the session's runs is left out, with every other
-// change of the working tree.
+// nothing to commit. A file changed outside the session's runs is taken once a review has kept
+// it, and holds the commit back until a review keeps it or puts it back; every other change of
+// the working tree is left out.
 
 const writes = (state) => state === "new" || state === "updated";
 
@@ -447,17 +502,24 @@ const svgAllowance = (entry) => !!(entry?.svg?.bar || entry?.svg?.ignore);
  * What a commit of the session takes: `pictures` reviewPictures', `changes` what the working
  * tree changed ([{path, status}], paths from the repository's root: shot-revision.mjs's
  * workingChanges), `docsPrefix` the pictures' folder from the repository's root with a closing
- * slash ("docs/"), `manifestPath` the manifest's ("test/shots/manifest.json"), and `entry(out)`
- * a picture's entry in the manifest, or null.
+ * slash ("docs/"), `manifestPath` the manifest's ("test/shots/manifest.json"), `entry(out)`
+ * a picture's entry in the manifest, or null, and `pages(outs)` the pages whose declared sizes of
+ * the dark pictures `outs` (paths under docs/) the commit sets: [{path, outs, partial}], `path`
+ * from the repository's root, `partial` when the page has other changes, which stay in the
+ * working tree (the server's sizedPages, shot-sizes.mjs).
  *
- * Returns {files, leftOut, counts, build}: `files` the files to commit, [{path, status, out,
- * part, why}], `part` "png", "svg" or "manifest" and `why` what the session did to it; `leftOut`
- * the working tree's other changes ([{path, status}]); `counts` {changed, created, taken, kept,
- * dropped, svgWritten, svgByAllowance, svgByReview, svgRemoved, manifest}; and `build` the newest
- * build a PNG committed was taken on, or null. A PNG kept at the baseline by a review is counted
- * (`kept`) though it has nothing to commit, as its decision is in the manifest.
+ * Returns {files, leftOut, counts, build, undecided}: `files` the files to commit, [{path,
+ * status, out, part, why}], `part` "png", "svg", "page" or "manifest" and `why` what the session
+ * did to it; `leftOut` the working tree's other changes ([{path, status}]), a page whose sizes
+ * alone are committed among them; `counts` {changed, created, taken, kept, dropped, svgWritten,
+ * svgByAllowance, svgByReview, svgRemoved, outsideKept, pages, manifest}; `build` the newest build
+ * a PNG committed was taken on, or null; and `undecided` the
+ * pictures changed outside the session's runs that no review has kept or put back, none of whose
+ * files is taken (undecidedRefusal). A file changed outside the runs that a review kept is
+ * taken, and its picture counted in `outsideKept`. A PNG kept at the baseline by a review is
+ * counted (`kept`) though it has nothing to commit, as its decision is in the manifest.
  */
-export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry = () => null }) {
+export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry = () => null, pages = () => [] }) {
   const status = new Map(changes.map((c) => [c.path, c.status]));
   const files = [];
   const counts = {
@@ -470,16 +532,27 @@ export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry 
     svgByAllowance: 0,
     svgByReview: 0,
     svgRemoved: 0,
+    outsideKept: 0,
+    pages: 0,
     manifest: false,
   };
   let build = null;
+  const undecided = [];
   const take = (file, part, why, out = null) => files.push({ path: file, status: status.get(file), out, part, why });
   for (const p of pictures) {
-    if (p.outside || (!p.png && !p.svg)) continue;
+    if (!p.outside && !p.png && !p.svg) continue;
+    // a file changed outside the runs: nothing of its picture goes until a review keeps it or puts it back
+    const outsideParts = new Set(p.outside ? (p.outsideParts?.length ? p.outsideParts : ["png"]) : []);
+    if (outsideParts.size && !p.outsideKept) {
+      undecided.push(p.out);
+      continue;
+    }
+    if (outsideParts.size) counts.outsideKept++;
     const pngPath = docsPrefix + p.out;
     const svgPath = docsPrefix + svgOf(p.out);
     const png = p.png;
-    if (status.has(pngPath)) {
+    if (outsideParts.has("png") && status.has(pngPath)) take(pngPath, "png", KEPT_OUTSIDE, p.out);
+    else if (status.has(pngPath)) {
       let why;
       if (status.get(pngPath) === "deleted") {
         counts.dropped++;
@@ -503,7 +576,8 @@ export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry 
     )
       // (a "new" decision about a capture that is the file's own bytes kept nothing against the tool)
       counts.kept++;
-    if (status.has(svgPath)) {
+    if (outsideParts.has("svg") && status.has(svgPath)) take(svgPath, "svg", KEPT_OUTSIDE, p.out);
+    else if (status.has(svgPath)) {
       let why;
       if (status.get(svgPath) === "deleted") {
         counts.svgRemoved++;
@@ -526,9 +600,36 @@ export function commitPlan({ pictures, changes, docsPrefix, manifestPath, entry 
     counts.manifest = true;
     take(manifestPath, "manifest", "the review's decisions and allowances, and the builds");
   }
+  // the pages that show a dark picture committed declare its new size (WIP.ShotReview.md, rule 4)
+  const shown = files
+    .filter((f) => f.part === "png" && f.status !== "deleted" && !/\.light\.png$/i.test(f.out))
+    .map((f) => f.out);
+  const partial = new Set();
+  for (const page of shown.length ? pages(shown) : []) {
+    if (!status.has(page.path)) continue;
+    counts.pages++;
+    if (page.partial) partial.add(page.path);
+    const named = page.outs.map((o) => o.split("/").pop()).join(", ");
+    take(page.path, "page", `the size of ${named}${page.partial ? ", without the page's other changes" : ""}`);
+  }
   files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const committed = new Set(files.map((f) => f.path));
-  return { files, leftOut: changes.filter((c) => !committed.has(c.path)), counts, build };
+  const leftOut = changes.filter((c) => !committed.has(c.path) || partial.has(c.path));
+  return { files, leftOut, counts, build, undecided };
+}
+
+// Why a file changed outside the runs is committed.
+const KEPT_OUTSIDE = "changed outside the runs, kept by review";
+
+/**
+ * Why a commit of the session `plan` (commitPlan's) is refused for what it leaves undecided, or
+ * null: a picture changed outside the session's runs that no review has kept or put back. A
+ * commit leaves nothing of the pictures behind (WIP.ShotReview.md, Commit).
+ */
+export function undecidedRefusal(plan) {
+  const n = plan?.undecided?.length ?? 0;
+  if (!n) return null;
+  return `${many(n, "picture")} changed outside the session's runs ${n === 1 ? "needs" : "need"} Keep or Put back first: ${plan.undecided.slice(0, 3).join(", ")}${n > 3 ? ", ..." : ""}`;
 }
 
 const many = (n, one, more = `${one}s`) => `${n} ${n === 1 ? one : more}`;
@@ -544,6 +645,7 @@ export function commitMessage({ counts: c, build }) {
   if (c.taken) pictures.push(`${c.taken} taken by review`);
   if (c.kept) pictures.push(`${c.kept} kept at HEAD by review`);
   if (c.dropped) pictures.push(`${many(c.dropped, "light picture")} removed`);
+  if (c.outsideKept) pictures.push(`${c.outsideKept} kept from outside the runs`);
   const svgs = [];
   if (c.svgWritten) {
     const by = [
@@ -553,7 +655,8 @@ export function commitMessage({ counts: c, build }) {
     svgs.push(`${many(c.svgWritten, "SVG")} written${by.length ? ` (${by.join(", ")})` : ""}`);
   }
   if (c.svgRemoved) svgs.push(c.svgWritten ? `${c.svgRemoved} removed` : `${many(c.svgRemoved, "SVG")} removed`);
-  const parts = [pictures.join(", "), svgs.join(", ")].filter(Boolean).join("; ");
+  const sizes = c.pages ? `their sizes set on ${many(c.pages, "page")}` : "";
+  const parts = [pictures.join(", "), svgs.join(", "), sizes].filter(Boolean).join("; ");
   if (!parts) return c.manifest ? "Screenshot review: the manifest's decisions and allowances" : null;
   const changes = c.changed || c.taken || c.dropped;
   const what =

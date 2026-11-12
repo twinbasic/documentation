@@ -89,7 +89,7 @@ A member of a package, such as VBA's **Left**, opens the package's source in a r
 In a list, <kbd>Up</kbd>, <kbd>Down</kbd>, <kbd>Home</kbd> and <kbd>End</kbd> move the selection, and typing the first letters of a name selects the next item that starts with them. Letters typed within a second of each other make one name; after a pause, a letter starts again. <kbd>Enter</kbd> goes to the definition. <kbd>Esc</kbd> closes the Object Browser from anywhere in it, as **Close** and the title bar's **X** do, and the focus goes back to where it was.
 
 <!-- test: bug object-browser-tab-stops -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > <kbd>Tab</kbd> moves the focus from the search box to **Aa** and no further. <kbd>Shift</kbd>+<kbd>Tab</kbd> moves it from the search box to **Project / Library**, then to the copy button of the description, and no further. To use a list from the keyboard, click it first: its keys then work.
 
 ## What it remembers

@@ -1,0 +1,8 @@
+Module Sums
+    ' A second file, for the Replace All in Current Project of test/ide/code-find.test.mjs.
+    Public Function Grand() As Long
+        Dim total As Long
+        total = 40
+        Return total
+    End Function
+End Module

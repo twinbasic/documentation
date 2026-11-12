@@ -35,7 +35,7 @@ The *life* and *period* arguments must be expressed in the same units. For examp
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *life* is 0 or less, *period* is 0 or less or greater than *life*, or *salvage* is less than 0 |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *cost*, *salvage*, *life* or *period* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *life* is 0 or less, *period* is 0 or less or greater than *life*, or *salvage* is less than 0, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
 <!-- /errors -->

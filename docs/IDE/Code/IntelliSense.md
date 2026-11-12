@@ -40,7 +40,7 @@ The list holds the names that **start with** the word you have typed. The match 
 A row can show `...` for a moment in place of a type. The compiler sends the types a little after the names.
 
 <!-- test: bug completion-row-zero-no-type -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > One row of a list never gets its type: a variable shows `variable` with nothing after it, and a function shows no text. Which row depends on the compile, and opening the list again does not change it. The row can be out of sight, or a kind of name that has no type, so a list often looks complete.
 
 ### Choose an entry
@@ -63,7 +63,7 @@ What an accepted entry adds:
 <kbd>Esc</kbd>, <kbd>Left</kbd>, <kbd>Right</kbd> and <kbd>Backspace</kbd> close the list. <kbd>Left</kbd> also moves the caret, and <kbd>Backspace</kbd> also deletes. Scrolling the editor with the mouse wheel closes the list too.
 
 <!-- test: lane ide:code-editor -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Typing `(` to accept a function from the list doubles the bracket: `Area` becomes `Area(()`. Accept the function with <kbd>Tab</kbd> or <kbd>Enter</kbd> instead. It gives `Area()` with the caret between the brackets, so type the arguments without the opening bracket.
 
 The Debug Console has the same list in its entry box. See [Debug Console](../Debugging/Debug-Console).

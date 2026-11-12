@@ -55,4 +55,5 @@ export default [
   { file: "samples.test.mjs" },
   { file: "completion-row-zero.test.mjs" },
   { file: "hover-description.test.mjs" },
+  { file: "console-cleared.test.mjs" },
 ];

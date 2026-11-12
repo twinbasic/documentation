@@ -20,7 +20,7 @@ A class can have a `Sub New` constructor, and the constructor can take arguments
 - A class whose only `Sub New` has required arguments, with no `Class_Initialize`, cannot be declared [`As New`](../../tB/Core/New), which creates the object without arguments. The declaration fails with TB5121. If every argument of the `Sub New` is `Optional`, the class can be declared `As New`: the object is created by calling `Sub New` with the default values.
 
 <!-- test: bug private-constructor-callable -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A `Sub New` declared `Private` is meant to make construction private, so that only code inside the class creates objects with it. This is not enforced: `New MyClass` in another module of the project, or in a project that references a package with the class, compiles and runs the private constructor.
 
 ### Example
@@ -117,10 +117,6 @@ A private module or class won't have its members entered into the type library i
 ## ReadOnly Variables
 
 In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private ReadOnly mStartDate As Date`. This allows more complex constant assignments: a built-in function's result can set it inline, `Private ReadOnly mStartDate As Date = Now()` --- a procedure of the project cannot, see [What an Initializer Can Use](../Language/Inline-Initialization#what-an-initializer-can-use) --- or `ReadOnly` constants can be set in `Class_Initialize` or `Sub New(...)` (see parameterized class constructors above), but everywhere else, they can only be read, not changed. `ReadOnly` is valid only in a class: in a `Module` it is refused with TB5182, *Syntax error. No handler for this symbol*.
-
-<!-- test: bug delegate-next-keyword -->
-> [!NOTE] BETA 1034
-> The first `ReadOnly` variable after a [`Delegate`](../../tB/Core/Delegate) statement is refused with TB5182, *Syntax error. No handler for this symbol*, on the variable's name. Declare it before the `Delegate`.
 
 ## Get/Let/Set Notification for Class Public Variables
 

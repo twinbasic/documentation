@@ -13,7 +13,7 @@ Syntax: **RuntimeCreateGetMessageHook()** **As IGetMessageHook**
 The returned hook starts dormant. Subscribe a callback for one or more message types with [**RegisterMessage**](RegisterMessage), then call [**Start**](Start) to activate the subscriptions and [**Stop**](Stop) to remove them.
 
 <!-- test: bug nothing-argument-crashes -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Assigning the result to a **Variant** without **Set**, as in `V = RuntimeCreateGetMessageHook()`, ends the program with an access violation, in a 32-bit and a 64-bit build alike. Assign it with **Set**, or to a variable declared **As IGetMessageHook**.
 
 ### Example

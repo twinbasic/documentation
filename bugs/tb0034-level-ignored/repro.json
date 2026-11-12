@@ -1,8 +1,0 @@
-{
-  "mode": "compile",
-  "expect": {
-    "exit": 0,
-    "output": ["\\{WARNING\\} [^\"]*\\[4,\\d+\\]: TB0034 ", "\\{WARNING\\} [^\"]*\\[13,\\d+\\]: TB0034 "],
-    "absent": ["TB0015"]
-  }
-}

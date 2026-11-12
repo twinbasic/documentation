@@ -44,6 +44,7 @@ import {
 } from "./shot-pages.mjs";
 import { pngRule, svgRule } from "./shot-policy.mjs";
 import { commitPaths, workingChanges } from "./shot-revision.mjs";
+import { referenceIndex, shownSizeOfFile, withShownSizes } from "./shot-sizes.mjs";
 import { createApplier } from "./shot-verdicts.mjs";
 import {
   allPictures,
@@ -55,12 +56,13 @@ import {
   isOverridden,
   neighbours,
   reviewPictures,
-  runFacts,
-  verdictOfEvent,
+  undecidedRefusal,
 } from "./shot-review.mjs";
-import { kindOf, runOf, startRun } from "./shot-runs.mjs";
-import { commandOf, optionOf, parseSession, readEvents, runPaths, sessionPaths } from "./shot-session.mjs";
-import { readReviewed, readStrength, readVerdicts } from "./shot-stage.mjs";
+import { recordLine } from "./record-lines.mjs";
+import { createRunHost, readRun } from "./shot-host.mjs";
+import { EXIT_KIND, followPath, kindOf, runOf, TERMINAL_RUN_PATH, terminalRunOf } from "./shot-runs.mjs";
+import { commandOf, optionOf, parseSession, runPaths, sessionPaths } from "./shot-session.mjs";
+import { readReviewed, readStrength } from "./shot-stage.mjs";
 
 const TYPES = {
   ".png": "image/png",
@@ -77,15 +79,6 @@ const isImage = (name) => Object.hasOwn(TYPES, path.extname(name).toLowerCase())
 // How long the table of shots (shoot_docs.mjs --list) is used before it is read again: it changes
 // only with the tool's code.
 const SHOTS_FRESH = 30000;
-
-// What a run of the session under `root` left, `record` its record in the session: its events,
-// what they say (runFacts) and its verdicts, {out => {png, svg}}, as its stage holds them.
-function readRun(root, record) {
-  const files = runPaths(root, record.n);
-  const events = readEvents(files.events);
-  const verdicts = new Map(readVerdicts(files.stage).map((v) => [v.out, { png: v.png, svg: v.svg }]));
-  return { events, facts: runFacts(record.tool, events), verdicts };
-}
 
 // The pictures of a closed session under `root`, as its overview showed them: each run's
 // verdicts as the review applied them (appliedVerdict, readReviewed).
@@ -134,6 +127,53 @@ const MOST_BODY = 256 * 1024;
 const TAIL_LINES = 8;
 
 /**
+ * A value `read()` gives, kept for a second: the function returned gives the value kept, and
+ * reads it again first once it is older than that. `read` answers at once, or with a promise
+ * (shot-git-worker.mjs's reads, which git answers in a worker thread, so that no page waits on
+ * git): then the value kept is given meanwhile, and `onChange()` is called once the promise gives
+ * another. A read that throws or rejects gives `fallback`. Its `again()` has the next call read
+ * again; a promise under way then is not kept, and is read again once it settles.
+ */
+export function kept(read, fallback, onChange) {
+  let at = 0;
+  let value = fallback;
+  let pending = false;
+  let generation = 0;
+  const get = () => {
+    if (pending || Date.now() - at <= 1000) return value;
+    let r;
+    try {
+      r = read();
+    } catch {
+      r = fallback;
+    }
+    if (typeof r?.then !== "function") {
+      at = Date.now();
+      value = r;
+      return value;
+    }
+    pending = true;
+    const asked = generation;
+    Promise.resolve(r)
+      .catch(() => fallback)
+      .then((v) => {
+        pending = false;
+        if (asked !== generation) return get();
+        at = Date.now();
+        const differs = JSON.stringify(v) !== JSON.stringify(value);
+        value = v;
+        if (differs) onChange();
+      });
+    return value;
+  };
+  get.again = () => {
+    at = 0;
+    generation++;
+  };
+  return get;
+}
+
+/**
  * The server of the session `session` (openSession): `revision` the baseline as openRevision
  * gives it, `manifest()` the manifest as it is now (openManifest), `docsRoot` the pictures'
  * folder, `bundlesRoot` the bundle cache (or null), `head()` the baseline HEAD would make
@@ -141,8 +181,10 @@ const TAIL_LINES = 8;
  * `baselineOf(rev)` the baseline the commit `rev` would make, as `head()` does for HEAD, which
  * the move back to the earlier baseline takes, `revisionAt(hash)` a revision as openRevision
  * gives it, `changedBetween(a, b)` the pictures that differ between two commits (a Set of paths
- * under docs/; null: every picture is taken to differ), `changed()` the pictures that differ
- * from the baseline ([{out, status}], changedPictures'), `ides` the installs a retake can be run
+ * under docs/; null: every picture is taken to differ), `changed()` the pictures whose PNG or
+ * SVG differs from the baseline ([{out, status, parts}], changedPictures' with `svgs`; one with
+ * no `parts` is its PNG's); `head()` and `changed()` may answer with a promise instead, read in
+ * another thread (kept), `ides` the installs a retake can be run
  * on, newest first ([{build, exe}], listIdes'), `onLine(run, line)` called for each line of a run
  * meant for a person, `browser` where a browser retake works ({captures, extension, noOpen},
  * runOf's), and `command` the probes' stand-in for the tools a run starts (startRun).
@@ -184,7 +226,8 @@ export function createReviewServer({
   readOnly = false,
 }) {
   const newestIde = ides[0]?.build ?? null;
-  const sse = createSseChannel();
+  // a ping every 5 s, by which a page tells a stream that runs from one that has stopped (shot-pages.mjs)
+  const sse = createSseChannel({ ping: 5000 });
   let revision = initialRevision;
   let applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
   // The commit that closed the session before this one, as the pages say so: {hash, short,
@@ -194,41 +237,57 @@ export function createReviewServer({
   // commits and `done` its promise; null when none is. git runs as a child process, so the
   // server goes on answering while it and the repository's hooks run.
   let committing = null;
-  // HEAD as it is now, when it is not the baseline: read again at most once a second. While a
-  // commit is under way HEAD moves to it before the session is closed, which is no news.
-  let headSeen = { at: 0, value: null };
+  // A value read from git that changed, every page fetched again: the runs' and the pictures'.
+  const gitChanged = () => sse.send("update", { outs: [], runs: true });
+  // The baseline HEAD would make, read again at most once a second (kept).
+  const headSeen = kept(head, null, gitChanged);
+  // HEAD as it is now, when it is not the baseline. While a commit is under way HEAD moves to it
+  // before the session is closed, which is no news.
   const headNow = () => {
     if (committing) return null;
-    if (Date.now() - headSeen.at > 1000) {
-      let value = null;
-      try {
-        const h = head();
-        value = h && h.hash !== session.data.baseline.hash ? h : null;
-      } catch {}
-      headSeen = { at: Date.now(), value };
-    }
-    return headSeen.value;
+    const h = headSeen();
+    return h && h.hash !== session.data.baseline.hash ? h : null;
   };
-  // The pictures changed outside the session's runs: read again at most once a second.
-  let changedSeen = { at: 0, value: [] };
-  const outside = () => {
-    if (Date.now() - changedSeen.at > 1000) {
-      let value = [];
-      try {
-        value = changed();
-      } catch {}
-      changedSeen = { at: Date.now(), value };
-    }
-    return changedSeen.value;
+  // The pictures changed outside the session's runs: read again at most once a second (kept).
+  const changedSeen = kept(changed, [], gitChanged);
+  const outside = () => changedSeen();
+  // The session's runs, started, recorded and applied as a terminal's run is (shot-host.mjs): run
+  // n -> {record, live, handle, stopAsked, events, facts, verdicts}. What the host reports reaches
+  // the pages, and a terminal that follows a run (followRun).
+  const host = createRunHost({
+    session: () => session,
+    applier: () => applier,
+    command,
+    onApplied: (out) => sse.send("update", { outs: [out] }),
+    onEvent: (record, e) => {
+      const r = runs.get(record.n);
+      if (e.type === "await" || e.type === "refused") sse.send("update", { outs: [e.out], runs: true });
+      else if (e.out) sse.send("update", { outs: [e.out] });
+      else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
+    },
+    onLine: (record, text, stream) => {
+      onLine?.(record, text, stream);
+      for (const res of followers.get(record.n) ?? []) res.write(`${text}\n`);
+    },
+    onExit: (record) => {
+      const r = runs.get(record.n);
+      if (record.tool === "cleanup") {
+        // what it put back is no longer changed: every page that shows a picture may differ
+        changedSeen.again();
+        sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
+      } else sse.send("update", { outs: listedOf(r), runs: true });
+      endFollowers(record.n);
+    },
+  });
+  const runs = host.runs;
+  // The terminals that follow a run they handed to the tool (shot-front.mjs): n -> Set of responses,
+  // each sent the run's lines as they come and, once its verdicts are applied, its exit.
+  const followers = new Map();
+  const endFollowers = (n) => {
+    const exit = session.run(n)?.exit ?? null;
+    for (const res of followers.get(n) ?? []) res.end(`${recordLine(EXIT_KIND, { exit })}\n`);
+    followers.delete(n);
   };
-  // run n -> {record, live, handle, events, facts, verdicts}
-  const runs = new Map();
-  const loadRuns = () => {
-    runs.clear();
-    for (const record of session.data.runs)
-      runs.set(record.n, { record, live: false, handle: null, ...readRun(session.root, record) });
-  };
-  loadRuns();
   const stageFile = (n, rel) => path.join(runPaths(session.root, n).stage, rel);
   const exists = (rel) => existsSync(path.join(docsRoot, rel));
   const entry = (out) => manifest().entry(out);
@@ -253,6 +312,29 @@ export function createReviewServer({
     }
     return measures.get(key);
   };
+  // ---- files changed outside the session's runs ----
+  // A file's hash as a review keeps it (shot-session.mjs's keepOutside): a PNG's bytes, an SVG's
+  // text with its line endings as LF, "absent" for a file that is not there. Kept by the file's
+  // time and size, since the model asks on every page.
+  const hashes = new Map();
+  const partFile = (out, part) => path.join(docsRoot, part === "png" ? out : svgOf(out));
+  function fileHash(out, part) {
+    const file = partFile(out, part);
+    let stat = null;
+    try {
+      stat = statSync(file);
+    } catch {}
+    if (!stat?.isFile()) return "absent";
+    const key = `${file}\u0000${stat.mtimeMs}\u0000${stat.size}`;
+    if (!hashes.has(key)) hashes.set(key, hashOf(part === "png" ? readFileSync(file) : readFileSync(file, "utf8")));
+    return hashes.get(key);
+  }
+  // Whether a review kept the files `parts` of `out` as they are now.
+  const outsideKept = (out, parts) => {
+    const kept = session.data.outside?.[out];
+    return !!kept && parts.every((part) => kept[part] === fileHash(out, part));
+  };
+
   // A run's verdicts as the pages show them: each part as it was applied (shot-verdicts.mjs),
   // judged again after a review, else as the run reported it.
   const shownVerdict = (n, out, v) => appliedVerdict(v, applier.reviewed(n, out));
@@ -266,7 +348,7 @@ export function createReviewServer({
         facts: r.facts,
         verdicts: shownVerdicts(r),
       })),
-      { exists, measure, outside: outside(), baseline: session.data.baseline.hash, stale },
+      { exists, measure, outside: outside(), baseline: session.data.baseline.hash, stale, outsideKept },
     );
   // Whether the picture `out` differs between the commit `hash` and the baseline: a verdict
   // judged against that commit's picture then needs a look. One git diff per pair of commits,
@@ -392,90 +474,31 @@ export function createReviewServer({
 
   // ---- runs ----
   const listedOf = (r) => r.facts.listed;
-  // A run's verdicts are applied in order, one in each turn of the event loop, so that the
-  // server answers between them: a replay reports several pictures a second, each taking 0.1 s
-  // or more to apply (its bundle copied into the cache), and applied as their events were read
-  // they held every request up for as long as the replay ran. A run that has exited stays live
-  // until its verdicts are applied, so that nothing that waits for a run's end (a new run, a
-  // commit, Remove) meets one half applied. close() applies what is left at once, then `shut`
-  // stops the queue.
-  const queue = [];
-  let draining = false;
-  let shut = false;
-  const enqueue = (job) => {
-    queue.push(job);
-    if (draining) return;
-    draining = true;
-    setImmediate(drain);
-  };
-  function drain() {
-    const job = shut ? null : queue.shift();
-    if (!job) {
-      draining = false;
-      return;
-    }
-    try {
-      job();
-    } finally {
-      setImmediate(drain);
-    }
-  }
-  // applied as it arrives: the stage holds the verdict by the time its event is written; one
-  // that could not be read is tried again a moment later. A run removed meanwhile is not.
-  const applyArrival = (n, out, part) => {
-    if (!runs.has(n)) return;
-    if (applier.arrive(n, out, part)) sse.send("update", { outs: [out] });
-    else if (applier.errors.has(out))
-      setTimeout(() => {
-        if (!shut && runs.has(n) && applier.arrive(n, out, part)) sse.send("update", { outs: [out] });
-      }, 500);
-  };
-  const onEvent = (record, e) => {
-    const r = runs.get(record.n);
-    r.events.push(e);
-    r.facts = runFacts(record.tool, r.events);
-    if (e.type === "picture" || e.type === "svg") {
-      const [part, value] = verdictOfEvent(e);
-      const v = r.verdicts.get(e.out) ?? { png: null, svg: null };
-      v[part] = value;
-      r.verdicts.set(e.out, v);
-      enqueue(() => applyArrival(record.n, e.out, part));
-    }
-    if (e.type === "await" || e.type === "refused") sse.send("update", { outs: [e.out], runs: true });
-    else if (e.out) sse.send("update", { outs: [e.out] });
-    else sse.send("update", { outs: e.type === "run" || e.type === "summary" ? listedOf(r) : [], runs: true });
-  };
-  const onExit = (record) =>
-    enqueue(() => {
-      const r = runs.get(record.n);
-      if (!r) return;
-      r.live = false;
-      r.handle = null;
-      if (record.tool === "cleanup") {
-        // what it put back is no longer changed: every page that shows a picture may differ
-        changedSeen = { at: 0, value: [] };
-        sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
-      } else sse.send("update", { outs: listedOf(r), runs: true });
-    });
-  const liveRuns = () => [...runs.values()].filter((r) => r.live);
+  const liveRuns = host.liveRuns;
   function start({ tool, args }) {
     refuseWhileCommitting();
-    const busy = liveRuns()[0];
-    if (busy) throw new Error(`run ${busy.record.n} is running: a new run starts once it has ended`);
-    const handle = startRun(session, { tool, args }, { onEvent, onExit, onLine, command });
-    runs.set(handle.run.n, {
-      record: handle.run,
-      live: true,
-      handle,
-      stopAsked: false,
-      events: [],
-      facts: runFacts(tool, []),
-      verdicts: new Map(),
-    });
+    const handle = host.start({ tool, args });
     sse.send("update", { outs: [], runs: true });
     return handle;
   }
-  const live = () => liveRuns().map((r) => r.handle);
+  const live = host.live;
+  // A run a terminal hands to the tool (shot-front.mjs): its command line as typed, the session's
+  // baseline added as its --against.
+  const startTerminal = ({ tool, args }) => start(terminalRunOf(tool, args, session.data.baseline));
+  // A terminal that follows run n: sent the run's log so far, then its lines as they come, and its
+  // exit once its verdicts are applied; at once for a run that has ended.
+  function followRun(n, res) {
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    const log = readIf(runPaths(session.root, n).log);
+    if (log) res.write(log);
+    if (!runs.get(n)?.live) {
+      res.end(`${recordLine(EXIT_KIND, { exit: session.run(n)?.exit ?? null })}\n`);
+      return;
+    }
+    if (!followers.has(n)) followers.set(n, new Set());
+    followers.get(n).add(res);
+    res.on("close", () => followers.get(n)?.delete(res));
+  }
   // A run the runs page asks for: its IDE named by its build, which is looked up among the installs.
   function startRequest(body) {
     let ide;
@@ -513,7 +536,7 @@ export function createReviewServer({
     if (r.live) throw new Error(`run ${n} is running: stop it first, then remove it`);
     const { outs, later, failed } = applier.undo(n);
     // the pictures it put back may no longer differ from the baseline, or may now
-    changedSeen = { at: 0, value: [] };
+    changedSeen.again();
     if (failed.size) {
       sse.send("update", { outs, runs: true });
       const [out, why] = failed.entries().next().value;
@@ -731,13 +754,24 @@ export function createReviewServer({
     if (filter === "look") session.setPlace(out);
     const file = (src, bytes) => (bytes ? { src, size: pngSize(bytes) } : null);
     const pager = { filter, place: { index: place.index, total: list.length }, prev: place.prev, next: place.next };
-    if (p.outside) {
+    // the SVG as the baseline has it and as the file is, for a review of an SVG changed outside the runs
+    const svgFiles = () => {
+      const s = svgOf(out);
+      const png = readIf(path.join(docsRoot, out)) ?? revision.bytes(out);
+      const size = png ? pngSize(png) : null;
+      return {
+        head: revision.bytes(s) ? { src: hrefs.head(s), size } : null,
+        docs: exists(s) ? { src: hrefs.docs(s), size } : null,
+      };
+    };
+    const outside = p.outside ? { parts: p.outsideParts, kept: p.outsideKept, svg: svgFiles() } : null;
+    if (p.outside && !p.png && !p.svg) {
       const atHead = revision.bytes(out);
       const now = readIf(path.join(docsRoot, out));
       return outsideHtml({
         p,
         ...pager,
-        files: { head: file(hrefs.head(out), atHead), docs: file(hrefs.docs(out), now) },
+        files: { head: file(hrefs.head(out), atHead), docs: file(hrefs.docs(out), now), svg: outside.svg },
         map: atHead && now ? hrefs.outsideMap(out) : null,
         baseline: session.data.baseline,
         busy: busyRun(),
@@ -779,6 +813,7 @@ export function createReviewServer({
       error: applier.errors.get(out) ?? null,
       busy: busyRun(),
       bundled: bundlesRoot ? !!readBundle(bundlesRoot, out) : null,
+      outside,
     });
   }
 
@@ -804,10 +839,31 @@ export function createReviewServer({
     for (let k = 0; k < flat.length; k += 4) rects.push(flat.slice(k, k + 4));
     return rects.length ? rects : undefined;
   };
+  // A review of the files of `out` changed outside the session's runs: kept as they are (the
+  // session records their bytes; a later change sends them back), or put back as the baseline
+  // has them (the applier, which judges the picture's layers again from there).
+  function actOutside(p, action) {
+    if (!p?.outside) throw new Error(`${p?.out ?? "the picture"} has no file changed outside the session's runs`);
+    if (action === "keep") {
+      const kept = Object.fromEntries(p.outsideParts.map((part) => [part, fileHash(p.out, part)]));
+      session.keepOutside(p.out, kept);
+      return;
+    }
+    applier.putBack(p.out, p.outsideParts);
+    session.keepOutside(p.out, null);
+    changedSeen.again();
+    maps.clear();
+    measures.clear();
+    const error = applier.errors.get(p.out);
+    if (error) throw new Error(`not put back: ${error}`);
+  }
+
   function act(out, body) {
     refuseWhileCleaning();
     const p = model().pictures.find((q) => q.out === out);
-    if (!p || p.outside) throw new Error(`${out} has no verdict of this session to act on`);
+    if (body.action === "keep-outside" || body.action === "put-back")
+      return actOutside(p, body.action === "keep-outside" ? "keep" : "put-back");
+    if (!p || (p.outside && !p.png && !p.svg)) throw new Error(`${out} has no verdict of this session to act on`);
     const m = manifest();
     let from;
     switch (body.action) {
@@ -881,15 +937,21 @@ export function createReviewServer({
     if (b.hash === session.data.baseline.hash) return;
     revision = revisionAt(b.hash);
     session.moveBaseline(b);
-    headSeen = { at: 0, value: null };
-    changedSeen = { at: 0, value: [] };
+    headSeen.again();
+    changedSeen.again();
     maps.clear();
     measures.clear();
   }
-  function moveToHead() {
+  // HEAD read now, not as kept (headSeen): `head` may answer with a promise (shot-git-worker.mjs),
+  // which was once taken for the baseline and failed with "Cannot read properties of undefined".
+  async function moveToHead() {
     refuseWhileCleaning();
-    const h = head();
+    let h = null;
+    try {
+      h = await head();
+    } catch {}
     if (!h || !revisionAt) throw new Error("HEAD cannot be read");
+    refuseWhileCleaning();
     moveTo(h);
   }
   // Back to the baseline the last move left: its commit by hash (a session moved before the hash
@@ -915,21 +977,53 @@ export function createReviewServer({
     const up = path.dirname(file);
     return up === file ? file : path.join(real(up), path.basename(file));
   };
+  // `contents` maps a page whose picture sizes the commit sets (its path from the repository's
+  // root) to the text it is committed with: the baseline's, which is HEAD's, with the sizes of the
+  // pictures committed set (shot-sizes.mjs), in the working file's line endings.
   function commitState() {
     try {
       const { top, changes } = workingChanges(repoRoot);
       const rel = (file) => path.relative(real(top), real(file)).replace(/\\/g, "/");
+      const contents = new Map();
       const plan = commitPlan({
         pictures: model().pictures,
         changes,
         docsPrefix: `${rel(docsRoot)}/`,
         manifestPath: rel(manifest().file),
         entry,
+        pages: (outs) => sizedPages(outs, rel, contents),
       });
-      return { plan, message: commitMessage(plan), error: null };
+      return { plan, message: commitMessage(plan), error: null, contents };
     } catch (e) {
-      return { plan: null, message: null, error: e.message };
+      return { plan: null, message: null, error: e.message, contents: new Map() };
     }
+  }
+  // The pages whose declared sizes of the dark pictures `outs` differ at the baseline from their
+  // files' (commitPlan's `pages`), each text to commit put in `contents`.
+  function sizedPages(outs, rel, contents) {
+    const lf = (s) => s.replace(/\r\n/g, "\n");
+    const index = referenceIndex(docsRoot);
+    const sizes = new Map(outs.map((o) => [o, shownSizeOfFile(docsRoot, o, entry(o))]));
+    const byPage = new Map();
+    for (const o of outs)
+      for (const page of index.get(o) ?? []) {
+        if (!byPage.has(page)) byPage.set(page, []);
+        byPage.get(page).push(o);
+      }
+    const found = [];
+    for (const [page, pageOuts] of [...byPage].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      const file = path.join(docsRoot, page);
+      const head = revision.bytes(page);
+      if (!head || !existsSync(file)) continue;
+      const headText = lf(head.toString("utf8"));
+      const sized = withShownSizes(headText, page, (o) => (pageOuts.includes(o) ? sizes.get(o) : null));
+      if (sized === headText) continue;
+      const working = readFileSync(file, "utf8");
+      const p = rel(file);
+      contents.set(p, working.includes("\r\n") ? sized.replace(/\n/g, "\r\n") : sized);
+      found.push({ path: p, outs: pageOuts.sort(), partial: lf(working) !== sized });
+    }
+    return found;
   }
   // Why the session cannot be committed now, or null: a commit under way, a run, or a baseline
   // that is not HEAD.
@@ -950,8 +1044,10 @@ export function createReviewServer({
   function commit(body) {
     const refused = commitRefusal();
     if (refused) throw new Error(refused);
-    const { plan, error } = commitState();
+    const { plan, error, contents: texts } = commitState();
     if (error) throw new Error(`git could not be read: ${error}`);
+    const undecided = undecidedRefusal(plan);
+    if (undecided) throw new Error(undecided);
     const paths = plan.files.map((f) => f.path);
     if (!paths.length) throw new Error("the session has changed nothing to commit");
     const asked = Array.isArray(body.files) ? [...body.files].sort() : null;
@@ -960,8 +1056,12 @@ export function createReviewServer({
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new Error("the message is empty");
     const added = plan.files.filter((f) => f.status === "added").map((f) => f.path);
+    // a page's picture sizes go without its other changes
+    const contents = plan.files
+      .filter((f) => f.part === "page")
+      .map((f) => ({ path: f.path, text: texts.get(f.path) }));
     const done = (async () => {
-      const made = await commitPaths(repoRoot, { paths, added, message });
+      const made = await commitPaths(repoRoot, { paths, added, message, contents });
       let next;
       try {
         next = onCommit({ ...made, message });
@@ -971,9 +1071,9 @@ export function createReviewServer({
       session = next.session;
       revision = next.revision;
       applier = createApplier({ session, docsRoot, bundlesRoot, revision: () => revision, manifest });
-      loadRuns();
-      headSeen = { at: 0, value: null };
-      changedSeen = { at: 0, value: [] };
+      host.load();
+      headSeen.again();
+      changedSeen.again();
       maps.clear();
       measures.clear();
       lastCommit = { ...made, message, archive: next.archive };
@@ -996,7 +1096,7 @@ export function createReviewServer({
       ...state,
       committing: committing ? { message: committing.message, at: committing.at } : null,
       baseline: session.data.baseline,
-      refusal: commitRefusal(),
+      refusal: commitRefusal() ?? undecidedRefusal(state.plan),
       headNow: headNow()?.short ?? null,
       canMove: !!revisionAt,
       lastCommit,
@@ -1070,7 +1170,7 @@ export function createReviewServer({
     try {
       if (url.pathname === hrefs.moveBaseline) {
         if (body.action === "back") moveBack();
-        else moveToHead();
+        else await moveToHead();
         sse.send("update", { outs: model().pictures.map((p) => p.out), runs: true });
         return sendJson(res, 200, { ok: true, baseline: session.data.baseline });
       }
@@ -1081,6 +1181,10 @@ export function createReviewServer({
       if (url.pathname === hrefs.startRun) {
         const { run } = startRequest(body);
         return sendJson(res, 200, { ok: true, run: run.n });
+      }
+      if (url.pathname === TERMINAL_RUN_PATH) {
+        const { run } = startTerminal(body);
+        return sendJson(res, 200, { ok: true, run: run.n, follow: followPath(run.n) });
       }
       if (segs[0] === "api" && segs[1] === "run" && segs.length === 3 && runs.has(Number(segs[2]))) {
         const done = runAction(Number(segs[2]), body.action);
@@ -1126,6 +1230,11 @@ export function createReviewServer({
       return plainPage(out).then((plain) =>
         plain ? page(req, res, plain) : notFound(res, `${out} is not a picture of this session or under docs`),
       );
+    }
+    if (first === "api" && rest[0] === "run" && rest[2] === "follow" && rest.length === 3) {
+      const n = Number(rest[1]);
+      if (!runs.has(n)) return notFound(res);
+      return followRun(n, res);
     }
     if (first === "log") {
       const n = Number(rest[0]);
@@ -1215,8 +1324,8 @@ export function createReviewServer({
     applyPending: () => applier.pending(),
     close() {
       // what the runs reported is applied before the server stops, at once
-      while (queue.length) queue.shift()();
-      shut = true;
+      host.close();
+      for (const n of [...followers.keys()]) endFollowers(n);
       sse.close();
       const closed = new Promise((resolve) => server.close(() => resolve()));
       server.closeAllConnections();

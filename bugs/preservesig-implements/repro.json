@@ -1,6 +1,9 @@
 {
   "mode": "compile",
   "expect": {
-    "diagnostics": ["TB5004", "TB65535"]
+    "diagnostics": [
+      "TB5004",
+      "TB5260"
+    ]
   }
 }

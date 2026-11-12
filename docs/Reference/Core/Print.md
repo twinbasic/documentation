@@ -56,7 +56,7 @@ An expression that reaches the end of its zone pushes the next one into the zone
 : Any valid file number.
 
 <!-- test: bug file-errors-unspecified -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **Print #** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
 
 When *outputlist* is omitted and only a list separator follows *filenumber*, a blank line is written.

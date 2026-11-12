@@ -15,6 +15,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
@@ -60,13 +61,26 @@ import {
   noSvgReason,
   reviewPictures,
   runFacts,
+  undecidedRefusal,
   verdictOfEvent,
+  wroteOf,
 } from "../scripts/lib/shot-review.mjs";
-import { allHtml, chipsOf, detailHtml, encodePath, hrefs, loupesHtml, plainHtml } from "../scripts/lib/shot-pages.mjs";
+import {
+  allHtml,
+  chipsOf,
+  detailHtml,
+  encodePath,
+  hrefs,
+  loupesHtml,
+  outsideHtml,
+  plainHtml,
+} from "../scripts/lib/shot-pages.mjs";
 import { pngRule, svgRule } from "../scripts/lib/shot-policy.mjs";
 import { againstOf, createApplier } from "../scripts/lib/shot-verdicts.mjs";
-import { browserTable, kindOf, onlyOf, runArgs, runOf } from "../scripts/lib/shot-runs.mjs";
-import { createReviewServer } from "../scripts/lib/shot-server.mjs";
+import { browserTable, kindOf, onlyOf, runArgs, runOf, terminalRunOf } from "../scripts/lib/shot-runs.mjs";
+import { announceServer, handToTool, openTool } from "../scripts/lib/shot-front.mjs";
+import { createReviewServer, kept } from "../scripts/lib/shot-server.mjs";
+import { startGitReader } from "../scripts/lib/shot-git-worker.mjs";
 import { openRevision } from "../scripts/lib/shot-revision.mjs";
 
 describe("the screenshot review's session (shot-session.mjs)", () => {
@@ -180,7 +194,7 @@ describe("the screenshot review's session (shot-session.mjs)", () => {
     assert.deepEqual(runOf({ kind: "retake", svg: false }, base), { tool: "shoot_docs", args: ["--against", h] });
     assert.deepEqual(runOf({ kind: "replay", only: " ", recheck: true }, base), {
       tool: "replay",
-      args: ["--recheck"],
+      args: ["--recheck", "--against", h],
     });
     const pictures = ["IDE/Images/A.png", "IDE/Images/A (1).light.png"];
     const cleanup = runOf({ kind: "cleanup", dryRun: true, pictures }, base);
@@ -474,12 +488,16 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       }),
     ];
     const outside = [
-      { out: A, status: "modified" },
+      { out: B, status: "modified" },
       { out: C, status: "added" },
     ];
     const { pictures } = reviewPictures(runs, { outside, baseline: "new" });
     const at = (out) => pictures.find((p) => p.out === out);
-    assert.deepEqual([at(C).group, at(C).outside, at(A).outside], ["outside", "added", null]);
+    // C no run reported; B's PNG a run wrote, so the change is the session's
+    assert.deepEqual(
+      [at(C).group, at(C).outside, at(C).outsideParts, at(B).outside],
+      ["outside", "added", ["png"], null],
+    );
     assert.deepEqual([at(A).group, at(A).png.look.why], ["look", "baseline"]);
     assert.deepEqual([at(B).group, at(B).png.look], ["changed", undefined]);
     assert.equal(reviewPictures(runs, { baseline: "old" }).pictures.find((p) => p.out === A).group, "noise");
@@ -487,6 +505,162 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     const kept = reviewPictures(runs, { baseline: "new", stale: (out, hash) => !(out === A && hash === "old") });
     assert.deepEqual([kept.pictures.find((p) => p.out === A).group], ["noise"]);
     assert.match(chipsOf(at(C)), /changed outside the runs: added/);
+  });
+
+  test("a file no layer of the session wrote is changed outside the runs, whether a run reported its picture or not", () => {
+    const F = "IDE/Images/F.png";
+    // what a layer decides: a PNG written, put back or removed takes its SVG with it
+    assert.deepEqual(
+      ["updated", "new", "restored", "dark", "once", "noise", "unchanged", "failed"].map(
+        (state) => wroteOf({ png: { state } }).png,
+      ),
+      [true, true, true, true, true, false, false, false],
+    );
+    assert.deepEqual(wroteOf({ png: { state: "updated" }, svg: { state: "unchanged" } }), { png: true, svg: true });
+    assert.deepEqual(wroteOf({ png: { state: "noise" }, svg: { state: "unchanged" } }), { png: false, svg: false });
+    assert.deepEqual(wroteOf({ svg: { state: "removed" } }), { png: false, svg: true });
+    const runs = [
+      run(1, "shoot_docs", false, [jobs(A, B, C, D, E)], {
+        // the PNG and its SVG stayed: whatever they hold is what the run found
+        [A]: { png: { state: "noise" }, svg: { state: "unchanged", why: "its PNG is not written" } },
+        // the PNG stayed, and the run wrote the SVG (its bundle could not draw it again)
+        [B]: { png: { state: "unchanged" }, svg: { state: "updated" } },
+        // the PNG written, its SVG the same as the file's: the session judged both
+        [C]: { png: { state: "updated" }, svg: { state: "unchanged" } },
+        // the PNG put back as the baseline has it, with its SVG
+        [D]: { png: { state: "restored" }, svg: { state: "updated" } },
+        [E]: { png: { state: "unchanged" }, svg: { state: "unchanged" } },
+      }),
+      // a later run that leaves A as it is does not make its files the session's
+      run(2, "shoot_docs", false, [jobs(A)], { [A]: { png: { state: "unchanged" }, svg: { state: "unchanged" } } }),
+    ];
+    const outside = [
+      { out: A, status: "SVG modified", parts: { png: null, svg: "modified" } },
+      { out: B, status: "SVG modified", parts: { png: null, svg: "modified" } },
+      { out: C, status: "modified", parts: { png: "modified", svg: "modified" } },
+      { out: D, status: "SVG modified", parts: { png: null, svg: "modified" } },
+      { out: E, status: "modified", parts: { png: "modified", svg: "added" } },
+      { out: F, status: "SVG added", parts: { png: null, svg: "added" } },
+    ];
+    const kept = { [E]: ["png", "svg"] };
+    const { pictures, groups } = reviewPictures(runs, {
+      outside,
+      outsideKept: (out, parts) => JSON.stringify(kept[out]) === JSON.stringify(parts),
+    });
+    const at = (out) => pictures.find((p) => p.out === out);
+    assert.deepEqual(
+      [A, B, C, D, E, F].map((out) => [at(out).outside, at(out).outsideParts, at(out).outsideKept]),
+      [
+        ["SVG modified", ["svg"], false],
+        [null, [], false],
+        [null, [], false],
+        [null, [], false],
+        ["PNG modified, SVG added", ["png", "svg"], true],
+        ["SVG added", ["svg"], false],
+      ],
+    );
+    assert.deepEqual(
+      groups.find((g) => g.key === "outside").pictures.map((p) => p.out),
+      [A, E, F],
+    );
+    assert.match(chipsOf(at(E)), /kept from outside the runs: PNG modified, SVG added/);
+    assert.match(chipsOf(at(A)), /changed outside the runs: SVG modified/);
+  });
+
+  test("a picture changed outside the runs is compared side by side, by a swipe, by blinking and by a map", () => {
+    const baseline = { short: "abcd1234" };
+    const pager = { filter: "all", place: { index: 0, total: 1 }, prev: null, next: null };
+    const svg = {
+      head: { src: "/file/head/x.svg", size: [800, 600] },
+      docs: { src: "/file/docs/x.svg", size: [800, 600] },
+    };
+    const modes = (html) => [...html.matchAll(/data-set="(\w+)"/g)].map((m) => m[1]);
+    // an SVG changed alone: its two versions compared, the map drawn by the page; the PNG shown once
+    const svgOnly = outsideHtml({
+      p: { out: A, outside: "SVG modified", outsideParts: ["svg"], outsideKept: false },
+      ...pager,
+      files: {
+        head: { src: "/file/head/x.png", size: [800, 600] },
+        docs: { src: "/file/docs/x.png", size: [800, 600] },
+        svg,
+      },
+      map: "/map/outside/x.png",
+      baseline,
+    });
+    assert.equal(svgOnly.match(/class="compare"/g).length, 1);
+    assert.deepEqual(modes(svgOnly), ["side", "swipe", "blink", "map"]);
+    assert.match(
+      svgOnly,
+      /<canvas class="diffmap" data-a="\/file\/head\/x.svg" data-b="\/file\/docs\/x.svg" width="800" height="600"/,
+    );
+    assert.match(svgOnly, /The PNG, as HEAD has it/);
+    // a PNG changed: compared with HEAD's, the map the server's
+    const pngToo = outsideHtml({
+      p: { out: A, outside: "modified", outsideParts: ["png", "svg"], outsideKept: false },
+      ...pager,
+      files: {
+        head: { src: "/file/head/x.png", size: [800, 600] },
+        docs: { src: "/file/docs/x.png", size: [800, 600] },
+        svg,
+      },
+      map: "/map/outside/x.png",
+      baseline,
+    });
+    assert.equal(pngToo.match(/class="compare"/g).length, 2);
+    assert.match(pngToo, /<div class="view mapview"><figure><span class="pic"><img src="\/map\/outside\/x.png"/);
+    // an SVG with no version at HEAD: nothing to compare it with
+    const added = outsideHtml({
+      p: { out: A, outside: "SVG added", outsideParts: ["svg"], outsideKept: false },
+      ...pager,
+      files: { head: null, docs: { src: "/file/docs/x.png", size: [800, 600] }, svg: { ...svg, head: null } },
+      map: null,
+      baseline,
+    });
+    assert.doesNotMatch(added, /class="compare"/);
+    assert.match(added, /HEAD has no SVG/);
+  });
+
+  test("a commit waits for every file changed outside the runs to be kept or put back, and takes the kept ones", () => {
+    const pictures = [
+      {
+        out: A,
+        png: { state: "noise" },
+        svg: { state: "unchanged" },
+        outside: "SVG modified",
+        outsideParts: ["svg"],
+        outsideKept: false,
+      },
+      { out: B, png: null, svg: null, outside: "modified", outsideParts: ["png"], outsideKept: true },
+      {
+        out: C,
+        png: { state: "updated", by: "rule", build: 1501 },
+        svg: { state: "updated" },
+        outside: null,
+        outsideParts: [],
+      },
+    ];
+    const changes = [A.replace(/\.png$/, ".svg"), B, C, C.replace(/\.png$/, ".svg")].map((out) => ({
+      path: `docs/${out}`,
+      status: "modified",
+    }));
+    const plan = commitPlan({ pictures, changes, docsPrefix: "docs/", manifestPath: "m.json" });
+    assert.deepEqual(plan.undecided, [A]);
+    assert.deepEqual(
+      plan.files.map((f) => [f.path, f.why]),
+      [
+        [`docs/${B}`, "changed outside the runs, kept by review"],
+        [`docs/${C}`, "changed by the tool's verdict"],
+        [`docs/${C.replace(/\.png$/, ".svg")}`, "written"],
+      ],
+    );
+    assert.deepEqual(
+      plan.leftOut.map((c) => c.path),
+      [`docs/${A.replace(/\.png$/, ".svg")}`],
+    );
+    assert.equal(plan.counts.outsideKept, 1);
+    assert.match(undecidedRefusal(plan), /1 picture changed outside the session's runs needs Keep or Put back first/);
+    assert.equal(undecidedRefusal({ ...plan, undecided: [] }), null);
+    assert.match(commitMessage(plan), /1 kept from outside the runs/);
   });
 
   test("a picture's allowances are chips, with the rule each makes as their tooltip", () => {
@@ -657,8 +831,12 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       svgByAllowance: 1,
       svgByReview: 1,
       svgRemoved: 2,
+      outsideKept: 0,
+      pages: 0,
       manifest: true,
     });
+    // F, changed outside the runs and not decided, holds the commit back
+    assert.deepEqual(plan.undecided, [`${I}F.png`]);
     assert.equal(plan.build, 1502);
     assert.equal(
       commitMessage(plan),
@@ -693,6 +871,57 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     );
     assert.equal(commitMessage({ counts: counts({}), build: null }), null);
     assert.deepEqual(commitPlan({ pictures, changes: [], docsPrefix: "docs/", manifestPath: "m.json" }).files, []);
+  });
+
+  test("a commit takes the size of each dark picture committed on the pages that show it, without their other changes", () => {
+    const I = "IDE/Images/";
+    const pictures = [
+      { out: `${I}A.png`, png: { state: "updated", by: "rule", build: 1501 }, svg: null },
+      { out: `${I}A.light.png`, png: { state: "updated", by: "rule", build: 1501 }, svg: null },
+      { out: `${I}B.light.png`, png: { state: "dark", by: "rule" }, svg: null },
+    ];
+    const changes = [
+      ["docs/IDE/Images/A.png", "modified"],
+      ["docs/IDE/Images/A.light.png", "modified"],
+      ["docs/IDE/Images/B.light.png", "deleted"],
+      ["docs/IDE/One.md", "modified"],
+      ["docs/IDE/Two.md", "modified"],
+    ].map(([p, status]) => ({ path: p, status }));
+    const asked = [];
+    const plan = commitPlan({
+      pictures,
+      changes,
+      docsPrefix: "docs/",
+      manifestPath: "test/shots/manifest.json",
+      pages: (outs) => {
+        asked.push(outs);
+        return [
+          { path: "docs/IDE/One.md", outs: [`${I}A.png`], partial: false },
+          { path: "docs/IDE/Two.md", outs: [`${I}A.png`], partial: true },
+          // HEAD's sizes are wrong, but the working tree has not changed the page: not the session's
+          { path: "docs/IDE/Three.md", outs: [`${I}A.png`], partial: false },
+        ];
+      },
+    });
+    // only the dark picture committed is asked about: a light one is not shown by name, a removed one not at all
+    assert.deepEqual(asked, [[`${I}A.png`]]);
+    assert.deepEqual(
+      plan.files.filter((f) => f.part === "page").map((f) => [f.path, f.why]),
+      [
+        ["docs/IDE/One.md", "the size of A.png"],
+        ["docs/IDE/Two.md", "the size of A.png, without the page's other changes"],
+      ],
+    );
+    // a page whose other changes stay is listed as left out too
+    assert.deepEqual(
+      plan.leftOut.map((c) => c.path),
+      ["docs/IDE/Two.md"],
+    );
+    assert.equal(plan.counts.pages, 2);
+    assert.equal(
+      commitMessage(plan),
+      "Screenshots retaken on BETA 1501: 2 pictures changed, 1 light picture removed; their sizes set on 2 pages",
+    );
   });
 
   test("an address encodes each segment of a path, and a loupe crops and enlarges its region", () => {
@@ -1018,7 +1247,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     assert.deepEqual(JSON.parse(replay[1].replace(/&quot;/g, '"')), { kind: "replay", pictures: [C], recheck: true });
     assert.deepEqual(runOf({ kind: "replay", pictures: [C], recheck: true }, { hash: "a".repeat(40) }), {
       tool: "replay",
-      args: ["--only", onlyOf([C]), "--recheck"],
+      args: ["--only", onlyOf([C]), "--recheck", "--against", "a".repeat(40)],
     });
     // with no bundle, no replay, and the card says so
     const none = allHtml({
@@ -1119,6 +1348,182 @@ describe("the screenshot review's writes under docs (shot-verdicts.mjs)", () => 
       fs.readdirSync(path.dirname(file)).filter((f) => f.endsWith(".tmp")),
       [],
     );
+  });
+
+  test("the pages that show a picture declare the size its file has, at the scale its capture records, as each layer is applied and undone", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-sizes-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(docs, A), OLD);
+    const page = path.join(docs, "IDE", "Page.md");
+    const text = (w, h) => `# Page\r\n\r\n![A](Images/A.png){:width="${w}" height="${h}"}\r\n\r\nOther text.\r\n`;
+    fs.writeFileSync(page, text(20, 15));
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = { hash: base, short: "aaaaaaaa", bytes: () => OLD, read: () => new Map() };
+    const manifestFile = path.join(root, "manifest.json");
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(manifestFile),
+    });
+    // a program's window taken at 150%: 60 x 45 device pixels, shown at 40 x 30
+    const WIDE = Buffer.from(encodePng({ width: 60, height: 45, rgba: new Uint8Array(60 * 45 * 4).fill(90) }));
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    const stage = runPaths(root, 1).stage;
+    const fate = {
+      state: "updated",
+      write: WIDE,
+      against: "revision",
+      size: { w: 60, h: 45 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    };
+    writeVerdict(
+      stage,
+      A,
+      "png",
+      pngVerdict({ decision: fate, review: null, build: 1501, scale: 1.5, staged: stageCapture(stage, A, WIDE, null) }),
+    );
+    assert.equal(applier.arrive(1, A, "png"), true);
+    assert.equal(fs.readFileSync(page, "utf8"), text(40, 30));
+    assert.deepEqual(openManifest(manifestFile).entry(A), { build: 1501, scale: 1.5 });
+    // the run undone: the picture, its scale and the page as they were
+    const { failed } = applier.undo(1);
+    assert.equal(failed.size, 0);
+    assert.deepEqual(fs.readFileSync(path.join(docs, A)), OLD);
+    assert.equal(fs.readFileSync(page, "utf8"), text(20, 15));
+    // (an entry left with nothing in it is not written)
+    assert.equal(openManifest(manifestFile).entry(A), null);
+  });
+
+  test("an SVG a run found the same picture as the baseline's goes back to its bytes, one the same as the file's stays, while that still holds", (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-same-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: ["ignore", "pipe", "ignore"] }).toString();
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    for (const [k, v] of [
+      ["core.autocrlf", "false"],
+      ["user.name", "t"],
+      ["user.email", "t@t"],
+      ["commit.gpgsign", "false"],
+    ])
+      git("config", k, v);
+    const docs = path.join(repo, "docs");
+    const SVG = A.replace(/\.png$/, ".svg");
+    const at = (out) => path.join(docs, out);
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    fs.writeFileSync(at(A), OLD);
+    fs.writeFileSync(at(SVG), "<svg>baseline</svg>");
+    git("add", ".");
+    git("commit", "-q", "-m", "x");
+    // a terminal rewrote the SVG in bytes no one sees
+    fs.writeFileSync(at(SVG), "<svg>same picture, other bytes</svg>");
+    const revision = openRevision(docs, "HEAD");
+    const session = openSession(path.join(repo, ".review"), () => ({
+      hash: revision.hash,
+      short: revision.short,
+      build: 1010,
+    }));
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(repo, "manifest.json")),
+    });
+    const replayOf = (same) => {
+      const n = session.addRun({ tool: "replay", args: [] }).n;
+      writeVerdict(runPaths(session.root, n).stage, A, "svg", svgVerdict({ state: "restored", why: "the same", same }));
+      return n;
+    };
+    // as the file is: it stays
+    const kept = replayOf({ as: "file", file: hashOf("<svg>same picture, other bytes</svg>") });
+    assert.equal(applier.arrive(kept, A, "svg"), true);
+    assert.equal(applier.reviewed(kept, A).svg.state, "unchanged");
+    assert.equal(fs.readFileSync(at(SVG), "utf8"), "<svg>same picture, other bytes</svg>");
+    // the same picture as another baseline's: not applied, and it says why
+    const elsewhere = replayOf({ as: "baseline", baseline: "f".repeat(40) });
+    assert.equal(applier.arrive(elsewhere, A, "svg"), true);
+    assert.deepEqual(
+      [applier.reviewed(elsewhere, A).svg.state, fs.readFileSync(at(SVG), "utf8")],
+      ["unchanged", "<svg>same picture, other bytes</svg>"],
+    );
+    assert.match(applier.reviewed(elsewhere, A).svg.why, /draw it again/);
+    // the same picture as this baseline's: its bytes go back, and the session wrote the file
+    const back = replayOf({ as: "baseline", baseline: revision.hash });
+    assert.equal(applier.arrive(back, A, "svg"), true);
+    assert.equal(applier.reviewed(back, A).svg.state, "restored");
+    assert.equal(fs.readFileSync(at(SVG), "utf8"), "<svg>baseline</svg>");
+    assert.deepEqual(wroteOf(applier.reviewed(back, A)), { png: false, svg: true });
+    assert.equal(git("status", "--porcelain", "--", "docs"), "");
+  });
+
+  test("puts back a picture changed outside the runs, and judges the run that found the change again, against the baseline", (t) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-verdicts-putback-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const docs = path.join(root, "docs");
+    const at = (out) => path.join(docs, out);
+    const SVG = A.replace(/\.png$/, ".svg");
+    fs.mkdirSync(path.dirname(at(A)), { recursive: true });
+    // a run from a terminal left NEW and an SVG; the baseline has OLD and no SVG
+    fs.writeFileSync(at(A), NEW);
+    fs.writeFileSync(at(SVG), "<svg>from a terminal</svg>");
+    const base = "a".repeat(40);
+    const session = openSession(root, () => ({ hash: base, short: "aaaaaaaa", build: 1010 }));
+    const revision = {
+      hash: base,
+      short: "aaaaaaaa",
+      bytes: (out) => (out === A ? OLD : null),
+      read: (outs) => new Map(outs.map((out) => [out, out === A ? OLD : null])),
+    };
+    const applier = createApplier({
+      session,
+      docsRoot: docs,
+      bundlesRoot: null,
+      revision: () => revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+    });
+    session.addRun({ tool: "shoot_docs", args: ["--against", base] });
+    const stage = runPaths(root, 1).stage;
+    // the session's run captures NEW: the file is the capture, so it stays
+    const fate = {
+      state: "unchanged",
+      write: null,
+      against: "disk",
+      size: { w: 40, h: 30 },
+      dark: null,
+      by: "rule",
+      earlier: null,
+    };
+    writeVerdict(
+      stage,
+      A,
+      "png",
+      pngVerdict({ decision: fate, review: null, build: 1501, staged: stageCapture(stage, A, NEW, QUIET) }),
+    );
+    assert.equal(applier.arrive(1, A, "png"), true);
+    assert.equal(applier.reviewed(1, A).png.state, "unchanged");
+    assert.deepEqual(wroteOf(applier.reviewed(1, A)), { png: false, svg: false });
+
+    applier.putBack(A, ["png", "svg"]);
+    assert.equal(applier.errors.has(A), false);
+    // the run found the baseline's picture, and its capture is now a change it wrote
+    assert.deepEqual(applier.heldPng(1, A), OLD);
+    assert.equal(applier.reviewed(1, A).png.state, "updated");
+    assert.deepEqual(wroteOf(applier.reviewed(1, A)), { png: true, svg: true });
+    assert.deepEqual(fs.readFileSync(at(A)), NEW);
+    // the baseline has no SVG: the one from the terminal is gone
+    assert.equal(fs.existsSync(at(SVG)), false);
   });
 
   test("undoes a run: each picture it changed put back, a later run's layer judged again on it, and its number not given again", (t) => {
@@ -1566,6 +1971,101 @@ onStop(process.stdin, () => {
     }
   });
 
+  test("takes a run typed in a terminal and streams it there (shot-front.mjs's handToTool)", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs);
+    const script = path.join(root, "fake-run.mjs");
+    fs.writeFileSync(script, FAKE);
+    const revision = stubRevision("a", { [A]: flat(false) });
+    const session = openSession(root, () => ({ hash: revision.hash, short: revision.short, build: 1500 }));
+    const app = createReviewServer({
+      session,
+      revision,
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      command: { script },
+    });
+    let forget = () => {};
+    try {
+      // where the tool listens, for a terminal to find; a tool whose process has ended is none
+      assert.equal(openTool(root), null);
+      forget = announceServer(await app.listen(0), root);
+      const open = openTool(root);
+      assert.equal(open.pid, process.pid);
+      assert.equal(
+        openTool(root, () => false),
+        null,
+      );
+      const lines = [];
+      const said = [];
+      const hand = (args) =>
+        handToTool({
+          name: "shoot_docs",
+          open,
+          tool: "shoot_docs",
+          args,
+          interrupt: false,
+          out: (l) => lines.push(l),
+          err: (l) => said.push(l),
+        });
+      // an option the session gives is refused, and no run is made
+      assert.equal(await hand(["--only", "A|B", "--diffs", "d"]), 2);
+      assert.match(said.pop(), /refused the run: --diffs is not for a run of the session/);
+      assert.equal(session.data.runs.length, 0);
+      // a run: started with the session's baseline, its lines streamed, stopped as Ctrl+C stops it
+      const code = hand(["--only", "A|B"]);
+      await until("the run's SVG verdict", () => app.model().pictures.find((p) => p.out === A)?.svg);
+      assert.deepEqual(session.data.runs[0].args, ["--only", "A|B", "--against", revision.hash]);
+      for (const h of app.live()) h.stop();
+      assert.equal(await code, 0);
+      assert.ok(lines.includes(`taking ${A}`), lines.join("\n"));
+      assert.match(lines[0], /^shoot_docs: run 1 of the session, handed to the review tool/);
+      assert.ok(fs.existsSync(path.join(docs, A)), "its verdict applied under docs before the terminal returns");
+      // following a run that has ended sends its log and its exit at once
+      const after = [];
+      const ended = await new Promise((resolve) => {
+        http.get(`http://127.0.0.1:${open.port}/api/run/1/follow`, (res) => {
+          let text = "";
+          res.on("data", (d) => {
+            text += d;
+          });
+          res.on("end", () => resolve(text));
+        });
+      });
+      after.push(...ended.trim().split("\n"));
+      assert.equal(after.at(-1), '@@shot-exit {"exit":0}');
+    } finally {
+      forget();
+      for (const h of app.live()) h.kill();
+      await app.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+    assert.ok(!fs.existsSync(path.join(root, "server.json")));
+  });
+
+  test("a terminal's run keeps its command line, its --against the session's baseline (terminalRunOf)", () => {
+    const baseline = { hash: "c".repeat(40), short: "cccccccc" };
+    assert.deepEqual(terminalRunOf("replay", ["--only", "x"], baseline), {
+      tool: "replay",
+      args: ["--only", "x", "--against", baseline.hash],
+    });
+    assert.deepEqual(terminalRunOf("cleanup", ["--cleanup", "--against=cccccccc"], baseline).args, [
+      "--cleanup",
+      "--against=cccccccc",
+    ]);
+    assert.throws(
+      () => terminalRunOf("replay", ["--against", "HEAD~1"], baseline),
+      /compared with the session's baseline, cccccccc/,
+    );
+    for (const option of ["--stage", "--events", "--diffs", "--bundles", "--out", "--against-disk"])
+      assert.throws(
+        () => terminalRunOf("shoot_docs", [`${option}=x`], baseline),
+        new RegExp(`^Error: ${option} is not for`),
+      );
+    assert.throws(() => terminalRunOf("nope", [], baseline), /no such tool/);
+  });
+
   test("follows a run as it reports, serves its pages and files to the loopback host only, and reads the run back", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-"));
     const docs = path.join(root, "docs");
@@ -1660,8 +2160,13 @@ onStop(process.stdin, () => {
       assert.deepEqual([held.status, (await held.arrayBuffer()).byteLength], [304, 0]);
       const other = await fetch(base + hrefs.head(A), { headers: { "if-none-match": '"0"' } });
       assert.deepEqual([other.status, Buffer.from(await other.arrayBuffer())], [200, head]);
-      // the pages' one event stream is held by the page that holds the lock
-      assert.match(html, /navigator\.locks\.request\("shot-review-events"/);
+      // the pages' one event stream is held by the page that holds the lock, only while it is shown,
+      // and taken over by a shown page that has heard nothing, not even the server's ping, for 15 s
+      assert.match(html, /navigator\.locks\s*\.request\("shot-review-events"/);
+      assert.match(html, /if \(held \|\| document\.visibilityState !== "visible"\) return;/);
+      assert.match(html, /es\.addEventListener\("ping"/);
+      assert.match(html, /ask\(\{ steal: true \}\)/);
+      assert.match(html, /another tab of this tool held the connection to the server and passed nothing on/);
       const map = await get(hrefs.map(1, "png", A));
       assert.deepEqual([map.status, decodePng(map.body).height], [200, 30]);
       assert.equal((await get(hrefs.map(1, "svg", A))).status, 200);
@@ -1978,6 +2483,17 @@ onStop(process.stdin, () => {
       assert.match(overview.text, /Move the session to bbbbbbbb/);
       assert.match((await get(`/picture/${Z}`)).text, /No run of this session reported this picture/);
       assert.equal((await get(hrefs.outsideMap(Z))).status, 200);
+      // Z kept as it is: recorded against its bytes, and its page says the commit takes it
+      assert.match((await get(`/picture/${Z}`)).text, /The commit takes nothing of this picture until/);
+      assert.deepEqual(await post(hrefs.act(Z), { action: "keep-outside" }), [200, { ok: true }]);
+      assert.deepEqual([pic(Z).outsideKept, Object.keys(app.session().data.outside)], [true, [Z]]);
+      assert.match((await get(`/picture/${Z}`)).text, /A review kept it as it is, and the commit takes it/);
+      // then put back as the baseline has it: the record goes
+      assert.deepEqual(await post(hrefs.act(Z), { action: "put-back" }), [200, { ok: true }]);
+      assert.ok(fs.readFileSync(path.join(docs, Z)).equals(head));
+      assert.deepEqual(app.session().data.outside, {});
+      // A has no file changed outside the runs to keep
+      assert.equal((await post(hrefs.act(A), { action: "keep-outside" }))[0], 400);
 
       // a POST from another origin, or not of JSON, changes nothing
       assert.equal(
@@ -2065,6 +2581,47 @@ if (cleanupArgs.includes("--cleanup")) {
   process.exit(0);
 }
 `;
+
+  test("moves to HEAD read in another thread, as the tool reads it, and says so when HEAD cannot be read", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-move-"));
+    const docs = path.join(root, "docs");
+    fs.mkdirSync(docs, { recursive: true });
+    let headNow = async () => ({ hash: "b".repeat(40), short: "bbbbbbbb", build: 1501 });
+    const app = createReviewServer({
+      session: openSession(root, () => ({ hash: "a".repeat(40), short: "aaaaaaaa", build: 1500 })),
+      revision: stubRevision("a", {}),
+      manifest: () => openManifest(path.join(root, "manifest.json")),
+      docsRoot: docs,
+      // as shot-git-worker.mjs answers: a promise
+      head: () => headNow(),
+      revisionAt: (hash) => stubRevision(hash[0], {}),
+      changedBetween: () => new Set(),
+      changed: async () => [],
+    });
+    try {
+      const port = await app.listen(0);
+      const base = `http://127.0.0.1:${port}`;
+      const move = async () => {
+        const res = await fetch(base + hrefs.moveBaseline, {
+          method: "POST",
+          headers: { origin: base, "content-type": "application/json" },
+          body: JSON.stringify({ action: "move" }),
+        });
+        return [res.status, await res.json()];
+      };
+      const [status, moved] = await move();
+      assert.equal(status, 200, JSON.stringify(moved));
+      assert.equal(app.session().data.baseline.short, "bbbbbbbb");
+      headNow = async () => {
+        throw new Error("git failed");
+      };
+      assert.deepEqual(await move(), [400, { error: "HEAD cannot be read" }]);
+      assert.equal(app.session().data.baseline.short, "bbbbbbbb");
+    } finally {
+      await app.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 
   test("starts, stops and lists runs from its runs page, one at a time, and holds a review's actions while a clean-up runs", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-runs-"));
@@ -2214,6 +2771,10 @@ if (cleanupArgs.includes("--cleanup")) {
     fs.mkdirSync(path.join(repo, "test", "shots"), { recursive: true });
     fs.writeFileSync(path.join(docs, A), flat(false));
     fs.writeFileSync(path.join(repo, "other.txt"), "o\n");
+    // a page that declares a wrong size for A: the run's verdict on A sets it, and the commit takes that
+    const pageFile = path.join(docs, "IDE", "Page.md");
+    const pageText = (size, line) => `![A](Images/A.png){:width="${size[0]}" height="${size[1]}"}\n\n${line}\n`;
+    fs.writeFileSync(pageFile, pageText([1, 1], "Old line."));
     git("add", ".");
     git("commit", "-q", "-m", "x");
     const script = path.join(reviewRoot, "fake-run.mjs");
@@ -2258,19 +2819,23 @@ if (cleanupArgs.includes("--cleanup")) {
       const handle = app.start({ tool: "shoot_docs", args: ["--only", "A|B"] });
       await until("A's SVG verdict", () => app.model().pictures.find((p) => p.out === A)?.svg);
       fs.writeFileSync(path.join(repo, "other.txt"), "changed\n");
-      const files = ["docs/IDE/Images/A.png", "docs/IDE/Images/A.svg", "test/shots/manifest.json"];
-      const message = "Screenshots retaken on BETA 1501: 1 picture changed; 1 SVG written";
+      // A is 40 x 30 device pixels, shown at 20 x 15
+      assert.equal(fs.readFileSync(pageFile, "utf8"), pageText([20, 15], "Old line."));
+      const files = ["docs/IDE/Images/A.png", "docs/IDE/Images/A.svg", "docs/IDE/Page.md", "test/shots/manifest.json"];
+      const message = "Screenshots retaken on BETA 1501: 1 picture changed; 1 SVG written; their sizes set on 1 page";
 
       // nothing is committed while a run runs
       let page = await get(hrefs.commitPage);
       assert.match(
         page,
-        /<button type="submit" disabled title="run 1 is running: commit once it has ended">Commit 3 files</,
+        /<button type="submit" disabled title="run 1 is running: commit once it has ended">Commit 4 files</,
       );
       assert.match((await post(hrefs.commit, { message, files }))[1].error, /run 1 is running/);
       handle.stop();
       await handle.exited;
       await until("the run's end", () => !app.live().length);
+      // the page edited besides: the commit takes its size alone
+      fs.writeFileSync(pageFile, pageText([20, 15], "Edited line."));
 
       // the files the session changed, its default message, and the other change left out
       page = await get(hrefs.commitPage);
@@ -2279,13 +2844,21 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.match(page, /<form class="commit" id="commit" data-keep data-busy="committing\.\.\."/);
       assert.ok(page.includes('from.closest("[data-busy]")?.dataset.busy || "applying..."'));
       assert.ok(page.includes(`data-default="${message}">${message}</textarea>`));
-      assert.match(page, /<button type="submit">Commit 3 files</);
+      assert.match(page, /<button type="submit">Commit 4 files</);
+      assert.ok(
+        page.includes(
+          "<tr><td><code>docs/IDE/Page.md</code></td><td>modified</td><td>the size of A.png, without the page's other changes</td></tr>",
+        ),
+      );
       assert.ok(
         page.includes(
           `<tr><td><code><a href="/picture/IDE/Images/A.png">docs/IDE/Images/A.png</a></code></td><td>modified</td><td>changed by the tool's verdict</td></tr>`,
         ),
       );
-      assert.match(page, /<h2>Left out \(1\)<\/h2>[\s\S]*<li><code>other\.txt<\/code> modified<\/li>/);
+      assert.match(
+        page,
+        /<h2>Left out \(2\)<\/h2>[\s\S]*<li><code>docs\/IDE\/Page\.md<\/code> modified<\/li><li><code>other\.txt<\/code> modified<\/li>/,
+      );
       assert.match(await get("/"), /<a href="\/commit">Commit<\/a>/);
 
       // refused: another list of files than the session's, and an empty message
@@ -2307,7 +2880,12 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.match(page, /<span class="status" role="status">committing\.\.\.<\/span>/);
       assert.match(page, /Committing the session: <q>Screenshots: A<\/q>/);
       assert.match(page, /data-default="Screenshots: A" readonly>Screenshots: A<\/textarea>/);
-      assert.match(page, /<button type="submit" disabled title="the session is being committed">Commit 3 files</);
+      assert.match(page, /<button type="submit" disabled title="the session is being committed">Commit 4 files</);
+      // the page holds its size-only text while git commits it (the hook holds git)
+      await until(
+        "the page to hold its size-only text",
+        () => fs.readFileSync(pageFile, "utf8") === pageText([20, 15], "Old line."),
+      );
       assert.match(await get("/"), /Committing the session: <q>Screenshots: A<\/q>/);
       assert.match(await get(hrefs.runs), /<p class="notice">Committing the session/);
       assert.match(await get(`/picture/${A}`), /disabled title="the session is being committed: a new run starts/);
@@ -2326,9 +2904,11 @@ if (cleanupArgs.includes("--cleanup")) {
       assert.equal(git("log", "-1", "--format=%B").trim(), "Screenshots: A");
       assert.equal(
         git("show", "--name-status", "--format=", "HEAD"),
-        "M\tdocs/IDE/Images/A.png\nA\tdocs/IDE/Images/A.svg\nA\ttest/shots/manifest.json\n",
+        "M\tdocs/IDE/Images/A.png\nA\tdocs/IDE/Images/A.svg\nM\tdocs/IDE/Page.md\nA\ttest/shots/manifest.json\n",
       );
-      assert.equal(git("status", "--porcelain"), " M other.txt\n");
+      assert.equal(git("show", "HEAD:docs/IDE/Page.md"), pageText([20, 15], "Old line."));
+      assert.equal(fs.readFileSync(pageFile, "utf8"), pageText([20, 15], "Edited line."));
+      assert.equal(git("status", "--porcelain"), " M docs/IDE/Page.md\n M other.txt\n");
       assert.deepEqual([app.session().data.baseline.hash, app.session().data.runs], [done.hash, []]);
       assert.deepEqual(app.model().pictures, []);
       page = await get(hrefs.commitPage);
@@ -2378,5 +2958,124 @@ if (cleanupArgs.includes("--cleanup")) {
       await app.close();
       await archivedApp?.close();
     }
+  });
+});
+
+describe("what the screenshot review reads from git while it serves its pages (kept, shot-git-worker.mjs)", () => {
+  const settle = () => new Promise((r) => setImmediate(r));
+
+  test("a read that answers at once is read again once it is a second old, or at once after again()", () => {
+    let reads = 0;
+    const get = kept(
+      () => ++reads,
+      0,
+      () => assert.fail("no change is told for a read that answers at once"),
+    );
+    assert.equal(get(), 1);
+    assert.equal(get(), 1);
+    get.again();
+    assert.equal(get(), 2);
+    const thrown = kept(
+      () => {
+        throw new Error("no git");
+      },
+      "fallback",
+      () => {},
+    );
+    assert.equal(thrown(), "fallback");
+  });
+
+  test("a read that answers with a promise gives the value kept meanwhile, and tells of another once it settles", async () => {
+    let answer = ["A"];
+    let resolveNext = null;
+    let changes = 0;
+    const get = kept(
+      () => new Promise((r) => (resolveNext = () => r(answer))),
+      [],
+      () => changes++,
+    );
+    // the page is drawn at once with what is kept, while git is read
+    assert.deepEqual(get(), []);
+    assert.deepEqual(get(), [], "one read at a time");
+    resolveNext();
+    await settle();
+    assert.deepEqual(get(), ["A"]);
+    assert.equal(changes, 1);
+    // the same answer again tells of nothing
+    get.again();
+    get();
+    resolveNext();
+    await settle();
+    assert.equal(changes, 1);
+    // again() while a read is under way: that read is not kept, and git is read again
+    get.again();
+    get();
+    const stale = resolveNext;
+    get.again();
+    answer = ["B"];
+    stale();
+    await settle();
+    await settle();
+    assert.deepEqual(get(), ["A"], "the read from before again() is not kept");
+    resolveNext();
+    await settle();
+    assert.deepEqual(get(), ["B"]);
+    assert.equal(changes, 2);
+    // a read that fails gives the fallback
+    const failing = kept(
+      () => Promise.reject(new Error("no git")),
+      "none",
+      () => {},
+    );
+    failing();
+    await settle();
+    assert.equal(failing(), "none");
+  });
+
+  test("the worker reads HEAD's baseline and the pictures changed from it in this working tree", async () => {
+    const git = startGitReader({ docsDir: path.join(REPO_ROOT, "docs"), repoRoot: REPO_ROOT });
+    try {
+      const hash = execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_ROOT, encoding: "utf8" }).trim();
+      const head = await git.head();
+      assert.equal(head.hash, hash);
+      assert.equal(head.short, hash.slice(0, head.short.length));
+      assert.ok(head.build === null || Number.isInteger(head.build), JSON.stringify(head));
+      assert.ok(Array.isArray(await git.changed(hash)));
+      await assert.rejects(git.changed("no-such-revision"), /no revision no-such-revision/);
+    } finally {
+      await git.close();
+    }
+  });
+});
+
+describe("the event channel's ping (lib/sse.mjs)", () => {
+  test("sends a ping event as often as asked, and none when not asked", async () => {
+    const { createServer } = await import("node:http");
+    const { createSseChannel } = await import("../lib/sse.mjs");
+    const read = async (channel, ms) => {
+      const server = createServer((req, res) => channel.handle(req, res));
+      await new Promise((r) => server.listen(0, "127.0.0.1", r));
+      const ac = new AbortController();
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/`, { signal: ac.signal });
+      let text = "";
+      const reader = res.body.getReader();
+      const until = Date.now() + ms;
+      const decoder = new TextDecoder();
+      while (Date.now() < until) {
+        const next = await Promise.race([
+          reader.read(),
+          new Promise((r) => setTimeout(() => r(null), until - Date.now())),
+        ]);
+        if (!next || next.done) break;
+        text += decoder.decode(next.value);
+      }
+      ac.abort();
+      channel.close();
+      await new Promise((r) => server.close(r));
+      return text;
+    };
+    const pinged = await read(createSseChannel({ ping: 40 }), 150);
+    assert.ok((pinged.match(/event: ping\ndata: \{\}\n\n/g) ?? []).length >= 2, JSON.stringify(pinged));
+    assert.doesNotMatch(await read(createSseChannel(), 150), /event: ping/);
   });
 });

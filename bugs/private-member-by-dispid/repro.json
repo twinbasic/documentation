@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL ByDispIdTests\\.PrivateMethod_ByItsDispId_Raises438: ",
+      "^FAIL ByDispIdTests\\.PrivateMethodWithDispIdAttribute_ByThatDispId_Raises438: ",
+      "^PASS ByDispIdTests\\.Control_PrivateMethod_ByName_Raises438$",
+      "^PASS ByDispIdTests\\.Control_PublicMethod_ByItsDispId_Works$",
+      "^PASS ByDispIdTests\\.Control_PrivateVariable_ByItsDispId_Raises438$"
+    ]
+  }
+}

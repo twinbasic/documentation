@@ -8,6 +8,10 @@
 // theme is a picture of its own), holds only what differs from the defaults:
 //
 //   build            the twinBASIC build the file was taken on
+//   scale            the picture's device pixels to a CSS pixel, when not SHOT_SCALE (2): a
+//                    program's window is taken at the display's DPI (1.5 at 150%), a box unaware
+//                    of the display's scaling at 96 DPI (1). A page declares the picture's
+//                    pixels divided by it as its size (shot-sizes.mjs)
 //   png.noise        {levels, share}: the noise rule's limits for this picture (withinNoise;
 //                    NOISE_LEVELS, and NOISE_SHARE as a percentage)
 //   png.ignore       [[x0, y0, x1, y1], ...]: rectangles left out of the comparison, in the
@@ -35,6 +39,9 @@ export const MANIFEST = path.join(REPO_ROOT, "test", "shots", "manifest.json");
 
 export const MANIFEST_FORMAT = 1;
 
+/** The scale a page picture is taken at, a device pixel ratio of 2 (shoot_docs.mjs's SCALE). */
+export const SHOT_SCALE = 2;
+
 /** The SHA-1 of a file's bytes, or of a text as UTF-8 with its line endings LF, as hex. */
 export const hashOf = (data) =>
   createHash("sha1")
@@ -42,6 +49,9 @@ export const hashOf = (data) =>
     .digest("hex");
 
 const HASH = /^[0-9a-f]{40}$/;
+
+// An entry's keys, in the order the file holds them.
+const ENTRY_KEYS = ["build", "scale", "png", "svg"];
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -64,9 +74,11 @@ function checkRects(where, rects) {
 }
 
 function checkEntry(where, e) {
-  checkKeys(where, e, ["build", "png", "svg"]);
+  checkKeys(where, e, ENTRY_KEYS);
   if (e.build !== undefined && !(Number.isInteger(e.build) && e.build > 0))
     throw new Error(`${where}.build is not a build number`);
+  if (e.scale !== undefined && !(typeof e.scale === "number" && e.scale > 0 && e.scale <= 8 && e.scale !== SHOT_SCALE))
+    throw new Error(`${where}.scale is not a scale above 0 and at most 8 other than ${SHOT_SCALE}`);
   if (e.png !== undefined) {
     const w = `${where}.png`;
     checkKeys(w, e.png, ["noise", "ignore", "decision"]);
@@ -157,7 +169,7 @@ const ENTRY_ORDER = {
 export function manifestText(m) {
   const pictures = {};
   for (const out of Object.keys(m.pictures).sort()) {
-    const e = pruned(m.pictures[out], ["build", "png", "svg"]);
+    const e = pruned(m.pictures[out], ENTRY_KEYS);
     if (e) pictures[out] = e;
   }
   const text = JSON.stringify({ format: m.format, pictures }, null, 2);
@@ -199,7 +211,7 @@ export function earlierSvgDecision(entry, svg, png) {
 
 /**
  * The manifest in `file`, or an empty one when there is none: `entry(out)` a picture's entry
- * or null; `setBuild(out, build)` and `clearBuild(out)`, for a capture written and a file
+ * or null; `setBuild(out, build, scale)` and `clearBuild(out)`, for a capture written and a file
  * removed; and `save()`, which writes the file when what it holds has changed (a CRLF
  * checkout of the same text is the same), with the line endings it had (LF for a new one),
  * through a file beside it renamed over it.
@@ -211,13 +223,19 @@ export function openManifest(file = MANIFEST) {
   return {
     file,
     entry,
-    setBuild(out, build) {
+    // `build` null records nothing (a build that could not be read); `scale` the capture's,
+    // recorded when it is not SHOT_SCALE and removed when it is, and left as it is when undefined
+    setBuild(out, build, scale = undefined) {
       if (build === null || build === undefined) return;
-      m.pictures[out] = { ...entry(out), build };
+      const { scale: had, ...rest } = entry(out) ?? {};
+      const next = scale === undefined ? had : scale === null || scale === SHOT_SCALE ? undefined : scale;
+      m.pictures[out] = next === undefined ? { ...rest, build } : { ...rest, build, scale: next };
+      checkEntry(out, m.pictures[out]);
     },
+    // the file is gone: neither its build nor its scale is known
     clearBuild(out) {
       if (!entry(out)) return;
-      const { build: _, ...rest } = entry(out);
+      const { build: _, scale: __, ...rest } = entry(out);
       m.pictures[out] = rest;
     },
     /**
@@ -231,7 +249,7 @@ export function openManifest(file = MANIFEST) {
       if (value === undefined) delete p[key];
       else p[key] = value;
       e[part] = p;
-      const next = pruned(e, ["build", "png", "svg"]) ?? {};
+      const next = pruned(e, ENTRY_KEYS) ?? {};
       checkEntry(out, next);
       m.pictures[out] = next;
     },

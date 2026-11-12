@@ -74,11 +74,11 @@ The search box looks in every section at once. A word matches an item when it is
 - With a card focused, <kbd>Tab</kbd>, <kbd>Left</kbd> and <kbd>Right</kbd> do not move the focus. They move a highlight through **Browse...**, **Open** and **Cancel**.
 
 <!-- test: bug new-project-keyboard-dead-ends -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > <kbd>Up</kbd> and <kbd>Down</kbd> do nothing while the search box has the focus, which it has when the dialog opens, and no key reaches the sections of the rail. In **Recent**, the search box is the only element that can take the focus: <kbd>Tab</kbd> moves it to the page behind the dialog, a second <kbd>Tab</kbd> to a panel behind that, and then <kbd>Esc</kbd>, <kbd>Enter</kbd> and the arrow keys do nothing until you click. To use the arrow keys in **New** or **Samples**, press <kbd>Tab</kbd> once, or click blank space in the dialog. Choose a section with the mouse, and in **Recent** double-click the row.
 
 <!-- test: bug new-project-enter-acts-twice -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > After <kbd>Tab</kbd> has moved the highlight to a button, <kbd>Enter</kbd> presses that button and also opens the selected item. **Open** opens the item twice. **Browse...** opens the Windows box and the item. **Cancel** closes the dialog and then opens the selected item: a saved project with no unsaved change is closed with no question, and **New Project Options** opens for the selected card. <kbd>Enter</kbd> on a card that has the focus opens the selected card, not the focused one. Select the card you want with a click or the arrow keys, and press the buttons with the mouse. To cancel from the keyboard, press <kbd>Esc</kbd>.
 
 ## What each template makes
@@ -126,7 +126,7 @@ Choosing a template, a sample or an imported `.vbp` opens a small box, **twinBAS
 The **Project Name** box takes letters, digits and the underscore, and ignores every other key you type. A leading underscore is removed.
 
 <!-- test: bug project-name-paste-unfiltered -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The box filters the keys you type, not its text. A name that you paste keeps its spaces, dots and other characters, and becomes the project's name, its description and its application title. With `My Project.x` pasted, the project's root folder has that name, and the build writes `Build\My Project.x_win32.exe`. Type the name, or paste only letters, digits and underscores.
 
 A few more things about the rows:
@@ -140,7 +140,7 @@ A few more things about the rows:
 **Cancel** closes the box, the progress indicator and the project. Nothing is opened, and the IDE is left with no project, because the one that was open was closed before the box appeared.
 
 <!-- test: bug import-cancel-leaves-import-mode -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > After **Cancel** in this box for an imported `.vbp`, the next template or sample shows the box with an import's rows: **Unicode Common Control Notifications** is there, and **Include Common Controls** is not. **Continue** then makes a project with no reference to WinNativeCommonCtls, with [*Unicode Control Notifications*](../Project-Settings#unicode-control-notifications) on, and with the description and the application title left as they were, `New project` for a template, in place of the project's name. The box is right again after that **Continue**, and in a new IDE. Cancelling the Windows picker of **Import from VBP...** does not do this. In a project made this way, add the package under [Available Packages](../Projects/References-and-Packages#available-packages), and set the [*Project Description*](../Project-Settings#project-description) and the [*Application Title*](../Project-Settings#application-title).
 
 ![The box for a .vbp import: the project's name from the .vbp, DPI Awareness set to NONE, the row for Unicode notifications, and no row for the common controls.](Images/Options_VBP.png){:width="529" height="279"}
@@ -207,7 +207,7 @@ The project opens with no `.twinproj` file behind it: it is unsaved, and marked 
 If the folder holds the compiler packages under `Packages`, as an export by the IDE does, delete their folders first: imported with them, the project gets a copy of them that the compiler does not use. See [Packing the export back into a project](../Projects/Saving-and-Exporting#packing-the-export-back-into-a-project). [Keeping a project in Git from the IDE](../../../Features/Packages/Import-Export-Tool#keeping-a-project-in-git-from-the-ide) uses this command to open a fresh clone.
 
 <!-- test: bug import-card-closes-project-first -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > **Import from VBP...** and **Import from folder...** close the open project before the Windows picker opens. If you cancel the picker, the IDE is left with no project and no dialog. The project's file is as it was, and its path is in **Recent**. A project with unsaved changes is asked about first, and **Cancel** in that question keeps the project. **File → Open Project...** and **Browse...** close the project only after you have chosen a file, so cancelling them loses nothing. Open a `.vbp` with **File → Open Project...**, which imports it as the card does. For a folder there is no such command: save the project first, and open it again from **Recent** if you cancel.
 
 ## See Also

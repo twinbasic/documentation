@@ -70,7 +70,7 @@ To repeat a key, use the form `{key number}` --- for example, `"{LEFT 42}"` to p
 > **SendKeys** can't send keystrokes to applications that aren't running in Windows, and it cannot send the PRINT SCREEN key to any application: `{PRTSC}` sends the virtual key `VK_PRINT` (&H2A), not `VK_SNAPSHOT` (&H2C), as VB6 and 64-bit VBA do.
 
 <!-- test: bug sendkeys-non-ascii -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A character that has no key on the keyboard layout sends the wrong key, and no error is raised. The string is first converted to the ANSI code page, so a character outside it becomes its nearest ANSI character (`Ā` becomes `A`, `☺` becomes `?`), and a character the layout has no key for is sent as the virtual key of its ANSI code (`é`, on a US layout, as &HE9, which types nothing or another character). VB6 and 64-bit VBA send such a character as the character itself, which types it in any window.
 
 <!-- errors: generated from errors/VBA.Interaction.yml by scripts/errors.mjs write; edit the data, not this section -->
@@ -81,13 +81,13 @@ To repeat a key, use the form `{key number}` --- for example, `"{LEFT 42}"` to p
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *string* is **Null** |
 | [-2147352567 (`&H80020009`)](tb:Errors#-2147352567), *Exception occurred.* | *string* has a brace that is not closed or not opened, an unknown key code (`{INS}` and `{F17}` included), a count in braces that is not a whole number from 0 to 8,175, unbalanced parentheses, or a modifier with nothing after it (`++`)<br>*wait* is **Null**<br>*wait* is a string that is not a **Boolean** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *string* has a brace that is not closed or not opened, an unknown key code (`{INS}` and `{F17}` included), a count in braces that is not a whole number from 0 to 8,175, unbalanced parentheses, or a modifier with nothing after it (`++`), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *wait* is **Null**, VB6 and 64-bit VBA raise error [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *wait* is a string that is not a **Boolean**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

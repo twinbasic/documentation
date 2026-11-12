@@ -37,15 +37,15 @@ A box that begins `failed to call TWINBASIC_INIT dll entry in the twinBASIC DLL:
 The compiler is not one file. It is a set of executables, `twinBASIC_win32.exe` and its variants with `_noDEP` and `_LAA` in the name, and the 64-bit ones. Which the IDE starts depends on the build configuration and on the DEP and large-address settings of the project.
 
 <!-- test: bug launcher-box-names-wrong-file -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When `bin\twinBASIC_ide_win32.dll` is missing, the box names `bin\twinBASIC_win64.dll`, a file that is there. The launcher `twinBASIC.exe` names that file for every file it cannot load. Compare the whole `bin` folder with the IDE's download, or extract the download again, rather than looking for the file the box names.
 
 <!-- test: bug missing-dll-box-names-no-file -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When `bin\twinBASIC_win32.dll` is missing, the box is titled **shutdown** and names no file and no address. It means that the compiler's file is missing or cannot be loaded. Restore the `bin` folder from the download.
 
 <!-- test: bug missing-compiler-silent-stop -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When the compiler variant that the IDE starts is missing, the IDE shows the box once and then goes quiet. After **OK**, the IDE has no project, tries nothing more, and writes nothing to the console. The badge reads UNAVAILABLE, with four **Not initialized** lines, for good. Restore the file, and start the IDE again.
 
 ![The native box titled twinBASIC Compiler that a missing DLL brings, with its one OK button.](Images/Missing_DLL_Box.png){:width="304" height="211"}

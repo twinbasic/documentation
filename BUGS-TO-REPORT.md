@@ -703,8 +703,9 @@ Steps to reproduce the behavior:
 2. See two errors:
    ```
    TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
-   TB65535 Missing implementation of member Function F() As Long
+   TB5260 Missing implementation of member Function F() As Long
    ```
+   The second is TB5260 since BETA 1042; BETA 1034 and earlier give TB65535.
 
 What was tried and does not help, each on its own:
 - the VB6-style name without the method-level `Implements IProbeD.F` clause gives `TB5018 unable to match this handler to its event member`, an event-handler message for an interface member, with the same expected signature;
@@ -717,12 +718,12 @@ The implementation is accepted, as it is without the attribute. If `[PreserveSig
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1010, and BETA 1042
 
 **Additional context**
 Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
 
-<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535). Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
+<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB5260, which was TB65535 before BETA 1042). Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
 
 ---
 
@@ -1503,38 +1504,52 @@ Severity: low. No difference in a running program was looked for. Builds are not
 
 ---
 
-## Reading `Parent` of the file system's root folder crashes the compiler
+## Reading `Parent` of the file system's root folder raises error &H80004005 instead of returning `Nothing`
 
 **Describe the bug**
-In an IDE add-in, reading `Parent` of the virtual file system's root folder, `Host.FileSystem.RootFolder.Parent`, crashes the compiler, and the add-in with it. The read itself crashes, before the value is used: `Dim o As Object = Host.FileSystem.RootFolder.Parent`, `Dim f As Folder = Host.FileSystem.RootFolder.Parent`, `Host.FileSystem.RootFolder.Parent Is Nothing` and `TypeName(Host.FileSystem.RootFolder.Parent)` all crash, and the line the add-in printed just before the read is the last one printed. The IDE restarts the compiler, which loads the add-in and crashes again, 3 or 4 times in a run.
+In an IDE add-in, reading `Parent` of the virtual file system's root folder, `Host.FileSystem.RootFolder.Parent`, raises error -2147467259 (`&H80004005`, `E_FAIL`), *Automation error*, and the variable it was read into stays `Nothing`. The root has no parent, so the read should return `Nothing` with no error. In an event handler with no error handler, the error ends the handler without a message, so an add-in that walks up the tree with `Parent` until `Is Nothing` stops silently at the root. Up to BETA 1034 the same read crashed the compiler.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `rootfolder-parent-crash.twinproj` (attached as `rootfolder-parent-crash.zip`). It is an add-in whose `Host_OnProjectLoaded` is:
+1. Open `rootfolder-parent-error.twinproj` (attached as `rootfolder-parent-error.zip`). It is an add-in whose `Host_OnProjectLoaded` is:
    ```
    Private Sub Host_OnProjectLoaded()
        Host.DebugConsole.PrintText "before Parent"
+       On Error Resume Next
        Dim o As Object = Host.FileSystem.RootFolder.Parent
-       Host.DebugConsole.PrintText "after Parent"
+       Dim n As Long = Err.Number
+       Dim d As String = Err.Description
+       On Error GoTo 0
+       Host.DebugConsole.PrintText "Err " & n & " " & d
+       Host.DebugConsole.PrintText "Is Nothing = " & (o Is Nothing)
    End Sub
    ```
-2. Build it (win32). The add-in crashes the compiler every time it loads, so use an IDE whose add-ins you can restore. Copy `Build\RootfolderParentCrash_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE.
-3. Open any project. The DEBUG CONSOLE prints `before Parent`, and the compiler crashes. `after Parent` is never printed.
-4. To get the IDE working again, close it and delete `RootfolderParentCrash_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
+2. Build it (win32). Copy `Build\RootfolderParentError_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE.
+3. Open a project, then a second one (BETA 1042 empties the DEBUG CONSOLE a second time as the first project opens, which erases the lines; see the entry *The DEBUG CONSOLE is emptied twice as the first project opens*). The DEBUG CONSOLE prints:
+   ```
+   before Parent
+   Err -2147467259 Automation error
+   Is Nothing = True
+   ```
+4. Close the IDE and delete `RootfolderParentError_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
 
 **Expected behavior**
-`Parent` of the root is `Nothing`, as for the root of any object model, so step 3 prints `before Parent` and `after Parent`. At worst the read raises an error that the add-in can handle, and does not take the compiler down.
+`Parent` of the root is `Nothing`, as for the root of any object model, with no error: step 3 prints `Err 0`.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
+ - twinBASIC compiler version: BETA 1042
 
 **Additional context**
-What did not reproduce it: `Host.CurrentProject.RootFolder.Parent`, the parent of the project's folder, reads fine, and its `Path` is `twinbasic:/`, the file system's root. An add-in that reads neither does not crash.
+The same error is raised by each form of the read: into an `Object` or a `Folder`, in `Host.FileSystem.RootFolder.Parent Is Nothing` and in `TypeName(Host.FileSystem.RootFolder.Parent)`. Without `On Error`, each ends the event handler at the read, as an unhandled `Err.Raise 5` in the same handler does.
 
-Severity: crash. The crash is in the read, so no `On Error` handler helps, and an add-in that walks up the tree with `Parent` until `Is Nothing` crashes the compiler on every start, until its DLL is removed. The workaround is to stop at the folder whose `Path` is `twinbasic:/` without reading its `Parent`.
+What did not reproduce it: `Host.CurrentProject.RootFolder.Parent`, the parent of the project's folder, reads with no error, and its `Path` is `twinbasic:/`, the file system's root. An add-in that reads neither prints all its lines.
 
-<!-- Reproducer: bugs/rootfolder-parent-crash/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e; case f is the control that does not crash; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the WARNING under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the WARNING goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
+On BETA 1034 (and 1010) the read crashed the compiler, under `On Error Resume Next` too, and each compiler the IDE restarted loaded the add-in and crashed again. BETA 1042 fixes the crash; this entry is what is left.
+
+Severity: low. The error can be handled, and the workaround is to stop at the folder whose `Path` is `twinbasic:/` without reading its `Parent`.
+
+<!-- Reproducer: bugs/rootfolder-parent-error/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e and g; f is the control that reads, r the control for an unhandled error; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. On BETA 1042 the lane must be run on a copy of the install patched with bugs/console-cleared-at-open/fix.js (`--ide <copy>`), because the console defect erases the add-in's lines; on the plain install its cases fail for want of lines. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Retitled 2026-11-09, when BETA 1042 turned the crash (the entry was "Reading `Parent` of the file system's root folder crashes the compiler", slug rootfolder-parent-crash) into this error; the lane on BETA 1034 still showed the crash, case g included. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the NOTE under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the NOTE goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
 
 ---
 
@@ -11607,96 +11622,7 @@ Tested on a copy of BETA 1034 with this change (12 edits in `main.js`, most of t
 
 <!-- Reproducer: bugs/object-browser-tab-stops/ (mode lane: asserted by `ide-test.bat --only object-browser` (test/ide/object-browser.test.mjs), the test "Tab moves the focus from the search box to Aa and no further; Shift+Tab to Project / Library, then to the copy button, and no further", which passes on BETA 1034; the control "control: a click on a list gives it the focus, and the keys then move in it" passes too). No project and no zip. docs/IDE/Code/Object-Browser.md carries a NOTE (BETA 1034) for it, under "Using the keyboard"; when a fixed build is released, that NOTE goes. Found 2026-11-02 writing that page. Fix: bugs/object-browser-tab-stops/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/object-browser-tab-stops/fix.js` on BETA 1034, and `patch ... --copy-to <dir under %TEMP%>` then `ide-test.bat --ide <copy>\twinBASIC.exe --only object-browser` tests it (the entry's test then fails, which is the fix working). -->
 
----
 
-## The messages of TB0034, and of TB0035 for an `Object`, leave out the names they report
-
-**Describe the bug**
-Two of the warnings new in BETA 1034 print their message with its names missing. TB0034, for a `Declare` of a legacy DLL, leaves both DLL names empty. TB0035, for a conversion from an `Object` to a class or interface type, shows its placeholders `{0}`, `{1}` and `{2}` as they are. The text is the same in the DIAGNOSTICS panel and in the code editor's squiggle.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `warning-message-names-blank.twinproj` (attached as `warning-message-names-blank.zip`). Its one source file, `Startup.twin`:
-   ```
-   [EnforceWarnings(TB0035)]
-   Module Startup
-       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
-
-       Public Sub Main()
-           Dim o As Object
-           Dim v As Variant
-           Dim f As StdFont
-           Set f = o
-           Set f = v
-       End Sub
-   End Module
-   ```
-2. See three warnings in the DIAGNOSTICS panel:
-   ```
-   TB0034 Use of legacy DLL  has been redirected to 
-   TB0035 Conversion from type {0} to type {1} might fail at runtime.  Use {2}(expression) to avoid this message
-   TB0035 Conversion from type Variant to type Font might fail at runtime.  Use CType(Of Font)(expression) to avoid this message
-   ```
-
-**Expected behavior**
-TB0034 names both DLLs, as TB0015 did for the same `Declare` in BETA 1033: `use of legacy OLEPRO32.DLL has been redirected to OLEAUT32.DLL`. TB0035 names the two types and the conversion for an `Object`, as it does for a `Variant`: `Conversion from type Object to type Font might fail at runtime.  Use CType(Of Font)(expression) to avoid this message`.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
-
-**Additional context**
-`locale/en-gb.lang` gives the two messages as `Use of legacy DLL {0} has been redirected to {1}` and `Conversion from type {0} to type {1} might fail at runtime.  Use {2}(expression) to avoid this message`, so the values the compiler has for these two cases do not reach the text: for TB0034 it fills in two empty strings, for TB0035 nothing at all.
-
-TB0035 leaves its placeholders for every `Object` source tried: an `Object` variable, a function that returns `Object`, and an `Object` passed to a `StdFont` parameter, with a `StdFont`, a class of the project and an interface of the project as the target. A `Variant` source, a `Variant` item of a `Collection` included, names its types. TB0034 is the same in a win32 and a win64 build.
-
-Severity: low; the message no longer says which DLL is replaced, or which conversion to write.
-
-<!-- Reproducer: bugs/warning-message-names-blank/ (mode compile; expect.output matches TB0034's row with no DLL names and TB0035's row with {0}, {1} and {2}, in tbbuild's --json report, where the IDE's double spaces are single). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0034 and one under TB0035 that say so; when a fixed build is released, those sentences go. Found 2026-11-02 writing those sections. -->
-
----
-
-## TB0034 is reported as a warning whatever level Project Settings or an attribute gives it
-
-**Describe the bug**
-TB0034, the warning for a `Declare` of a legacy DLL that twinBASIC redirects to another, is always reported as a warning. The level the Compiler Warnings list of Project Settings gives it is not applied: at **IGNORE**, **HINT** or **ERROR** it is still a warning, and `[IgnoreWarnings(TB0034)]` and `[EnforceErrors(TB0034)]` change nothing either. TB0015, the warning for a `Declare` that twinBASIC implements itself, follows its level. In a new project the list shows TB0034 at **HINT**.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `tb0034-level-ignored.twinproj` (attached as `tb0034-level-ignored.zip`). Its Settings put TB0015 and TB0034 at **IGNORE**, and its one source file, `Startup.twin`, is:
-   ```
-   Module Startup
-       Private Declare PtrSafe Sub GetMem4 Lib "msvbvm60" (ByVal Src As LongPtr, ByVal Dst As LongPtr)
-       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
-
-       Public Sub Main()
-       End Sub
-   End Module
-
-   [IgnoreWarnings(TB0034)]
-   Module ByAttribute
-       Private Declare PtrSafe Function OleCreatePictureIndirect Lib "olepro32" (ByRef PicDesc As Any, ByRef RefIID As Any, ByVal fPictureOwnsHandle As Long, ByRef IPic As Any) As Long
-   End Module
-   ```
-2. See two warnings, one for each `olepro32` declaration, and nothing for the `msvbvm60` one:
-   ```
-   TB0034 Use of legacy DLL  has been redirected to      [4,38]
-   TB0034 Use of legacy DLL  has been redirected to      [13,38]
-   ```
-
-**Expected behavior**
-TB0034 follows its level, as TB0015 does: not reported at **IGNORE**, a hint at **HINT**, an error at **ERROR**. In a new project, whose list shows TB0034 at **HINT**, it is a hint.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
-
-**Additional context**
-Also tried, each with the same result, a warning: TB0034 at **HINT** and at **ERROR** in Project Settings (TB0015 at **ERROR** becomes an error), and `[EnforceErrors(TB0034)]` on the module. In BETA 1033 the same `Declare` drew TB0015 as a warning in a new project, although the list showed TB0015 at **HINT**; BETA 1034 gave the message a code of its own, and its level is still not applied.
-
-Severity: low; the warning cannot be turned off, so a project that declares such a function always shows it.
-
-<!-- Reproducer: bugs/tb0034-level-ignored/ (mode compile; expect.output matches a WARNING row for TB0034 at each declaration, and expect.absent TB0015, the control). docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0034 that says so; when a fixed build is released, that sentence goes. It replaces the NOTE (BETA 1010) that TB0015 carried: TB0015 follows its level in BETA 1034. Found 2026-11-02 writing that section. -->
 
 ---
 
@@ -12997,13 +12923,11 @@ Severity: low. It is a sample, but a reader copies a sample's pattern.
 ## A Friend member answers a late-bound call, from outside the project too
 
 **Describe the bug**
-A `Friend` member is meant for the project that declares it, and the type library leaves it out. But the `IDispatch` that the compiler writes for a class finds `Friend` members. So a late-bound call to one works, through an `Object` or a `Variant` variable or `CallByName`, and it works for code in another project that holds the object. VB6 raises error 438, *Object doesn't support this property or method*. A `Private` member raises 438 in both.
-
-A project that references a package can also use the `Friend` members of the package's classes, early-bound and late-bound.
+A `Friend` member is meant for the project that declares it, and the type library leaves it out. But the `IDispatch` that the compiler writes for a class finds `Friend` members. So a late-bound call to one works, through an `Object` or a `Variant` variable or `CallByName`, and it works for code in another project that holds the object. VB6 and 64-bit VBA raise error 438, *Object doesn't support this property or method*. A `Private` member raises 438 in all three.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `friend-late-bound.twinproj`. `Widget` has a `Friend Function GetValue`, and `FriendLib`, a package of the project, has a class `Locked` with a `Friend Function FriendFn`.
+1. Open `friend-late-bound.twinproj`. `Widget` has a `Friend Function GetValue`.
 2. Run:
 
    ```vb
@@ -13012,74 +12936,29 @@ Steps to reproduce the behavior:
    Debug.Print CallByName(O, "GetValue", VbMethod)
    ```
 3. See `7` twice, where 438 is expected.
-4. See that `L.FriendFn()` in the module `FromTheProject`, on a `Locked` from the package, compiles.
 
 What decides it:
 - A `Friend` Function, Property and variable are each found. A `Private` member raises 438, and a `Public` one works.
 - The IDE, a built exe, win32 and win64 give the same results.
 - From another project: an ActiveX DLL with a `[DllExport]` function that returns a class as `Object`, called from a second project through a `Declare`. Late-bound, the second project called a `Friend` Function and a `Friend` Property, and wrote and read a `Friend` variable. A `Private` variable raised 438, and the DLL's type library lists none of those `Friend` members.
+- The class's run-time type information lists them. The `ITypeInfo` that `IDispatch::GetTypeInfo` returns lists `Friend` functions and variables beside the `Public` ones, and its `GetIDsOfNames` finds them, while a `Private` or `Protected` member is not found. A `[DispId]` on a `Friend` member is honoured as on a `Public` one. Only the type library written to the DLL leaves `Friend` out.
+- VB6 (`bug_repro.mjs vb6`): early-bound works; late-bound, a `Friend` Function, Property Get and Let, and `CallByName` each raise 438.
+- 64-bit VBA (Access, VBA 7.01): the same class gives 438 for a `Friend` Function, Property Get and Let, Sub and `CallByName`, through `Object` and through `Variant`, and works for a `Public` one.
 - Not affected, and the same as VB6: a `Friend` Function with no arguments, called through a class that implements the class, raises error 97. Other signatures have a defect of their own in a 32-bit build, in the entry on the stack below.
 
 **Expected behavior**
-Error 438 for each late-bound call, as VB6 gives, and a compile error for a `Friend` member of a package's class used from the project that references the package.
+Error 438 for each late-bound call, as VB6 and VBA give.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
+ - twinBASIC compiler version: BETA 1034 and BETA 1042
 
 **Additional context**
-#2409 asks for `Friend` members of a package to be hidden from IntelliSense. This entry is about the calls themselves.
+In the Discord `general` channel on 30 September 2026, asked why `Friend` methods can be inspected through `IDispatch`, Wayne wrote that he vaguely remembered a vtable entry for them that raises an error, to match VB6, and that the dispatcher was likely exposing that. The behaviour above does not fit a stub that raises an error: on the class that declares the member, the late-bound call runs the member's own code and returns its value. Error 97 comes only through a class that implements the class.
 
 Severity: low to medium. Code that works does not stop working, but `Friend` does not keep a member private to the project, and a client of an ActiveX DLL can reach members that the type library does not show.
 
-<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run once in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (two NOTEs). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
-
----
-
-## TB65535 gives Internal Error - Bad Error Info Locale Data in place of the missing member's name
-
-**Describe the bug**
-When a class leaves out a member of a class or interface it implements, TB65535 no longer says which. BETA 1033 reports *Missing implementation of member Function F() As Long*, and BETA 1034 reports *Internal Error - Bad Error Info Locale Data*. The error is still in the right place, on the name after `Implements`. Only its text is lost, and it was the text that named the member.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `missing-implementation-message.twinproj`:
-
-   ```vb
-   Class Base
-       Public Function F() As Long
-       End Function
-   End Class
-
-   Class Partial
-       Implements Base
-   End Class
-   ```
-2. See TB65535 on `Base` in `Implements Base`, with the text *Internal Error - Bad Error Info Locale Data*.
-
-What decides it:
-- BETA 1010 and BETA 1033 give the *Missing implementation of member* text, in the same harness, on the same project.
-- A `Public` Function and a `Public` variable give it, with one error for each missing member, so a variable gives two: its Get and its Let.
-
-**Expected behavior**
-*Missing implementation of member Function F() As Long*, as on BETA 1033.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
-
-**Additional context**
-The cause, read from the compiler `twinBASIC_win32.dll` of BETA 1034 (the function at RVA 0x12C790): the function that makes a diagnostic's text takes the code as a 16-bit value, looks up the code's template in one of two tables, and accepts only the codes 0 to 37 and 5000 to 5259. For any other code it returns the text *Internal Error - Bad Error Info Locale Data*, which BETA 1033's compiler does not hold. `twinBASIC_win64.dll` has the same three limits. This error's code is `ERROR_MissingImplementation = -1` in the compiler's list of diagnostic codes, which is 65535 as a 16-bit value, so it never reaches a table. The text *Missing implementation of member* is still in the DLL.
-
-It is the only code affected. Of the 292 codes in that list, which is current as of BETA 1007, it is the only one outside those ranges, and the codes added since, TB0034 to TB0037, are inside them. The logs of the compiles behind this entry hold the text of 37 codes, and this is the only one with the fallback text.
-
-The language pack cannot mend it. On a private copy of the install, a row `TB65535:` in `locale/en-gb.lang`, with `{0}` or without, changes nothing, nor do rows keyed `TB-1`, `TB0000` and `ERROR_MissingImplementation`, while a new row `TB5074: "PROBE5074 [{0}]"` changes TB5074's message to `PROBE5074 [Cannot construct 'IFoo': expected a class type.]`. So the check has to admit 65535, or this error has to get a code inside the ranges.
-
-This is a different fault from *TB5079 for an unknown type puts its whole message inside the message for an unknown name*, which came with the same new function. There the code passes the check, and the pack's row for it wraps the whole message the compiler passes as `{0}`.
-
-Severity: low. The build stops where it should, but a class with several members has to be read by hand to find the missing one.
-
-<!-- Reproducer: bugs/missing-implementation-message/ (mode compile, expects TB65535 and the text). docs/Reference/Attributes.md carries a NOTE (BETA 1034) under AllowUnpopulatedVtableEntry, whose text quotes the BETA 1033 message; when a fixed build is released, the NOTE goes. The bytes of the function were read by hand from what the install ships, in a scratch script; the pack rows were tried on a copy from makeIdeCopy under the temp folder, with the install on the Desktop only read. -->
+<!-- Reproducer: bugs/friend-late-bound/ (mode test; vb6/ is the VB6 side, `bug_repro.mjs vb6 friend-late-bound`: early-bound works, late-bound and CallByName raise 438, through Implements raises 97). The call from another project was run in a scratch copy, on BETA 1034 and again on BETA 1042 with the same results, not kept; so was the ITypeInfo probe, on BETA 1042 in win32 and win64. The VBA results were run once on 2026-11-05 in 64-bit Access with scripts/lib/vba.mjs, not kept. The package half of this entry was taken out on 2026-11-09 (owner): VB6 has no packages, a package is compiled into the project as source, and #2409 is about its Friend members in IntelliSense; the question of what Friend should mean for a package went to Wayne as a question, not a defect. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md (one NOTE). docs/Reference/COM-Interfaces/IDispatch.md says that a Friend member is found, with a sample that prints True for it: that changes too. The Sub, Function and Property pages used to say a Friend procedure cannot be late bound, VBA-Docs' text; that sentence came off them when the page for Friend was written, and can go back once this is fixed. What the type library holds, for the Friend page, was read with TLI from an ActiveX DLL built with project.dllRegisterAfterBuild false: Friend procedures and variables are left out; a Friend Enum, Type and Event are listed; a Private Type or Enum is listed when a Public member uses it. -->
 
 ---
 
@@ -13131,14 +13010,14 @@ Error 97, caught by the caller's handler, whatever the signature, as win64 and V
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1034
+ - twinBASIC compiler version: BETA 1034 and BETA 1042
 
 **Additional context**
 Inferred from the pattern above and not read from the generated code: one stub, with a fixed `ret 8`, stands in for every `Friend` procedure that an implementing class leaves out. It would have to remove what each procedure takes.
 
 Severity: high. The program ends with an access violation for a call whose whole purpose is to raise an error that it can handle, and unsaved data is lost.
 
-<!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run once in a scratch copy, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
+<!-- Reproducer: bugs/implements-friend-stub-stack/ (mode test; the case that does not return is last, because a run stops there). The exe's results were run in a scratch copy, on BETA 1034 and again on BETA 1042 with the same results, not kept: `tbrun --exe` on the three shapes gave 0xC0000005 for the two-argument Sub and for the Function with an argument, and the box for the Sub with no arguments. Found when the sample on the Friend page, which had a Sub with a ByVal Currency argument, did not return under check_examples; the sample now has a Long. Pages with a callout that goes when this is fixed: docs/Reference/Core/Friend.md, docs/Reference/Core/Implements.md. -->
 
 ---
 
@@ -13424,3 +13303,196 @@ The same on BETA 1010 and BETA 1033, with no level, at **IGNORE** and at **ERROR
 Severity: low; the warning cannot be turned off, so a project with 64-bit builds and older `Declare` statements always shows it, once for each statement.
 
 <!-- Reproducer: bugs/tb0029-level-ignored/ (mode compile, arch win64; expect.output matches the two TB0029 WARNING rows and the TB0030 HINT, and expect.absent the TB0030 row that IgnoreWarnings removes). An entry of its own, and not part of "TB0034 is reported as a warning whatever level Project Settings or an attribute gives it", though the pattern is the same: that title names TB0034 and titles do not change; TB0034 has had its code only since BETA 1034, and TB0029 ignores its level on BETA 1010 and 1033 too, so the two are not one change; and TB0029 needs a 64-bit build, which that reproducer's expect does not ask for. upstream/twinbasic-diagnostic-ids.h notes that TB0029 replaced the error TB5129, which may be why no level reaches it; that is a guess. docs/Features/Compiler-IDE/Compiler-Warnings.md carries a NOTE (BETA 1034) under TB0029, and names TB0029 under Adjusting Warnings; when a fixed build is released, the NOTE goes, and so does that name. Found 2026-11-06 by the attribute pass. -->
+
+---
+
+## A Private method of a class can be called by its dispid, from another project too
+
+**Describe the bug**
+A late-bound call by name never finds a `Private` method: `CallByName` and a call through an `Object` raise error 438, and `GetIDsOfNames` fails. But a call by the method's dispid runs it. A class numbers its methods from `&H60030000` in the order they are declared, `Private` ones included, so the number is easy to guess, and `CallByDispId` or `IDispatch::Invoke` with that number calls the `Private` method and returns its value. A `[DispId]` on a `Private` method gives it a number that works the same way. In VB6, `Invoke` on the dispid of a `Private` method returns `DISP_E_MEMBERNOTFOUND`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `private-member-by-dispid.twinproj`, or use:
+
+   ```vb
+   Class Widget
+       Public Function PubFn() As Long
+           Return 1
+       End Function
+       Private Function PrivFn() As Long
+           Return 2
+       End Function
+   End Class
+   ```
+2. Run:
+
+   ```vb
+   Dim O As Object = New Widget
+   Debug.Print CallByDispId(O, &H60030001, VbMethod)
+   ```
+3. See `2`, the value `PrivFn` returns, where 438 is expected.
+
+What decides it:
+- `Private` Function, Sub and a `Private` method with `[DispId(78)]` each run by their number. `CallByName(O, "PrivFn", VbMethod)` raises 438.
+- Not affected: a `Private` variable (`&H40030001` with `VbGet` raises 438), and a `Protected` method or variable, by its number or by a `[DispId]`.
+- The IDE, win32 and win64 give the same results.
+- From another project: an ActiveX DLL with a `[DllExport]` function that returns a class as `Object`, called from a second project through a `Declare`. `CallByDispId` with the dispid of the DLL's `Private Function`, which returns 42, returned 42, and the `Private Sub` after it ran with no error. By name the same function raised 438.
+- VB6 (`bug_repro.mjs vb6`): a class with `PubFn`, a `Private PrivFn`, a `Friend FrFn` and `PubFn2`, in that order. `IDispatch::Invoke`, called through `DispCallFunc`, runs `PubFn` at `&H60030000` and `PubFn2` at `&H60030003`, and returns `DISP_E_MEMBERNOTFOUND` (`&H80020003`) for `&H60030001` and `&H60030002`. VB6 also gives its `Private` and `Friend` methods numbers, but `Invoke` does not call them.
+
+**Expected behavior**
+Error 438 for a `Private` method by its dispid, as for a `Private` variable and a `Protected` member, and as VB6's `Invoke` refuses it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1034 and BETA 1042
+
+**Additional context**
+This is not the `Friend` entry above: there a `Friend` member is found by name as well. Here the name check works, and the number check does not.
+
+Severity: medium. A `Private` method is the one a class's author means nobody else to call. Any code that holds the object, in another project included, can call it by a number it can guess from the order of the declarations.
+
+<!-- Reproducer: bugs/private-member-by-dispid/ (mode test; vb6/ is the VB6 side, which calls IDispatch::Invoke through DispCallFunc, since VB6 has no CallByDispId). The call from another project was run in a scratch copy on BETA 1042, not kept. Found by the agent that checked whether Friend's late binding is a defect, 2026-11-05, on BETA 1034; checked again on BETA 1042. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a NOTE under the members the compiler's IDispatch finds). -->
+
+---
+
+## The DEBUG CONSOLE is emptied twice as the first project opens, so output written in between, an add-in's included, is lost
+
+**Describe the bug**
+Opening a project empties the DEBUG CONSOLE, as it should. On BETA 1042, the first project opened after the IDE starts empties it a second time, a moment later, as the project's saved console options are applied. Whatever was written between the two is lost: an add-in's `Host.DebugConsole.PrintText` output as the project loads, and any other line written then. A project opened after the first is not affected.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Use an add-in that prints a line with `Host.DebugConsole.PrintText` as its project loads.
+2. Start the IDE and open a project.
+3. The line shows for a moment, and then the console is empty.
+4. Open another project in the same IDE. Its line stays.
+
+What decides it, in a lane test that starts the IDE with no project, records every emptying of the console's list, and has `clearDebugConsole` write a line just after it runs:
+- The first project's open empties the list twice: once by `clearDebugConsole`, and once more after it, which erases the line written just after the first.
+- A second project's open empties the list once, by `clearDebugConsole`, and the line written after it stays.
+- After the first open, toggling **Show Timestamps** twice erases nothing.
+- In BETA 1034 the list does not take this path: its cached-heights flag starts out `true`.
+- Four of our add-in test lanes that read what an add-in prints as its project loads failed on BETA 1042 for this reason alone; with the fix below, all four pass.
+
+**Expected behavior**
+The console is emptied once, as the project opens, and what is written after that stays.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+The console's list is made by `createListView`, which leaves its `useCachedItemHeights` unset. `setUseCachedItemHeights`, new with the **Smoother Scrolling** option, empties the list whenever the value it is given differs from the one the list holds. The first `resyncDebugPanelOptions`, as a project's console options are applied, gives it `false`, which differs from unset, so the list is emptied. After that the value is `false`, and nothing is emptied again until the option is changed.
+
+**Fix shape**
+
+`createListView` in `ide/main.js`, BETA 1042, in a readable form. The local names are ours, not twinBASIC's (`container`, `list`, `htmlRow`, `heightRow`, `element`, `width`, `height`, `itemRow`, `dataRow`, `updatedRow`, `newHtml`, `addedHtml`, `addedData`, `addedRow`, `use`, `removedRow`, `visible`, `lastVisible`); the build calls them `e`, `t`, `e`, `e`, `o`, `n`, `i`, `e`, `e`, `e`, `o`, `e`, `o`, `n`, `e`, `e`, `o`, `n`.
+
+```diff
+@@ -7,6 +7,7 @@
+   list.dataNodesCachedHeight = [];
+   list.dataNodesCachedWidth = [];
+   list.totalCachedItemsHeight = 0;
++  list.useCachedItemHeights = false;
+   list.onAsyncGetItemHTML = (htmlRow) => list.dataNodes[htmlRow];
+   list.onAsyncGetItemHeight = (heightRow, element) => {
+     var width = list.cachedClientWidth;
+```
+
+The list starts with the flag `false`, the value **Smoother Scrolling** has when it is off, so the first `setUseCachedItemHeights(false)` finds nothing to change and returns without emptying the list. Every list that `createListView` makes already reads an unset flag as `false`, so nothing else changes.
+
+On a patched copy of the BETA 1042 install, the lane's test of the second emptying fails, its two controls pass, and both add-in tests pass.
+
+<!-- Reproducer: bugs/console-cleared-at-open/ (mode lane: asserted by `ide-test.bat --only console-cleared` (test/ide/console-cleared.test.mjs), the test named in repro.json, which passes on BETA 1042; its two controls pass on 1042 and on a patched copy. No project and no zip. The add-in tests are addin:keys-help ("the add-in loads and registers its shortcuts, lowercased") and addin:parent ("case none: the control that reads nothing"), both failing on 1042 and passing on the patched copy; so do the lanes addin:help and addin:help-offline, whose setup waits for the help add-in's loaded line and whose first test reads it ("the add-in never printed its loaded line" on 1042; 92 and 93 passing on the patched copy, 2026-11-11). Run those four with `--ide` on a patched copy while this is open. Found 2026-11-09 by the BETA 1042 recheck, when those two lanes failed with their controls. The help setup of scripts/shoot_docs.mjs, which waited for the help add-in's loaded line, failed on 1042 for this reason alone ("the add-in never printed its loaded line"); since 2026-11-11 it also takes the add-in's built pane as the sign, so it needs no change when this is fixed. Its fusion setup, whose picture is the DEBUG CONSOLE with the line that says the Fusion host was built, lost that line the same way ("the compiler did not build the Fusion host: undefined" in every retake on 1042); since 2026-11-11 it opens the project a second time, from a copy, whose open empties the console once, so it too needs no change. Pages with a callout that goes when this is fixed: docs/IDE/Debugging/Debug-Console.md, docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText). Fix: bugs/console-cleared-at-open/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/console-cleared-at-open/fix.js` on BETA 1042. -->
+
+---
+
+## A call of a `stdole.IDispatch` method on a Collection ends the program with an access violation
+
+**Describe the bug**
+A call of one of the four `IDispatch` methods through a variable declared `As stdole.IDispatch` is a late-bound call by name (the entry *Calling a method of `stdole.IDispatch` is a late-bound call by name and fails with error 438* above). For an object of a twinBASIC class it raises error 438. When the object is a `Collection`, BETA 1042 ends the program with an access violation instead, and `On Error Resume Next` does not catch it. BETA 1034 raised 438 for both.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `stdole-idispatch-collection-crash.twinproj` (attached as `stdole-idispatch-collection-crash.zip`). Its `RegressionTests.twin` holds the regression tests below, one `[TestCase]` per behaviour, each asserting the correct result.
+2. Or run:
+
+   ```vb
+   Dim c As New Collection
+   Dim d As stdole.IDispatch = c
+   Dim count As Long = -1
+   On Error Resume Next
+   d.GetTypeInfoCount count
+   Debug.Print Err.Number
+   ```
+3. See the program end with an access violation, where `438` is expected.
+
+The regression tests (the first fails on BETA 1042, the two controls pass):
+
+```vb
+Class Widget
+    Public Hits As Long
+    Public Sub Hello()
+        Hits += 1
+    End Sub
+End Class
+
+[TestFixture]
+Module StdoleDispatchTests
+
+    [TestCase]
+    Public Sub Collection_GetTypeInfoCount_RaisesAnErrorAndDoesNotCrash()
+        Dim c As New Collection
+        Dim d As stdole.IDispatch = c
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, n
+    End Sub
+
+    [TestCase]
+    Public Sub Control_TwinBasicClass_GetTypeInfoCount_Raises438()
+        Dim w As New Widget
+        Dim d As stdole.IDispatch = w
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, n
+    End Sub
+
+    [TestCase]
+    Public Sub Control_Collection_ThroughObject_CountWorks()
+        Dim c As New Collection
+        c.Add 1
+        Dim o As Object = c
+        Assert.Strict.AreEqual 1, CLng(o.Count)
+    End Sub
+
+End Module
+```
+
+What decides it:
+- The object: a `Collection` crashes, an object of a twinBASIC class raises 438.
+- Not the run: a run in the IDE, the test mode and a built exe each crash, in a 32-bit and a 64-bit build.
+- Not the late-bound call itself: through an `As Object` variable, the same `Collection` answers `Count`.
+
+**Expected behavior**
+Error 438, which `On Error` can handle, as for an object of a twinBASIC class and as BETA 1034 gave. Better, the call goes through the interface, as the entry above asks, and returns what the `Collection`'s own `IDispatch` answers.
+
+VB6 does not accept a variable declared `As IDispatch` (the entry above).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+Severity: high. An access violation that `On Error` cannot catch ends the program and loses its unsaved data, where the program asked for an error it could handle.
+
+Checked on BETA 1034, which raises 438 for the `Collection` too, so the crash is new in a build after 1034.
+
+<!-- Reproducer: bugs/stdole-idispatch-collection-crash/ (mode test: the first case fails with an access violation, the two controls pass, on BETA 1042). Found 2026-11-09 by the BETA 1042 recheck, when the OLEGuids test case StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods, which used a Collection, crashed; that case now uses the project's Calculator class. The exe was checked in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a WARNING in "The stdole declaration"). When the entry above is fixed as well, that section changes as its comment says. -->

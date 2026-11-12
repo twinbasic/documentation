@@ -117,13 +117,13 @@ Time$ = MyTime           ' Set system time.
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59<br>**Time$** is given a time in another form VB6 reads, such as *hh:mm* or *hh* |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Time$** is given **Null**<br>**Time** is given **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Time$** is given a value that is not a string of the form *hh:mm:ss*, or one outside 00:00:00 to 23:59:59, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Time$** is given a time in another form VB6 reads, such as *hh:mm* or *hh*, VB6 and 64-bit VBA raise no error.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Time** is given **Null**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

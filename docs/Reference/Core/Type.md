@@ -103,19 +103,19 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 **Member procedures.** [**Sub**](Sub), [**Function**](Function), and [**Property**](Property) procedures may appear inside `Type ... End Type`, and are called through any variable of the type. Inside a member procedure, other members of the same UDT must be accessed with the explicit `Me.` prefix.
 
 <!-- test: bug udt-array-element-method-call-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A member procedure called on an element of an array of the UDT, such as `a(1).Sum` or `a(1).Diff(a(2))`, ends the program with an access violation, in 32-bit and 64-bit builds. So does a **Type_Conversion** of an element, explicit or implicit, as in `CStr(a(1))`, `s = a(1)` or `Debug.Print a(1)`. This holds for local, static, module-level, dynamic and parameter arrays, and in a **With** block. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected, nor is **Type_Assignment** on an element, as in `a(1) = 5`. Copy the element to a variable first.
 
 <!-- test: bug udt-method-assign-me-codegen -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Assigning **Me** whole inside a member procedure, as in `Copy = Me`, `Return Me` or `t = Me`, is a code generation error that fails the build once the procedure is called. `Me.X`, passing **Me** as an argument, and `Me = other` are not affected. Copy the members one by one.
 
 <!-- test: bug udt-array-element-byval-argument-stack -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A UDT larger than 4 bytes passed **ByVal** from an element of an array, as in `Take a(1)` for `Sub Take(ByVal p As Pair)`, damages the stack in a 32-bit build: the procedure receives the right value, and the calling procedure ends with an access violation when it returns. A UDT of 4 bytes or less, a variable, an element copied to a variable first, and a **ByRef** parameter are not affected, nor are 64-bit and LLVM builds. VB6 does not accept a UDT passed **ByVal**.
 
 <!-- test: bug udt-object-member-let-assignment-codegen -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Assigning without **Set** to a member of a UDT whose type is a class, as in `h.o = 5` for a class with a default member, is a code generation error that fails the build. VB6 assigns the default member. Use `Set h.o = ...` to assign the object, or name the default member, as in `h.o.Value = 5`.
 
 **Lifecycle and operator hooks.** Well-known member names are connected by the compiler:
@@ -129,11 +129,11 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 | `Type_DebugView` | Debugger display --- returns a **String** shown in the IDE's variable inspector. |
 
 <!-- test: bug udt-array-element-initialize-not-run -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > **Type_Initialize** does not run for an element of an array of the UDT, or for a UDT that is a member of another UDT. **Type_Terminate** still runs for each of them, on a value that was never initialized, and no error is raised. A variable of the type and a class field of the type are not affected. **ReDim** and **ReDim Preserve** discard elements without running **Type_Terminate**, and an array declared inside a UDT runs neither procedure. Write **Type_Terminate** to do nothing when the members are all zero.
 
 <!-- test: bug udt-two-conversions-variant-codegen -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A UDT with two or more **Type_Conversion** overloads, none of them `As Variant`, cannot be converted to a **Variant**. `Debug.Print c`, `v = c` and `CVar(c)` are a code generation error that fails the build, and an argument for a `ByVal` **Variant** parameter is error TB5001. A conversion to **String** or **Long**, as in `s = c`, is not affected. Name the target type, as in `CStr(c)`, or add an overload `As Variant`, which a conversion to **Variant** then uses.
 
 **API declarations inside a UDT.** A [**Declare**](Declare) statement inside a **Type** body works as a regular module-level declaration, except that when its first parameter is named `Me` and is the same type as the UDT, calls on a variable of that type pass the variable as the first argument implicitly:

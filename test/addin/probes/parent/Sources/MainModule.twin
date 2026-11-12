@@ -1,13 +1,13 @@
 ' P21 in WIP.HelpAddin.md: what reading the Parent of the virtual file system's
-' root folder does. The documentation says it is Nothing; an add-in that tested
-' `item.Parent Is Nothing` on the root crashed the compiler. parent.test.mjs
+' root folder does. It should be Nothing; up to BETA 1034 the read crashed the
+' compiler, and on BETA 1042 it raises error &H80004005. parent.test.mjs
 ' builds this add-in into the copy of the install its lane makes, and opens a
 ' project once per case, naming the case in the environment variable
 ' TB_P21_CASE, which an add-in reads with Environ$ (P10). Each case is run in a
 ' compiler of its own, since a crash ends the process the add-in runs in.
 '
 ' Every line starts "[P21] <case> ", so the last one printed shows which step
-' the compiler died in. A case prints "start" first and "done" last.
+' the add-in stopped in. A case prints "start" first and "done" last.
 '
 '   none  the control: reads nothing
 '   a     Dim o As Object = RootFolder.Parent, then "read"
@@ -16,6 +16,8 @@
 '   d     TypeName(RootFolder.Parent)
 '   e     Dim f As Folder = RootFolder.Parent, then "read"
 '   f     the control with a parent: the project folder's Parent, by its Path
+'   g     (a) under On Error Resume Next, printing Err and o Is Nothing
+'   r     the control for an unhandled error: Err.Raise 5
 Module MainModule
     [DllExport]
     Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
@@ -65,6 +67,23 @@ Module MainModule
         Say Host, "f", "Path = " & f.Path
     End Sub
 
+    Public Sub CaseG(ByVal Host As Host)
+        Say Host, "g", "before Parent"
+        On Error Resume Next
+        Dim o As Object = Host.FileSystem.RootFolder.Parent
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        On Error GoTo 0
+        Say Host, "g", "read, Err " & n & " " & d
+        Say Host, "g", "Is Nothing = " & (o Is Nothing)
+    End Sub
+
+    Public Sub CaseR(ByVal Host As Host)
+        Say Host, "r", "before Raise"
+        Err.Raise 5
+        Say Host, "r", "raised"
+    End Sub
+
     Public Sub Run(ByVal Host As Host, ByVal which As String)
         Say Host, which, "start"
         Select Case which
@@ -74,6 +93,8 @@ Module MainModule
             Case "d": CaseD Host
             Case "e": CaseE Host
             Case "f": CaseF Host
+            Case "g": CaseG Host
+            Case "r": CaseR Host
         End Select
         Say Host, which, "done"
     End Sub

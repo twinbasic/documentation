@@ -57,7 +57,7 @@ A frame whose [**Container**](../Frame#container) is the **MultiFrame** but whos
 
 ## Adopting frames at run time
 
-The mapping from frame to **MultiFrame** is discovered from the parent form's control collection on each layout pass: a frame appears in the strip exactly when its [**Container**](../Frame#container) property points at the **MultiFrame**. The discovered set is then cached. To force the cache to be rebuilt --- for example after re-parenting a frame at run time --- assign any value to [**FramesCount**](#framescount):
+The mapping from frame to **MultiFrame** is discovered from the control collection of the form or [**UserControl**](../UserControl) that holds the **MultiFrame**, on each layout pass: a frame appears in the strip exactly when its [**Container**](../Frame#container) property points at the **MultiFrame**. The discovered set is then cached. To force the cache to be rebuilt --- for example after re-parenting a frame at run time --- assign any value to [**FramesCount**](#framescount):
 
 ```tb check_build
 Set fraExtra.Container = mfPanels
@@ -79,7 +79,7 @@ The set of edges of the parent that the **MultiFrame**'s corresponding edges fol
 The background colour of the **MultiFrame**'s drawing surface, as an **OLE_COLOR**. Defaults to the system window-background colour. Visible only where the contained frames do not fully cover the extent --- e.g. when their **MultiFrameSize**s sum to less than 100%.
 
 <!-- test: bug colour-validation-data-ole-multiframe -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### Container

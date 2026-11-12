@@ -276,7 +276,7 @@ Please direct all negative emotions to your overactive anti-virus vendor :)
 
 tB does not require a full installation process, you need only extract the ZIP file. Download the latest version from the [Releases page](https://github.com/twinbasic/twinbasic/releases), named `twinBASIC_IDE_BETA_xxx.zip` (where xxx is a version number; click on 'Assets' to expand the file list if it's not already visible).
 
-![The expanded Assets list of a GitHub release: the release's twinBASIC_IDE_BETA zip file with the start of its SHA-256, its size and its age, above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png){:width="891" height="183"}
+![The expanded Assets list of a GitHub release: the release's twinBASIC_IDE_BETA zip file with the start of its SHA-256, its size and its age, above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png){:width="876" height="183"}
 
 Download the zip and extract it to an **empty** folder. Do not simply overwrite a previous version; either delete everything in the folder or use a different one. Odd errors have been known to occur otherwise.  It will run from this folder; some settings will be placed in AppData.
 
@@ -366,7 +366,7 @@ In a built ActiveX DLL, these lines have the same effect as the twinBASIC attrib
 <!-- Checked on BETA 1034 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
 
 <!-- test: bug vb6-attribute-lines-no-effect, lane ide:vb6-import -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Some `Attribute` lines have no effect, and nothing says so. `VB_HelpID` and `VB_VarHelpID` give no help context ID. `VB_VarMemberFlags` leaves a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (the user-interface default) and `"14"` (the data-binding flags `bindable` and `displaybind`) set no flag. A component moved from VB6 loses these when it is built again. In a `.twin` file, `[Hidden]` on a public field does hide it.
 </details>
 

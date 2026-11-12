@@ -1,0 +1,16 @@
+' Generics: the rows the compiler reports in the package's own sources, in a project that uses
+' nothing of it. Each comment names one, ' CASE <Name>: package <code> <file>:<line>. The rows are
+' in WinDevLib 8.9.518.0, which Generics embeds through WinDevLibImpl: each is a Delegate Function
+' with no As clause, which BETA 1042 reports as TB0003, and WinDevLib's own settings make TB0003 an
+' error. The package has no test project until a version of it compiles, so these cases and the
+' ones in CompileTests.twin are all there is.
+Module PackageTests
+
+    ' CASE PspCallbackA_DelegateHasNoReturnType: package TB0003 wdAPIComCtl.twin:5085
+    ' CASE PspCallbackW_DelegateHasNoReturnType: package TB0003 wdAPIComCtl.twin:5087
+    ' CASE PspCallback_DelegateHasNoReturnType: package TB0003 wdAPIComCtl.twin:5088
+    ' CASE EnumerateMetafileProc_DelegateHasNoReturnType: package TB0003 wdGDIP.twin:3126
+    ' CASE InspectHSTRINGCallback_DelegateHasNoReturnType: package TB0003 wdWinRTBase.twin:110
+    ' CASE InspectHSTRINGCallback2_DelegateHasNoReturnType: package TB0003 wdWinRTBase.twin:114
+
+End Module

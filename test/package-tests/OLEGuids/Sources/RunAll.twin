@@ -37,8 +37,8 @@ Module RunAll
         Expect.EndCase "DispatchTests.Invoke_AssignsAPropertyWithPropertyPut", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
-        DispatchTests.Invoke_MemberErrorWithoutExcepinfoIsRaisedAsItIs
-        Expect.EndCase "DispatchTests.Invoke_MemberErrorWithoutExcepinfoIsRaisedAsItIs", Err.Number, Err.Description
+        DispatchTests.Invoke_MemberErrorWithoutExcepinfoRaisesDispEException
+        Expect.EndCase "DispatchTests.Invoke_MemberErrorWithoutExcepinfoRaisesDispEException", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         DispatchTests.Invoke_MemberErrorWithExcepinfoRaisesDispEException

@@ -213,6 +213,19 @@ export function openSession(root, baseline, now = () => new Date().toISOString()
       save();
     },
     /**
+     * Records that a review kept the files of the picture `out` changed outside the session's
+     * runs as they are: `kept` {png, svg}, each the hash (shot-manifest.mjs's hashOf) of the file
+     * kept, or null for a part not kept; null forgets the record. A record holds while the
+     * files hold those bytes (WIP.ShotReview.md, Commit).
+     */
+    keepOutside(out, kept) {
+      const all = { ...(data.outside ?? {}) };
+      if (kept) all[out] = kept;
+      else delete all[out];
+      data.outside = all;
+      save();
+    },
+    /**
      * Makes `baseline` ({hash, short, build}) the session's, recording when and which one it
      * replaced as `moved`, {at, from, fromHash}, `from` its short hash.
      */

@@ -381,7 +381,7 @@ The getter returns the property with the ID *propId* as an array of [**GpPropert
 <!-- /test -->
 
 <!-- test: bug udt-array-element-method-call-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A property of an element of the array that **PropertyItem** returns, such as `items(1).TheASCII`, stops the process with an access violation, as it does for an element of any array of a user-defined type. An element can be read as a whole or by a field: `items(1).Id` works, and so does `Dim got As GpPropertyItem = items(1)` followed by `got.TheASCII`. **GetAllPropertyItems** returns its array in the same way, and the same holds for it. The setter, **PropertyCount**, **PropertyIdList** and **RemovePropertyItem** work.
 
 ### RemovePropertyItem

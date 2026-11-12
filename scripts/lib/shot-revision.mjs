@@ -14,7 +14,8 @@
 // any number of files.
 
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { isOutputTree } from "../../lib/markdown-files.mjs";
 
@@ -45,6 +46,11 @@ export function runGit(args, cwd) {
  * trees left out, sorted by path.
  */
 export function parseNameStatus(text) {
+  return keepFiles(nameStatusFiles(text), PNG);
+}
+
+// Every file of `git diff --name-status -z`, as [{out, status}].
+function nameStatusFiles(text) {
   const parts = text.split("\0");
   const found = [];
   for (let i = 0; i + 1 < parts.length; i += 2) {
@@ -52,23 +58,49 @@ export function parseNameStatus(text) {
     const status = letter === "A" ? "added" : letter === "D" ? "deleted" : "modified";
     found.push({ out: parts[i + 1], status });
   }
-  return keepPictures(found);
+  return found;
 }
 
-/** The PNGs of a list of paths from `git ls-files -z` (NUL separated), as [{out, status: "added"}]. */
-export const parseUntracked = (text) =>
-  keepPictures(
-    text
-      .split("\0")
-      .filter(Boolean)
-      .map((out) => ({ out, status: "added" })),
-  );
+// Every file of `git ls-files -z`, as [{out, status: "added"}].
+const untrackedFiles = (text) =>
+  text
+    .split("\0")
+    .filter(Boolean)
+    .map((out) => ({ out, status: "added" }));
 
-function keepPictures(list) {
+/** The PNGs of a list of paths from `git ls-files -z` (NUL separated), as [{out, status: "added"}]. */
+export const parseUntracked = (text) => keepFiles(untrackedFiles(text), PNG);
+
+const PNG = /\.png$/i;
+const SVG = /\.svg$/i;
+
+// The files of `list` whose name `kind` matches, outside the build's output trees, each once, sorted.
+function keepFiles(list, kind) {
   const seen = new Set();
   return list
-    .filter(({ out }) => /\.png$/i.test(out) && !isOutputTree(out.split("/")[0]) && !seen.has(out) && seen.add(out))
+    .filter(({ out }) => kind.test(out) && !isOutputTree(out.split("/")[0]) && !seen.has(out) && seen.add(out))
     .sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
+}
+
+/** The picture an SVG is drawn of: `X.svg` is `X.png`'s, `X.light.svg` is `X.light.png`'s. */
+export const pngOf = (svg) => svg.replace(SVG, ".png");
+
+/**
+ * The pictures whose PNG or SVG differs, from `pngs` and `svgs` ([{out, status}], each file
+ * once): [{out, status, parts}], `out` the PNG's path, `parts` {png, svg} each file's status or
+ * null, and `status` the PNG's, else the SVG's as "SVG <status>". An SVG is a picture's only
+ * when `isPicture(out)` says its PNG is one (it is under docs, or among `pngs`): a diagram's or
+ * a hand-made SVG has none, and is left out. Sorted by `out`.
+ */
+export function pictureChanges(pngs, svgs, isPicture) {
+  const byOut = new Map(pngs.map(({ out, status }) => [out, { out, status, parts: { png: status, svg: null } }]));
+  for (const { out: file, status } of svgs) {
+    const out = pngOf(file);
+    const p = byOut.get(out);
+    if (p) p.parts.svg = status;
+    else if (isPicture(out)) byOut.set(out, { out, status: `SVG ${status}`, parts: { png: null, svg: status } });
+  }
+  return [...byOut.values()].sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
 }
 
 /**
@@ -79,15 +111,23 @@ function keepPictures(list) {
  * with the PNGs git does not track yet, which are added. The working tree is compared,
  * not the index. Throws an Error that says why when `rev` is not a commit there or the
  * folder is not in a git working tree. `git` stands in for running git in the probes.
+ *
+ * With `svgs`, a picture whose SVG differs is listed too, its PNG the same or not, as
+ * pictureChanges gives them ({out, status, parts}): the screenshot review tool's list of what
+ * changed outside its runs. `isPicture(out)` says whether a PNG not among the changed ones is
+ * there (by default, whether it is a file under `docsRoot`).
  */
-export function changedPictures(docsRoot, rev, git = runGit) {
+export function changedPictures(docsRoot, rev, git = runGit, { svgs = false, isPicture = null } = {}) {
   const { hash: id, short, prefix } = revisionOf(docsRoot, rev, git);
   const diff = git(["diff", "--name-status", "--no-renames", "--relative", "-z", id, "--", "."], docsRoot);
   if (diff.status !== 0) throw new Error(`git diff against ${rev} failed in ${docsRoot}`);
   const untracked = git(["ls-files", "-z", "--others", "--exclude-standard", "--", "."], docsRoot);
   if (untracked.status !== 0) throw new Error(`git ls-files failed in ${docsRoot}`);
-  const pictures = keepPictures([...parseNameStatus(diff.stdout), ...parseUntracked(untracked.stdout)]);
-  return { hash: id, short, prefix, pictures };
+  const files = [...nameStatusFiles(diff.stdout), ...untrackedFiles(untracked.stdout)];
+  const pngs = keepFiles(files, PNG);
+  if (!svgs) return { hash: id, short, prefix, pictures: pngs };
+  const there = isPicture ?? ((out) => existsSync(path.join(docsRoot, out)));
+  return { hash: id, short, prefix, pictures: pictureChanges(pngs, keepFiles(files, SVG), there) };
 }
 
 /**
@@ -340,16 +380,36 @@ const literalSpecs = (paths) => `${paths.map((p) => `:(literal)${p}`).join("\0")
  * committed. The repository's hooks run. Resolves to {hash, short}, the new commit, without
  * blocking the process while git and its hooks run (seconds on this repository). Rejects with
  * an Error with git's own words when git refuses: a hook, nothing to commit, an empty message.
+ *
+ * `contents`, [{path, text}], commits a file of `paths` with `text` in place of what the working
+ * tree holds (a page's size changes without its other edits, shot-sizes.mjs): the file holds
+ * `text` while git commits it, and what it held is put back after, whether git committed or not.
+ * Meanwhile a copy of what it held waits in a folder under the temp folder, which is removed
+ * once every file is put back, so that a process killed in between loses nothing.
  */
-export async function commitPaths(root, { paths, added = [], message }) {
+export async function commitPaths(root, { paths, added = [], message, contents = [] }) {
   if (!paths.length) throw new Error("no file to commit");
   const top = path.resolve((await gitSaying(["rev-parse", "--show-toplevel"], root)).trim());
   if (added.length) await gitSaying(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], top, literalSpecs(added));
-  await gitSaying(
-    ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],
-    top,
-    literalSpecs(paths),
-  );
+  const held = [];
+  const keepDir = contents.length ? mkdtempSync(path.join(tmpdir(), "shot-commit-held-")) : null;
+  try {
+    for (const [k, { path: p, text }] of contents.entries()) {
+      const file = path.join(top, p);
+      const bytes = readFileSync(file);
+      writeFileSync(path.join(keepDir, `${k}-${path.basename(file)}`), bytes);
+      held.push([file, bytes]);
+      writeFileSync(file, text);
+    }
+    await gitSaying(
+      ["commit", "--quiet", "--only", "-m", message, "--pathspec-from-file=-", "--pathspec-file-nul"],
+      top,
+      literalSpecs(paths),
+    );
+  } finally {
+    for (const [file, bytes] of held) writeFileSync(file, bytes);
+    if (keepDir) rmSync(keepDir, { recursive: true, force: true });
+  }
   const hash = (await gitSaying(["rev-parse", "HEAD"], top)).trim();
   return { hash, short: (await gitSaying(["rev-parse", "--short=8", hash], top)).trim() };
 }

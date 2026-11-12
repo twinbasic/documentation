@@ -43,7 +43,7 @@ When no page documents the name, the pane stays as it is, and a notification say
 
 With **Hover help** ticked in the [settings](#settings), the information box the IDE shows when the mouse rests on a name gains a link to the name's page, at its top. Clicking the link shows the page in the pane, as F1 does.
 
-![The mouse pointer resting on Collection in the line Dim names As New Collection. The IDE's information box below it starts with the underlined link Help: Collection class (VBA), followed by the class's declaration and its members.](Images/Help_Hover.png){:width="881" height="492"}
+![The mouse pointer resting on Collection in the line Dim names As New Collection. The IDE's information box below it starts with the underlined link Help: Collection class (VBA), followed by the class's declaration and its members.](Images/Help_Hover.png){:width="889" height="495"}
 
 A link names the symbol, its kind and where it is declared: *Help: MsgBox function (VBA.Interaction)*. A name that several pages document gets a link for each, up to five. A name without a page gets no link. Hover help is off until it is ticked.
 

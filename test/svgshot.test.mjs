@@ -50,6 +50,7 @@ import {
   pngHash,
   readBundle,
   renderBundle,
+  seedBundleCache,
   trimSnapshot,
   writeBundle,
 } from "../scripts/svgshot/bundle.mjs";
@@ -104,6 +105,7 @@ import {
   applySvg,
   dropPicture,
   heldOf,
+  heldScale,
   holdPicture,
   restorePictures,
   slugOf,
@@ -122,6 +124,8 @@ import {
   themeTextDifference,
 } from "../scripts/lib/shot-policy.mjs";
 import { holdsRoot, rootPattern, SHOWN_ROOT, showRoot, TOOL_ROOT } from "../scripts/lib/shot-root.mjs";
+import { launchBrowser } from "../scripts/lib/browser.mjs";
+import { sameSvgAs, sameWhy } from "../scripts/svgshot/keep.mjs";
 import {
   earlierPngDecision,
   earlierSvgDecision,
@@ -145,6 +149,16 @@ import {
   withinNoise,
 } from "../scripts/lib/shot-change.mjs";
 import { allowancesOf } from "../scripts/lib/shot-views.mjs";
+import {
+  pictureRefs,
+  referenceIndex,
+  scaleOf,
+  shownSize,
+  sizeMismatches,
+  syncSizes,
+  targetOf,
+  withShownSizes,
+} from "../scripts/lib/shot-sizes.mjs";
 import {
   FAINT_LEVEL,
   pngLook,
@@ -229,6 +243,47 @@ import {
   viewportScroller,
   viewportStyleSources,
 } from "../scripts/svgshot/snapshot-svg.mjs";
+
+describe("an SVG the same picture as one already there (keep.mjs's sameSvgAs)", () => {
+  const svg = (fill, { order = false, crlf = false } = {}) => {
+    const rect = order
+      ? `<rect fill="${fill}" height="6" width="6" y="2" x="2"/>`
+      : `<rect x="2" y="2" width="6" height="6" fill="${fill}"/>`;
+    const text = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">${rect}</svg>\n`;
+    return crlf ? text.replace(/\n/g, "\r\n") : text;
+  };
+  const base = svg("red");
+  const reordered = svg("red", { order: true });
+  const other = svg("blue");
+
+  test("draws both and compares their pixels: bytes no one sees do not count, a colour does", async (t) => {
+    const browser = await launchBrowser({ args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+    t.after(() => browser.close());
+    // the file a terminal changed; the drawn SVG draws as the baseline's: the baseline's bytes go back
+    assert.equal(await sameSvgAs(browser, { svg: reordered, file: other, baseline: base }), "baseline");
+    // the file is the baseline's, and the drawn SVG differs from it in bytes only: the file stays
+    assert.equal(await sameSvgAs(browser, { svg: reordered, file: base, baseline: base }), "file");
+    // a colour changed: neither
+    assert.equal(await sameSvgAs(browser, { svg: other, file: base, baseline: base }), null);
+    // asked of the file alone (an SVG that stays with its PNG)
+    assert.equal(await sameSvgAs(browser, { file: reordered, baseline: base }), "baseline");
+    assert.equal(await sameSvgAs(browser, { file: other, baseline: base }), null);
+  });
+
+  test("answers from the texts alone when they say enough: nothing is drawn", async () => {
+    const browser = {
+      newPage: () => {
+        throw new Error("drew a picture");
+      },
+    };
+    // line endings do not count
+    assert.equal(await sameSvgAs(browser, { svg: base, file: svg("red", { crlf: true }), baseline: base }), null);
+    assert.equal(await sameSvgAs(browser, { svg: other, file: null, baseline: null }), null);
+    assert.equal(await sameSvgAs(browser, { file: base, baseline: base }), null);
+    assert.equal(sameWhy("baseline", "HEAD"), "draws the same pixels as HEAD's");
+    assert.equal(sameWhy("file", "HEAD"), "draws the same pixels as the file's");
+  });
+});
 
 describe("naturalSize", () => {
   const png = (bytes) => `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`;
@@ -2913,6 +2968,29 @@ describe("changes against a git revision", () => {
       () => changedPictures("/x", "main", () => ({ status: 128, stdout: "" })),
       /not in a git working tree/,
     );
+    // with svgs: a picture whose SVG changed is listed, its PNG the same or not; an SVG with no
+    // picture beside it (a diagram's) is not
+    const withSvg = (args) => {
+      if (args[0] === "diff")
+        return { status: 0, stdout: "M\0a.png\0M\0a.svg\0M\0b.light.svg\0D\0c.png\0D\0c.svg\0M\0dot/d.svg\0" };
+      if (args[0] === "ls-files") return { status: 0, stdout: "e.svg\0_site/f.svg\0" };
+      return git(args);
+    };
+    const there = new Set(["b.light.png", "e.png", "_site/f.png"]);
+    assert.deepEqual(
+      changedPictures("/some/docs", "main", withSvg, { svgs: true, isPicture: (out) => there.has(out) }).pictures,
+      [
+        { out: "a.png", status: "modified", parts: { png: "modified", svg: "modified" } },
+        { out: "b.light.png", status: "SVG modified", parts: { png: null, svg: "modified" } },
+        { out: "c.png", status: "deleted", parts: { png: "deleted", svg: "deleted" } },
+        { out: "e.png", status: "SVG added", parts: { png: null, svg: "added" } },
+      ],
+    );
+    // without svgs, the PNGs alone, as --cleanup takes them
+    assert.deepEqual(
+      changedPictures("/some/docs", "main", withSvg).pictures.map((p) => p.out),
+      ["a.png", "c.png"],
+    );
   });
 
   test("a picture's allowance widens the noise rule, as --cleanup judges two PNGs", () => {
@@ -3102,6 +3180,47 @@ describe("the picture at a git revision", () => {
     assert.throws(() => revisionOf("/r/docs", "-x", git), /not a revision/);
   });
 
+  test("a worktree's bundle cache is filled from the main checkout's once, and copied, never linked (seedBundleCache)", (t) => {
+    const main = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-seed-"));
+    t.after(() => fs.rmSync(main, { recursive: true, force: true }));
+    const git = (...args) => execFileSync("git", args, { cwd: main, stdio: ["ignore", "pipe", "ignore"] });
+    try {
+      git("init", "-q");
+    } catch {
+      t.skip("no git");
+      return;
+    }
+    fs.writeFileSync(path.join(main, "a.txt"), "a\n");
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const wt = path.join(main, ".claude", "worktrees", "w");
+    git("worktree", "add", "-q", "-b", "w", wt);
+    const mainCache = path.join(main, ".svgshot-bundles");
+    const wtCache = path.join(wt, ".svgshot-bundles");
+    // none in the main checkout: nothing to copy, and nothing made
+    assert.equal(seedBundleCache(wtCache, { repo: wt }), null);
+    assert.ok(!fs.existsSync(wtCache));
+    fs.mkdirSync(path.join(mainCache, "IDE", "Images"), { recursive: true });
+    fs.writeFileSync(path.join(mainCache, "IDE", "Images", "A.png.json.br"), "bundle");
+    // the main checkout's own cache is never seeded from itself
+    assert.equal(seedBundleCache(path.join(main, "elsewhere", ".svgshot-bundles"), { repo: main }), null);
+    assert.equal(fs.realpathSync(seedBundleCache(wtCache, { repo: wt })), fs.realpathSync(mainCache));
+    const copied = path.join(wtCache, "IDE", "Images", "A.png.json.br");
+    assert.equal(fs.readFileSync(copied, "utf8"), "bundle");
+    assert.ok(!fs.readdirSync(wt).some((f) => f.includes(".filling-")), "no folder left from the copy");
+    // a copy: rewriting the worktree's file leaves the main checkout's as it was
+    fs.writeFileSync(copied, "changed");
+    assert.equal(fs.readFileSync(path.join(mainCache, "IDE", "Images", "A.png.json.br"), "utf8"), "bundle");
+    // once there, even emptied, it has been used: never seeded again
+    fs.rmSync(path.join(wtCache, "IDE"), { recursive: true });
+    assert.equal(seedBundleCache(wtCache, { repo: wt }), null);
+    assert.deepEqual(fs.readdirSync(wtCache), []);
+    // outside a git working tree: nothing
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-seed-none-"));
+    t.after(() => fs.rmSync(bare, { recursive: true, force: true }));
+    assert.equal(seedBundleCache(path.join(bare, ".svgshot-bundles"), { repo: bare }), null);
+  });
+
   test("reads a revision's files in one process and puts a text file back as a checkout writes it", (t) => {
     const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-revision-"));
     t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
@@ -3220,6 +3339,130 @@ describe("the picture at a git revision", () => {
     assert.equal(git("status", "--porcelain"), " M other.txt\nA  staged.txt\n");
     await assert.rejects(commitPaths(docs, { paths: ["other.txt"], message: "" }), /^Error: git commit failed/);
     await assert.rejects(commitPaths(docs, { paths: [], message: "m" }), /no file to commit/);
+
+    // a file committed with other text than the working tree's, which it holds again after
+    fs.writeFileSync(path.join(repo, "page.md"), "size 1\r\nline\r\n");
+    git("add", "page.md");
+    git("commit", "-q", "-m", "page");
+    const working = "size 2\r\nline, edited\r\n";
+    fs.writeFileSync(path.join(repo, "page.md"), working);
+    const tempsBefore = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith("shot-commit-held-")).length;
+    await commitPaths(docs, {
+      paths: ["page.md"],
+      message: "sizes",
+      contents: [{ path: "page.md", text: "size 2\r\nline\r\n" }],
+    });
+    assert.equal(git("show", "HEAD:page.md"), "size 2\r\nline\r\n");
+    assert.equal(fs.readFileSync(path.join(repo, "page.md"), "utf8"), working);
+    assert.equal(git("diff", "--", "page.md").includes("+line, edited"), true);
+    // ... and again when git refuses (an empty message): the copy kept meanwhile is removed
+    await assert.rejects(
+      commitPaths(docs, { paths: ["page.md"], message: "", contents: [{ path: "page.md", text: "other\n" }] }),
+      /git commit failed/,
+    );
+    assert.equal(fs.readFileSync(path.join(repo, "page.md"), "utf8"), working);
+    assert.equal(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith("shot-commit-held-")).length, tempsBefore);
+  });
+});
+
+describe("the sizes pages declare for screenshots (shot-sizes.mjs)", () => {
+  const png = (w, h) => encodePng({ width: w, height: h, rgba: Buffer.alloc(w * h * 4, 255) });
+
+  test("a reference is an image outside code, its source resolved from its page", () => {
+    const text = [
+      '![A](Images/A.png){:width="10" height="5"}',
+      '![B b](<../Other/two words.png>){:width="1" height="2" png}',
+      '![C](/IDE/Images/C.png) in a sentence, and [a link](Images/Link.png){:width="1" height="1"}',
+      '`![code](Images/Code.png){:width="1" height="1"}`',
+      "```md",
+      '![fence](Images/Fence.png){:width="1" height="1"}',
+      "```",
+      '![url](https://example.com/x.png){:width="1" height="1"}',
+    ].join("\r\n");
+    assert.deepEqual(
+      pictureRefs(text, "IDE/Page.md").map((r) => [r.line, r.out, r.width, r.height, r.attrs]),
+      [
+        [1, "IDE/Images/A.png", 10, 5, 'width="10" height="5"'],
+        [2, "Other/two words.png", 1, 2, 'width="1" height="2" png'],
+        [3, "IDE/Images/C.png", null, null, null],
+      ],
+    );
+    assert.equal(targetOf("a/b.md", "../../x.png"), null);
+    assert.equal(targetOf("a/b.md", "x%20y.png"), "a/x y.png");
+  });
+
+  test("sets each reference's size and keeps every other character", () => {
+    const text =
+      '![A](Images/A.png){:width="10" height="5" png}\r\n`![A](Images/A.png){:width="1" height="1"}`\r\n![A again](Images/A.png)\r\n![B](Images/B.png){:png}\r\n';
+    const sized = withShownSizes(text, "IDE/Page.md", (out) =>
+      out === "IDE/Images/A.png"
+        ? { width: 7, height: 3 }
+        : out === "IDE/Images/B.png"
+          ? { width: 2, height: 1 }
+          : null,
+    );
+    assert.equal(
+      sized,
+      '![A](Images/A.png){:width="7" height="3" png}\r\n`![A](Images/A.png){:width="1" height="1"}`\r\n![A again](Images/A.png){:width="7" height="3"}\r\n![B](Images/B.png){:width="2" height="1" png}\r\n',
+    );
+    // a size already right, or a picture not named, leaves the text itself
+    assert.equal(
+      withShownSizes(sized, "IDE/Page.md", () => null),
+      sized,
+    );
+    assert.equal(
+      withShownSizes(sized, "IDE/Page.md", (out) => (out === "IDE/Images/B.png" ? { width: 2, height: 1 } : null)),
+      sized,
+    );
+    assert.deepEqual(shownSize([1778, 990]), { width: 889, height: 495 });
+    assert.deepEqual(shownSize([692, 226], 1.5), { width: 461, height: 151 });
+    assert.equal(scaleOf(null), 2);
+    assert.equal(scaleOf({ scale: 1 }), 1);
+  });
+
+  test("syncs the pages that show a picture to its file and its scale, and lists those that are not", (t) => {
+    const docs = fs.mkdtempSync(path.join(os.tmpdir(), "shot-sizes-"));
+    t.after(() => fs.rmSync(docs, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(docs, "IDE", "Images"), { recursive: true });
+    fs.mkdirSync(path.join(docs, "_site", "IDE"), { recursive: true });
+    fs.writeFileSync(path.join(docs, "IDE", "Images", "A.png"), png(21, 10));
+    fs.writeFileSync(path.join(docs, "IDE", "Images", "A.light.png"), png(22, 10));
+    fs.writeFileSync(path.join(docs, "IDE", "Images", "W.png"), png(30, 15));
+    const one =
+      '# One\r\n\r\n![A](Images/A.png){:width="1" height="1"}\r\n\r\n![W](Images/W.png){:width="20" height="10"}\r\n';
+    fs.writeFileSync(path.join(docs, "IDE", "One.md"), one);
+    fs.writeFileSync(path.join(docs, "Two.md"), '![A](IDE/Images/A.png){:width="11" height="5"}\n');
+    // an output tree is never read or written
+    fs.writeFileSync(path.join(docs, "_site", "IDE", "Out.md"), '![A](Images/A.png){:width="1" height="1"}\n');
+    const entry = (out) => (out === "IDE/Images/W.png" ? { scale: 1.5 } : null);
+    const index = referenceIndex(docs);
+    assert.deepEqual([...index].sort(), [
+      ["IDE/Images/A.png", ["IDE/One.md", "Two.md"]],
+      ["IDE/Images/W.png", ["IDE/One.md"]],
+    ]);
+    const all = ["IDE/Images/A.png", "IDE/Images/A.light.png", "IDE/Images/W.png"];
+    assert.deepEqual(
+      sizeMismatches(docs, all, entry).map((w) => [w.page, w.line, w.out, w.shown]),
+      [["IDE/One.md", 3, "IDE/Images/A.png", { width: 11, height: 5 }]],
+    );
+    // a dry run says what it would change and writes nothing
+    assert.deepEqual(syncSizes(docs, all, entry, { dryRun: true }), [
+      { page: "IDE/One.md", outs: ["IDE/Images/A.png"] },
+    ]);
+    assert.equal(fs.readFileSync(path.join(docs, "IDE", "One.md"), "utf8"), one);
+    assert.deepEqual(syncSizes(docs, all, entry, { index }), [{ page: "IDE/One.md", outs: ["IDE/Images/A.png"] }]);
+    assert.equal(
+      fs.readFileSync(path.join(docs, "IDE", "One.md"), "utf8"),
+      one.replace('width="1" height="1"', 'width="11" height="5"'),
+    );
+    assert.deepEqual(sizeMismatches(docs, all, entry), []);
+    assert.deepEqual(syncSizes(docs, all, entry), []);
+    // W at the default scale is wrong, and a picture with no file is left out
+    assert.deepEqual(
+      sizeMismatches(docs, [...all, "IDE/Images/None.png"], () => null).map((w) => [w.out, w.declared, w.shown]),
+      [["IDE/Images/W.png", { width: 20, height: 10 }, { width: 15, height: 8 }]],
+    );
+    assert.equal(fs.readFileSync(path.join(docs, "_site", "IDE", "Out.md"), "utf8").includes('width="1"'), true);
   });
 });
 
@@ -3982,10 +4225,14 @@ describe("what becomes of a picture and its SVG (shot-policy.mjs, shot-apply.mjs
     fs.writeFileSync(at("a/X.svg"), "<svg>old</svg>\r\n");
     writeBundle(bundles, "a/X.png", { v: 1 }, DARK, []);
     writeBundle(bundles, "a/X.light.png", { v: 2 }, DARK, []);
-    holdPicture(held, docs, "a/X.png", bundles, 1010);
+    holdPicture(held, docs, "a/X.png", bundles, 1010, 1.5);
     holdPicture(held, docs, "a/Y.png", bundles, null);
     const kept = heldOf(held, "a/X.png");
-    assert.deepEqual([kept.png, kept.svg, kept.bundle, kept.build], [true, true, true, 1010]);
+    assert.deepEqual([kept.png, kept.svg, kept.bundle, kept.build, kept.scale], [true, true, true, 1010, 1.5]);
+    assert.deepEqual(
+      [heldScale(held, "a/X.png"), heldScale(held, "a/Y.png"), heldScale(held, "a/Z.png")],
+      [1.5, null, undefined],
+    );
     assert.ok(kept.pngBytes.equals(DARK));
     assert.deepEqual([heldOf(held, "a/Y.png").png, heldOf(held, "a/Z.png")], [false, null]);
     // the picture changed, its SVG removed, its bundle replaced; and a picture added
@@ -4131,6 +4378,10 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
     bad({ "../a.png": {} }, /not a path under docs/);
     bad({ "a.jpg": {} }, /not a path under docs/);
     bad({ "a.png": { build: 0 } }, /m's a\.png\.build is not a build number/);
+    // a scale of 2 is the default, and is never written
+    bad({ "a.png": { scale: 2 } }, /m's a\.png\.scale is not a scale above 0 and at most 8 other than 2/);
+    bad({ "a.png": { scale: 0 } }, /a\.png\.scale/);
+    bad({ "a.png": { scale: "1.5" } }, /a\.png\.scale/);
     bad({ "a.png": { png: { noise: { levels: 300 } } } }, /png\.noise\.levels/);
     bad({ "a.png": { png: { noise: { share: 101 } } } }, /png\.noise\.share is not a percentage/);
     bad({ "a.png": { png: { ignore: [[5, 0, 5, 9]] } } }, /png\.ignore\[0\] is not \[x0, y0, x1, y1\]/);
@@ -4179,6 +4430,25 @@ describe("the screenshot manifest (shot-manifest.mjs)", () => {
     assert.equal(lf.save(), true);
     assert.equal(fs.readFileSync(file, "utf8"), manifestText({ format: 1, pictures: {} }));
     assert.deepEqual(fs.readdirSync(dir), ["manifest.json"]);
+  });
+
+  test("records a capture's scale when it is not 2, after its build, and drops it with the file", () => {
+    const m = openManifest(path.join(os.tmpdir(), "no-such-manifest-file.json"));
+    m.setBuild("w.png", 1042, 1.5);
+    assert.deepEqual(m.entry("w.png"), { build: 1042, scale: 1.5 });
+    assert.match(m.text(), /"build": 1042,\n {6}"scale": 1\.5\n/);
+    // a build recorded without a scale keeps the one there; a scale of 2, or null, removes it
+    m.setBuild("w.png", 1043);
+    assert.deepEqual(m.entry("w.png"), { build: 1043, scale: 1.5 });
+    m.setBuild("w.png", 1044, 2);
+    assert.deepEqual(m.entry("w.png"), { build: 1044 });
+    m.setBuild("w.png", 1044, 1);
+    m.setBuild("w.png", 1045, null);
+    assert.deepEqual(m.entry("w.png"), { build: 1045 });
+    m.setBuild("w.png", 1045, 1);
+    m.clearBuild("w.png");
+    assert.deepEqual(m.entry("w.png"), {});
+    assert.throws(() => m.setBuild("w.png", 1045, -1), /w\.png\.scale/);
   });
 
   test("the repository's own manifest reads", () => {

@@ -221,9 +221,13 @@ When set to **Yes**, the memory of a **String**, **Variant** or array is overwri
 
 ### Break On All Errors
 
-When set to **Yes**, a run-time error stops the program at the failing line even while an `On Error Resume Next` or `On Error GoTo` statement is in effect, with the same error panel as an error that nothing handles. It is **No** by default, and then the handler gets the error. **Debug → Debugger Options → Break On All Errors** turns the same setting on and off. In the `Settings` file it is `debugger.breakOnAllErrors`.
+When set to **Yes**, a run-time error stops the program at the failing line even while an `On Error Resume Next` or `On Error GoTo` statement is in effect, with the same error panel as an error that nothing handles. It is **No** by default, and then the handler gets the error. It applies to errors raised in the project's own code only, and the dialog shows it as **Break On All Errors (this project)**. **Debug → Debugger Options → Break On All Errors (this project)** turns the same setting on and off. In the `Settings` file it is `debugger.breakOnAllErrors`.
 
 [When a run-time error stops the program](Debugging/Breakpoints-and-Stepping#when-a-run-time-error-stops-the-program) describes the panel. [Break On All Errors and Debuggable](Debugging/Breakpoints-and-Stepping#break-on-all-errors-and-debuggable) says what **Ignore (Resume Next)** does when this setting is on.
+
+### Break On All Errors (packages)
+
+When set to **Yes**, the setting above applies to errors raised in the code of the packages that the project references as well. It is **No** by default. **Debug → Debugger Options → Break On All Errors (inside packages)** turns the same setting on and off. In the `Settings` file it is `debugger.breakOnAllErrorsInPackages`.
 
 ### Debuggable
 

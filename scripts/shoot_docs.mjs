@@ -185,9 +185,11 @@ import { decodePng, encodePng, pngSize } from "./lib/png.mjs";
 import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { inRects, pngsNear, withinNoise } from "./lib/shot-change.mjs";
 import { changedPictures, openRevision, planCleanup } from "./lib/shot-revision.mjs";
-import { applyPicture, applySvg, dropPicture, restorePictures, svgOf } from "./lib/shot-apply.mjs";
+import { syncSizes } from "./lib/shot-sizes.mjs";
+import { applyPicture, applySvg, dropPicture, restorePictures, restoreSvg, svgOf } from "./lib/shot-apply.mjs";
 import { freezePage, showFrozen } from "./lib/shot-freeze.mjs";
 import { FIRST_RUN, guardSource, SETTLED, settingsHash } from "./lib/shot-first-run.mjs";
+import { sessionRun } from "./lib/shot-front.mjs";
 import {
   holdsRoot,
   rootBoxesBackJs,
@@ -206,7 +208,7 @@ import {
   svgFollowsPng,
   themeTextDifference,
 } from "./lib/shot-policy.mjs";
-import { MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
+import { hashOf, MANIFEST, openManifest, svgDecision } from "./lib/shot-manifest.mjs";
 import { reviewPicture, reviewSvg } from "./lib/shot-queue.mjs";
 import {
   pngVerdict,
@@ -241,10 +243,11 @@ import {
   sleep,
   waitForCompile,
 } from "./lib/tb-ide.mjs";
-import { BUNDLE_CACHE, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
+import { IDE_DRIVER } from "./lib/tb-session.mjs";
+import { BUNDLE_CACHE, defaultBundleCache, svgOfPage, writeBundle } from "./svgshot/bundle.mjs";
 import { QUIET_CSS } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
-import { holdsUserName, judgeSvg } from "./svgshot/keep.mjs";
+import { holdsUserName, judgeSvg, sameSvgAs, sameWhy } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
@@ -450,6 +453,14 @@ which takes the rule's place for those bytes only (--cleanup too).
                    Takes --only, and none of the other options
   -h, --help       print this text and exit
 
+A run that would write under docs (no --stage, no --out elsewhere; --cleanup
+without --dry-run among them) is a run of the screenshot review session
+(scripts/lib/shot-front.mjs): handed to the review tool when it is open for this
+checkout and followed here, else run here in the session as the tool runs it,
+staged, its verdicts applied under docs as they arrive and recorded for a review.
+It is compared with the session's baseline, and takes no --diffs, --bundles or
+--against-disk. Ctrl+C stops it as the tool's Stop does; a second ends it at once.
+
 Exit codes:
   0  every picture was written or was unchanged (with --cleanup: every modified
      picture was compared); a run stopped (--events) exits as for the pictures
@@ -529,7 +540,8 @@ const staged = stageRoot ? stageFolders(stageRoot) : null;
 const diffsRoot = staged ? staged.diffs : values.diffs === undefined ? null : path.resolve(values.diffs);
 // With --svg, each picture's bundle (svgshot/bundle.mjs), for replay.mjs: never under docs,
 // since a bundle holds the Windows user name.
-const bundleCache = path.resolve(values.bundles ?? DEFAULT_BUNDLES);
+// A worktree's default cache is filled from the main checkout's the first time --svg uses it.
+const bundleCache = path.resolve(values.bundles ?? (values.svg ? defaultBundleCache("shoot_docs") : DEFAULT_BUNDLES));
 const bundlesRoot = !values.svg ? null : staged ? staged.bundles : bundleCache;
 // path.relative gives an absolute path across drives, which is outside docs and does not start with "..".
 for (const [option, root] of [
@@ -564,6 +576,20 @@ if (outRoot === path.resolve(DEFAULT_OUT)) {
   }
 }
 const entryOf = (out) => manifest?.entry(out) ?? null;
+
+// A run that writes under docs is a run of the screenshot review session (lib/shot-front.mjs):
+// handed to the review tool when it is open, else run here in the session, as the tool runs it.
+// It is made once the command line has passed every check that needs no IDE started, so that a
+// mistake in it is said as before and no run is recorded for it.
+const writesDocs = !stageRoot && !values.list && !values.dryRun && outRoot === path.resolve(DEFAULT_OUT);
+if (values.cleanup && writesDocs) {
+  try {
+    openRevision(outRoot, AGAINST);
+  } catch (e) {
+    die(2, e.message);
+  }
+  await sessionRun({ tool: "cleanup", name: "shoot_docs", writes: true });
+}
 
 // --cleanup: no IDE. Every PNG git reports modified against the revision that is within a
 // capture's noise of the revision's goes back to the revision's bytes, with its SVG.
@@ -615,6 +641,12 @@ if (values.cleanup) {
     }[fates.get(out).fate];
     console.log(`${out}: ${verb} as ${found.short} has it${svgText}`);
   }
+  // a picture put back may be of another size than the pages say: they follow its pixels
+  try {
+    syncPageSizes(plan.reset, { dryRun: values.dryRun });
+  } catch (e) {
+    die(2, `the pages' picture sizes could not be set: ${e.message}`);
+  }
   for (const { out, error } of plan.unreadable) console.error(`${out}: not compared: ${error}`);
   const n = (list, one, many = `${one}s`) => `${list.length} ${list.length === 1 ? one : many}`;
   console.log(
@@ -643,6 +675,7 @@ if (!values.list && (!ide || !existsSync(ide))) {
       "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
   );
 }
+await sessionRun({ tool: "shoot_docs", writes: writesDocs });
 
 const USER = userInfo().username;
 const USER_PATTERN = USER.replace(/[.*+?^$|()[\]{}\\]/g, "\\$&");
@@ -1292,18 +1325,18 @@ async function fixPageSize(c) {
 // the options the schema does not list. Returns what differed from the defaults.
 const PAGE_DEFAULTS = `(() => {
   const blocked = (window.__shotBlocked = new Set(["RemoveRecentsList"]));
-  // The New / Open Project dialog (BETA 1033's) reads the recent list from the host object
-  // itself, and remembers the section it was left on as the setting NEWFRONTPAGE: the list is
-  // the tool's own (window.__shotRecents, setRecents), the section is never read or saved.
-  // VB6's list is __shotVb6Recents, and a native picker a shot goes through is answered from __shotAnswers.
-  window.__shotRecents = [];
-  window.__shotVb6Recents = "";
+  // The New / Open Project dialog remembers the section it was left on as the setting
+  // NEWFRONTPAGE, which is never read or saved here. Its recent lists, twinBASIC's and VB6's,
+  // are answered by the defaults hook (scripts/lib/tb-defaults.mjs), the outer wrapper of the
+  // host object, from __tbRecents (setRecents) and __tbVb6Recents, before this proxy sees a
+  // call. A native picker a shot goes through is answered from __shotAnswers.
+  window.__tbRecents = "";
+  window.__tbVb6Recents = "";
   window.__shotAnswers = {};
   const FRONT_PAGE = "NEWFRONTPAGE";
   hostAppObject = new Proxy(hostAppObject, {
     get(target, key) {
       if (blocked.has(key)) return async () => undefined;
-      if (key === "GetRecentsList") return async () => window.__shotRecents.join("?");
       if (Object.hasOwn(window.__shotAnswers, key)) return async () => window.__shotAnswers[key];
       const member = Reflect.get(target, key);
       if (key === "GetIDESetting" || key === "SaveIDESetting") {
@@ -1330,7 +1363,6 @@ const PAGE_DEFAULTS = `(() => {
   activePanelLayoutName = "<DEFAULT>";
   customKeyboardShortcutGroups = {};
   activeKeyboardShortcutGroupNames = "";
-  window.HostGetVB6RecentProjects = (done) => done(window.__shotVb6Recents);
   window.HostGetRecentsList = (e) => {
     e.classList.add("frontPageListViewLIST");
     listviewFromArray(e, [], () => {});
@@ -1344,7 +1376,7 @@ const PAGE_DEFAULTS = `(() => {
 // The recent list the New / Open Project dialog shows, from the next time it opens: the
 // projects' paths, each shown as both its name and its path.
 const setRecents = (c, paths) =>
-  c.evaluate(`window.__shotRecents = ${JSON.stringify(paths)};
+  c.evaluate(`window.__tbRecents =${JSON.stringify(paths.join("?"))};
 window.HostGetRecentsList = (e) => {
   e.classList.add("frontPageListViewLIST");
   listviewFromArray(e, ${JSON.stringify(paths.map((p) => ({ name: p, projectPath: p })))}, () => {});
@@ -1367,6 +1399,16 @@ window.HostGetRecentsList = (e) => {
 const demoLines = () => readFileSync(DEMO_SOURCE, "utf8").split("\n");
 
 // ---- help
+
+// Whether the help add-in's pane holds the last thing its BuildPane makes: the hidden
+// #helpTextFind with textfind.js in it (add-in/Sources/HelpAddIn.twin). Host_OnProjectLoaded
+// prints its loaded line just after BuildPane returns.
+const helpPaneBuilt = (c) =>
+  c.evaluate(`(() => {
+  const w = typeof toolWindowsById === "undefined" ? null : toolWindowsById[${JSON.stringify(PANE)}];
+  const find = w?.bodyElement?.getRootNode().querySelector("#helpTextFind");
+  return !!find && find.innerHTML.length > 0;
+})()`);
 
 async function startHelp(run) {
   const { lane, slot, work } = run;
@@ -1402,10 +1444,15 @@ async function prepareHelp(run) {
   const { c, origin } = run;
   run.step = "shoot";
   const addinLines = (mark) => linesSince(c, mark, { prefix: "[tbDocsHelp] " });
-  if (
-    !(await waitFor(c, async () => (await addinLines(null)).some((l) => l.startsWith("loaded")), { timeout: 30000 }))
-  ) {
-    throw new Error("the add-in never printed its loaded line");
+  // The add-in has loaded once it has printed its loaded line, or, since that line can be
+  // gone, once its pane holds what it builds last, a few statements before the line.
+  // On BETA 1042 the DEBUG CONSOLE is emptied a second time as the first project opens,
+  // after the add-in has printed (BUGS-TO-REPORT.md, console-cleared-at-open).
+  const loaded = async () => (await addinLines(null)).some((l) => l.startsWith("loaded")) || (await helpPaneBuilt(c));
+  if (!(await waitFor(c, loaded, { timeout: 30000 }))) {
+    throw new Error(
+      `the add-in neither printed its loaded line nor built its pane: ${JSON.stringify(await addinLines(null))}`,
+    );
   }
   await openFile(c, DEMO_FILE, { line: 1, column: 1 });
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
@@ -11820,7 +11867,19 @@ async function startFusion(run) {
   const settings = JSON.parse(readFileSync(file, "utf8"));
   settings["project.fusionBuildPath"] = PACKAGE_BUILD_PATH;
   writeFileSync(file, JSON.stringify(settings, null, "\t"));
-  return run.lane.open(src);
+  const { lane } = run;
+  const c = await lane.open(src);
+  // On BETA 1042 the first project an IDE opens empties the DEBUG CONSOLE twice, the second time
+  // after the compiler has said that it built the host, whose line is then gone for good
+  // (BUGS-TO-REPORT.md, console-cleared-at-open). A second project's open empties it once,
+  // before its build, as on BETA 1034: the same project is opened again, from a copy beside it.
+  const again = path.join(path.dirname(lane.project), "again", path.basename(lane.project));
+  mkdirSync(path.dirname(again), { recursive: true });
+  cpSync(lane.project, again);
+  const r = await IDE_DRIVER.switchTo(c, again);
+  if (r.asked !== 1) throw new Error("File > Open Project did not ask for the Fusion project's copy");
+  lane.checkCompile(await waitForCompile(c, { project: again }), "the Fusion project's copy");
+  return c;
 }
 
 // The DEBUG CONSOLE as the project's load leaves it, the line that says the host was built its
@@ -11843,10 +11902,9 @@ const fusionShot = {
         },
         { timeout: 60000, interval: 200 },
       );
-      if (!text?.includes(FUSION_LINE)) {
-        throw new Error(
-          `the compiler did not build the Fusion host: ${JSON.stringify(text?.match(/.*Fusion.*/)?.[0])}`,
-        );
+      if (!text) throw new Error("the DEBUG CONSOLE said nothing of the Fusion host in 60 s");
+      if (!text.includes(FUSION_LINE)) {
+        throw new Error(`the compiler did not build the Fusion host: ${JSON.stringify(text.match(/.*Fusion.*/)?.[0])}`);
       }
       await nameUserAsUserIn(c, ".debugConsoleOuter");
       await fixConsoleTimes(c);
@@ -12122,6 +12180,26 @@ const PACKAGE_IMAGE = (name) => `Features/Packages/Images/${name}.png`;
 // A settingsShot taken once the compiler has said which references it could not load: the
 // dialog marks them as it opens, and the compiler says so a little after the project has
 // compiled.
+// The first time Project Settings opens on a project whose linked package is missing, the IDE
+// offers to download it, in a box over the dialog ("Linked Package is missing on this machine:
+// ... Download it now from TWINSERV?"), a moment after the dialog has opened. It covered the
+// row in the dark picture, from BETA 1033 to 1042, while the light one, taken on the dialog's
+// second opening, had none, so that the two themes were refused as saying different things.
+// Answered Cancel, as a reader who keeps the reference's error does; looked for on the first
+// opening in an IDE only, since the IDE asks once.
+const LINKED_PROMPT = "Linked Package is missing on this machine";
+const linkedPromptSeen = new WeakSet();
+async function cancelLinkedPrompt(c) {
+  if (linkedPromptSeen.has(c)) return;
+  linkedPromptSeen.add(c);
+  const shown = () =>
+    c.evaluate(
+      `[...document.querySelectorAll(".modalDialogContainer")].filter((m) => m.getBoundingClientRect().width).pop()?.innerText.includes(${JSON.stringify(LINKED_PROMPT)}) ?? false`,
+    );
+  if (!(await waitFor(c, shown, { timeout: 5000, interval: 100 }))) return;
+  await closeModal(c, "Cancel");
+}
+
 function missingLinkedShot(out, options) {
   const shot = settingsShot(out, options);
   return {
@@ -12572,6 +12650,7 @@ const packageServerShots = [
     setup: "settings-linked",
     command: LIBRARY_REFERENCES,
     clipOf: async (_m, c) => {
+      await cancelLinkedPrompt(c);
       const error = await waitFor(c, () => shownRect(c, `${ENABLED_ROW_OF(OLEGUIDS)} .referencesListError`), {
         timeout: 10000,
         interval: 200,
@@ -12952,7 +13031,15 @@ async function webPage(c, url, width) {
     deviceScaleFactor: SCALE,
     mobile: false,
   });
-  await c.send("Page.navigate", { url });
+  // A navigation Chrome aborts is made again: the first, a moment after Chrome has started, was
+  // aborted in some retakes (net::ERR_ABORTED), and the page stayed at about:blank (2026-11-11).
+  let nav;
+  for (let tries = 1; ; tries++) {
+    nav = await c.send("Page.navigate", { url });
+    if (nav?.errorText !== "net::ERR_ABORTED" || tries === 3) break;
+    await sleep(1000);
+  }
+  if (nav?.errorText) throw new Error(`${url} could not be loaded: ${nav.errorText}`);
   const loaded = `document.readyState === "complete" && document.fonts.status === "loaded" && [...document.images].every((i) => i.complete)`;
   if (
     !(await waitFor(c, () => c.evaluate(`location.href !== "about:blank" && ${loaded}`), {
@@ -12960,7 +13047,12 @@ async function webPage(c, url, width) {
       interval: 250,
     }))
   ) {
-    throw new Error(`${url} did not finish loading`);
+    const state = await c
+      .evaluate(
+        `JSON.stringify({ href: location.href, ready: document.readyState, fonts: document.fonts.status, images: [...document.images].filter((i) => !i.complete).map((i) => (i.loading === "lazy" ? "lazy " : "") + (i.currentSrc || i.src)) })`,
+      )
+      .catch((e) => e.message);
+    throw new Error(`${url} did not finish loading: ${state}`);
   }
   await quiet(c);
 }
@@ -13027,10 +13119,11 @@ const webView2Shot = {
         { type: "arrow", from: { of: WV2_CARD, at: "left", dx: -44 }, to: { of: WV2_CARD, at: "left", dx: -2 } },
         { type: "ring", on: { css: "button", text: "x86" } },
       ]);
-      // The Version list's arrow, an 8 by 9 inline SVG, changes a pixel by more than a
-      // capture's noise from frame to frame, with animations and transitions off.
+      // The Version and Architecture lists' arrows, 8 by 9 inline SVGs, change a pixel by more
+      // than a capture's noise from frame to frame, with animations and transitions off (the
+      // Architecture one too since 2026-11-11, when it alone failed every retake).
       return await capture(c, "webview2", await pageClip(c, union(area, box), WV2_WIDTH), {
-        unsteady: [{ on: { css: "#version .px-dropdown__icon" } }],
+        unsteady: [{ on: { css: "#version .px-dropdown__icon" } }, { on: { css: "#architecture .px-dropdown__icon" } }],
       });
     } finally {
       await unannotate(c);
@@ -14055,14 +14148,14 @@ const startingShots = [
     out: ST_IMAGE("Recent_VB6"),
     setup: "starting",
     async take({ c }) {
-      await c.evaluate(`window.__shotVb6Recents = ${JSON.stringify(VB6_RECENTS.join("?"))}`);
+      await c.evaluate(`window.__tbVb6Recents = ${JSON.stringify(VB6_RECENTS.join("?"))}`);
       try {
         return await inNewProject(c, async () => {
           await dialogSection(c, "Recent (VB6)");
           return dialogShot(c, "Recent_VB6");
         });
       } finally {
-        await c.evaluate(`window.__shotVb6Recents = ""`);
+        await c.evaluate(`window.__tbVb6Recents = ""`);
       }
     },
   },
@@ -15029,7 +15122,7 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
       name,
       `${themed}: the dark picture's pixels, but for a capture's noise: ${removed ? "removed" : "not written"}${review}`,
     );
-    reportPicture(name, themed, png, fate, reference, []);
+    reportPicture(name, themed, png, fate, reference, [], null, scale);
     return { kept: null, holds: null };
   }
   // a run now and then settles on the other version of a capture's noise for every
@@ -15055,13 +15148,15 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
   // A picture put back as the revision has it takes the revision's SVG with it, or loses its
   // SVG when the revision has none, so that the pair stays matched.
   const applied = applyPicture(outRoot, themed, fate, revision, { dryRun });
-  if (fate.state === "new" || fate.state === "updated") recordBuild(themed, BUILD);
+  if (fate.state === "new" || fate.state === "updated") recordBuild(themed, BUILD, scale);
+  if (!dryRun && theme === "dark" && (fate.state === "new" || fate.state === "updated" || fate.state === "restored"))
+    resized.add(themed);
   count(theme, state);
   say(
     name,
     `${themed}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other}${review})`,
   );
-  reportPicture(name, themed, png, fate, reference, diffs.filter(Boolean), applied.svg);
+  reportPicture(name, themed, png, fate, reference, diffs.filter(Boolean), applied.svg, scale);
   const holds = fate.write ?? was;
   if (fate.state === "restored") {
     const text = {
@@ -15081,12 +15176,13 @@ function keep(name, out, png, theme, dark, scale = SCALE) {
 // judged against, and why it needs a look (reviewPicture, lib/shot-queue.mjs); with --stage
 // the capture and its strength map are staged and the verdict written (lib/shot-stage.mjs).
 // `diffs` names the difference pictures written, and `restoredSvg` is what becomes of the SVG
-// of a picture put back as the revision has it (restorePictures).
-function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = null) {
+// of a picture put back as the revision has it (restorePictures); `scale` the capture's, which
+// the review tool records with the build.
+function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = null, scale = SCALE) {
   if (!stageRoot && !values.events) return;
   const review = reviewPicture(fate, png, reference, entryOf(themed));
   const files = stageRoot ? stageCapture(stageRoot, themed, png, review.strength) : null;
-  const part = { ...pngVerdict({ decision: fate, review, build: BUILD, diffs, staged: files }), restoredSvg };
+  const part = { ...pngVerdict({ decision: fate, review, build: BUILD, scale, diffs, staged: files }), restoredSvg };
   if (stageRoot) writeVerdict(stageRoot, themed, "png", part);
   event("picture", { job: name, out: themed, ...part });
 }
@@ -15094,12 +15190,27 @@ function reportPicture(name, themed, png, fate, reference, diffs, restoredSvg = 
 // The manifest's record of the build a picture's file was taken on: `build` for a capture
 // written, null for a file removed. A picture whose file stays (unchanged, noise, restored)
 // keeps the build it has. Saved at once: the jobs share the manifest, and keep is synchronous.
-// With --stage the verdict carries the build, and the review tool records it.
-function recordBuild(out, build) {
+// With --stage the verdict carries the build, and the review tool records it. `scale` is the
+// capture's (keep's), which the manifest records when it is not SCALE.
+function recordBuild(out, build, scale = undefined) {
   if (!manifest || stageRoot) return;
   if (build === null) manifest.clearBuild(out);
-  else manifest.setBuild(out, build);
+  else manifest.setBuild(out, build, scale);
   manifest.save();
+}
+
+// The dark pictures this run wrote under docs/, or put back as the revision has them: the pages
+// that show them are given their sizes at the run's end (syncPageSizes). With --stage the review
+// tool does it as it applies each verdict.
+const resized = new Set();
+
+// Sets the declared size of every reference to the pictures `outs` from their files and their
+// scales (lib/shot-sizes.mjs), and says which pages changed. Only for the pictures under docs/,
+// whose pages are there too (the manifest is read only then).
+function syncPageSizes(outs, { dryRun = false } = {}) {
+  if (!manifest || !outs.length) return;
+  for (const { page, outs: shown } of syncSizes(outRoot, outs, entryOf, { dryRun }))
+    console.log(`${page}: the size of ${shown.join(", ")} ${dryRun ? "would be set" : "set"} from its pixels`);
 }
 
 // A `once` picture has no light file: one left from before is removed, and its SVG. With
@@ -15155,6 +15266,32 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   if (stale)
     say(name, `${svgOut}: judged though its PNG stays (its cached bundle cannot draw it again: ${stale.retake})`);
   let staysWhy = null;
+  // The baseline's SVG, which an SVG the same picture as it, to the pixel, goes back to
+  // (keep.mjs's sameSvgAs); and what a run says of one found so.
+  const baseText = revision?.bytes(svgOut)?.toString("utf8") ?? null;
+  const reportSame = (same, fileText, judged = {}) => {
+    const why = sameWhy(same, AGAINST);
+    const state = same === "baseline" ? restoreSvg(outRoot, revision, svgOut, { dryRun }) : "unchanged";
+    say(name, `${svgOut}: ${state} (${why})`);
+    report(
+      svgVerdict({
+        ...judged,
+        state,
+        why,
+        same:
+          same === "baseline" ? { as: "baseline", baseline: revision.hash } : { as: "file", file: hashOf(fileText) },
+      }),
+    );
+  };
+  if (!follows && !byPng && svgOnDisk && baseText !== null) {
+    // the file's SVG stays with its PNG, but when it is the baseline's picture its bytes go back
+    const fileText = readFileSync(file, "utf8");
+    svgBrowser ??= launchBrowser();
+    if ((await sameSvgAs(await svgBrowser, { file: fileText, baseline: baseText })) === "baseline") {
+      reportSame("baseline", fileText);
+      return;
+    }
+  }
   if (!follows) {
     staysWhy = byPng ?? "its PNG is not written";
     // the same SVG as the file's: its bundle goes into the cache all the same (bundleFollowsSvg);
@@ -15215,6 +15352,13 @@ async function keepSvg(name, out, png, picture, kept, holds, window = false) {
   svgResults.push({ out: svgOut, bytes, png: png.length, faithful, ...diff.stats });
   if (!faithful) {
     drop(`${measures}${how}`, judged);
+    return;
+  }
+  // the same picture as the baseline's SVG or the file's, to the pixel: those bytes stay
+  const fileText = existsSync(file) ? readFileSync(file, "utf8") : null;
+  const same = await sameSvgAs(await svgBrowser, { svg, file: fileText, baseline: baseText });
+  if (same) {
+    reportSame(same, fileText, judged);
     return;
   }
   const state = applySvg(outRoot, svgOut, svg, { dryRun });
@@ -15454,6 +15598,12 @@ async function runJob(job) {
     }
   };
   await Promise.all(Array.from({ length: Math.min(jobCount, jobs.length) }, worker));
+}
+try {
+  syncPageSizes([...resized]);
+} catch (e) {
+  complain("sizes", `the pages' picture sizes could not be set: ${e.message}`);
+  failed = Math.max(failed, 1);
 }
 console.log(`${((Date.now() - t0) / 1000).toFixed(1)} s`);
 for (const theme of THEMES) {

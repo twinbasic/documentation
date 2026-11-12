@@ -25,10 +25,11 @@ import {
 } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { onStop, writeRecord } from "../lib/record-lines.mjs";
-import { applyPicture, applySvg, svgOf } from "../lib/shot-apply.mjs";
+import { sessionRun } from "../lib/shot-front.mjs";
+import { applyPicture, applySvg, restoreSvg, svgOf } from "../lib/shot-apply.mjs";
 import { decodePng } from "../lib/png.mjs";
 import { NOISE_LEVELS, pngsNear, shareOff, strengthOf } from "../lib/shot-change.mjs";
-import { MANIFEST, openManifest, svgDecision } from "../lib/shot-manifest.mjs";
+import { hashOf, MANIFEST, openManifest, svgDecision } from "../lib/shot-manifest.mjs";
 import { bundleFollowsSvg, decidePicture, svgFollowsPng } from "../lib/shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "../lib/shot-queue.mjs";
 import { openRevision, outputRefusal } from "../lib/shot-revision.mjs";
@@ -41,7 +42,7 @@ import {
   svgVerdict,
   writeVerdict,
 } from "../lib/shot-stage.mjs";
-import { BUNDLE_CACHE, BUNDLE_VERSION, renderBundle, writeBundle } from "./bundle.mjs";
+import { BUNDLE_CACHE, BUNDLE_VERSION, defaultBundleCache, renderBundle, writeBundle } from "./bundle.mjs";
 import {
   captureWatcher,
   capturesFolder,
@@ -53,7 +54,7 @@ import {
   tellPanel,
 } from "./chrome-take.mjs";
 import { useSubsetCache } from "./fonts.mjs";
-import { judgeSvg } from "./keep.mjs";
+import { judgeSvg, sameSvgAs, sameWhy } from "./keep.mjs";
 import { PRIVATE_FILE, privateWords } from "./private-list.mjs";
 import { drawnWords, heldWords } from "./private-words.mjs";
 import { inBrowser, staleBundle, writeJudged } from "./redraw.mjs";
@@ -62,7 +63,7 @@ import { trimArea, trimPicture } from "./trim.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/svgshot/chromeshot.mjs <capture | folder>... [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>] [--no-trim] [-h, --help]
+const USAGE = `usage: node scripts/svgshot/chromeshot.mjs <capture | folder>... [--stage <dir>] [--events] [--against <rev>] [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>] [--no-trim] [-h, --help]
        node scripts/svgshot/chromeshot.mjs --take <regex> [--captures <dir>] [--extension <dir>] [--no-open] [--stage <dir>] [--events] [--against <rev>] [--out <dir>] [--bundles <dir>] [--diffs <dir>] [--words <file>]
 
 Turns each file the Chrome extension saved (<name>.capture.json.gz, in the svgshot
@@ -105,13 +106,18 @@ with --events a line "stop" on stdin: pictures not taken are left as they are.
   --extension <dir>  the extension's own folder, which Chrome loads
                      (default ${DEFAULT_EXTENSION})
   --no-open          open no page: a person is to, or a test stands in for one
-  --stage <dir>      with --take: write nothing under the pictures' folder or to the
-                     bundle cache: put each candidate in <dir> for the screenshot
-                     review tool to apply (scripts/lib/shot-stage.mjs). Not with --diffs
-  --events           with --take: also write a line per event on stdout, @@shot-event
-                     {json}, and stop when a line "stop" arrives on stdin
+  --stage <dir>      write nothing under the pictures' folder or to the bundle
+                     cache: put each candidate in <dir> for the screenshot review
+                     tool to apply (scripts/lib/shot-stage.mjs). Not with --diffs
+  --events           also write a line per event on stdout, @@shot-event {json}; with
+                     --take, stop when a line "stop" arrives on stdin
   --against <rev>    compare with the pictures of this revision (default HEAD)
   -h, --help         print this text and exit
+
+A run that would write under docs is a run of the screenshot review session
+(scripts/lib/shot-front.mjs): handed to the review tool when it is open for this
+checkout, else run here in the session, staged, its verdicts applied under docs
+as they arrive. Ctrl+C then stops it as the tool's Stop does.
 
 Exit codes:
   0  every capture was written, or left the pictures as they are
@@ -145,14 +151,11 @@ const { values, positionals } = withUsageError(() => {
     ["--captures", parsed.values.captures !== undefined],
     ["--extension", parsed.values.extension !== undefined],
     ["--no-open", parsed.values.noOpen],
-    ["--stage", parsed.values.stage !== undefined],
-    ["--events", parsed.values.events],
-    ["--against", parsed.values.against !== undefined],
   ])
     if (given && !taking) throw new CliError("conflict", `${option} goes with --take`);
+  refuseTogether(parsed.values, ["stage", "diffs"]);
   if (taking) {
     refuseTogether(parsed.values, ["take", "no-trim"]);
-    refuseTogether(parsed.values, ["stage", "diffs"]);
     regexOption(parsed.values.take, { option: "--take" });
     if (parsed.positionals.length) throw new CliError("conflict", "--take takes no capture: it waits for them");
   } else if (!parsed.positionals.length)
@@ -229,7 +232,6 @@ function readCapture(file) {
 
 const manifest = outRoot === docs ? openManifest(MANIFEST) : null;
 const words = privateWords({ file: values.words ? path.resolve(values.words) : PRIVATE_FILE });
-useSubsetCache(path.join(bundleCache, "subsets"));
 const AGAINST = values.against ?? "HEAD";
 let revision = null;
 try {
@@ -238,6 +240,23 @@ try {
   // A folder outside the repository has no revision to compare with.
   if (values.against !== undefined) die(`--against: ${e.message}`);
 }
+
+// A run that writes under docs is a run of the screenshot review session (lib/shot-front.mjs):
+// handed to the review tool when it is open, else run here in the session, once the command line
+// has passed every check. The files and folders it names are given by their full paths, since the
+// session's run starts in the repository's root.
+const PATH_OPTIONS = ["--words", "--captures", "--extension"];
+const absolute = (argv) =>
+  argv.map((a, k) => {
+    if (positionals.includes(a) || PATH_OPTIONS.includes(argv[k - 1])) return path.resolve(a);
+    const eq = PATH_OPTIONS.find((o) => a.startsWith(`${o}=`));
+    return eq ? `${eq}=${path.resolve(a.slice(eq.length + 1))}` : a;
+  });
+await sessionRun({ tool: "chromeshot", args: absolute(process.argv.slice(2)), writes: !stageRoot && outRoot === docs });
+// A worktree's default cache is filled from the main checkout's the first time, once the command
+// line has passed.
+if (values.bundles === undefined) defaultBundleCache("chromeshot");
+useSubsetCache(path.join(bundleCache, "subsets"));
 
 const say = (out, line) => console.log(`${out}: ${line}`);
 const entryOf = (out) => manifest?.entry(out) ?? null;
@@ -315,7 +334,33 @@ async function keepSvg(job, p, fate, holds, browser) {
     }
   }
   let staysWhy = null;
-  if (!svgFollowsPng({ written, svgOnDisk, accepted, stale })) {
+  // The baseline's SVG, which an SVG the same picture as it, to the pixel, goes back to
+  // (keep.mjs's sameSvgAs), as shoot_docs.mjs's keepSvg has it; and what a run says of one found so.
+  const baseText = revision?.bytes(svgOut)?.toString("utf8") ?? null;
+  const reportSame = (same, fileText, judged = {}) => {
+    const why = sameWhy(same, AGAINST);
+    const state = same === "baseline" ? restoreSvg(outRoot, revision, svgOut, { dryRun }) : "unchanged";
+    say(svgOut, `${state} (${why})`);
+    report(
+      svgVerdict({
+        ...judged,
+        state,
+        why,
+        same:
+          same === "baseline" ? { as: "baseline", baseline: revision.hash } : { as: "file", file: hashOf(fileText) },
+      }),
+    );
+  };
+  const follows = svgFollowsPng({ written, svgOnDisk, accepted, stale });
+  if (!follows && svgOnDisk && baseText !== null) {
+    // the file's SVG stays with its PNG, but when it is the baseline's picture its bytes go back
+    const fileText = readFileSync(file, "utf8");
+    if ((await sameSvgAs(browser, { file: fileText, baseline: baseText })) === "baseline") {
+      reportSame("baseline", fileText);
+      return;
+    }
+  }
+  if (!follows) {
     staysWhy = "its PNG is not written";
     const same = !stageRoot && bundleFollowsSvg({ svg: p.svg, svgOnDisk: readFileSync(file, "utf8") });
     if (same) writeBundle(bundlesRoot, p.out, p.bundle, holds, p.misses);
@@ -348,6 +393,16 @@ async function keepSvg(job, p, fate, holds, browser) {
     // what stays with its PNG needs no look until a review takes the capture
     report(svgVerdict({ state: "unchanged", why: staysWhy, ...judged, review: { ...judged.review, look: null } }));
     return;
+  }
+  if (faithful) {
+    // the same picture as the baseline's SVG or the file's, to the pixel: those bytes stay
+    const fileText = svgOnDisk ? readFileSync(file, "utf8") : null;
+    const same = await sameSvgAs(browser, { svg: p.svg, file: fileText, baseline: baseText });
+    if (same) {
+      svgCounts.written++;
+      reportSame(same, fileText, judged);
+      return;
+    }
   }
   const state = applySvg(outRoot, svgOut, faithful ? p.svg : null, { dryRun });
   svgCounts[faithful ? "written" : "left"]++;
@@ -527,8 +582,14 @@ async function takeShots() {
 if (values.take !== undefined) process.exit(await takeShots());
 
 // Every capture is read and checked before anything is written and before a browser starts.
+// With --events, each capture is a job, named as its picture is in the panel's table.
+const started = Date.now();
+const jobOf = (out) => SHOTS.find((s) => s.out === out)?.name ?? path.basename(out, ".png");
+const pairOf = (out) => [out, out.replace(/\.png$/i, ".light.png")];
 let failed = 0;
+let taken = 0;
 const ready = [];
+const refusedCaptures = [];
 for (const file of files) {
   let capture;
   try {
@@ -546,15 +607,51 @@ for (const file of files) {
   if (why) {
     failed++;
     console.error(`${file}: refused, nothing written: ${why}`);
-  } else ready.push({ file, drawn });
+    refusedCaptures.push({ out: capture.out, why });
+  } else ready.push({ file, drawn, out: capture.out });
+}
+event("run", {
+  tool: "chromeshot",
+  build: null,
+  against: revision ? revision.short : null,
+  svg: true,
+  stage: stageRoot,
+  captures: null,
+  extension: null,
+  jobs: [...refusedCaptures, ...ready].map(({ out }) => ({
+    name: jobOf(out),
+    setup: "browser",
+    pictures: pairOf(out),
+  })),
+});
+for (const { out, why } of refusedCaptures) {
+  for (const p of pairOf(out)) event("failed", { job: jobOf(out), out: p, error: why });
+  event("job", { job: jobOf(out), state: "failed", error: why });
 }
 if (ready.length)
   await inBrowser(ready, async (capture, browser) => {
+    const job = jobOf(capture.out);
+    event("job", { job, state: "started" });
+    let error = null;
     try {
-      if (!(await writeCapture(capture, browser, null))) failed++;
+      if (!(await writeCapture(capture, browser, job)))
+        error = "the light and the dark picture differ by more than the theme's layout moves";
     } catch (e) {
-      failed++;
+      error = e.message;
       console.error(`${capture.file}: ${e.message}`);
     }
+    if (error) {
+      failed++;
+      for (const p of pairOf(capture.out)) event("failed", { job, out: p, error });
+    } else taken++;
+    event("job", error ? { job, state: "failed", error } : { job, state: "done" });
   });
+event("summary", {
+  taken,
+  svg: svgCounts,
+  seconds: (Date.now() - started) / 1000,
+  stopped: false,
+  problems: [],
+  exit: failed ? 1 : 0,
+});
 process.exit(failed ? 1 : 0);

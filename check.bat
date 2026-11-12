@@ -30,6 +30,11 @@ node scripts/check_dot_fit.mjs
 @if errorlevel 1 goto :fail
 node scripts/pick_a11y_sample.mjs --check
 @if errorlevel 1 goto :fail
+@rem A screenshot's declared size must be its pixels over its scale, or the
+@rem picture is blurred or stretched and the build, which checks only the link,
+@rem stays green. The screenshot tools set the sizes; this catches a hand edit.
+node scripts/check_shot_sizes.mjs
+@if errorlevel 1 goto :fail
 @popd
 @exit /b 0
 :fail

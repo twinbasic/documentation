@@ -41,7 +41,7 @@ twinBASIC extends classic VBA's **Implements** in several ways. See [Inheritance
 > Use `Private` (or `Friend`) on the implementing procedures so that the interface methods don't also become part of the implementing class's *default* interface. The conventional naming pattern is `<InterfaceName>_<MemberName>`.
 
 <!-- test: bug implements-friend-stub-stack -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A class that implements another class need not provide its [**Friend**](Friend) procedures, and a call to one through a variable of the implemented class raises error [97](tb:Errors#97). In a 32-bit build, most signatures end the program with an access violation instead. See [**Friend**](Friend#implements-inherits-and-via).
 
 ### Example

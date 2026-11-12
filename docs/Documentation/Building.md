@@ -64,7 +64,8 @@ Do not drop `--check-audit-index` when typing the underlying build command: with
     node scripts/check_tree_fresh.mjs \
       && node scripts/check_a11y.mjs \
       && node scripts/check_dot_fit.mjs \
-      && node scripts/pick_a11y_sample.mjs --check
+      && node scripts/pick_a11y_sample.mjs --check \
+      && node scripts/check_shot_sizes.mjs
 
 `test.bat` has the same shape, cheapest first:
 
@@ -153,7 +154,7 @@ A few seconds is normal: about 2--3 seconds of work plus the link check. A run s
 
 A healthy run prints no `book:` line under its `pdf:` summary. That line warns about a page `docs/_book.yml` mentions neither in the book nor in its `left_out:` list; see [Book Configuration](Book-Configuration#pages-left-out-of-the-book).
 
-`check.bat` runs its four gates in order and ends on the scan's tally:
+`check.bat` runs its gates in order. The line to look for is the accessibility scan's tally:
 
     14 pages x 2 theme(s) x 2 viewport(s) + 8 state audit(s) checked: 0 violation(s), 46 incomplete check(s)
 

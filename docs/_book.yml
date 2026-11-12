@@ -550,13 +550,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: Generics Package
-        subtitle: Tuples, read-only objects that hold one to seven values of declared types
-        landing_page: /tB/Packages/Contributed/Generics/
-        page: /tB/Packages/Contributed/Generics/
-        landing_is_target: true
-        outline_closed: true
-
       - title: OLEGuids Package
         subtitle: OLE and COM interfaces and structures in twinBASIC source, in place of OLEGuids.tlb
         landing_page: /tB/Packages/Contributed/OLEGuids/
@@ -683,6 +676,7 @@ left_out:
     pages:
       - /tB/Packages/Contributed/ArrayListLib/
       - /tB/Packages/Contributed/GdiPlus/
+      - /tB/Packages/Contributed/Generics/
       - /tB/Packages/Contributed/TBMANLIB/
       - /tB/Packages/Contributed/TBMANLIB_Aes/
       - /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/

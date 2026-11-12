@@ -83,7 +83,7 @@ How the `Attribute` lines are kept, and which of them have an effect in a built 
 A `.res` file named by `ResFile32=` is imported as the project's resources, and the log says *imported resource file*. Its manifest becomes `Resources\MANIFEST\#1.xml`. A string table becomes `Resources\STRING\Strings.json`. A resource of a numeric type keeps its type and its id: `RT_RCDATA` with id 201 is `Resources\RCDATA\#201`, and a name stays a name. The [FAQ](../../../FAQ#resources) lists the resource folders.
 
 <!-- test: bug res-string-type-empty-name -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A resource whose type is a name, such as `CUSTOM` or `MYDATA`, is imported with an empty name. The folder `Resources\<type>` holds one blank row, however many resources of that type the `.res` file holds, and the log still reports `0 ERRORS/WARNINGS`. A saved project keeps the bytes of each resource under an empty name, and the IDE shows the row as empty. A build then ends with `NATIVE EXCEPTION: ACCESS_VIOLATION` and makes no executable. Resources whose type is a number are right, `RT_RCDATA` included. Take the resources of a named type out of the `.res` file before the import, and add them to the project afterwards, as [Resources](../Projects/Adding-Files#resources) describes.
 
 ## What the importer leaves

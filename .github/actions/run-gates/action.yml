@@ -351,3 +351,10 @@ runs:
     - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
       shell: bash
       run: node scripts/pick_a11y_sample.mjs --check
+    # Every page that shows a screenshot of test/shots/manifest.json declares
+    # the size its pixels are shown at, its pixels over its scale. A wrong
+    # size blurs or stretches the picture and nothing else notices. Reads the
+    # pages and the pictures' headers; no browser, under a second.
+    - name: Verify screenshot sizes (check_shot_sizes.mjs)
+      shell: bash
+      run: node scripts/check_shot_sizes.mjs

@@ -36,19 +36,19 @@ A *source* that the program has open is copied when it is open for reading only:
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *source* or *destination* is a zero-length string<br>*source* or *destination* holds a wildcard or a character a file name cannot hold |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *source* or *destination* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *destination* names the same file as *source*, VB6 and 64-bit VBA raise error [70 (`&H46`)](tb:Errors#70), *Permission denied*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *source* is open **For Input** with **Lock Read**, VB6 and 64-bit VBA raise error [70 (`&H46`)](tb:Errors#70), *Permission denied*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *source* is a folder, or *destination* is a folder or a read-only or hidden file, VB6 and 64-bit VBA raise error [75 (`&H4B`)](tb:Errors#75), *Path/File access error*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *source* or *destination* is a zero-length string, VB6 and 64-bit VBA raise error [75 (`&H4B`)](tb:Errors#75), *Path/File access error*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *source* or *destination* holds a wildcard or a character a file name cannot hold, VB6 and 64-bit VBA raise error [52 (`&H34`)](tb:Errors#52), *Bad file name or number*, instead.
 
 <!-- /errors -->

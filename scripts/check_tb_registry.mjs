@@ -40,7 +40,8 @@
 //     alone when there is none, against one that did not, which is put back;
 //   * two runs at once: the one that ends first puts nothing back, the last
 //     one removes both runs' entries, which an IDE wrote after the first
-//     ended; a run that died is swept by the next one to start;
+//     ended; a run that died is swept by the next one to start, and one whose
+//     record names a folder the sweep refuses is dropped, not thrown on;
 //   * the guards: a key near the root and a sweep outside the temp folder
 //     refused, and an error raised inside PowerShell arriving as a sentence;
 //   * the ownership rule: a dead owner does not block tidying, a live one makes
@@ -48,7 +49,7 @@
 
 import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -351,6 +352,14 @@ try {
   const nextRun = R.startTidy({ root: ROOT, keys: [ASSOC] });
   assert.deepEqual(runsLeft(), [], "a dead run's entries are deleted by the next run");
   assert.ok(!R.finishTidy(nextRun).deferred);
+  // A dead run's record naming a folder this run refuses (written by an older tool, or by hand)
+  // is dropped with a note, not thrown on: a throw kept the record, and it blocked every later run.
+  const refusedRecord = path.join(runA.dir, "1-1.json");
+  writeFileSync(refusedRecord, JSON.stringify({ pid: 1, started: 1, prefixes: ["C:\\not-a-tool-folder"] }));
+  const afterRefused = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  assert.ok(afterRefused, "a dead record naming a refused folder does not stop the tidy");
+  assert.ok(!existsSync(refusedRecord), "and it goes");
+  assert.ok(!R.finishTidy(afterRefused).deferred);
 
   // ------------------------------------------------ the guards
   assert.throws(() => R.restoreKeys([{ path: "Software", snap: null }]), /close to the root/);
@@ -362,8 +371,13 @@ try {
     "the temp folder itself is not a sweepable prefix",
   );
 
-  // One folder outside the temp folder is swept, shoot_docs's, and no other: not one beside it,
-  // not its parent, and not a folder inside it.
+  // One kind of folder outside the temp folder is swept, shoot_docs's in any checkout, and no
+  // other: not one beside it, not its parent, and not a folder inside it.
+  const OTHER_TOOL_ROOT = "O:\\elsewhere\\.claude\\worktrees\\gone\\.claude\\tbshots";
+  const OTHER_PROJECT = `${OTHER_TOOL_ROOT}\\Building\\project.twinproj`;
+  setValues(`${ROOT}\\ProjectState`, { [OTHER_PROJECT]: "{}" });
+  R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [OTHER_TOOL_ROOT] });
+  assert.ok(!R.ideLists({ root: ROOT }).projectState.includes(OTHER_PROJECT), "another checkout's is swept too");
   const TOOL_PROJECT = `${TOOL_ROOT}\\Building\\project.twinproj`;
   const TOOL_NEIGHBOUR = `${TOOL_ROOT}2\\Building\\project.twinproj`;
   setValues(`${ROOT}\\ProjectState`, { [TOOL_PROJECT]: "{}", [TOOL_NEIGHBOUR]: "{}" });

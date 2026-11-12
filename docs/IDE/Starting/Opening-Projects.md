@@ -79,7 +79,7 @@ The IDE starts a compiler with DEP off and the large-address flag on. A project 
 A project from the **Standard EXE** template sets neither flag, so a saved default project opened first in an IDE loads twice. A new project made from a card does not: **Continue** turns *Large Address Aware* on, which matches.
 
 <!-- test: bug open-takes-earlier-settings -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > After the IDE has loaded a project twice for its flags, and you have then pressed **Continue** in **New Project Options**, the next project you open can take the whole *Settings* of the project before it, with no message. Its sources stay its own. This happens to a saved `.twinproj`, to a `.vbp` opened from **Recent (VB6)**, and to **Import from folder...**, but not to a `.vbp` chosen through the **Import from VBP...** card.
 >
 > For example, open a saved project with *Large Address Aware* off, import any `.vbp` with **Import from VBP...** and press **Continue**, then open another project and choose **Discard Changes** for the import. A template does the same in place of the import, if you first open a saved project with *Large Address Aware* on.
@@ -87,7 +87,7 @@ A project from the **Standard EXE** template sets neither flag, so a saved defau
 > The opened project is not marked as changed, and the title bar shows its own file name, but the top of the Project Explorer tree shows the earlier project's name. **File → Save Project** (<kbd>Ctrl</kbd>+<kbd>S</kbd>) then writes the earlier project's name, application title, project ID, startup object, build path and references into the file, and the file's own settings are lost. If the top of the tree shows a name that is not your project's, do not save: close the project without saving, which leaves the file as it was, and open it again.
 
 <!-- test: bug laa-mismatch-after-new-project -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > In an IDE that has not yet loaded a project twice, a saved project with *Large Address Aware* off fails to open if it is the first project opened after a **Continue** in **New Project Options** and a **File → Close Project**. The box reads *Failed to load the project (error code MISMATCHED LAA OR DEP AWARENESS)*. The file is not changed. Choose **Keep It**, and open the project again: the second open works.
 
 ## What the IDE remembers of a project
@@ -130,11 +130,11 @@ The project then opens with what the compiler could read. It is not marked as ch
 - **With the `Settings` entry read**, the project keeps its own name and settings, even when its sources are gone.
 
 <!-- test: bug recovered-project-save-overwrites -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A project that opens after the *bad file format* box is not marked as changed, and the next save writes only what was recovered over the damaged file, with no question and no backup. **File → Save Project** (<kbd>Ctrl</kbd>+<kbd>S</kbd>), **Project → Add → Import...** and **Apply Changes** in Project Settings, when the change restarts the compiler, all save it. Save a damaged project only with **File → Save Project As...** under a new name: the new file holds what was recovered, and the damaged file stays as it was. Closing without saving leaves it as it was too. Copy the damaged file before you open it.
 
 <!-- test: bug damaged-settings-box-loop -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A `.twinproj` file damaged inside its `Settings` entry shows the *bad file format* box again after every **OK**, without end. The IDE's window stays on *Please wait...*, with no project and no close box, and the file is not changed. End the IDE, for example in the Task Manager, and restore the file from a copy.
 
 ## See Also

@@ -35,16 +35,16 @@ If **Shell** successfully launches the named program, it returns the new process
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *pathname* or *windowstyle* is **Null** |
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *pathname* is a zero-length string or spaces, names a folder or a file that is not a program, or is longer than 32,767 characters<br>the program, or a folder in its path, does not exist, or *pathname* opens a quotation mark it does not close<br>*windowstyle* is less than 0 or greater than 10 after rounding |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *pathname* is a zero-length string or spaces, names a folder or a file that is not a program, or is longer than 32,767 characters, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When the program, or a folder in its path, does not exist, or *pathname* opens a quotation mark it does not close, VB6 and 64-bit VBA raise error [53 (`&H35`)](tb:Errors#53), *File not found*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *windowstyle* is less than 0 or greater than 10 after rounding, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *windowstyle* is 10 after rounding (`SW_SHOWDEFAULT`, which a new program's start-up information may not hold), VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->

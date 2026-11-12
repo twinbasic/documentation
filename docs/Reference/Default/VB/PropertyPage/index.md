@@ -110,7 +110,7 @@ The framework reads the current value when the host calls **IPropertyPage2.GetPa
 
 Whether the page has unapplied edits. **Boolean**, default **False**.
 
-Setting **Changed** to **True** notifies the host through **IPropertyPageSite.OnStatusChange** that the page is dirty --- the host normally enables its *Apply* button as a result. The framework automatically clears the flag back to **False** before raising [**ApplyChanges**](#applychanges), so handlers do not need to reset it themselves.
+Setting **Changed** to **True** notifies the host through **IPropertyPageSite.OnStatusChange** that the page is dirty --- the host normally enables its *Apply* button as a result. Setting it back to **False** notifies the host that the page is clean. Setting it to the value it already has notifies nothing. The framework automatically clears the flag back to **False** before raising [**ApplyChanges**](#applychanges), so handlers do not need to reset it themselves.
 
 ### ClipControls
 {: .no_toc }
@@ -759,7 +759,7 @@ Syntax: *object*\_**Paint**( )
 ### SelectionChanged
 {: .no_toc }
 
-Raised after the host has called **IPropertyPage2.SetObjects** to give the page a new set of objects to edit, or to clear the selection. The handler should read [**SelectedControls**](#selectedcontrols) and mirror the common state of those objects into the page's editor controls. **Default-designer event.**
+Raised after the host has called **IPropertyPage2.SetObjects** to give the page a new set of objects to edit, or to clear the selection. It is not raised when the page clears its own selection as it is destroyed, after [**Terminate**](#terminate). The handler should read [**SelectedControls**](#selectedcontrols) and mirror the common state of those objects into the page's editor controls. **Default-designer event.**
 
 Syntax: *object*\_**SelectionChanged**( )
 

@@ -77,7 +77,7 @@ The first native exception of a session switches the mode on by itself. The cons
 ```
 
 <!-- test: bug trace-auto-activate-needs-restart -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > After a native exception turns TRACE mode on by itself, the **Help** item reads **Enabled**, but the compiler writes the dump only after its next restart; a second native exception in the same compiler prints the single line as before. Press **Restart the compiler** to get the dump for the next exception.
 
 ![The Help menu with the TRACE mode item reading Disabled at its foot.](../Menu/Images/Menu_Help.png){:width="269" height="294"}
@@ -95,7 +95,7 @@ DevTools is the browser's inspector for the IDE's own page, with its Console, El
 The key opens a window titled `DevTools - localhost:...`. Use it to read the full stack of an [IDE internal error](#ide-internal-errors).
 
 <!-- test: bug devtools-stops-compiler-restart -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > While DevTools is open, a restart of the compiler (by the button, by a crash or by a change of the build configuration box) stops the page at a `debugger;` statement in the IDE's own code. The compiler has been ended, the badge reads UNAVAILABLE with four **Disconnected** lines, and nothing moves. Press **Resume** in DevTools, or close DevTools, and the restart goes on.
 
 ## Floating message boxes

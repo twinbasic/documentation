@@ -22,20 +22,36 @@
 //   a replay's SVG  decideSvg against the file's PNG; dropped when that PNG is no longer the one
 //                   the replay compared it with
 //
+// Each change to a dark picture's file sets the declared size of every reference to it on the
+// pages from its pixels and its scale, which the manifest records with its build (shot-sizes.mjs).
+//
 // A verdict as it arrives is applied as the run decided it: the run judged it with the same
 // inputs. What was applied is in the stage's review/ (shot-stage.mjs), which the server shows in
 // place of the run's own verdicts.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { copyBundle, readBundle } from "../svgshot/bundle.mjs";
 import { staleBundle } from "../svgshot/redraw.mjs";
-import { applyPicture, applySvg, heldOf, heldPictures, holdPicture, svgOf, unholdPicture } from "./shot-apply.mjs";
+import {
+  applyPicture,
+  applySvg,
+  heldOf,
+  heldPictures,
+  heldScale,
+  holdPicture,
+  restoreSvg,
+  setHeldPart,
+  svgOf,
+  unholdPicture,
+} from "./shot-apply.mjs";
 import { pngsNear } from "./shot-change.mjs";
-import { svgDecision } from "./shot-manifest.mjs";
+import { hashOf, svgDecision } from "./shot-manifest.mjs";
 import { bundleFollowsSvg, decidePicture, decideSvg, svgFollowsPng } from "./shot-policy.mjs";
 import { reviewPicture, reviewSvg } from "./shot-queue.mjs";
+import { restoreFromRevision } from "./shot-revision.mjs";
 import { optionOf, runPaths } from "./shot-session.mjs";
+import { isDark, referenceIndex, syncSizes } from "./shot-sizes.mjs";
 import {
   pngVerdict,
   readReviewed,
@@ -71,6 +87,9 @@ export const againstOf = (run) => optionOf(run, "--against");
  *                          runs' order: the session opened again after the tool stopped
  *                          between a verdict and its application. Returns how many
  *   rejudge(out, from)     applies again every layer of `out` from the run `from` on
+ *   putBack(out, parts)    puts the files `parts` of `out` ("png", "svg"), changed outside the
+ *                          session's runs, back as the baseline has them, and applies every
+ *                          layer of `out` again from there
  *   undo(n)                undoes the run `n`'s layers, as if it had not run: each picture it
  *                          held put back as its layer found it, and the later layers applied
  *                          again from there. Returns {outs, later, failed}: the pictures it
@@ -99,11 +118,23 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     cache.set(`${n}\u0000${r.out}`, r);
   };
 
-  const hold = (n, out, m) => holdPicture(heldDir(n), docsRoot, out, bundlesRoot, m.entry(out)?.build ?? null);
+  const hold = (n, out, m) =>
+    holdPicture(heldDir(n), docsRoot, out, bundlesRoot, m.entry(out)?.build ?? null, m.entry(out)?.scale ?? null);
   function unhold(n, out, m) {
+    const scale = heldScale(heldDir(n), out);
     const build = unholdPicture(heldDir(n), docsRoot, out, bundlesRoot);
     if (build === null) m.clearBuild(out);
-    else if (build !== undefined) m.setBuild(out, build);
+    else if (build !== undefined) m.setBuild(out, build, scale);
+    if (build !== undefined) resize(out, m);
+  }
+
+  // The pages that show a dark picture declare the size its file now has (shot-sizes.mjs), set
+  // after each change to the file. The index of which pages show which picture is read once.
+  let index = null;
+  function resize(out, m) {
+    if (!isDark(out)) return;
+    index ??= referenceIndex(docsRoot);
+    syncSizes(docsRoot, [out], (o) => m.entry(o), { index });
   }
 
   // The dark picture a light capture of the run `n` is compared with, as shoot_docs.mjs
@@ -164,6 +195,7 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
           decision: fate,
           review,
           build: staged.build,
+          scale: staged.scale ?? null,
           diffs: staged.diffs ?? [],
           staged: { capture: staged.capture, strength },
         }),
@@ -177,8 +209,10 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
       rev,
       { svg, bundlesRoot },
     );
-    if (written(part.state)) m.setBuild(out, part.build);
+    // a verdict staged before scales were recorded leaves the manifest's as it is
+    if (written(part.state)) m.setBuild(out, part.build, part.scale ?? undefined);
     if (applied.removed) m.clearBuild(out);
+    resize(out, m);
     return { ...part, restoredSvg: applied.svg };
   }
 
@@ -206,6 +240,22 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
         fate === "write" ? "updated" : fate === "remove" ? "removed" : "unchanged",
         "its PNG is the baseline's",
       );
+    }
+    // the run found its SVG the same picture as the baseline's or the file's, to the pixel
+    // (keep.mjs's sameSvgAs): applied while that still holds; else judged as any other
+    if (staged.same) {
+      const rev = revision();
+      const svgFile = svgOf(out);
+      if (staged.same.as === "baseline" && staged.same.baseline === rev.hash && rev.bytes(svgFile))
+        return { ...staged, state: restoreSvg(docsRoot, rev, svgFile), look: null };
+      const found = held?.svgText ?? readIf(path.join(docsRoot, svgFile))?.toString("utf8") ?? null;
+      if (staged.same.as === "file" && found !== null && hashOf(found) === staged.same.file)
+        return { ...staged, state: "unchanged", look: null };
+      if (!staged.svg)
+        return stays(
+          "unchanged",
+          `${staged.why ?? "the same picture"}, but not as the session's baseline and file are now: draw it again`,
+        );
     }
     const stage = stageOf(n);
     // a review that accepted this SVG against this capture writes it, though its PNG stays
@@ -350,6 +400,38 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     }
   }
 
+  // Puts the files `parts` ("png", "svg") of `out`, changed outside the session's runs, back as
+  // the baseline has them (an SVG through git, as a checkout writes it), and a file the baseline
+  // lacks removed. When a run of the session has a layer on the picture, the first layer is given
+  // the baseline's file as what it found, and every layer is applied again from there, judged with
+  // it: what the runs decided is then decided against the baseline, not against the change.
+  function putBack(out, parts) {
+    const rev = revision();
+    const fileOf = (part) => (part === "png" ? out : svgOf(out));
+    const first = layersOf(out, -Infinity, false)[0];
+    const m = manifest();
+    try {
+      for (const part of parts) {
+        const file = fileOf(part);
+        const atRevision = rev.bytes(file);
+        if (!atRevision) rmSync(path.join(docsRoot, file), { force: true });
+        else if (part === "svg") restoreFromRevision(docsRoot, rev.hash, [file]);
+        else writeFileSync(path.join(docsRoot, file), atRevision);
+        if (first !== undefined) setHeldPart(heldDir(first), out, part, atRevision);
+      }
+      if (parts.includes("png")) resize(out, m);
+      if (first !== undefined) {
+        unhold(first, out, m);
+        reapply(out, layersOf(out, first, true), m);
+      }
+      m.save();
+      errors.delete(out);
+    } catch (e) {
+      m.save();
+      errors.set(out, e.message);
+    }
+  }
+
   // Undoes the run `n`'s layers: each picture it held put back as the layer found it, and the
   // later runs' layers on it applied again from there. The dark pictures go first, since a
   // light one is judged against its dark one as the layer finds it.
@@ -379,6 +461,7 @@ export function createApplier({ session, docsRoot, bundlesRoot, revision, manife
     arrive,
     pending,
     rejudge,
+    putBack,
     undo,
     reviewed,
     heldPng: (n, out) => heldOf(heldDir(n), out)?.pngBytes ?? null,

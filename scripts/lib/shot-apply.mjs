@@ -113,6 +113,23 @@ export function applySvg(outRoot, svgOut, svg, { dryRun = false } = {}) {
   return "removed";
 }
 
+/**
+ * Puts the SVG `svgOut` back as `revision` (openRevision) has it, through git, as a checkout
+ * writes it: an SVG that draws the same pixels as the revision's (keep.mjs's sameSvgAs).
+ * "restored", or "unchanged" when the file holds the revision's text already (line endings
+ * aside). With `dryRun` nothing is written, and the state is what would be. Throws when the
+ * revision has no such SVG.
+ */
+export function restoreSvg(outRoot, revision, svgOut, { dryRun = false } = {}) {
+  const atRevision = revision.bytes(svgOut);
+  if (!atRevision) throw new Error(`${revision.short} has no ${svgOut}`);
+  const file = path.join(outRoot, svgOut);
+  const lf = (bytes) => bytes.toString("utf8").replace(/\r\n/g, "\n");
+  if (existsSync(file) && lf(readFileSync(file)) === lf(atRevision)) return "unchanged";
+  if (!dryRun) restoreFromRevision(outRoot, revision.hash, [svgOut]);
+  return "restored";
+}
+
 // ---- what a picture held before a verdict was applied --------------------------------
 //
 // The screenshot review tool applies a run's verdicts as they arrive, and a review may then
@@ -120,8 +137,9 @@ export function applySvg(outRoot, svgOut, svg, { dryRun = false } = {}) {
 // the verdict decided. So before it applies a run's verdict on a picture it keeps what the
 // picture held, in a folder of the run's (`dir`):
 //
-//   <slug>.json          {out, png, svg, bundle, build}: whether each was there, and the build
-//                        the manifest recorded for the file (null for none)
+//   <slug>.json          {out, png, svg, bundle, build, scale}: whether each was there, and the
+//                        build and scale the manifest recorded for the file (null for none; a
+//                        record from before scales were recorded has no `scale`)
 //   files/<out>          the PNG, and files/<X.svg> its SVG, when there
 //   bundles/             its bundle, laid out as the bundle cache is (bundle.mjs)
 
@@ -155,10 +173,10 @@ export function heldPictures(dir) {
 
 /**
  * Keeps in `dir` what the picture `out` under `outRoot` holds now: its PNG, its SVG, its
- * bundle under `bundlesRoot` (or none) and `build`, the build the manifest records for it.
- * What `dir` kept of it before is replaced.
+ * bundle under `bundlesRoot` (or none), and `build` and `scale`, the build and the scale the
+ * manifest records for it. What `dir` kept of it before is replaced.
  */
-export function holdPicture(dir, outRoot, out, bundlesRoot, build) {
+export function holdPicture(dir, outRoot, out, bundlesRoot, build, scale = null) {
   const f = heldFiles(dir, out);
   const keep = (from, to) => {
     if (!existsSync(from)) {
@@ -173,7 +191,39 @@ export function holdPicture(dir, outRoot, out, bundlesRoot, build) {
   const svg = keep(path.join(outRoot, svgOf(out)), f.svg);
   const bundle = bundlesRoot ? copyBundle(bundlesRoot, f.bundles, out) : false;
   mkdirSync(dir, { recursive: true });
-  writeFileSync(f.record, `${JSON.stringify({ out, png, svg, bundle, build: build ?? null })}\n`);
+  writeFileSync(f.record, `${JSON.stringify({ out, png, svg, bundle, build: build ?? null, scale: scale ?? null })}\n`);
+}
+
+/**
+ * The scale the manifest recorded for the picture `out` when `dir` kept it (holdPicture): a
+ * number, null for none (SHOT_SCALE), or undefined when `dir` keeps nothing of it or kept it
+ * before scales were recorded.
+ */
+export function heldScale(dir, out) {
+  const f = heldFiles(dir, out);
+  if (!existsSync(f.record)) return undefined;
+  return JSON.parse(readFileSync(f.record, "utf8")).scale;
+}
+
+/**
+ * Replaces one file of what `dir` keeps of the picture `out` (holdPicture): `part` "png" or
+ * "svg", `bytes` what the picture held, or null when it held no such file. Used when a file
+ * changed outside the session's runs is put back as the baseline has it: the layer that found
+ * it then finds the baseline's. Returns false, and changes nothing, when `dir` keeps nothing of
+ * the picture.
+ */
+export function setHeldPart(dir, out, part, bytes) {
+  const f = heldFiles(dir, out);
+  if (!existsSync(f.record)) return false;
+  const record = JSON.parse(readFileSync(f.record, "utf8"));
+  const to = part === "png" ? f.png : f.svg;
+  if (bytes) {
+    mkdirSync(path.dirname(to), { recursive: true });
+    writeFileSync(to, bytes);
+  } else rmSync(to, { force: true });
+  record[part] = !!bytes;
+  writeFileSync(f.record, `${JSON.stringify(record)}\n`);
+  return true;
 }
 
 /**

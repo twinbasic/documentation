@@ -1,0 +1,72 @@
+' The issue's regression tests. A Private method is found by name by no late-bound call, as it
+' should be, but a call by its dispid runs it. Each case asserts what is correct; a case that
+' fails is the bug.
+'
+' The class numbers its methods from &H60030000 in the order they are declared, Private ones
+' included, and its variables from &H40030000: PubFn is &H60030000 and PrivFn &H60030001, PubVar
+' is &H40030000 and PrivVar &H40030001. The compiler's own ITypeInfo gives these numbers for the
+' Public members, and GetIDsOfNames refuses the Private ones. bugs/private-member-by-dispid/vb6 is
+' the same class in VB6, where Invoke on the Private method's dispid returns DISP_E_MEMBERNOTFOUND.
+
+Class Widget
+    Public PubVar As Long
+    Private PrivVar As Long
+
+    Public Function PubFn() As Long
+        Return 1
+    End Function
+
+    Private Function PrivFn() As Long
+        Return 2
+    End Function
+
+    [DispId(78)]
+    Private Function PrivWithDispId() As Long
+        Return 78
+    End Function
+End Class
+
+[TestFixture]
+Module ByDispIdTests
+
+    Private Function ErrorOf(ByVal Id As Long, ByVal Kind As VbCallType) As Long
+        Dim O As Object = New Widget
+        Dim V As Variant
+        On Error Resume Next
+        V = CallByDispId(O, Id, Kind)
+        ErrorOf = Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub PrivateMethod_ByItsDispId_Raises438()
+        Assert.Strict.AreEqual 438, ErrorOf(&H60030001, VbMethod)
+    End Sub
+
+    [TestCase]
+    Public Sub PrivateMethodWithDispIdAttribute_ByThatDispId_Raises438()
+        Assert.Strict.AreEqual 438, ErrorOf(78, VbMethod)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PrivateMethod_ByName_Raises438()
+        Dim O As Object = New Widget
+        Dim V As Variant
+        On Error Resume Next
+        V = CallByName(O, "PrivFn", VbMethod)
+        Dim N As Long = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 438, N
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PublicMethod_ByItsDispId_Works()
+        Dim O As Object = New Widget
+        Assert.Strict.AreEqual 1, CLng(CallByDispId(O, &H60030000, VbMethod))
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PrivateVariable_ByItsDispId_Raises438()
+        Assert.Strict.AreEqual 438, ErrorOf(&H40030001, VbGet)
+    End Sub
+
+End Module

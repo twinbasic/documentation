@@ -64,7 +64,8 @@ A command with no default key runs from a menu, a button or another command. Any
 | <code><span class="command-prefix">tbDebug_</span>StepOut</code> | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F11</kbd> | At a breakpoint, runs on until the current procedure ends and stops in its caller. |
 | <code><span class="command-prefix">tbDebug_</span>StepOver</code> | <kbd>Shift</kbd>+<kbd>F8</kbd>, <kbd>F10</kbd> | At a breakpoint, runs the current statement and stops at the next, without entering any procedure it calls. |
 | <code><span class="command-prefix">tbDebug_</span>Stop</code> |  | Ends the running program. |
-| <code><span class="command-prefix">tbDebug_</span>ToggleBreakOnAllErrors</code> |  | Turns the project's Break On All Errors setting on or off. |
+| <code><span class="command-prefix">tbDebug_</span>ToggleBreakOnAllErrors</code> |  | Turns the project's Break On All Errors (this project) setting on or off. |
+| <code><span class="command-prefix">tbDebug_</span>ToggleBreakOnAllErrorsInPackages</code> |  | Turns the project's Break On All Errors (inside packages) setting on or off. |
 | <code><span class="command-prefix">tbDebug_</span>ToggleBreakpoint</code> | <kbd>F9</kbd> | Sets a breakpoint on the cursor's line, or removes the one that is there. |
 | <code><span class="command-prefix">tbDebug_</span>ToggleDebuggable</code> |  | Turns the project's Allow Breakpoints (Debuggable) setting on or off. |
 
@@ -87,6 +88,7 @@ A command with no default key runs from a menu, a button or another command. Any
 | <code><span class="command-prefix">tbDebugConsole_</span>ToggleAutoScroll</code> |  | Turns the Debug Console's Auto Scroll on or off. |
 | <code><span class="command-prefix">tbDebugConsole_</span>ToggleInvertOutputDirection</code> |  | Turns the Debug Console's Invert Output Direction option on or off. |
 | <code><span class="command-prefix">tbDebugConsole_</span>ToggleShowTimestamps</code> |  | Turns the Debug Console's Show Timestamps option on or off. |
+| <code><span class="command-prefix">tbDebugConsole_</span>ToggleSmoothScrolling</code> |  | Turns the Debug Console's Smoother Scrolling option on or off. |
 | <code><span class="command-prefix">tbDebugConsole_</span>TurnAutoScrollOff</code> |  | Turns the Debug Console's Auto Scroll off. |
 | <code><span class="command-prefix">tbDebugConsole_</span>TurnAutoScrollOn</code> |  | Turns the Debug Console's Auto Scroll on. |
 | <code><span class="command-prefix">tbDebugConsole_</span>TurnInvertOutputDirectionOff</code> |  | Turns the Debug Console's Invert Output Direction option off. |
@@ -650,6 +652,7 @@ A command with no default key runs from a menu, a button or another command. Any
 | <code><span class="command-prefix">tbProperties_</span>HidePanel</code> | Closes the Properties panel. |
 | <code><span class="command-prefix">tbProperties_</span>Search</code> | Opens the search box of the Properties panel, or moves the focus to it. |
 | <code><span class="command-prefix">tbProperties_</span>ShowPanel</code> | Shows the Properties panel. |
+| <code><span class="command-prefix">tbProperties_</span>ToggleAlphabeticSort</code> | Turns the alphabetic sort order of the Properties panel on or off. |
 
 ## `tbTheme_`
 

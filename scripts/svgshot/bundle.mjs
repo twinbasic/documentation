@@ -40,8 +40,9 @@
 // reaches. A bundle holds URLs into the IDE's work folder, and so the Windows user
 // name: bundles stay in a cache that is never committed or published.
 
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
@@ -66,6 +67,57 @@ useImageTools({ compactImage, pngSize });
 
 /** The bundle cache: gitignored, outside docs/, since a bundle holds the Windows user name. */
 export const BUNDLE_CACHE = path.join(REPO_ROOT, ".svgshot-bundles");
+
+/**
+ * A worktree's bundle cache, filled from the main checkout's the first time a tool uses it
+ * (owner, WIP.ShotReview.md (c)), so that a new worktree does not redraw every SVG whose bundle it
+ * lacks. Nothing happens in the main checkout itself, outside a git working tree, when the cache
+ * is there already (even empty: it has been used), or when the main checkout has none. The files
+ * are copied, never linked: writeBundle rewrites a file in place, and a link would rewrite the main
+ * checkout's. The copy goes to a folder beside the cache and is renamed into place, so a copy cut
+ * short leaves no cache that looks used.
+ *
+ * @param {string} [cache]  the worktree's cache folder
+ * @param {object} [o]
+ * @param {string} [o.repo]  the working tree to ask git about
+ * @returns {string | null}  the folder copied from, or null when nothing was copied
+ */
+export function seedBundleCache(cache = BUNDLE_CACHE, { repo = REPO_ROOT } = {}) {
+  if (existsSync(cache)) return null;
+  const git = (...args) => {
+    const r = spawnSync("git", ["-C", repo, "rev-parse", "--path-format=absolute", ...args], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    return r.status === 0 ? path.resolve(r.stdout.trim()) : null;
+  };
+  const common = git("--git-common-dir");
+  const own = git("--git-dir");
+  if (!common || !own || common.toLowerCase() === own.toLowerCase()) return null;
+  if (path.basename(common).toLowerCase() !== ".git") return null;
+  const from = path.join(path.dirname(common), path.basename(cache));
+  if (!existsSync(from) || path.resolve(from).toLowerCase() === path.resolve(cache).toLowerCase()) return null;
+  const filling = `${cache}.filling-${process.pid}`;
+  try {
+    cpSync(from, filling, { recursive: true });
+    renameSync(filling, cache);
+  } catch (e) {
+    rmSync(filling, { recursive: true, force: true });
+    if (existsSync(cache)) return null; // another tool of this worktree filled it first
+    throw e;
+  }
+  return from;
+}
+
+/**
+ * BUNDLE_CACHE, seeded first (seedBundleCache) and said so on `tool`'s behalf: what a tool uses
+ * when no --bundles names another cache.
+ */
+export function defaultBundleCache(tool) {
+  const from = seedBundleCache();
+  if (from) console.log(`${tool}: this worktree's bundle cache was filled from the main checkout's (${from})`);
+  return BUNDLE_CACHE;
+}
 
 /**
  * The SVG picture of `clip` ({x, y, width, height} CSS px; null for the whole

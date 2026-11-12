@@ -5,7 +5,7 @@ parent: Built-In Packages
 nav_order: 7
 permalink: /tB/Packages/WebView2/
 has_toc: false
-indexed_from: beta-x-1010
+indexed_from: beta-x-1042
 ---
 
 # WebView2 Package

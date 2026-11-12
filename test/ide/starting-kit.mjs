@@ -179,6 +179,20 @@ function pageGuard(cfg) {
             return Promise.resolve(undefined);
           };
         }
+        // Since BETA 1042 the recent list is read and written through ReadFileDataBase64 with a
+        // name in place of a file; it is answered and recorded as the methods below are.
+        if (key === "ReadFileDataBase64") {
+          return (file, ...rest) => {
+            const f = String(file);
+            if (f === "GetRecentsList") return Promise.resolve(G.recents);
+            const write = /^(AddRecentsList|RemoveRecentsList):/.exec(f);
+            if (write) {
+              rec("host", write[1]);
+              return Promise.resolve("");
+            }
+            return target.ReadFileDataBase64(file, ...rest);
+          };
+        }
         if (key === "GetRecentsList") return () => Promise.resolve(G.recents);
         if (key === "GetVB6RecentProjects") return () => Promise.resolve(G.vb6);
         if (key === "ChangeWindowSetting") return () => Promise.resolve(undefined);

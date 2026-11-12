@@ -24,10 +24,10 @@ Syntax: **MkDir** *path*
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *path* already exists, as a folder or as a file<br>the folder or drive that would hold *path* does not exist, or *path* is a zero-length string or a name a folder cannot have |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *path* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *path* already exists, as a folder or as a file, VB6 and 64-bit VBA raise error [75 (`&H4B`)](tb:Errors#75), *Path/File access error*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When the folder or drive that would hold *path* does not exist, or *path* is a zero-length string or a name a folder cannot have, VB6 and 64-bit VBA raise error [76 (`&H4C`)](tb:Errors#76), *Path not found*, instead.
 
 <!-- /errors -->

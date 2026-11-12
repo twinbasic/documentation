@@ -34,7 +34,7 @@ The *buttons* argument is a combination of values from the [**VbMsgBoxStyle**](.
 > **MsgBox** passes *buttons* to Windows as it is, so any style Windows accepts can be used. VB6 and 64-bit VBA show a plain **OK** box for a value they do not know --- `vbCancelTryAgainContinue`, two icons combined, a default-button value of &H400 --- and raise no error.
 
 <!-- test: bug interaction-missing-argument-checks, errors VBA.Interaction -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A *buttons* value whose button group Windows does not have (7 to 15, -1 included) shows no box: **MsgBox** returns 0 and raises no error. VB6 and 64-bit VBA show an **OK** box and return **vbOK**.
 
 The return value is one of the constants from the [**VbMsgBoxResult**](../Constants/VbMsgBoxResult) enumeration, identifying which button the user clicked.
@@ -52,13 +52,13 @@ If the dialog box displays a **Cancel** button, pressing the ESC key has the sam
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *prompt*, *buttons*, *title* or *context* is **Null**<br>*helpfile* is **Null** |
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | *helpfile* is given without *context* |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *helpfile* is **Null**, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *helpfile* is given without *context*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *context* is given without *helpfile*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*; twinBASIC raises none.
 
 <!-- /errors -->

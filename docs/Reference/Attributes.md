@@ -30,7 +30,7 @@ The available attributes are listed below in alphabetic order. Not every attribu
 ---
 
 ## AllowUnpopulatedVtableEntry
-{: #allowunpopulatedvtableentry index="TB65535" }
+{: #allowunpopulatedvtableentry index="TB5260" }
 
 Syntax: **[AllowUnpopulatedVtableEntry]**
 
@@ -40,11 +40,7 @@ Marks a prototype that a class implementing the interface is not obliged to supp
 
 The twinBASIC packages use it to add members to an interface without breaking code written against an earlier revision of it. `ItbHostEventsV2` extends `ItbHostEventsV1` and adds one such prototype; `ItbHostEventsV3` extends that and adds another. An addin that implements only the **V1** members still satisfies **V3**.
 
-On a **Public** procedure of a **Class**, it does the same for a class that [**Implements**](Implements) that class: the member may be left out, where otherwise the build fails with TB65535, *Missing implementation of member ...*. On a property it covers only the accessor it is written on, so a **Property Get** and its **Property Let** each need it.
-
-<!-- test: bug missing-implementation-message -->
-> [!NOTE] BETA 1034
-> The message of TB65535 reads *Internal Error - Bad Error Info Locale Data*, and does not name the missing member. The error is on the name after **Implements**.
+On a **Public** procedure of a **Class**, it does the same for a class that [**Implements**](Implements) that class: the member may be left out, where otherwise the build fails with TB5260, *Missing implementation of member ...*, on the name after **Implements**. On a property it covers only the accessor it is written on, so a **Property Get** and its **Property Let** each need it.
 
 <!-- Applicability from the package census, BETA 1005: 71 uses in tbIDE and VB,
      every one a Sub prototype inside an Interface. The effect described above is read
@@ -385,7 +381,7 @@ The restriction to modules is not an oversight. Folding a call to a method would
 Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** or a **Declare Sub** the attribute is accepted and has no effect.
 
 <!-- test: bug constantfoldable-declare-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > The compiler also accepts the attribute on a **Declare Function**. With **Constant Function Folding** on, a call to such a function whose arguments are all constants crashes the compiler during the build, though the project compiles without an error.
 
 <!-- BETA 1005 (tbrun --exe, counting calls through a module counter): with
@@ -507,7 +503,7 @@ Excludes calls to this procedure from the Build. They are only available when ru
 In a **Class**, and through an **Interface**, the same holds for an early-bound call. The procedure stays in the class, so a late-bound call, through an **Object** or **Variant** variable or with **CallByName**, runs in the Build too.
 
 <!-- test: bug debugonly-class-initialize-exe -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > On **Class_Initialize** the attribute breaks the Build: a program that creates the class stops with error 91, *Object variable or With block variable not set*, or ends with an access violation. A run from the IDE is right. Written as `[DebugOnly(False)]` it changes nothing.
 
 <!-- BETA 1005 (tbrun and --exe): a [DebugOnly] Declare Sub Sleep(150) sleeps in
@@ -619,7 +615,7 @@ Provides a description in information popups in the IDE, and is exported as a `h
 The text of a parameter shows when the pointer rests on the parameter's name in the body of the procedure. A parameter of a **Declare** or of an **Interface** prototype has no body, so nothing shows its text.
 
 <!-- test: bug description-field-hover-twice -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The popup of a member of a **Type**, and of a variable of a **Class**, shows the text twice, run together: *one lineone line*.
 
 <!-- BETA 1005, ActiveX DLL dumped with TLI: helpstrings written on class
@@ -733,7 +729,7 @@ Switches the stack check that follows a call in a 32-bit build. A 64-bit build h
 A call through a **Delegate** is checked by default. When the delegate's signature has left the stack wrong, the call raises error -353703419, *Bad DLL definition. Stack corruption detected.* `[DLLStackCheck(False)]` removes the check, which makes the code smaller; the program may then end with an access violation. Written bare or with **True**, the attribute changes nothing.
 
 <!-- test: bug declare-dll-stack-not-checked -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > On a **Declare** the attribute works the other way round. A call of a **Declare** is not checked by default, so a wrong signature can end the program with an access violation. `[DLLStackCheck(False)]` adds the check, which makes the code larger, and a wrong signature then raises the same error. Written bare or with **True**, it changes nothing. VB6 raises error 49, *Bad DLL calling convention*, in its IDE and in a P-Code exe.
 
 <!-- BETA 1034 (tbrun --exe, win32 and win64; tbbuild; the type library of an
@@ -1315,7 +1311,7 @@ This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls fil
 On a **CoClass**, the name of the coclass stands for one instance, created through COM at its first use and apart from any made with [**New**](New). The coclass needs a `[Default]` interface: without one a use of its name is TB5044, *Unable to determine default interface of coclass*. The [App](../Packages/AppGlobalClassObject/) object is declared this way, its members marked with [RedirectToStaticImplementation](#redirecttostaticimplementation), which run with no instance at all. Unlike [AppObject](#appobject), the attribute does not make the members global names: they are written with the name in front.
 
 <!-- test: lane ide:vb6-import -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > In an ActiveX build, a **Class** is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
 
 <!-- BETA 1005 and 1010, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
@@ -1384,7 +1380,7 @@ End Property
 A property takes the page from its first accessor in the source, normally the **Property Get**, whichever kind of accessor that is. Written on a later accessor, the attribute has no effect, though its name is still checked; when two accessors name different pages, the control reports the first one's. On a **Sub**, a **Function** or a **Public** variable of the control, the control reports the page for that member's DISPID in the same way. In a class that is not a **UserControl** the compiler accepts the attribute and it has no effect. On an **Interface** prototype the control reports no page, but the name is checked, as on a procedure. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. On a procedure, a name that matches no property page in the project is error TB5259, *Failed to find named PropertyPage '...' for procedure '...'*. That includes an empty string and a name that differs only in case. A variable's name is not checked.
 
 <!-- test: sample propertypage-semicolon, sample propertypage-legacy-semicolon, sample propertypage-legacy-unknown -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` is TB5259.
 
 ```tb probe projname=propertypage-semicolon project=activex-control slot=file id=propertypage-semicolon expect-error=TB5259
@@ -1595,11 +1591,11 @@ A procedure with the attribute in a package that the project references runs too
      line, then Main's. -->
 
 <!-- test: bug runbeforestartupobject-generic-message -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The attribute is not allowed on a generic procedure, such as `Sub Pre(Of T)()`. The project compiles in the editor without an error, but building it fails with the message *Build FAILED due to invalid RunBeforeStartupObject procedure*, which names neither the procedure nor the reason.
 
 <!-- test: bug runbeforestartupobject-unchecked -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > The compiler accepts the attribute on more than one procedure, with no error or warning, and the built program runs only the last of them; the others never run. It also accepts the attribute on a procedure with parameters, which then runs with arbitrary values for its parameters, even for an **Optional** parameter that has a default. Give the attribute to one procedure, with no parameters.
 
 <!-- BETA 1010 (bug_repro run --exe, win32 and win64): of three procedures with
@@ -1746,7 +1742,7 @@ Binds the member to one of the compiler's own internal implementations, selected
 > [!IMPORTANT]
 > This attribute exists for the packages that ship with twinBASIC. The numbers are not a vocabulary a project can choose from: each names one behaviour already built into the compiler, and nothing says what an unlisted number does.
 
-The numbers the VB package uses, should you meet one while reading its source: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, and `(254)` on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
+The numbers the VB package uses, should you meet one while reading its source: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, `(253)` on the **Left**, **Top**, **Width** and **Height** properties of the controls, forms, user controls, property pages and reports, and `(254)` on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
 
 <!-- This entry gave the syntax as an optional Bool and stated no
      applicability. Every one of the 6 uses in the BETA 1005 census passes an

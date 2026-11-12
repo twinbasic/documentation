@@ -63,19 +63,19 @@ For an object registered as single-instance, **GetObject** with the zero-length-
 | [-2147221020 (`&H800401E4`)](tb:Errors#-2147221020), *Invalid syntax* | *pathname* is neither a file name nor a name Windows can bind to an object |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | *pathname* or *class* is **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *pathname* names a file that does not exist, and *class* is omitted, VB6 and 64-bit VBA raise error [432 (`&H1B0`)](tb:Errors#432), *File name or class name not found during Automation operation*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *pathname* names a file that does not exist, and *class* is given, VB6 and 64-bit VBA raise error [432 (`&H1B0`)](tb:Errors#432), *File name or class name not found during Automation operation*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *class* is not a registered class name, VB6 and 64-bit VBA raise error [429 (`&H1AD`)](tb:Errors#429), *ActiveX component can't create object*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When *pathname* is omitted and no instance of *class* is running, VB6 and 64-bit VBA raise error [429 (`&H1AD`)](tb:Errors#429), *ActiveX component can't create object*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When both arguments are omitted, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

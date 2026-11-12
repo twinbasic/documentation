@@ -2,7 +2,7 @@
   "format": 3,
   "package": "WinNamedPipesLib",
   "project": "WinNamedPipesLib",
-  "version": "beta-x-1010",
+  "version": "beta-x-1042",
   "types": [
     {
       "name": "INamedPipeClientConnectionInternal",

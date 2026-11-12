@@ -92,6 +92,7 @@ section.muted{opacity:.55}
 .actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.actions button,form.allow button{font:inherit;padding:3px 12px}
 .actions button[aria-pressed=true]{font-weight:700;outline:2px solid var(--link)}
 .status{color:var(--mut);font-size:13px}.status.err{color:var(--bar)}
+#live{position:fixed;right:12px;bottom:10px;z-index:30;margin:0;background:var(--bg);max-width:min(560px,calc(100vw - 24px))}#live.ok{color:var(--mut)}
 form.allow fieldset{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;padding:6px 10px}
 form.allow label{display:inline-block;margin:2px 14px 2px 0}form.allow input[type=number]{width:6em}
 form.allow textarea{width:100%;max-width:600px;font:12px var(--mono,monospace)}
@@ -159,14 +160,58 @@ const REVIEW_SCRIPT = `<script>
     if (c.checked) list.push(c.dataset.pick);
     setPicked(list);
   });
-  let blink = null;
-  const setMode = (c, m) => {
+  // Each comparison of the page (.compare, compareHtml) has its own mode and its own blink.
+  const blinks = new Map();
+  const setMode = (c, m, remember = true) => {
     c.dataset.mode = m;
     for (const b of c.querySelectorAll("[data-set]")) b.setAttribute("aria-pressed", String(b.dataset.set === m));
-    clearInterval(blink);
-    if (m === "blink") { const s = c.querySelector(".blink .stack"); blink = setInterval(() => s.classList.toggle("old"), 600); }
-    try { sessionStorage.setItem("shot-review-mode", m); } catch {}
+    clearInterval(blinks.get(c));
+    blinks.delete(c);
+    if (m === "blink") { const s = c.querySelector(".blink .stack"); blinks.set(c, setInterval(() => s.classList.toggle("old"), 600)); }
+    if (m === "map") for (const k of c.querySelectorAll("canvas.diffmap")) drawDiff(k);
+    if (remember) try { sessionStorage.setItem("shot-review-mode", m); } catch {}
   };
+  // A difference map the page draws (canvas.diffmap): its two pictures (data-a, data-b, two SVGs
+  // the server cannot draw) each drawn at the canvas's size, the picture's device pixels, and
+  // compared pixel by pixel as changeMap compares two PNGs: the same pixel dimmed grey, a
+  // difference yellow at 1 level shading to red at 128 or more, cyan where only the first has
+  // anything and magenta where only the second does. Drawn once, when its mode is first shown.
+  const loadImage = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("could not load " + src));
+    img.src = src;
+  });
+  const pixelsOf = (img, w, h) => {
+    const k = document.createElement("canvas");
+    k.width = w; k.height = h;
+    const g = k.getContext("2d");
+    g.drawImage(img, 0, 0, w, h);
+    return g.getImageData(0, 0, w, h).data;
+  };
+  async function drawDiff(k) {
+    if (k.dataset.drawn) return;
+    k.dataset.drawn = "1";
+    const w = k.width, h = k.height;
+    try {
+      const [a, b] = await Promise.all([loadImage(k.dataset.a), loadImage(k.dataset.b)]);
+      const pa = pixelsOf(a, w, h), pb = pixelsOf(b, w, h);
+      const g = k.getContext("2d");
+      const out = g.createImageData(w, h);
+      const o = out.data;
+      for (let i = 0; i < pa.length; i += 4) {
+        const inA = pa[i + 3] > 0, inB = pb[i + 3] > 0;
+        let d = 0;
+        for (let c = 0; c < 4; c++) d = Math.max(d, Math.abs(pa[i + c] - pb[i + c]));
+        if (inA !== inB) o.set(inA ? [0, 220, 220, 255] : [220, 0, 220, 255], i);
+        else if (d === 0) { const v = 40 + ((pb[i] + pb[i + 1] + pb[i + 2]) / 3) * 0.25; o.set([v, v, v, 255], i); }
+        else { const t = Math.min(d, 128) / 128; o.set([255, Math.round(255 * (1 - t)), 0, 255], i); }
+      }
+      g.putImageData(out, 0, 0);
+    } catch (e) {
+      k.replaceWith(Object.assign(document.createElement("p"), { className: "meta", textContent: e.message }));
+    }
+  }
   // The zoom of a group of figures (.zoomable, zoomedTrio): a click on a picture opens the panel
   // after the group on that place, each picture drawn at its device size (an SVG rasterised
   // there, as the judge compares it) and enlarged without smoothing, the colour of its pixel at
@@ -264,14 +309,16 @@ const REVIEW_SCRIPT = `<script>
   };
   const init = () => {
     initZoom();
-    const c = document.querySelector(".compare");
-    if (!c) return;
+    for (const t of blinks.values()) clearInterval(t);
+    blinks.clear();
     let m = null;
     try { m = sessionStorage.getItem("shot-review-mode"); } catch {}
-    if (m && c.querySelector('[data-set="' + m + '"]')) setMode(c, m);
-    for (const b of c.querySelectorAll("[data-set]")) b.onclick = () => setMode(c, b.dataset.set);
-    const r = c.querySelector(".swipe input");
-    if (r) r.oninput = () => c.style.setProperty("--x", r.value + "%");
+    for (const c of document.querySelectorAll(".compare")) {
+      if (m && c.querySelector('[data-set="' + m + '"]')) setMode(c, m, false);
+      for (const b of c.querySelectorAll("[data-set]")) b.onclick = () => setMode(c, b.dataset.set);
+      const r = c.querySelector(".swipe input");
+      if (r) r.oninput = () => c.style.setProperty("--x", r.value + "%");
+    }
   };
   const refresh = async () => {
     const res = await fetch(location.href, { cache: "no-store" });
@@ -297,6 +344,7 @@ const REVIEW_SCRIPT = `<script>
     draws();
     showPicked();
     defaults();
+    showLive();
     scrollTo(0, y);
   };
   // The page fetches itself 400 ms after an update, and once in 400 ms at most while updates
@@ -333,19 +381,139 @@ const REVIEW_SCRIPT = `<script>
   // six connections to the server at most and a stream holds one for as long as it is open.
   // The page that holds the lock holds the stream and passes each update to the others; when
   // it goes, the lock passes to another page. (A shared worker would be simpler, but in some
-  // browsers one cannot reach the server.)
-  const live = () => {
-    const open = (pass) => {
-      const es = new EventSource(${JSON.stringify(hrefs.events)});
-      es.addEventListener("update", (e) => {
-        update(e.data);
-        pass?.(e.data);
-      });
+  // browsers one cannot reach the server.) Only a page that is shown holds it: one in a tab
+  // behind others, which the browser may freeze, gave it up to none and no page followed the
+  // runs (owner, 2026-11-11); a page shown again is fetched again, since it may have missed some.
+  // A stream the browser gave up on is opened again, and one back after the server was away
+  // fetches every page, since what was sent meanwhile is lost.
+  const ALL = JSON.stringify({ outs: [], runs: true });
+  // What the page says of its updates, in a chip at the foot of the window (#live): live, or why
+  // not. The server sends a ping every 5 s (createSseChannel's ping), which the page holding the
+  // stream passes on as it passes updates, so that a page shown knows when it last heard from the
+  // server: one that has heard nothing for 15 s says why, and when another tab holds the stream and
+  // passes nothing on (a tab the browser froze), takes it over (owner, 2026-11-11).
+  const QUIET = 15000;
+  let heard = Date.now();
+  let holding = false;
+  let keepUntil = 0;
+  let liveState = { text: "connecting to the server", kind: "" };
+  const showLive = () => {
+    let chip = document.getElementById("live");
+    if (!chip) {
+      chip = document.createElement("span");
+      chip.id = "live";
+      document.body.append(chip);
+    }
+    chip.className = "chip " + liveState.kind;
+    chip.textContent = liveState.text;
+  };
+  const setLive = (text, kind = "") => {
+    liveState = { text, kind };
+    showLive();
+  };
+  const hear = () => {
+    heard = Date.now();
+    if (Date.now() > keepUntil && liveState.text !== "live") setLive("live", "ok");
+  };
+  const serverAway = () => {
+    heard = Date.now();
+    setLive("the server does not answer: connecting again", "fail");
+  };
+  // A message from the page that holds the stream: {kind: "update", data}, "ping" or "away".
+  const told = (m) => {
+    if (m.kind === "away") return serverAway();
+    hear();
+    if (m.kind === "update") update(m.data);
+  };
+  const stream = (pass) => {
+    let es = null;
+    let lost = false;
+    let stopped = false;
+    const tell = (m) => {
+      told(m);
+      pass?.(m);
     };
-    if (!navigator.locks || typeof BroadcastChannel !== "function") return open();
+    const connect = () => {
+      es = new EventSource(${JSON.stringify(hrefs.events)});
+      es.addEventListener("update", (e) => tell({ kind: "update", data: e.data }));
+      es.addEventListener("ping", () => tell({ kind: "ping" }));
+      es.onopen = () => {
+        tell({ kind: "ping" });
+        if (!lost) return;
+        lost = false;
+        tell({ kind: "update", data: ALL });
+      };
+      es.onerror = () => {
+        lost = true;
+        tell({ kind: "away" });
+        if (es.readyState === EventSource.CLOSED) setTimeout(() => stopped || connect(), 2000);
+      };
+    };
+    holding = true;
+    connect();
+    return () => {
+      stopped = true;
+      holding = false;
+      es.close();
+    };
+  };
+  const live = () => {
+    showLive();
+    if (!navigator.locks || typeof BroadcastChannel !== "function") {
+      stream();
+      return;
+    }
     const channel = new BroadcastChannel("shot-review-events");
-    channel.onmessage = (e) => update(e.data);
-    navigator.locks.request("shot-review-events", () => new Promise(() => open((d) => channel.postMessage(d))));
+    channel.onmessage = (e) => told(e.data);
+    let held = null;
+    const ask = (options) => {
+      const mine = { stop: null };
+      held = mine;
+      navigator.locks
+        .request("shot-review-events", options, () => new Promise((done) => {
+          if (held !== mine) return done();
+          const stop = stream((m) => channel.postMessage(m));
+          mine.stop = () => {
+            stop();
+            done();
+          };
+        }))
+        .catch(() => {
+          // taken over by another page, which heard nothing from this one
+          mine.stop?.();
+          if (held !== mine) return;
+          held = null;
+          take();
+        });
+    };
+    const take = () => {
+      if (held || document.visibilityState !== "visible") return;
+      ask({});
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        heard = Date.now();
+        take();
+        update(ALL);
+      } else {
+        const mine = held;
+        held = null;
+        mine?.stop?.();
+      }
+    });
+    take();
+    setInterval(() => {
+      if (document.visibilityState !== "visible" || Date.now() - heard < QUIET) return;
+      const quiet = Math.round((Date.now() - heard) / 1000);
+      if (holding) return setLive("the server has sent nothing for " + quiet + " s: it may be busy", "fail");
+      setLive(
+        "no updates for " + quiet + " s: another tab of this tool held the connection to the server and passed nothing on (a tab the browser froze?); this page has taken it over",
+        "look",
+      );
+      heard = Date.now();
+      keepUntil = Date.now() + 20000;
+      ask({ steal: true });
+    }, 5000);
   };
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea, select")) return;
@@ -580,7 +748,12 @@ const actionsHtml = (buttons) =>
  */
 export function chipsOf(p, entry = null) {
   const chips = [];
-  if (p.outside) chips.push(chipHtml(`changed outside the runs: ${p.outside}`, "change"));
+  if (p.outside)
+    chips.push(
+      p.outsideKept
+        ? chipHtml(`kept from outside the runs: ${p.outside}`, "review", "a review kept it as it is")
+        : chipHtml(`changed outside the runs: ${p.outside}`, "change", "keep it or put it back before the commit"),
+    );
   if (p.progress) chips.push(chipHtml("in progress", "progress"));
   if (p.failed) chips.push(chipHtml("failed", "fail", p.failed.error));
   if (p.retake) chips.push(chipHtml("needs a retake", "fail", p.retake.why));
@@ -836,6 +1009,49 @@ const picHtml = (src, size, alt, overlay = "") => {
 const figureHtml = (src, size, caption, overlay = "") =>
   `<figure>${picHtml(src, size, caption, overlay)}<figcaption>${esc(caption)}</figcaption></figure>`;
 
+// What a map drawn in the browser says of its colours, as changeMap draws a PNG's.
+const MAP_COLOURS =
+  "yellow: 1 level, shading to red at 128 or more; cyan: only in the first, magenta: only in the second";
+
+/**
+ * A comparison of two pictures with its modes, side by side, a swipe, blinking and a difference
+ * map, as the page's script drives each `.compare` of a page (REVIEW_SCRIPT). `side` the figures
+ * shown side by side (figureHtml's); `before` {src, size, label} the picture compared with, or
+ * null for side by side alone; `after` {src, alt, the}: the picture, its alt text and how a
+ * sentence names it ("the new capture"); `map` the difference map, or null: {src, size, caption,
+ * overlay} for one the server draws, or {a, b, size, caption} for one the page's script draws
+ * from the two pictures `a` and `b` at their device size `size` (two SVGs, which the server
+ * cannot draw).
+ */
+function compareHtml({ side, before, after, map = null }) {
+  const stack = (cls) =>
+    before
+      ? `<div class="view ${cls}"><span class="stack"><img src="${before.src}" alt="${esc(before.label)}"${before.size ? ` width="${Math.round(before.size[0] / 2)}"` : ""}><img class="top" src="${after.src}" alt="${esc(after.alt)}"></span>${cls === "swipe" ? `<input type="range" min="0" max="100" value="50" aria-label="Where ${esc(after.the)} starts">` : ""}<p class="meta">${esc(before.label)} ${cls === "swipe" ? `on the left, ${esc(after.the)} on the right` : `and ${esc(after.the)}, in turn`}</p></div>`
+      : "";
+  let mapView = "";
+  if (map?.src) mapView = figureHtml(map.src, map.size, map.caption, map.overlay ?? "");
+  else if (map?.a) {
+    const [w, h] = map.size ?? [0, 0];
+    mapView = `<figure><span class="pic"><canvas class="diffmap" data-a="${esc(map.a)}" data-b="${esc(map.b)}" width="${w}" height="${h}" style="width:${Math.round(w / 2)}px;max-width:100%;height:auto"></canvas></span><figcaption>${esc(map.caption)}</figcaption></figure>`;
+  }
+  return `<section class="compare" data-mode="side">
+<div class="modes">${[
+    ["side", "Side by side"],
+    ["swipe", "Swipe"],
+    ["blink", "Blink"],
+    ["map", "Difference map"],
+  ]
+    .filter(([m]) => before || m === "side")
+    .filter(([m]) => mapView || m !== "map")
+    .map(([m, label]) => `<button type="button" data-set="${m}" aria-pressed="${m === "side"}">${label}</button>`)
+    .join("")}</div>
+<div class="view side trio">${side.join("\n")}</div>
+${stack("swipe")}
+${stack("blink")}
+${mapView ? `<div class="view mapview">${mapView}</div>` : ""}
+</section>`;
+}
+
 /**
  * Figures that zoom on a click (`figs`, figureHtml's, of pictures `size` device px), and the panel
  * that shows the same place of each, enlarged without smoothing. The page's script draws each
@@ -933,28 +1149,98 @@ const HOLDS = {
 };
 
 /**
- * The page of a picture changed outside the session's runs (reviewPictures' `outside`): the
- * baseline's picture against the file, and no verdict. `files` {head, docs}, each {src, size}
- * or null; `map` the difference map's address, or null; the rest as detailHtml's.
+ * What a picture's page says of its files changed outside the session's runs (reviewPictures'
+ * `outsideParts`), with Keep and Put back: an SVG among them shown as the baseline has it and as
+ * the file is (`svg` {head, docs}, each {src} or null). Nothing of the picture is committed until
+ * one of the two is chosen (WIP.ShotReview.md, Commit).
+ */
+export function outsideSectionHtml(p, svg, baseline) {
+  const act = hrefs.act(p.out);
+  const names = p.outsideParts.map((part) => (part === "png" ? "its PNG" : "its SVG")).join(" and ");
+  let svgView = "";
+  if (p.outsideParts.includes("svg")) {
+    const headLabel = `SVG at HEAD (${baseline.short})`;
+    if (svg?.head && svg?.docs)
+      svgView = compareHtml({
+        side: [
+          figureHtml(svg.head.src, svg.head.size, headLabel),
+          figureHtml(svg.docs.src, svg.docs.size, "The SVG file"),
+        ],
+        before: { src: svg.head.src, size: svg.head.size, label: headLabel },
+        after: { src: svg.docs.src, alt: "The SVG file", the: "the SVG file" },
+        map: svg.head.size
+          ? {
+              a: svg.head.src,
+              b: svg.docs.src,
+              size: svg.head.size,
+              caption: `Difference of the SVG file against HEAD's, drawn at the picture's device size (${MAP_COLOURS})`,
+            }
+          : null,
+      });
+    else
+      svgView = `<div class="trio">${[
+        svg?.head
+          ? figureHtml(svg.head.src, svg.head.size, headLabel)
+          : `<figure><p class="meta">HEAD has no SVG</p></figure>`,
+        svg?.docs
+          ? figureHtml(svg.docs.src, svg.docs.size, "The SVG file")
+          : `<figure><p class="meta">No SVG file</p></figure>`,
+      ].join("\n")}</div>`;
+  }
+  return `<section class="outside">
+<h2>Changed outside the session's runs</h2>
+<p>No run of this session wrote ${names}: ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a run from a terminal, or an edit). ${p.outsideKept ? "A review kept it as it is, and the commit takes it." : "The commit takes nothing of this picture until it is kept as it is or put back."}</p>
+${svgView}
+${actionsHtml([
+  actionButton("Keep it as it is", act, { action: "keep-outside" }, { pressed: p.outsideKept }),
+  actionButton(
+    "Put back the baseline's",
+    act,
+    { action: "put-back" },
+    { confirm: `Put ${names} back as ${baseline.short} has ${p.outsideParts.length > 1 ? "them" : "it"}?` },
+  ),
+])}
+</section>`;
+}
+
+/**
+ * The page of a picture changed outside the session's runs that no run reported
+ * (reviewPictures' `outside`): the baseline's picture against the file, and no verdict.
+ * `files` {head, docs, svg}, `head` and `docs` each {src, size} or null, `svg` as
+ * outsideSectionHtml takes it; `map` the difference map's address, or null; the rest as
+ * detailHtml's.
  */
 export function outsideHtml({ p, filter, place, prev, next, files, map, baseline, busy = null }) {
   const size = files.docs?.size ?? files.head?.size ?? null;
+  const headLabel = `HEAD (${baseline.short})`;
   const figs = [];
-  if (files.head) figs.push(figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`));
+  if (files.head) figs.push(figureHtml(files.head.src, files.head.size, headLabel));
   if (files.docs) figs.push(figureHtml(files.docs.src, files.docs.size, "The file"));
-  if (map)
-    figs.push(
-      figureHtml(
-        map,
-        size,
-        "Difference (yellow: 1 grey level, shading to red at 128 or more; cyan and magenta: only in one)",
-      ),
-    );
+  // the PNG compared with HEAD's when it changed; one that did not is shown once, beside its SVG's comparison
+  const pngChanged = !p.outsideParts?.length || p.outsideParts.includes("png");
+  const pngView = !pngChanged
+    ? `<div class="trio">${files.docs ? figureHtml(files.docs.src, files.docs.size, "The PNG, as HEAD has it") : ""}</div>`
+    : files.head && files.docs
+      ? compareHtml({
+          side: figs,
+          before: { src: files.head.src, size: files.head.size, label: headLabel },
+          after: { src: files.docs.src, alt: "The file", the: "the file" },
+          map: map
+            ? {
+                src: map,
+                size,
+                caption:
+                  "Difference (yellow: 1 grey level, shading to red at 128 or more; cyan and magenta: only in one)",
+              }
+            : null,
+        })
+      : `<div class="trio">${figs.join("\n")}</div>`;
   const body = `${pagerHtml({ p, filter, place, prev, next })}
 <p class="meta">${esc(sizeText(size))}; ${chipsOf(p)}</p>
-<p class="notice">No run of this session reported this picture: its file is ${esc(p.outside)} against the baseline, ${esc(baseline.short)} (a retake from a terminal, or an edit). It has no verdict to override; a retake of it through this tool judges it.</p>
+<p class="notice">No run of this session reported this picture. It has no verdict to override; a retake of it through this tool judges it.</p>
+${outsideSectionHtml(p, files.svg, baseline)}
 ${p.outside === "deleted" ? "" : actionsHtml(runButtons(p.out, busy, { replay: false }))}
-<div class="trio">${figs.join("\n")}</div>`;
+${pngView}`;
   return pageHtml({
     generator: REVIEW_GENERATOR,
     title: p.out,
@@ -1188,6 +1474,7 @@ export function detailHtml({
   error = null,
   busy = null,
   bundled = null,
+  outside = null,
 }) {
   const groupTitle = (GROUPS.find(([k]) => k === p.group) ?? [null, p.group])[1];
   const nav = pagerHtml({ p, filter, place, prev, next });
@@ -1207,27 +1494,19 @@ export function detailHtml({
     if (files.reference && png?.against !== "revision")
       side.push(figureHtml(files.reference.src, files.reference.size, AGAINST[png.against] ?? "judged against"));
     side.push(figureHtml(files.capture.src, files.capture.size, `New capture, run ${png.run}`));
-    const stack = (cls) =>
-      before
-        ? `<div class="view ${cls}"><span class="stack"><img src="${before.src}" alt="${esc(beforeLabel)}"${before.size ? ` width="${Math.round(before.size[0] / 2)}"` : ""}><img class="top" src="${files.capture.src}" alt="New capture"></span>${cls === "swipe" ? `<input type="range" min="0" max="100" value="50" aria-label="Where the new capture starts">` : ""}<p class="meta">${esc(beforeLabel)} ${cls === "swipe" ? "on the left, the new capture on the right" : "and the new capture, in turn"}</p></div>`
-        : "";
-    const overlay = overlayOf(png.regions, rules.png.rects, size);
-    compare = `<section class="compare" data-mode="side">
-<div class="modes">${[
-      ["side", "Side by side"],
-      ["swipe", "Swipe"],
-      ["blink", "Blink"],
-      ["map", "Difference map"],
-    ]
-      .filter(([m]) => before || m === "side")
-      .filter(([m]) => maps.png || m !== "map")
-      .map(([m, label]) => `<button type="button" data-set="${m}" aria-pressed="${m === "side"}">${label}</button>`)
-      .join("")}</div>
-<div class="view side trio">${side.join("\n")}</div>
-${stack("swipe")}
-${stack("blink")}
-${maps.png ? `<div class="view mapview">${figureHtml(maps.png, size, `Difference against ${beforeLabel} (yellow: 1 grey level, shading to red at 128 or more); boxes: the regions of change, dashed where nothing survives the erosion`, overlay)}</div>` : ""}
-</section>`;
+    compare = compareHtml({
+      side,
+      before: before ? { src: before.src, size: before.size, label: beforeLabel } : null,
+      after: { src: files.capture.src, alt: "New capture", the: "the new capture" },
+      map: maps.png
+        ? {
+            src: maps.png,
+            size,
+            caption: `Difference against ${beforeLabel} (yellow: 1 grey level, shading to red at 128 or more); boxes: the regions of change, dashed where nothing survives the erosion`,
+            overlay: overlayOf(png.regions, rules.png.rects, size),
+          }
+        : null,
+    });
   } else if (files.head)
     compare = `<div class="trio">${figureHtml(files.head.src, files.head.size, `HEAD (${baseline.short})`)}</div>`;
 
@@ -1360,6 +1639,7 @@ ${actionsHtml(runButtons(p.out, busy, { bundled, replay: !isWindow(p) }))}
   const body = `${nav}
 <p class="meta">${theme} theme, ${esc(sizeText(size))}; ${chipsOf(p, entry)}</p>
 ${notes.map((n) => `<p class="notice">${n}</p>`).join("\n")}
+${outside ? outsideSectionHtml(p, outside.svg, baseline) : ""}
 ${compare}
 ${pngRow}
 ${svgRow}
@@ -1615,6 +1895,10 @@ export function commitHtml({
   else if (headNow) notices.push(headNotice(headNow, baseline, canMove));
   else if (refusal) notices.push(esc(refusal));
   const sections = [];
+  if (plan?.undecided?.length)
+    sections.push(`<h2>Changed outside the session's runs (${plan.undecided.length})</h2>
+<p class="notice">No run of this session wrote these files, and no review has kept them or put them back. The commit takes nothing of these pictures, and waits until each is decided on its page.</p>
+<ul class="left">${plan.undecided.map((out) => `<li><a href="${hrefs.picture(out)}"><code>${esc(out)}</code></a></li>`).join("")}</ul>`);
   if (error) sections.push(`<p class="notice">git could not be read: ${esc(error)}</p>`);
   // (no plan: an archived session, whose commit holds what it changed)
   else if (plan && !plan.files.length) sections.push("<p>The session has changed nothing to commit.</p>");
@@ -1631,6 +1915,8 @@ export function commitHtml({
       ["Light pictures removed", c.dropped],
       ["SVGs written", `${c.svgWritten}${by.length ? ` (${by.join(", ")})` : ""}`],
       ["SVGs removed", c.svgRemoved],
+      ["Pictures kept from outside the runs", c.outsideKept ?? 0],
+      ["Pages whose picture sizes are set", c.pages ?? 0],
       ["The manifest", c.manifest ? "changed" : "unchanged"],
     ];
     const fileRow = (f) =>
@@ -1658,7 +1944,7 @@ ${plan.files.map(fileRow).join("\n")}
     const shown = plan.leftOut.slice(0, LEFT_OUT_SHOWN);
     const more = plan.leftOut.length - shown.length;
     sections.push(`<h2>Left out (${plan.leftOut.length})</h2>
-<p>The working tree's other changes, which the commit does not take: pictures changed outside the session's runs among them.</p>
+<p>The working tree's other changes, which the commit does not take. A page whose picture sizes it sets is here too when it has other changes: the commit takes its sizes alone, and the rest stays in the working tree.</p>
 <ul class="left">${shown.map((c) => `<li><code>${esc(c.path)}</code> ${esc(c.status)}</li>`).join("")}${more ? `<li>and ${more} more</li>` : ""}</ul>`);
   }
   if (archived.length)

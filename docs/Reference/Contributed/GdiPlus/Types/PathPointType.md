@@ -49,7 +49,7 @@ Debug.Print CLng(t.PointType) & " " & t.CloseSubpath & " " & t.PathMarker      '
 <!-- /test -->
 
 <!-- test: bug udt-array-element-method-call-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Reading a property of an element of an array, as in `types(i).CloseSubpath`, stops the program with an access violation. Copy the element to a variable and read the property of that. A type held in a variable or in a field of a **TypedPoint** is read without trouble.
 
 <!-- test: Br_PathDataTests.PathPointType_ReadThroughAVariable_OfAnArrayElement -->

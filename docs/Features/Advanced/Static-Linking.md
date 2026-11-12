@@ -11,7 +11,7 @@ index: static library
 Links compiled C code from `.obj`, `.lib` and `.a` files into the program, which calls its functions through **Declare** statements and needs no DLL beside it.
 
 <!-- test: static links-win32, static links-win64, static refused-win32, static refused-win64, static sqlite-win32, static sqlite-win64, static detours-win32, static detours-win64 -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Static linking is experimental. It links code that needs nothing from the C runtime library beyond the few functions twinBASIC provides, and nothing from the C++ runtime. The SQLite amalgamation and SlimDetours link and work; most other C projects do not link without changes. [What can be linked](#what-can-be-linked) lists the limits.
 
 A program uses a library in three steps:
@@ -109,11 +109,11 @@ Code links when every function it calls is in its own file or in one that its **
 - **Whole-program optimisation.** An object file compiled with `/GL` holds no machine code, and is compile error TB5059.
 
 <!-- test: bug static-seh-handler-not-run -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > In a 64-bit build, code that uses `__try` and `__except` links without an error, but its handler never runs: an exception that it should handle ends the program, in the IDE and in a built exe.
 
 <!-- test: bug import-library-import-lib-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > An **Import Library** statement that names an import library crashes the compiler, in either architecture. An import library is a `.lib` that lists the functions of a DLL and holds no code, such as the Windows SDK's `user32.lib`. Name a Windows DLL in the **Link** list instead.
 
 The SQLite amalgamation, which is the whole of SQLite in one C file, needs only `"stdlib"` and `"kernel32"`, and SlimDetours needs only `"stdlib"` and `"ntdll"`. Most libraries need more, often other libraries that they were built to link with; each of those must be linked too, within the same limits.

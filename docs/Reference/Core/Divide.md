@@ -37,7 +37,7 @@ A **Single** divided by a **Long**, **LongLong**, **Double**, **Currency** or **
 Dividing by zero raises error 11, *Division by zero*, and zero divided by zero raises error 6, *Overflow*. Use [**\\**](IntegerDivide) for truncating-integer division and [**Mod**](Mod) for remainder.
 
 <!-- test: bug single-overflow-no-error, bug single-division-by-zero-no-error -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. A division by zero stored in a declared **Single** raises no error either, whatever the types of its operands: the **Single** holds infinity, or NaN (`-1.#IND`) for zero divided by zero, where VB6 raises error 11, *Division by zero*, or error 6. Nor does a comparison of a **Single** divided by zero, as in `If x / 0! > 0 Then`. Compiled with LLVM, the division raises each error as it should. Store the quotient in a **Double** where the error must be caught.
 
 > [!NOTE]

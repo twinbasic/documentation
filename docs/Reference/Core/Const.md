@@ -50,7 +50,7 @@ When the constant type is not explicitly declared by using **As** *type*, the co
 Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
 <!-- test: bug const-takes-arguments -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > Parentheses after a constant that is not an [array constant](#array-constants) compile, where they should not. `K(1, 2)` gives the value of `K`, and the arguments are dropped without being evaluated, so a function called in them does not run. A constant with the name of a function hides it: with `Private Const Left As Long = 1`, `Left("abcd", 2)` is 1. VB6 refuses each of these lines with *Expected array*.
 
 ## Array constants
@@ -84,11 +84,11 @@ Debug.Print Total               ' 28
 ```
 
 <!-- test: bug single-array-const-overflow -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A module-level **Single** array constant whose element is too large for a **Single**, such as `Const Big() As Single = Array(1E+39)`, compiles without an error, and the element holds infinity. An array constant declared after it whose element calls **Sqr**, **Timer** or **Rnd** is then compile error **TB5001**, although it is correct.
 
 <!-- test: bug array-const-after-procedure-not-found -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > In a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
 
 > [!NOTE]

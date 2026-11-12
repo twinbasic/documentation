@@ -117,16 +117,16 @@ Date$ = MyDate               ' Change the system date.
 | [-2147467259 (`&H80004005`)](tb:Errors#-2147467259), *Unspecified error* | **Date$** is given a value that is not a date of the form *mm-dd-yyyy*<br>**Date** or **Date$** is given a date before January 1, 1601, which Windows cannot set<br>**Date$** is given a date in another form VB6 reads, such as *m-d-yyyy*, *m/d/yyyy* or *mm-dd-yy* |
 | [94 (`&H5E`)](tb:Errors#94), *Invalid use of Null* | **Date$** is given **Null**<br>**Date** is given **Null** |
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Date$** is given a value that is not a date of the form *mm-dd-yyyy*, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Date** or **Date$** is given a date before January 1, 1601, which Windows cannot set, VB6 and 64-bit VBA raise error [5 (`&H5`)](tb:Errors#5), *Invalid procedure call or argument*, instead.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Date$** is given a date in another form VB6 reads, such as *m-d-yyyy*, *m/d/yyyy* or *mm-dd-yy*, VB6 and 64-bit VBA raise no error.
 
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > When **Date** is given **Null**, VB6 and 64-bit VBA raise error [13 (`&HD`)](tb:Errors#13), *Type mismatch*, instead.
 
 <!-- /errors -->

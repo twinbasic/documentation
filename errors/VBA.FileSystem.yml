@@ -1,7 +1,7 @@
 # The VBA FileSystem module. Format: WIP.Errors.md. Every case runs under the files harness, in a
 # folder of its own that is the current directory: a.txt (10 bytes), empty.txt, ro.txt
 # (read-only), hid.txt (hidden), the empty folder sub, and full, which holds f.txt.
-beta: 1034
+beta: 1042
 pages:
   Reference/Default/VBA/FileSystem/ChDir.md:
     harness: files

@@ -47,7 +47,7 @@ At a run-time error, **End** ends only the procedure that failed; see [Traps](Br
 In a form that is waiting for input, and in a loop that holds only `DoEvents`, there is no line of yours to stop at. The IDE opens a file of the VB package, `IdleMessageLoopBreak.twin`, and stops in its procedure `IdleMessageLoopBreakpoint`. With a form waiting for input, a line typed in the console works there. Press <kbd>F5</kbd> and the program stops again in the same file. Press it once more to run on.
 
 <!-- test: bug break-in-doevents-evaluate-crash, lane ide:break-into -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A program that is stopped by **Break** in a loop that holds only `DoEvents` ends with a native access violation as soon as the IDE evaluates anything. A line typed in the console does it, even `? 1`, and so does any watch, because the IDE evaluates every watch at every stop. The DEBUG CONSOLE prints `NATIVE EXCEPTION: ACCESS_VIOLATION`, and the IDE stays in the paused state, with the arrow on the VB package's line and **Stop** and the step commands enabled, although the program has ended. Do not use **Break** on a loop that holds only `DoEvents`. Put a statement in the loop and a [breakpoint](Breakpoints-and-Stepping#breakpoints) on it instead. If the IDE is already in that state, **Restart the compiler** in the toolbar puts it right.
 
 ## What Start runs
@@ -63,11 +63,11 @@ What runs first is the project's [Startup Object](../Project-Settings#startup-ob
 **Sub Main** with no procedure called `Main` in the project writes a compile error to the console, with no dialog. [Runtime Command Line Args](../Project-Settings#runtime-command-line-args) sets the text that **Command$** returns in the run.
 
 <!-- test: bug start-no-main-error-text -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The compile error reads `(compile error: Main)`, which does not say that the project has no procedure called `Main`.
 
 <!-- test: bug dll-startup-default-runs-main -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A project whose `Settings` file names no startup object runs `Main` whatever it builds, although [Project Settings](../Project-Settings#startup-object) shows **Default: (none)** for a DLL. The templates for a DLL and a control name none, so **Start** on a new project of those kinds ends with this compile error. Choose **(none)** in the list to have **Start** say that there is nothing to run.
 
 Every run that ends writes `(time taken: <n>s)`, followed by `[DEBUGGER] global variables have been cleared`. A run that you stop at a pause writes `aborted` in place of the time.
@@ -82,7 +82,7 @@ Start shows no dialog for a compile error, and it opens no panel. The [DIAGNOSTI
 - **In a procedure that nothing calls.** The program runs and ends as usual. The error is in the DIAGNOSTICS panel only.
 
 <!-- test: bug compile-error-reported-as-codegen -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The panel for a syntax error in a procedure that `Main` calls gives the description `COMPILATION (CODEGEN) ERROR AT LINE #42.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, and the line it names is the line of the call, not the line of the error. A compile error in your code is not a defect to report. Read the real error in the DIAGNOSTICS panel and fix it.
 
 ## Run Or Preview
@@ -104,7 +104,7 @@ A preview is also a debug session. A breakpoint in `Form_Load` stops it, and a c
 - With no editor active: `runCodeUnderCursor failed: no active text editor.`
 
 <!-- test: bug f6-procedure-not-found, lane ide:debugging -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > <kbd>F6</kbd> also gives `failed to identify the procedure at the cursor position.` when the caret is on the procedure's `End Sub` or `End Function` line, or on another of its lines at or past the column where that `End` line ends. A comment at the end of the `End` line moves that limit to where the comment starts. Nothing runs. Put the caret nearer the start of a line of the procedure.
 
 The CodeLens **▶ run** link above a procedure runs it by another route: [CodeLens](../Code/IntelliSense#codelens) describes it. [Testing with Assert](../../../Tutorials/Testing-with-Assert) uses both.
@@ -135,7 +135,7 @@ A `Shell` that runs from a line you type in the console makes a box too, with no
 - **Editing the code.** See the next section.
 
 <!-- test: bug llvm-end-restarts-compiler -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > An `End` statement in a procedure that LLVM compiles ends the run, and then the console shows `restarting from MEMORY [<project>]`: the IDE restarts the compiler and compiles the project again. The IDE recovers by itself. Remove the `End` statement, or compile the procedure without LLVM, to avoid the restart.
 
 ## Editing while the program runs

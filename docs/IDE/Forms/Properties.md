@@ -26,7 +26,7 @@ Each open designer has a property sheet of its own, and the pane shows the one o
 
 ![The PROPERTIES pane with Command1 selected. Under its title bar are the PROPERTIES and EVENTS tabs, then the object drop-down showing Command1 and CommandButton, then the list of properties under the category headers DESIGN, APPEARANCE and DRAWING. Labels with arrows on the left name the tabs, the drop-down and a category header.](Images/Properties_Control.png){:width="573" height="520"}
 
-From the top, the pane holds the **PROPERTIES** and **EVENTS** tabs, the object drop-down and the list of properties. The magnifier in the title bar searches the list.
+From the top, the pane holds the **PROPERTIES** and **EVENTS** tabs, the object drop-down and the list of properties. In the title bar, the magnifier searches the list and the **Az** button sorts it alphabetically.
 
 ## Choose what to edit
 
@@ -40,7 +40,9 @@ With several controls selected, the list merges their properties. A property tha
 
 ## Find a property
 
-The list is grouped by category, not alphabetically, and there is no alphabetical view. The groups are **DESIGN**, **BINDINGS**, **DATA**, **APPEARANCE**, **DRAWING**, **BEHAVIOUR**, **MOUSE**, **WINDOW**, **HELP**, **KEYBOARD**, **SCALE**, **LAYOUT**, **GENERAL** and **DDE**. A property the IDE does not know goes into **GENERAL**. Within a group the order is not strictly alphabetical: **Name** comes first under **DESIGN**, and **Caption** or **Text** comes before **ToolTipText**. The **Index** property is not listed for a form, a user control, a property page or a report.
+By default the list is grouped by category. The groups are **DESIGN**, **BINDINGS**, **DATA**, **APPEARANCE**, **DRAWING**, **BEHAVIOUR**, **MOUSE**, **WINDOW**, **HELP**, **KEYBOARD**, **SCALE**, **LAYOUT**, **GENERAL** and **DDE**. A property the IDE does not know goes into **GENERAL**. Within a group the order is not strictly alphabetical: **Name** comes first under **DESIGN**, and **Caption** or **Text** comes before **ToolTipText**. The **Index** property is not listed for a form, a user control, a property page or a report.
+
+The **Az** button in the title bar, **Alphabetic Sort Order**, lists the properties by name instead, with no category headers. **Name** still comes first, and the order ignores case. The button is highlighted while it is on. The choice applies to every designer, and the IDE keeps it for the next session.
 
 The magnifier opens a search box. The text is a list of parts of property names, separated by commas, and a property matches when its name contains any of them, in either case. The search looks at names, not at values.
 
@@ -73,7 +75,7 @@ A property has the editor that suits its type. A value is committed as the table
 If the compiler is busy when you open a property page, the IDE says *Backend compiler seems to be busy. Check there isn't a modal dialog box open behind the IDE window.*
 
 <!-- test: bug properties-ctrl-a, lane ide:forms -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > <kbd>Ctrl</kbd>+<kbd>A</kbd> does nothing in a property box. It does not select the text, and the selection of the controls on the form is unchanged. Text that you type is added to the text already in the box.
 
 ### Colours
@@ -88,7 +90,8 @@ The text box beside the swatch holds the colour as `&H` and hexadecimal digits f
 
 Right-click a value to open a menu with:
 
-- **Copy**, which puts the value on the clipboard as JSON, and **Paste**, which is live when the clipboard holds a value of a compatible type.
+- **Copy**, which puts the value's text on the clipboard as it is shown, with no quotes added: the selected part when some of the text in the value's box is selected, or else all of it. A value chosen from a drop-down list is copied as the text the list shows, and a **True** or **False** value as `True` or `False`. A value that is an object or a list is copied as JSON.
+- **Paste**, which is live when the clipboard holds a value of a compatible type. While the value's text box has the focus, it inserts the clipboard's text at the caret, in place of any selected text. Otherwise it sets the property to the clipboard's value.
 - **Copy** *value* **To...**, a submenu that lists every control on the form with a property of the same name and type, as `Control.Property`, or `{ no matches }`. Choosing an entry copies the value to that control.
 - **SYSTEM COLORS**, for a colour property: a submenu of the thirty system colour constants, from **vbScrollBars** to **vbMenuBarFlat**.
 
@@ -113,7 +116,7 @@ Some properties change others when you set them:
 Pointing at a property's value shows a short description of the property as a tooltip. The compiler supplies the text for some properties only. For example, the description of **Left** reads *Adjusts the left position of this control, in pixels, relative to the container*. **Top**, **Width**, **Height**, **Enabled**, **ToolTipText** and **TabIndex** have one too. **Caption**, **Style**, **BackColor** and **Index** have none.
 
 <!-- test: bug properties-description-footer-hidden, lane ide:forms -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The tooltip is the only place the description shows. The IDE also writes it to a line for the foot of the pane when a property's box takes the focus, but that line is out of sight, so the foot of the pane stays empty.
 
 ## Events
@@ -133,7 +136,7 @@ For example, a button at **Left** 10 and **Top** 50 pixels, 100 pixels wide and 
 A value you type is taken in the same unit. Typing **Left** 450 on that form moves the button to 30 pixels. A font size, **Opacity**, **DrawWidth** and other properties that are not positions show as they are.
 
 <!-- test: bug customcontrols-properties-twips, lane ide:forms -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The pane shows **Left**, **Top**, **Width** and **Height** of a control on a CustomControls form multiplied by 15, as if the form were in twips, but takes the value you type as pixels. A button at **Left** 20 pixels shows 300. Typing 40 moves it to 40 pixels, and the box then shows 600. Do not type the value the pane shows. Type pixels, as the readouts on the surface show them.
 
 ## See Also

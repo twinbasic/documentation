@@ -50,6 +50,10 @@ Host.DebugConsole.PrintText "Operation completed"                           ' de
 Host.DebugConsole.PrintText "Warning: something looks off", RGB(255, 128, 0) ' orange
 ```
 
+<!-- test: bug console-cleared-at-open -->
+> [!WARNING] BETA 1042
+> Text that an addin prints while the first project of the IDE's session loads can be erased a moment later: the IDE empties the pane a second time as the project's console options are applied. Text printed once the project has loaded stays. See the [Debug Console](../../../tB/IDE/Debugging/Debug-Console) page.
+
 ### SetFocus
 {: .no_toc }
 

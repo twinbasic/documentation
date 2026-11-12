@@ -1,0 +1,13 @@
+{
+  "mode": "lane",
+  "lane": "addin:parent",
+  "tests": [
+    "case a: Dim o As Object = RootFolder.Parent raises an error at the read",
+    "case b: the same, then o Is Nothing: the error is at the read, so before the test",
+    "case c: RootFolder.Parent Is Nothing in one expression raises an error",
+    "case d: TypeName(RootFolder.Parent) raises an error",
+    "case e: Dim f As Folder = RootFolder.Parent raises an error at the read",
+    "case g: under On Error Resume Next, the read raises &H80004005 and leaves Nothing"
+  ],
+  "steps": "1. Open rootfolder-parent-error.twinproj in the twinBASIC IDE and build it (win32). Copy Build\\RootfolderParentError_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\ and restart the IDE.\n2. Open any project. Expected: the DEBUG CONSOLE prints before Parent, Err 0 and Is Nothing = True. Actual: Err -2147467259 Automation error, then Is Nothing = True. On BETA 1042 the console is emptied a second time as the first project opens, so open a second project to see the lines.\n3. Close the IDE and delete RootfolderParentError_win32.dll from %APPDATA%\\twinBASIC\\addins\\win32\\.\nControl: read Host.CurrentProject.RootFolder.Parent instead. It reads with no error, and its Path is twinbasic:/.\nAsserted on BETA 1042 by `addin-test.bat --only parent --ide <a copy patched with bugs/console-cleared-at-open/fix.js>` (P21, the ParentProbe add-in in test/addin/probes/parent, of which this project is a cut-down copy). Up to BETA 1034 the read crashed the compiler instead, under On Error Resume Next too."
+}

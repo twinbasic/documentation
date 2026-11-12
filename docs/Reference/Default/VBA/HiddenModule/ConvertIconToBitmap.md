@@ -19,7 +19,7 @@ Syntax: **ConvertIconToBitmap(** *IconPicture* [ **,** *BackColor* ] **)** **As 
 The returned picture is a fresh bitmap-typed **stdole.StdPicture** with the icon rasterised on top of the chosen background. The original icon picture is unchanged.
 
 <!-- test: bug nothing-argument-crashes -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > An *IconPicture* of **Nothing** ends the program with an access violation, in a 32-bit and a 64-bit build alike.
 
 <!-- errors: generated from errors/VBA.HiddenModule.yml by scripts/errors.mjs write; edit the data, not this section -->

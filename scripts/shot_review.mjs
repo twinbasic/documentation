@@ -13,7 +13,6 @@
 // is archived, and the tool goes on with the next one, whose baseline is the new commit;
 // --archived opens an archived session again, read-only.
 
-import path from "node:path";
 import {
   die,
   exitOnCrash,
@@ -26,20 +25,14 @@ import {
 } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { listIdes } from "./lib/tb-install.mjs";
-import { MANIFEST, openManifest, parseManifest } from "./lib/shot-manifest.mjs";
-import { changedBetween, changedPictures, openRevision, revisionOf } from "./lib/shot-revision.mjs";
-import { BUNDLE_CACHE } from "./svgshot/bundle.mjs";
+import { openManifest } from "./lib/shot-manifest.mjs";
+import { changedBetween, openRevision, revisionOf } from "./lib/shot-revision.mjs";
+import { baselineAt as baselineInRepo, startGitReader } from "./lib/shot-git-worker.mjs";
+import { defaultBundleCache } from "./svgshot/bundle.mjs";
+import { announceServer } from "./lib/shot-front.mjs";
 import { browserTable, listShots, runOf } from "./lib/shot-runs.mjs";
 import { createReviewServer } from "./lib/shot-server.mjs";
-import {
-  acquireLock,
-  archiveRoot,
-  listArchived,
-  newestBuild,
-  openSession,
-  REVIEW_ROOT,
-  sessionPaths,
-} from "./lib/shot-session.mjs";
+import { acquireLock, archiveRoot, listArchived, openSession, REVIEW_ROOT, sessionPaths } from "./lib/shot-session.mjs";
 
 const DEFAULT_PORT = 4180;
 
@@ -90,6 +83,10 @@ A retake of a picture taken in a browser is a browser retake, whichever page ask
 for it: the tool brings the extension up to date, opens the picture's page in the
 default browser, says on its runs page what to set up, and takes in the capture
 when the browser saves it. A capture it refuses is said why, and waited for again.
+
+A run of one of those tools typed in a terminal that would write under docs is
+handed to this tool while it is open (scripts/lib/shot-front.mjs), shows on its
+runs page as any other, and is followed in that terminal, whose Ctrl+C stops it.
 
 A retake is scripts/shoot_docs.mjs, a replay scripts/svgshot/replay.mjs and a
 browser retake scripts/svgshot/chromeshot.mjs --take,
@@ -144,15 +141,18 @@ if (values.jobs !== undefined && values.retake === undefined && values.replay ==
 if (values.ide !== undefined && values.retake === undefined) die(2, "shot_review: --ide is for --retake");
 
 let release = () => {};
-exitOnCrash(() => release());
+// What forgets that this tool is open for the session (announceServer), once it listens.
+let forget = () => {};
+exitOnCrash(() => {
+  forget();
+  release();
+});
 
 const paths = sessionPaths(REVIEW_ROOT);
+// The bundle cache, a worktree's filled from the main checkout's the first time.
+const bundlesRoot = defaultBundleCache("shot_review");
 // The baseline a commit makes: the commit, and the newest build its manifest records.
-const baselineAt = ({ hash, short }) => {
-  const bytes = openRevision(REPO_ROOT, hash).bytes(path.relative(REPO_ROOT, MANIFEST).replace(/\\/g, "/"));
-  const pictures = bytes ? parseManifest(bytes.toString("utf8")).pictures : {};
-  return { hash, short, build: newestBuild(pictures) };
-};
+const baselineAt = (commit) => baselineInRepo(REPO_ROOT, commit);
 
 let app;
 let session;
@@ -172,7 +172,7 @@ if (values.archived !== undefined) {
       session,
       revision: openRevision(DOCS_DIR, session.data.baseline.hash),
       manifest: () => openManifest(),
-      bundlesRoot: BUNDLE_CACHE,
+      bundlesRoot,
       archived: () => listArchived(REVIEW_ROOT),
       shots: async () => [...(await listShots()), ...browserTable()],
       readOnly: true,
@@ -195,16 +195,18 @@ if (values.archived !== undefined) {
     die(2, `shot_review: ${e.message}`);
   }
   session = openSession(REVIEW_ROOT, () => baselineAt(head));
+  // What the pages ask of git each second, read in a thread of its own (shot-git-worker.mjs).
+  const git = startGitReader({ docsDir: DOCS_DIR, repoRoot: REPO_ROOT });
   app = createReviewServer({
     session,
     revision: openRevision(DOCS_DIR, session.data.baseline.hash),
     manifest: () => openManifest(),
-    bundlesRoot: BUNDLE_CACHE,
-    head: () => baselineAt(revisionOf(DOCS_DIR, "HEAD")),
+    bundlesRoot,
+    head: () => git.head(),
     baselineOf: (rev) => baselineAt(revisionOf(DOCS_DIR, rev)),
     revisionAt: (hash) => openRevision(DOCS_DIR, hash),
     changedBetween: (a, b) => changedBetween(DOCS_DIR, a, b),
-    changed: () => changedPictures(DOCS_DIR, session.data.baseline.hash).pictures,
+    changed: () => git.changed(session.data.baseline.hash),
     ides: listIdes(),
     onLine: (run, line) => console.log(`run ${run.n}: ${line}`),
     // The commit closes the session: archived with its lock, and the next one held and made with
@@ -234,6 +236,8 @@ try {
 console.log(
   `screenshot review: http://127.0.0.1:${listening}/ (${values.archived === undefined ? "the session" : `the archived session ${values.archived}, read-only,`} of ${session.data.baseline.short}, ${session.data.runs.length} runs)`,
 );
+// A screenshot run typed in a terminal is handed to this tool while it is open (lib/shot-front.mjs).
+if (values.archived === undefined) forget = announceServer(listening);
 
 for (const kind of ["retake", "replay", "browser"]) {
   if (values[kind] === undefined) continue;
@@ -251,9 +255,12 @@ process.on("SIGINT", async () => {
   const live = app.live();
   if (closing) {
     for (const h of live) h.kill();
+    forget();
     release();
     process.exit(0);
   }
+  // no terminal's run is handed to a tool that is closing
+  forget();
   closing = true;
   if (live.length) {
     console.log("stopping the runs: Ctrl+C again ends their processes at once, which skips putting the registry back");

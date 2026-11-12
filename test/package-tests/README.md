@@ -72,7 +72,7 @@ End Module
   `' CASE <Name>: package TB5001 Libs/cThing.twin:21` passes when the compiler reports that code at
   that line of a file under the package's `Sources/`. `win64 package ...` (or `win32`) runs the
   case for that architecture alone, even one `arches` leaves out (TBMANLIB, in a 64-bit build). A
-  package with no test project (ArrayListLib, WinReg) has `compile/` and nothing else;
+  package with no test project (ArrayListLib, WinReg, Generics) has `compile/` and nothing else;
   `package_tests.mjs` runs it by name, and `--all-packages` includes it.
 - **Resources** a case reads go in the package folder's `Resources/`, laid out as an exported
   project keeps them (`<TYPE>/<NAME>`, such as `BINARY/#101`). The runner stages them and the
@@ -148,6 +148,10 @@ A case that never returns stops the compiler, so it is caught, recorded as `{ "h
 until it ends, so `tbrun` reports the cases after it `not run` and the run sends those again in a
 new IDE. A slow case that is meant to return is kept well under the limit. The run writes `RunAll.twin` again
 whenever the cases or `expect.json` change.
+
+A fault of the harness can end a whole run: the IDE's page shows `chrome-error://` in place of the
+IDE, and every case after it fails or is not run. Run it again before believing such a run, and
+before `--update` writes anything from it.
 
 `expect.json`:
 

@@ -59,15 +59,15 @@ End Type
 UDTs of these types are still stack allocated structs that can be used with standard Win32 APIs.
 
 <!-- test: bug udt-array-element-method-call-crash -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A method or property of a UDT called on an element of an array of the UDT, such as `a(1).Sum`, ends the program with an access violation, in 32-bit and 64-bit builds. So does a **Type_Conversion** of an element, as in `CStr(a(1))` or `Debug.Print a(1)`. A variable of the type, a UDT member of another UDT, and an element of an array declared inside a UDT are not affected. Copy the element to a variable first.
 
 <!-- test: bug udt-array-element-initialize-not-run -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > **Type_Initialize** does not run for an element of an array of the UDT, or for a UDT that is a member of another UDT. **Type_Terminate** still runs for each of them, on a value that was never initialized, and no error is raised. A variable of the type and a class field of the type are not affected. Write **Type_Terminate** to do nothing when the members are all zero.
 
 <!-- test: bug udt-method-assign-me-codegen -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > Assigning **Me** whole inside a method of a UDT, as in `Copy = Me` or `Return Me`, is a code generation error that fails the build once the method is called. Copy the members one by one.
 
 ## Custom UDT Packing

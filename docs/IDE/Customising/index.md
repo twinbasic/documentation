@@ -84,7 +84,7 @@ The [FAQ](../../../FAQ#ide-data-storage) lists the other folders the IDE uses.
 
 Choose the language of the menus and dialogs under **Window → Language**. The submenu lists every language pack, and a tick marks the one in use.
 
-![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](../Menu/Images/Menu_Window_Language.png){:width="391" height="577"}
+![The Window menu with Language highlighted and its submenu open to the right, listing twenty languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](../Menu/Images/Menu_Window_Language.png){:width="391" height="600"}
 
 The submenu shows these names, in this order. Each name is the one its pack gives itself, so some differ from the usual English spelling: the Indonesian entry begins *Indonesia*, and the Italian one ends in a brace. The entries for Hindi, Japanese, Malayalam, Russian and the two Chinese packs also give the language's own name, in its own script, in brackets. The table shows only their English names.
 
@@ -102,6 +102,7 @@ The submenu shows these names, in this order. Each name is the one its pack give
 | Italian (Italiano [Italy}) | `it-it.lang` |
 | Japanese | `ja-jp.lang` |
 | Malayalam | `ml-in.lang` |
+| Dutch (Nederlands NL) | `nl-nl.lang` |
 | Polish (Polski) | `pl-pl.lang` |
 | Portuguese (Português [Brasil]) | `pt-br.lang` |
 | Russian | `ru-ru.lang` |
@@ -142,7 +143,7 @@ To write a pack, copy `en-gb.lang` and translate it. The `README.txt` in the IDE
 A pack is a text file of `Name: value;` pairs, as a [theme](Themes#the-format-of-a-theme-file) is, with `/* ... */` comments. Each value is a string in double quotes. Write two double quotes for one inside a string. A line break inside the quotes is kept. In a string, `{%Name}` stands for another string and `{%1}` and `{%2}` mark the places where the IDE fills in a value.
 
 <!-- test: bug language-pack-semicolon-cut -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > A `;` followed by a space, a tab or a line break ends the string even inside its quotes, and the rest of the string is lost: `"Save; then close"` reads *Save*. A `;` with no space after it stays in the string. `en-gb.lang` has one such string, the warning TB0022, so the warning reads only *Suspicious array assignment*.
 
 Since BETA 1034 the compiler also takes the text of its warnings and errors from the pack: a string named after a code, such as `TB0024`, is the text of the message with that code. `en-gb.lang` holds the English text of the [warnings](../../../Features/Compiler-IDE/Compiler-Warnings) and of the error TB5079, *Unrecognized symbol*. In those strings `{0}`, `{1}` and so on mark the values the compiler fills in, such as a variable's name. A string named after any other code replaces that message too, and `{0}` in it stands for the compiler's English message.

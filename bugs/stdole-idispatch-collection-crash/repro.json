@@ -1,0 +1,11 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL StdoleDispatchTests\\.Collection_GetTypeInfoCount_RaisesAnErrorAndDoesNotCrash: .*ACCESS_VIOLATION",
+      "^PASS StdoleDispatchTests\\.Control_TwinBasicClass_GetTypeInfoCount_Raises438$",
+      "^PASS StdoleDispatchTests\\.Control_Collection_ThroughObject_CountWorks$"
+    ]
+  }
+}

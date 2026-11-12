@@ -71,7 +71,13 @@ Two decisions are made by fixed thresholds, and neither threshold holds for ever
   2026-10-31), so that a page's and a picture's address can be kept; not a port from `tbbroker`.
 - **The overview also lists the pictures under `docs/` that differ from the baseline but that
   no run of the session reported** (a retake from a terminal, an edit), as a group of their own
-  (owner, 2026-10-31): HEAD's picture against the file, with no verdict to override.
+  (owner, 2026-10-31): HEAD's picture against the file, with no verdict to override. **Since
+  2026-11-09 (owner), by file and by content**: a picture's PNG or SVG that differs from the
+  baseline and that no layer of the session wrote is changed outside the runs, *whether a run
+  reported the picture or not* (a run that found a terminal's SVG and left it as it was does not
+  make it the session's), and an SVG that changed with its PNG unchanged is listed too. Each has
+  **Keep it as it is** (recorded against its bytes) and **Put back the baseline's**, and the commit
+  waits until each is one or the other: see [One way to take pictures](#one-way-to-take-pictures).
 - **When HEAD moves under an open session** (a commit made outside the tool), the session keeps
   its baseline and the overview warns, as step 5 does; and the overview offers to **move the
   session to the new HEAD on demand** (owner, 2026-10-31). Moving makes the new HEAD the
@@ -211,8 +217,11 @@ form for a new run:
 ### Commit
 
 What the session changed, counted: PNGs updated by the tool's verdict, kept at `HEAD` against
-it, taken against it; SVGs written (by allowance among them) and removed; the manifest. Other
-changes in the working tree are listed as left out. The message is one line by default
+it, taken against it; SVGs written (by allowance among them) and removed; pictures kept from
+outside the runs; the manifest. Other changes in the working tree are listed as left out. **A
+picture changed outside the runs that no review has kept or put back holds the commit back**
+(owner, 2026-11-09; `undecidedRefusal`): the page lists it, and Commit is disabled with the reason,
+so that once the tool has committed, no picture under `docs/` differs from HEAD. The message is one line by default
 ("Screenshots retaken on BETA 1501: 39 pictures changed, 3 kept at HEAD by review; 35 SVGs
 written (2 by allowance), 1 removed"), can be edited, and **Back to the default message** is
 enabled once it differs. **Commit** commits the session's own files and nothing else, named
@@ -458,7 +467,7 @@ What step 6 added:
 | The noise rule over files | `pngsNear(a, b, rule)` in `shot-change.mjs`, `shoot_docs.mjs`'s `nearly` |
 | The manifest's setter | `setPart(out, part, key, value)` on `openManifest`'s object: a decision or an allowance set, or removed with `undefined`, checked as `parseManifest` checks an entry |
 | The actions | POSTs of JSON to `/api/picture/<out>` (`hrefs.act`), `{action}`: `png` (`keep` "old", "new" or null), `svg` (`accept` true, false or null), `allowance` (`png` and `svg`, each `{levels, share, ignore}`, empty for the default), `rule` (the picture's decisions removed: "Back to the tool's verdicts"), `judge`; and `/api/baseline` (`hrefs.moveBaseline`). Each changes the manifest, then `rejudge`s from the run the verdict is about. A POST is refused unless its Origin is the server's own and its body JSON, since a page of any origin can send a form to the loopback address. The detail page's PNG and SVG rows have the choices, an Allowances form (a rectangle is drawn by dragging on the picture, in device pixels) and Judge again; the page's script sends them and says "applying..." or the error beside the buttons |
-| Changed outside the runs | the server's `changed()` (`changedPictures` against the baseline, read at most once a second); `reviewPictures(runs, {outside})` puts those no run reported in the group `outside`, between Only noise and Unchanged; `outsideHtml` compares HEAD's picture with the file, its map `/map/outside/<out>` drawn by `changeMap` |
+| Changed outside the runs | the server's `changed()` (`changedPictures(..., {svgs: true})` against the baseline, read at most once a second: each picture whose PNG or SVG differs, `{out, status, parts}`, an SVG counted when its PNG is under docs or among the changed, `pictureChanges`); `reviewPictures(runs, {outside, outsideKept})` marks each file no layer wrote (`wroteOf`: a PNG written, put back or removed takes its SVG with it; an SVG written or removed) as `outsideParts`, whether a run reported the picture or not, in the group `outside`, between Only noise and Unchanged; `outsideHtml` (no run reported it) compares HEAD's picture with the file when its PNG changed, its map `/map/outside/<out>` drawn by `changeMap`, and `detailHtml` takes `outside` for one a run reported; both show `outsideSectionHtml`, which compares the SVG at HEAD with the file's. Every comparison of a page is `compareHtml`'s, side by side, a swipe, blinking and a map (owner, 2026-11-09: without them a change is almost impossible to see), each driven by the page's script on its own; an SVG's map is drawn by the page (`canvas.diffmap`, `drawDiff`: both SVGs drawn at the picture's device size, coloured as `changeMap` colours), since the server cannot draw an SVG. `outsideSectionHtml` has **Keep it as it is** (`{action: "keep-outside"}`: `session.keepOutside(out, {png, svg})`, the files' hashes, `"absent"` for one removed, in `session.json`'s `outside`; it holds while the files hold those bytes, the server's `outsideKept`) and **Put back the baseline's** (`{action: "put-back"}`: the applier's `putBack(out, parts)`, which writes the baseline's file (an SVG through `git restore`) or removes it, gives the first layer on the picture the baseline's file as what it found (`setHeldPart`), and applies every layer again from there) |
 | Moving to HEAD | `session.moveBaseline(baseline)` (`moved: {at, from}`); the server's `head()` and `revisionAt(hash)`; HEAD is read again at most once a second, so the notice follows a commit made while the tool is open. Each verdict as applied records the baseline it was judged against (`baseline`, a run's `--against` on arrival), and `reviewPictures(runs, {baseline, stale})` gives one judged against the revision of another baseline the look `baseline` until it is judged again, when `stale(out, hash)` says the picture differs between that commit and the baseline: the server's `changedBetween(a, b)`, one `git diff --name-only` per pair of commits, kept (a move to a commit that changed only code left 543 of 559 verdicts needing a look under the old rule, and 0 under this one). A move changes no file, so it is undone by moving back: `moved` records `fromHash`, and the overview's notice offers **Move back to `<from>`** (`{action: "back"}`, the server's `baselineOf(rev)`) |
 | A retake's revision | `shot_review.mjs --retake` passes `--against <baseline>`, so that a run judges against the session's baseline whatever HEAD is (`againstOf(run)`) |
 
@@ -552,6 +561,52 @@ whose test commits were then thrown away with the worktree's branch:
   hook ran, `/runs` answered in 1 to 3 ms. Two waits remain, of about 0.3 s before git starts (the
   checks: `git status` and the plan) and 0.4 s at the end (`onCommit`: the session archived, the
   next one opened); making those asynchronous too is not worth it.
+
+**The pages never wait on git** (owner, 2026-11-11). A run's progress on the pages came late
+(about a minute late on a session of 132 pictures), and a page fetched again by hand showed it no
+sooner. The server read HEAD's baseline (7 git processes) and the pictures changed from the
+baseline (5 more) with `execFileSync`, at most once a second but on nearly every page drawn, since
+each page in the browser fetches itself again on each update a run sends. Each read held the
+server's only thread for 1 to 2 s, so the run's events waited in its pipe behind the pages. A
+profile of a 60-picture replay with two pages open: 12 s of 70 in git for the overview. Now:
+
+| Part | Where it is |
+|---|---|
+| The reads | `scripts/lib/shot-git-worker.mjs`: `startGitReader({docsDir, repoRoot})` runs `head()` and `changed(baseline)`, the same sync code, in a worker thread, and answers with promises; `baselineAt(repoRoot, commit)` is shared with `shot_review.mjs` |
+| The value kept | `kept(read, fallback, onChange)` in `shot-server.mjs`: serves the last value at once and reads again once it is a second old; when a read's promise gives another value, every page is told to fetch itself (`{outs: [], runs: true}`). `again()` replaces the resets: the next call reads again, and a read under way is not kept. A `head` or `changed` that answers at once (the tests') is read as before |
+
+The same replay afterwards: the overview drawn in 0.03 to 0.13 s during the run (0.6 s at most,
+where it had taken 1.5 to 3 s), its count rising by about 16 pictures a second on the runs page,
+and the run's end shown 4 s after it ended (9 s before; a minute in the earlier run). The 4 s left
+is each verdict's arrival, which keeps what the picture held (`holdPicture`): its bundle is
+recompressed with brotli at quality 9, about 0.1 s a picture, in the server's thread.
+
+**Only a page that is shown holds the event stream** (owner, 2026-11-11). With the server answering
+at once, the owner's runs page still did not follow a retake, reloaded or not: the page holding
+the Web Lock, and with it the one stream, was a tab behind others that Chrome had frozen, so it
+passed nothing on, and every other page, a reloaded one too, waited for the lock behind it.
+Closing the other tabs brought the updates back. Now a page takes the lock only while
+`document.visibilityState` is "visible", gives it up when hidden, and fetches itself once when
+shown again; a stream the browser has closed is opened again 2 s later, and one that comes back
+after the server was away fetches every page. Checked in a browser on port 4190: a page made
+hidden released the lock, nobody held it while every page was hidden, and a page shown again took
+it and fetched itself; a replay's count rose on the shown page to its end; after the server was
+stopped and started again, the page fetched itself and followed the next run.
+
+**Each page says whether it follows the runs** (owner, 2026-11-11), so that a stream that stopped
+is not taken for the tool's fault. The server sends a `ping` event every 5 s (`createSseChannel`'s
+`ping` in `lib/sse.mjs`, off for the builder's live reload), which the page holding the stream
+passes on with the updates (`{kind: "update" | "ping" | "away"}` over the BroadcastChannel). A chip
+at the foot of every page (`#live`) says **live**; **the server does not answer: connecting
+again** while the stream is down; **the server has sent nothing for N s: it may be busy** on the
+page that holds a stream that stays open and silent; and, on a shown page that has heard nothing for
+15 s while another holds the stream, **no updates for N s: another tab of this tool held the
+connection to the server and passed nothing on (a tab the browser froze?); this page has taken it
+over**: it takes the lock with `steal: true`, the page it took it from closes its stream when it
+runs again, and the chip says so for 20 s before **live**. Checked in a browser on port 4190: a
+request that took the lock and never let go was found after 18 s and lost the lock to the page,
+which then followed a replay to its end; with the server stopped the chip said so within 4 s, and
+**live** again once it was back.
 
 Nothing of the plan is left. The two small things left after step 9 are fixed:
 
@@ -663,6 +718,79 @@ script name the helper that raised it. That is how the `Close_Question` crash wa
 tab the IDE is still loading or saving shows a spinner in place of its close icon (the button's
 class is `progressSpinnerIcon`, `ide/main.js`), and `closeTabs` now waits for the icon with a
 MutationObserver (`tabCloseIcon`).
+
+## One way to take pictures
+
+Owner, 2026-11-09, after the BETA 1042 retake: a retake from a terminal was not a run of the
+session, its 111 SVGs redrawn with their PNGs unchanged never showed in the tool, and the tool's
+commit left them behind. Four rules, so that nobody has to remember how the tools came to be:
+
+1. **Every screenshot run is a run of the session**: `shoot_docs.mjs`, `replay.mjs`,
+   `chromeshot.mjs --take` and `--cleanup`, typed in a terminal or started from the tool. A
+   terminal run hands itself to the tool when the tool is open for the checkout, and otherwise
+   opens the session itself (owner: open it itself, not refuse), runs the code the tool runs and
+   records the run. There is no mode that writes under `docs/` outside a session. Done
+   (2026-11-12), below.
+2. **The tool shows every picture file that differs from the baseline**, PNG and SVG, light
+   pictures included: each is explained by what a layer of the session wrote, or shown as changed
+   outside the runs with Keep and Put back. Done (2026-11-09).
+3. **After a commit from the tool, no picture under `docs/` differs from HEAD**: the commit takes
+   what a review kept, and waits for every picture changed outside the runs to be kept or put
+   back. Done (2026-11-09).
+4. **When a picture's size changes, the tool updates its pages' `{:width height}`** in the same
+   commit (owner: make the edits), and a build check fails a shot whose declared size is not its
+   pixels' half. Done (2026-11-11), below.
+
+And (c), owner: **a checkout's bundle cache is filled from the main checkout's** on first use
+(`git rev-parse --git-common-dir`), so that a new worktree does not redraw every SVG whose bundle
+it lacks. The cache is never committed: a bundle can hold the Windows user name, and the main
+checkout's is 58 MB that a retake rewrites. Done (2026-11-12): `seedBundleCache` in
+`scripts/svgshot/bundle.mjs`, called through `defaultBundleCache` by `shoot_docs.mjs --svg`,
+`replay.mjs`, `chromeshot.mjs` and `shot_review.mjs` whenever no `--bundles` names another cache,
+once the command line has passed. It copies only when the worktree has no cache at all (one
+emptied has been used), never links (writeBundle rewrites a file in place), and copies into a
+folder beside it renamed into place, so a copy cut short leaves nothing that looks used.
+
+Order: 2 and 3, then 4, then (c), then 1.
+
+**Rule 1, every run a session run** (2026-11-12):
+
+| Part | Where it is |
+|---|---|
+| The run handling | `scripts/lib/shot-host.mjs`, `createRunHost`: the runs of a session, a run started (`startRun`), its events kept, its verdicts applied through the applier in the order they arrive, one per turn of the event loop, and its end once they are. The server took it out of its own body; it adds its pages' updates as callbacks |
+| A tool's entry | `sessionRun` in `scripts/lib/shot-front.mjs`, called by `shoot_docs.mjs` (twice: before the clean-up block for `--cleanup`, after the IDE is found for a retake), `replay.mjs` (after the cache check) and `chromeshot.mjs` (after the revision is read): after every check that needs no IDE, so that a mistake in the command line is said as before and no run is recorded for it (`check_cli`'s 1,459 cases reach none). It returns at once when the run writes nothing under `docs/` (`--stage`, `--out` elsewhere, `--list`, `--cleanup --dry-run`, a replay's shard) or is a session's run already (`SHOT_SESSION_RUN`, which `startRun` sets in its child) |
+| The tool open | `shot_review.mjs` writes `.shot-review/server.json`, `{pid, port}`, once it listens (not for `--archived`), and removes it as it closes; `openTool` takes it while its process lives. `handToTool` POSTs `{tool, args}` to `/api/terminal-run` with the tool's own Origin, then follows `/api/run/<n>/follow`: the run's log, its lines as they come, and `@@shot-exit {exit}` once its verdicts are applied. Ctrl+C posts the run's stop, a second its kill |
+| The tool closed | `runHere`: the session's lock taken (a refusal names the holder), the session opened as the tool opens it, verdicts left unapplied applied, the run started through the host, its lines printed on the stream they came on, the lock given back at its end |
+| The command line | `terminalRunOf` (shot-runs.mjs) keeps it as typed and adds `--against <baseline>`; it refuses `--stage`, `--events`, `--diffs`, `--bundles`, `--out`, `--against-disk`, and an `--against` that is not the baseline |
+| Named captures | `chromeshot.mjs <capture>...` takes `--stage`, `--events` and `--against` too, each capture a job (named as in `chrome/shots.mjs`), so a session can run it; its file paths, `--words`, `--captures` and `--extension` are passed as full paths, since a run starts in the repository's root |
+
+Checked on the `tooling-1042` worktree: a replay of one picture and a `--cleanup` from a terminal each made a run of the worktree's session and applied it, `--cleanup --dry-run` made none, and `test/shot-review.test.mjs` hands a run to a server with a stand-in tool and follows it.
+
+**An SVG that draws the same pixels is the same picture** (owner, 2026-11-09): keep.mjs's
+`sameSvgAs`, which `shoot_docs.mjs --svg`, `replay.mjs` and `chromeshot.mjs` ask before an SVG is written, draws
+the SVG as diffSvg does (`renderSvg`, an `<img>` at the device scale) beside the baseline's
+(`--against`, which the tool now passes to a replay too) and then the file's, and compares them
+exactly, with no tolerance (a tolerance would bring back the threshold this tool exists for).
+The same as the baseline's: its bytes go back (`restoreSvg`, through git), state `restored`, which
+the review counts as the session's write and groups as Only noise. The same as the file's: it
+stays. A staged verdict says so (`same`: `{as: "baseline", baseline}` or `{as: "file", file}`, the
+hash of the file's text), and the applier honours it only while that still holds. Measured on the
+BETA 1042 retake's 108 SVGs changed outside the runs: 47 of the files drew as HEAD's; a replay
+from the bundles the tool's retake had cached put back 101 (they drew HEAD's SVGs), and left 7
+for a review.
+
+**Rule 4, the declared sizes** (2026-11-11). `scripts/lib/shot-sizes.mjs` holds it all:
+
+| Part | Where it is |
+|---|---|
+| The size | `shownSize([w, h], scale)`, round(pixels ÷ scale); `scaleOf(entry)`, the manifest's `scale` or `SHOT_SCALE` (2, defined in `shot-manifest.mjs`). The manifest records `scale` only when it is not 2: `setBuild(out, build, scale)` sets it with the build (undefined leaves it, 2 or null removes it), `clearBuild` drops both. The fifteen pictures of program windows were backfilled from what their pages declared: twelve at 1.5 (a display at 150%), the three compiler boxes at 1 (a window unaware of the display's scaling draws at 96 DPI). `shoot_docs.mjs`'s `keep` passes its scale to `recordBuild` and to the verdict (`pngVerdict`'s `scale`), and the applier records it |
+| A reference | `pictureRefs(text, page)`: an image, `![alt](src)`, whose source is a PNG, outside code (`maskCode`), with or without its attribute list; `targetOf(page, src)` resolves the source from the page's folder (from docs/ for one starting with a slash). On 2026-11-11 every one of the 331 references to a picture of the table had the form `{:width="N" height="N"}`, one with ` png` after it |
+| Setting them | `withShownSizes(text, page, sizeOf)` changes only the two numbers, or adds the list to an image without one, every other character kept (CRLF too); `referenceIndex(docsRoot)` (the pages that show each picture, through `markdownFilesSync`, 0.2 to 0.5 s over the whole tree) and `syncSizes(docsRoot, outs, entry, {index, dryRun})`, for the dark pictures among `outs`, from their files |
+| Who sets them | `shoot_docs.mjs` at the end of a run without `--stage`, for each dark picture new, updated or restored (`resized`, `syncPageSizes`), and after `--cleanup` for each picture put back; the review tool's applier after each change to a dark picture's file (`resize`: a layer applied or undone, a picture put back), with the index read once per applier. A page that starts showing a picture while the tool is open is not in its index until the next session: the gate finds it |
+| The commit | the server's `sizedPages(outs)`, commitPlan's `pages`: for each dark PNG committed, each page whose text at the baseline (HEAD, since a commit needs the baseline to be HEAD) declares another size than the file's, and whose working copy git reports changed; the text committed is the baseline's with those sizes set, in the working file's line endings. `commitPaths(root, {contents})` writes it into the file, commits, and puts the working text back whatever git did, a copy of it kept meanwhile under `%TEMP%\shot-commit-held-*`. A page with other changes is listed under Left out as well, and its file's row says "without the page's other changes"; the message ends "their sizes set on N pages" |
+| The gate | `scripts/check_shot_sizes.mjs` in `check.bat` and the `run-gates` action: every reference to a dark picture of the manifest declares `shownSize` of its file (`sizeMismatches`). It covers the manifest's pictures only, as the owner put it: 105 of the 312 dark pictures of the table once the BETA 1042 retake is in, every picture written since the manifest began. A picture that is in the table but not yet in the manifest gets an entry the next time a run writes it |
+
+Fixed by hand with `syncSizes` (`fix-sizes`, a scratch script): Help_Hover (881 × 492, its pixels 1778 × 990), and the FAQ's release picture (891 for 1752 px since the BETA 1034 retake), which `ide-1042`'s commit e835f0db fixes the same way. History_2, History_3 and Variables_Tooltip, which the resume note listed as 1 px off, declare their pixels' half both on `staging` and on `ide-1042`: every picture of the table but those two did on 2026-11-11, at scale 2 or its manifest's.
 
 ## Open
 

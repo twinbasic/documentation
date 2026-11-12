@@ -44,6 +44,8 @@ export const BLANKED_KEYS = {
   ACTIVE_KEYBOARD_SHORTCUT_GROUPS: "",
   WEBPANEL_SETTINGS: "",
   FORMS_windowsPalette: "",
+  // The Properties panel's Az toggle (BETA 1042); "" reads as off, the panel's own default.
+  FORMS_propertiesAlphabetic: "",
   targetArchitectureMemory: "",
   OBJECT_BROWSER: "",
   NEWFRONTPAGE: "",
@@ -79,6 +81,37 @@ export function pageHook(answers) {
         if (typeof member !== "function") return member;
         if (name === "SaveIDESetting") {
           return (...a) => (Object.hasOwn(answers, String(a[0])) ? Promise.resolve() : member.apply(target, a));
+        }
+        // Since BETA 1042 the recent-projects list goes through ReadFileDataBase64 with a name in
+        // place of a file: "GetRecentsList" reads it, "AddRecentsList:<path>" and
+        // "RemoveRecentsList:<path>" write the user's registry, the second with no flag guarding
+        // it. The list read is the page's own `window.__tbRecents` ("?"-separated), or none, so no
+        // path of the user's reaches a tool's page; the writes do nothing.
+        if (name === "ReadFileDataBase64") {
+          return (...a) => {
+            const file = String(a[0]);
+            if (file === "GetRecentsList") {
+              marker.keys.push(file);
+              return Promise.resolve(typeof window.__tbRecents === "string" ? window.__tbRecents : "");
+            }
+            const write = /^(AddRecentsList|RemoveRecentsList):/.exec(file);
+            if (write) {
+              marker.keys.push(write[1]);
+              return Promise.resolve("");
+            }
+            return member.apply(target, a);
+          };
+        }
+        // The two recent lists read by a host method of their own: VB6's (GetVB6RecentProjects, the
+        // New / Open Project dialog's Recent (VB6) section, BETA 1042 still) and, before BETA 1042,
+        // twinBASIC's (GetRecentsList). Each is the page's own, `window.__tbVb6Recents` and
+        // `window.__tbRecents`, or none, so no tool has to answer them itself.
+        if (name === "GetVB6RecentProjects" || name === "GetRecentsList") {
+          const own = name === "GetVB6RecentProjects" ? "__tbVb6Recents" : "__tbRecents";
+          return () => {
+            marker.keys.push(name);
+            return Promise.resolve(typeof window[own] === "string" ? window[own] : "");
+          };
         }
         if (name !== "GetIDESetting") return (...a) => member.apply(target, a);
         return (...a) => {

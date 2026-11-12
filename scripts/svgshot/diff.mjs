@@ -32,6 +32,16 @@ export function svgClip(svg) {
  * regions of change are worked out (shot-change.mjs's shareOff and changeRegions).
  */
 export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scale = 2, tile = 16, top = 12 } = {}) {
+  const { clip, render } = await renderSvg(page, svg, scale);
+  return compareRender(page, { clip, render, ref, refOrigin, scale, tile, top });
+}
+
+/**
+ * Draws `svg` in the puppeteer `page` as the site shows a picture, an <img> at `scale` device px
+ * per CSS px, as diffSvg judges it: {clip, render}, `clip` svgClip's and `render` a PNG of the
+ * clip's device pixels.
+ */
+export async function renderSvg(page, svg, scale = 2) {
   const clip = svgClip(svg);
   // A picture half a CSS px past a whole one (397 by 161.5) is drawn at the whole size
   // above it, its viewBox widened by as much, and the render cut to the PNG's pixels.
@@ -79,7 +89,11 @@ export async function diffSvg(page, svg, ref, { refOrigin = { x: 0, y: 0 }, scal
             Math.round(clip.h * scale),
           )
           .then((b64) => Buffer.from(b64, "base64"));
+  return { clip, render };
+}
 
+// diffSvg's comparison of a render (renderSvg's) with its reference PNG.
+async function compareRender(page, { clip, render, ref, refOrigin, scale, tile, top }) {
   const out = await page.evaluate(
     async ({ refUrl, renderUrl, clip, refOrigin, scale, tile, top }) => {
       const load = (src) =>

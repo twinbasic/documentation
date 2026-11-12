@@ -34,7 +34,7 @@ A build makes the folders of the path when they are missing, nested ones too. Th
 - `${IdePath}`, which the samples that build an add-in use, is the folder the IDE is installed in.
 
 <!-- test: bug build-path-projectid-empty, lane ide:building -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > `${ProjectID}` in the path is replaced with nothing. A path of `${SourcePath}\Build\${ProjectID}_x.exe` builds a file called `_x.exe`, with no message, and two projects that use the same pattern overwrite each other's file. Do not use `${ProjectID}`; name the file with `${ProjectName}`.
 
 The other variables, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}`, `${VersionRevision}` and `${Bitness}`, give the numbers and the bitness as the settings and the box hold them.
@@ -63,7 +63,7 @@ The *Major*, *Minor*, *Build* and *Revision* settings of the [version resource](
 The type library of an ActiveX DLL or control has its own pair of settings, [*Type Library Version*](../Project-Settings#type-library-version), and its own *Auto-Increment*. A build prints `[BUILD] Auto-incremented type-library version number to: <n>` for it.
 
 <!-- test: bug build-autoincrement-not-saved -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > The number that *Auto-Increment* raises is changed in the IDE's memory only. The project is not marked as changed, the `Settings` file is not written, and the **Version** row of the **PACKAGE PUBLISHING** pane stays as it was. **Close Project** asks nothing, and the increments are lost: the next session builds again with the old numbers, and a package is published with a number that was used already. Set the numbers by hand in Project Settings before you build a version that you release or publish, and save the project.
 
 ## What each project type produces

@@ -91,19 +91,21 @@ Exit codes, those of `tbdocs`: **0** the server was stopped with Ctrl+C, **2** a
 
     check.bat
 
-The gates that read the built site; run `build.bat` first. Link and integrity checking is in `build.bat` (see [tbdocs](Tools-Build#tbdocs)), and tests of the toolchain are in [`test.bat`](#testbat). Four steps, each stopping the run if it fails:
+The gates that read the built site; run `build.bat` first. Link and integrity checking is in `build.bat` (see [tbdocs](Tools-Build#tbdocs)), and tests of the toolchain are in [`test.bat`](#testbat). Five steps, each stopping the run if it fails:
 
 1. [`scripts/check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) --- refuses a tree older than the sources that produced it.
 2. [`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) --- the puppeteer + axe-core accessibility scan.
 3. [`scripts/check_dot_fit.mjs`](Tools-Site-Checks#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
 4. [`scripts/pick_a11y_sample.mjs --check`](Tools-Site-Checks#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
+5. [`scripts/check_shot_sizes.mjs`](Tools-Site-Checks#check-shot-sizes) --- fails a page whose declared size for a screenshot is not its pixels over its scale.
 
-POSIX --- four commands, chained so the run stops where `check.bat` would:
+POSIX --- five commands, chained so the run stops where `check.bat` would:
 
     node scripts/check_tree_fresh.mjs \
       && node scripts/check_a11y.mjs \
       && node scripts/check_dot_fit.mjs \
-      && node scripts/pick_a11y_sample.mjs --check
+      && node scripts/pick_a11y_sample.mjs --check \
+      && node scripts/check_shot_sizes.mjs
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 

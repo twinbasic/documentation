@@ -17,9 +17,13 @@ index_also:
 
 The **DEBUG CONSOLE** panel is a scrolling log of what a run writes, and an input row that runs one line of code at a time.
 
-![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction and a ticked Show Timestamps, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](../Images/DebugConsole.png){:width="915" height="326"}
+![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction, a ticked Show Timestamps and Smoother Scrolling, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](../Images/DebugConsole.png){:width="915" height="326"}
 
 The panel is docked at the bottom of the default layout. <kbd>Ctrl</kbd>+<kbd>G</kbd> shows it, and moves the keyboard focus to the input row.
+
+<!-- test: bug console-cleared-at-open -->
+> [!WARNING] BETA 1042
+> The first project opened after the IDE starts empties the console twice: once as the project opens, as it should, and again a moment later, as the project's console options are applied. What was written in between is lost, the lines an add-in prints as the project loads among them. A project opened after the first one is not affected.
 
 ## What the console shows
 
@@ -57,7 +61,7 @@ The ![Clear Debug Console button](../Images/DebugConsole_Clear.png){:width="17" 
 
 ### Options
 
-The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17" height="17"} button opens a menu of two items, each with a tick when it is on.
+The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17" height="17"} button opens a menu of three items, each with a tick when it is on.
 
 **Invert Output Direction**
 : Off by default. Puts the newest line at the top.
@@ -65,7 +69,10 @@ The ![Options button, three dots](../Images/DebugConsole_Options.png){:width="17
 **Show Timestamps**
 : On by default. It only hides the times: every line keeps its time, and **Copy All (With Timestamps)** still includes it.
 
-The IDE saves both settings with the project.
+**Smoother Scrolling**
+: Off by default. When it is on, the console measures the height of each line as the line is written, and scrolls by those heights, which keeps the scrolling smooth when lines differ in height. Turning it on or off empties the console.
+
+The IDE saves the three settings with the project.
 
 ## The input row
 
@@ -100,15 +107,15 @@ The input row is one line. There is no way to enter a multi-line construct.
 - A [keyboard shortcut](../Customising/Keyboard-Shortcuts#the-text-of-a-group) can run a line of code in the console: `tbDebugConsole_ExecuteCode('? 6*7')` is the one command that takes an argument.
 
 <!-- test: bug console-completion-after-print, lane ide:console-completion -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > The input row offers no completion for a name typed after `?` and a space, and <kbd>Ctrl</kbd>+<kbd>Space</kbd> there opens no list. Type the name without the space, as `?total`, or start the line with the name.
 
 <!-- test: bug console-space-accepts-completion -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > In the **MODERN** [Intellisense mode](../Customising/IDE-Options#intellisense-modes), a space typed while the completion list is open accepts the list's first entry, and the space is lost. Typing `Print total` gives `Printertotal`, because the list offers `Printer` but not the keyword `Print`; `Call Touch(total)` and `Set obj = items` are changed in the same way. The console refuses the changed line. Press <kbd>Escape</kbd> to close the list before you type the space: the text you typed stays.
 
 <!-- test: bug console-print-udt-linker-error -->
-> [!NOTE] BETA 1034
+> [!NOTE] BETA 1042
 > `? p`, where `p` is a variable of a user-defined type, fails with `(compile error: codegen error; check for compilation errors)`, and the console prints a `[LINKER] compilation (codegen) error` line. The [Variables](Inspecting#variables) panel and a watch show the same variable, so read it there.
 
 ## Copy the output

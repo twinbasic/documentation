@@ -41,7 +41,7 @@ When **New** is used in an initializer inside a procedure, the instance is creat
 > **New** cannot be used together with **WithEvents** in a declaration. To connect an event-aware object reference, declare the variable with **WithEvents** and assign it later with **Set**.
 
 <!-- test: bug dim-as-new-interface -->
-> [!WARNING] BETA 1034
+> [!WARNING] BETA 1042
 > A declaration written **As New** on an [**Interface**](Interface) compiles, although **New** on an interface in a **Set** statement is error **TB5074**. The object it makes has nothing behind its members: a **Sub** does nothing, a **Function** returns 0, and a member inherited from another interface ends the program with an access violation.
 
 ### Example

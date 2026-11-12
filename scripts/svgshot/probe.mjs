@@ -260,7 +260,6 @@ const PAGE_DEFAULTS = `(() => {
   activePanelLayoutName = "<DEFAULT>";
   customKeyboardShortcutGroups = {};
   activeKeyboardShortcutGroupNames = "";
-  window.HostGetVB6RecentProjects = (done) => done("");
   window.HostGetRecentsList = (e) => {
     e.classList.add("frontPageListViewLIST");
     listviewFromArray(e, [], () => {});
