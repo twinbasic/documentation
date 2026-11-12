@@ -685,6 +685,13 @@ export function commandTextProblems(ids, text) {
   };
 }
 
+/**
+ * The help add-in's copy of the data file (`add-in/Resources/KEYS/commands.json`), which its
+ * keyboard shortcut editor shows beside each command: the same object, on one line, since the
+ * add-in puts it into the IDE's page inside a script.
+ */
+export const addinCommandText = (text) => `${JSON.stringify(text)}\n`;
+
 /** The prefix of a command's name, its underscore included; "" for a name with no underscore. */
 const commandPrefix = (id) => id.slice(0, id.indexOf("_") + 1);
 

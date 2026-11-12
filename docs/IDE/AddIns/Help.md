@@ -80,7 +80,7 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: four boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins and Find in the shortcut editors are ticked.](Images/Help_Settings.png){:width="480" height="200"}
+![The top of the help pane with the settings open under the gear: five boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins, Find in the shortcut editors and Keyboard shortcut editor are ticked.](Images/Help_Settings.png){:width="480" height="209"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.
@@ -93,6 +93,9 @@ The gear opens the settings. A click anywhere else, or Esc, closes them.
 
 **Find in the shortcut editors**
 : Ctrl+F and F3 in the text of **Manage Keyboard Shortcuts** and **Manage Panel Layouts**: see [Finding text in the shortcut editors](#finding-text-in-the-shortcut-editors). On by default.
+
+**Keyboard shortcut editor**
+: Shows the groups of **Manage Keyboard Shortcuts** as a table of commands: see [The keyboard shortcut editor](#the-keyboard-shortcut-editor). On by default. Turned off, the dialog shows the IDE's own pane again at once.
 
 The settings, the last page shown and the help window's place are kept in the registry, under `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\tbDocsHelp`. After the IDE restarts, the pane shows the page it showed last.
 
@@ -138,6 +141,48 @@ Esc
 The search goes round past the end, and ignores case. The text scrolls to show each match. A search that finds nothing draws a red ring inside the box where the text is typed, and leaves the selection where it was. The setting **Find in the shortcut editors** turns this off.
 
 ![The top of the text of Manage Keyboard Shortcuts, with the find box hanging from its top right edge: a dark red bar holding a box with ctrl typed in it, and a close button. In the text, the first match, CTRL in the line {KEYDOWN}{CTRL}A, is selected.](Images/Help_Find.png){:width="795" height="184"}
+
+## The keyboard shortcut editor
+
+On its own, **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts** shows each group of shortcuts as JSON text, and with **Edit as JSON** cleared only the line *Keyboard editor coming soon*. While this add-in is loaded, the dialog shows the selected group as a table instead, with a row for every command of the IDE. [Keyboard shortcuts](../Customising/Keyboard-Shortcuts) explains the groups and how they are layered.
+
+![Manage Keyboard Shortcuts with the group Mine selected and the Changed here filter on: four rows under their prefixes tbDebug_, tbDebugConsole_ and tbEditor_. tbEditor_ClipboardCut shows Shift+Delete struck through and Ctrl+X in blue. The row for tbEditor_ToggleWordWrap is open: Alt+Z from the built-in group, and Ctrl+D added by this group in orange, with a note that Ctrl+D is also tbEditor_AddSelectionToNextFindMatch in the built-in group. Under the table are the Table and JSON buttons.](Images/Help_KeyEditor.png){:width="1016" height="723"}
+
+A row has the command's name, its keys, and a line on what the command does, from the [keyboard shortcuts reference](../Reference/Keyboard-Shortcuts). The rows are grouped by the prefix of the command's name; clicking a prefix folds its rows. In a group of your own, the keys of a row show what the earlier groups give the command and what this group changes:
+
+- a grey key comes from an earlier group;
+- a blue key is set by this group;
+- a dashed key that is struck through is one this group removes;
+- an orange key is also bound to another command, and a group of your own made one of the two bindings. Its tooltip names the other command and the group. The IDE runs each command bound to a key whose context applies, in its own order, until one of them ends the key's handling. Keys that the built-in group gives to several commands are not marked, since those commands apply in different places;
+- a red key that is struck through can never run, such as a key the IDE has no name for, or a key with Ctrl or Alt that runs when released. Its tooltip says why.
+
+The conflicts are found across every group that is switched on, the group shown and any group added in the dialog included. A row also says when a later group changes the command again, since this group's keys are then not the ones that apply.
+
+The box at the top finds commands by name, by description, or by the name of a key, such as `ctrl+d`. **Find a key** waits for a key and finds the commands bound to it. The buttons beside it show every command, only those with keys, only those this group changes, or only those with a problem.
+
+Clicking a row of a group of your own opens its editor:
+
+Keys from earlier groups
+: **Keep them, and add these** writes the entry as `+command`, and **Replace them with these** as `command`, so that only this group's keys apply.
+
+Add a key
+: Waits for a key: press it with its modifiers. Esc stops waiting. Esc and Tab on their own, and keys the IDE has no name for, such as `;`, cannot be added here; the JSON view takes any key string.
+
+When a key runs
+: **When pressed**, **When pressed, and while held**, or **When released**. A key with Ctrl or Alt never runs when released, so that choice is not offered for it.
+
+With an argument
+: For `tbDebugConsole_ExecuteCode`, a key that runs the command with an argument, such as `? Now`. Type the argument, then add its key.
+
+Reset to earlier groups
+: Removes the group's entry for the command.
+
+No keys
+: Gives the command no keys, whatever the earlier groups give it.
+
+Each change is written into the group's text: **Save Changes** saves it, and **Cancel** discards it. The built-in group is read-only, and its rows open no editor. The **JSON** button at the bottom shows the group's text, as the IDE shows it with **Edit as JSON** ticked, and **Table** shows the table again. A group whose text is not valid JSON is shown as text until it is corrected. Entries for a command the IDE does not have are listed at the top of the table, where a group of your own can remove them.
+
+In the table, Esc closes the open editor, then clears the search, and never closes the dialog. Ctrl+F goes to the search box. While the table is on, the dialog's text leaves out its last line, which promises a proper editor. The setting **Keyboard shortcut editor** turns the table off, and gives the dialog its own pane and text back.
 
 ## Getting the add-in
 

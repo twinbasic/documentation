@@ -34,6 +34,7 @@ export default [
   { file: "typing-after-open.test.mjs" },
   { file: "restart-file-order.test.mjs" },
   { file: "customising.test.mjs" },
+  { file: "keyeditor.test.mjs" },
   { file: "code-find.test.mjs" },
   { file: "code-editor.test.mjs" },
   { file: "memory.test.mjs" },

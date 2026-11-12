@@ -4,6 +4,21 @@ What changed in the twinBASIC Documentation Help add-in, newest first. The versi
 DLL's (its file properties show it). The documentation the add-in shows and its index of
 symbols change with every build of the documentation and are not listed here.
 
+## 1.2.0 (2026-11-12)
+
+- **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts** shows each group as a table of
+  every command of the IDE, with its keys and a line on what it does, in place of the IDE's
+  *Keyboard editor coming soon*. A row shows the keys earlier groups give the command, the keys
+  this group adds or removes, and when a later group changes them again. Clicking a row of a
+  group of your own opens its editor: press a key to bind it, choose whether the group keeps the
+  earlier keys or replaces them, and when the key runs (when pressed, also while held, or when
+  released). The table finds commands by name, description or key, or by the key you press, and
+  marks a key that another command also has, and one that can never run. The **JSON** button at
+  the bottom shows the group's text, as the IDE's own pane does; Save Changes and Cancel are the
+  IDE's. The dialog's text no longer ends with the line promising a proper editor.
+- The settings panel has a new box, ticked by default: **Keyboard shortcut editor**. Unticking it
+  gives Manage Keyboard Shortcuts its own pane and text back, at once.
+
 ## 1.1.0 (2026-10-21)
 
 - Ctrl+F finds text in the editors of **Window > Keyboard Shortcuts > Manage Keyboard

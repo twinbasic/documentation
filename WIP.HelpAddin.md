@@ -1287,6 +1287,59 @@ not: a restart saves a harness about a second against opening a new IDE.
     options scale text but not icons or controls. Emulated device scaling (what a WebView2
     `ZoomFactor` does) was right throughout, so whole-IDE zoom needs that host call
     upstream. The probe and pictures are in `.claude/scratch/zoom/`.
+13. **A keyboard shortcut editor** (owner, 2026-11-12: on by default, Table first, the built-in
+    group read-only with no actions, conflicts across every active group), tested by the
+    `ide-test` lane `keyeditor` (`test/ide/keyeditor.test.mjs`, the script put into the page
+    with no add-in) and by the `help` lanes (the settings box, and the script with its
+    descriptions put in by the add-in). `Resources/SCRIPTS/keyeditor.js`, put in by `BuildPane`
+    with a third settings row (`Fixes`, `KeyEditor`, on by default; the window's box follows
+    through `keyeditor:<1|0>`), fills the pane `showManageKeyboardShortcuts` leaves at *Keyboard
+    editor coming soon*. It goes in only while that text is in the function's source.
+    - **Reached by** replacing the global `showConfigEditor` (main.js is a classic script, and
+      the dialog calls it by name) with a function that changes only the call titled *Manage
+      Keyboard Shortcuts*: it wraps the options' `getEntryEditorDomNode`, `addNewEntry` and
+      `deleteEntry`, which `showConfigEditor` looks up on the options at each call. The
+      original is kept as `tbDocsOriginal` on the wrapper and in `window.tbDocsKeyEditor`, so a
+      second run never wraps a wrapper; turned off, the original goes back and an open dialog
+      gets its text area and Edit as JSON box back.
+    - **The group stays the IDE's.** The IDE's JSON pane is built as always (its closure's
+      flag starts true, and the table hides the box that would change it) and hidden; the table
+      reads the group from its text area and writes every change into it with an `input` event,
+      so the IDE's own `oninput` keeps the dialog's copy and turns on Save Changes. The table
+      edits the parsed object in place, so the entries keep their order and an entry it does
+      not touch keeps its strings as written. A group that is not a JSON object is shown as
+      text, and nothing is written to it.
+    - **What the table cannot edit** is listed, never dropped: entries for a command
+      `ideCommands` lacks, a value that is not a list (the IDE stops reading the group there,
+      and so does the table's layering), and a command with two plain entries or `cmd()`, whose
+      row says to edit it as JSON.
+    - **The keys are read as the IDE reads them**: the layering is
+      `applyKeyboardShortcutsLayering`'s (an argument entry adds unless the argument is empty;
+      a value that is not a list ends the group), the codes are `getKeyBindingCodeFromString`'s
+      (copied, since it has `debugger` statements), and a captured key is named as
+      `globalKeyDown` names it (a letter by `e.code`; a key `VirtualKeyCodeLookup` lacks, such
+      as `;`, is refused, as is AltGr). A key bound for its release with Ctrl or Alt never runs
+      (`realKeyPresses`), so the table marks it and does not offer it.
+    - **Conflicts** are codes shared by two commands across the built-in group, every group
+      switched on, the group shown and any added in the dialog (Save switches it on), with the
+      unsaved text of any group shown in the dialog. A shared code is marked only when a group
+      of your own gives one of the commands that code and the built-in group does not, since
+      the built-in group shares keys between commands that apply in different places (Ctrl+X,
+      Ctrl+A), and a group that keeps such a key adds no conflict; `{ALLEXCEPT}` is left out.
+    - **The dialog's own key handler** (on its container: Enter presses the focused button, Esc
+      cancels outside a text box, Tab and the arrows are held) never sees a key from the table,
+      which stops each at its own elements; Esc there closes the editor, then clears the
+      search. Ctrl+F goes to the table's search, and the table removes `textfind.js`'s bar when
+      it shows.
+    - **Its colours are fixed**: the pane it is in is white in every theme
+      (`.configEditorRHS`).
+    - **The header's last line**, *ps. in future we'll have a proper editor for this* (owner,
+      2026-11-12), is taken out of the options' `info` while the table is on, and put back
+      into an open dialog's `.configEditorInfoHeader` when it is turned off.
+    - **The descriptions** are `scripts/ide-js/command-text.json`, copied on one line to
+      `Resources/KEYS/commands.json` by `ide_js.mjs keymap --update` (and compared by `--check`
+      and by `test/ide-js.test.mjs`), and put in place of the script's `$COMMANDS$` marker by
+      `ApplyFix`.
 
 **Lookup:**
 

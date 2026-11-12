@@ -51,8 +51,11 @@ Private Class HelpAddIn
     Private AllBox As HtmlElement           ' the pane's All packages checkbox
     Private KeysBox As HtmlElement          ' the pane's Ctrl or Alt shortcuts checkbox
     Private FindBox As HtmlElement          ' the pane's Find in the shortcut editors checkbox
+    Private EditorBox As HtmlElement        ' the pane's Keyboard shortcut editor checkbox
     Private KeysHost As HtmlElement         ' where addinkeys.js is put in
     Private FindHost As HtmlElement         ' where textfind.js is put in
+    Private EditorHost As HtmlElement       ' where keyeditor.js is put in
+    Private CommandText As String           ' the commands' descriptions, for keyeditor.js; "" until first needed
     Private Referenced As Collection        ' the project's packages, keyed by name; Nothing if unknown
     Private DetachButton As HtmlElement
     Private SettingsButton As HtmlElement   ' the gear at the bar's right end
@@ -70,6 +73,7 @@ Private Class HelpAddIn
     Private AllPackages As Boolean          ' what the All packages box holds, in either view
     Private KeysOn As Boolean               ' what the Ctrl or Alt shortcuts box holds, in either view
     Private FindOn As Boolean               ' what the Find in the shortcut editors box holds, in either view
+    Private EditorOn As Boolean             ' what the Keyboard shortcut editor box holds, in either view
     Private SummaryHtml As String           ' what ShowSummary shows
     Private ShowingSummary As Boolean       ' the summary shows in place of the page
 
@@ -89,7 +93,8 @@ Private Class HelpAddIn
     ' The window's settings: whether it is detached, whether it is shown, and
     ' where it is, in pixels.
     Private Const WINDOW_SECTION As String = "Window"
-    ' The settings of the two page-side fixes: addinkeys.js and textfind.js.
+    ' The settings of the page-side fixes: addinkeys.js, textfind.js and
+    ' keyeditor.js.
     Private Const FIXES_SECTION As String = "Fixes"
 
     Public Sub New(ByVal Host As Host)
@@ -288,6 +293,7 @@ Private Class HelpAddIn
         HoverOn = GetSetting(SETTINGS_APP, "Hover", "On", "0") = "1"
         KeysOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "AddinKeys", "1") = "1"
         FindOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "TextFind", "1") = "1"
+        EditorOn = GetSetting(SETTINGS_APP, FIXES_SECTION, "KeyEditor", "1") = "1"
         Set Pane = Host.ToolWindows.Add("tbDocsHelp", PANE_ID)
         Pane.Title = "TWINBASIC HELP"
         Pane.ApplyCss StrConv(LoadResDataInternal("pane.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
@@ -354,6 +360,13 @@ Private Class HelpAddIn
                             FindBox.AddEventListener("change", AddressOf FindToggled)
                             .ChildDomElements.Add("helpFindText", "span").Properties.innerText = "Find in the shortcut editors"
                         End With
+                        With SettingsPanel.ChildDomElements.Add("helpKeyEditorLabel", "label")
+                            Set EditorBox = .ChildDomElements.Add("helpKeyEditorOn", "input")
+                            EditorBox.Properties.type = "checkbox"
+                            EditorBox.Properties.checked = EditorOn
+                            EditorBox.AddEventListener("change", AddressOf EditorToggled)
+                            .ChildDomElements.Add("helpKeyEditorText", "span").Properties.innerText = "Keyboard shortcut editor"
+                        End With
                     End With
                 End With
                 Set SettingsShade = .ChildDomElements.Add("helpSettingsShade", "div")
@@ -393,6 +406,11 @@ Private Class HelpAddIn
                 Set FindHost = .ChildDomElements.Add("helpTextFind", "div")
                 FindHost.Properties.style.display = "none"
                 ApplyFix FindHost, "textfind.js", FindOn
+                ' A table of every command in place of the "Keyboard editor
+                ' coming soon" pane of Manage Keyboard Shortcuts (keyeditor.js).
+                Set EditorHost = .ChildDomElements.Add("helpKeyEditor", "div")
+                EditorHost.Properties.style.display = "none"
+                ApplyFix EditorHost, "keyeditor.js", EditorOn
             End With
         End With
         Set ResultIds = New Collection
@@ -430,7 +448,15 @@ Private Class HelpAddIn
     ' and takes out what an earlier run or instance put in.
     Private Sub ApplyFix(ByVal Target As HtmlElement, ByVal script As String, ByVal isOn As Boolean)
         Dim js As String = StrConv(LoadResDataInternal(script, "SCRIPTS"), VbStrConv.vbFromUTF8)
-        Target.Properties.innerHTML = PageScript(Replace(js, "$ON$", IIf(isOn, "true", "false")))
+        js = Replace(js, "$ON$", IIf(isOn, "true", "false"))
+        ' keyeditor.js shows each command's description: the documentation's
+        ' own lines (scripts/ide-js/command-text.json), one JSON object.
+        If InStr(js, "$COMMANDS$") > 0 Then
+            If Len(CommandText) = 0 Then CommandText = Trim$(StrConv(LoadResDataInternal("commands.json", "KEYS"), VbStrConv.vbFromUTF8))
+            CommandText = Replace(Replace(CommandText, vbCr, ""), vbLf, "")
+            js = Replace(js, "$COMMANDS$", CommandText)
+        End If
+        Target.Properties.innerHTML = PageScript(js)
     End Sub
 
     Private Sub KeysToggled(ByVal eventInfo As HtmlEventProperties)
@@ -467,6 +493,25 @@ Private Class HelpAddIn
         ApplyFix FindHost, "textfind.js", isOn
         FindBox.Properties.checked = isOn
         If Detached Then PostToWindow "textfind:" & IIf(isOn, "1", "0")
+    End Sub
+
+    Private Sub EditorToggled(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        SetEditor EditorBox.Properties.checked
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Turns the keyboard shortcut editor on or off, from the pane's box or the
+    ' window's, and shows it in both. Off, an open Manage Keyboard Shortcuts
+    ' dialog gets the IDE's text area back.
+    Private Sub SetEditor(ByVal isOn As Boolean)
+        EditorOn = isOn
+        SaveSetting SETTINGS_APP, FIXES_SECTION, "KeyEditor", IIf(isOn, "1", "0")
+        ApplyFix EditorHost, "keyeditor.js", isOn
+        EditorBox.Properties.checked = isOn
+        If Detached Then PostToWindow "keyeditor:" & IIf(isOn, "1", "0")
     End Sub
 
     ' Only the packages the project references are offered until the box is
@@ -985,6 +1030,8 @@ Private Class HelpAddIn
                 SetKeys payload = "1"
             Case "textfind"
                 SetFind payload = "1"
+            Case "keyeditor"
+                SetEditor payload = "1"
             Case "attach"
                 Attach
             Case "close"
@@ -1022,6 +1069,7 @@ Private Class HelpAddIn
         HelpWin.Post "allpackages:" & IIf(AllPackages, "1", "0")
         HelpWin.Post "addinkeys:" & IIf(KeysOn, "1", "0")
         HelpWin.Post "textfind:" & IIf(FindOn, "1", "0")
+        HelpWin.Post "keyeditor:" & IIf(EditorOn, "1", "0")
         HelpWin.Post "search:" & SearchText
         PostResults
         If ShowingSummary Then
