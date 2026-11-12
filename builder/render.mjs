@@ -1981,7 +1981,7 @@ const ADMONITION_TYPES = {
 // per-line anchor on the body lines.
 // The rest of the `[!TYPE]` line is the callout's label (lib/callout-labels.mjs).
 const ADMONITION_RE =
-  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]([^\n]*)\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
+  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|ADDIN)\]([^\n]*)\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
 // An admonition written inside a code region is a sample of the syntax, and is
 // left as it is. This rewrite runs outside the mask, so it asks lib/markdown
 // where the regions are, with the site's parser for the reason
@@ -2019,6 +2019,8 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     if (inCode[line]) return match;
 
     const type = typeRaw.toLowerCase();
+    const stripRe = indent ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm") : /^[ \t]*>[ \t]?/gm;
+    if (type === "addin") return `${leading}${addinBox(labelRaw, bodyRaw, stripRe)}`;
     const meta = ADMONITION_TYPES[type];
     const label = parseCalloutLabel(labelRaw);
     const problem =
@@ -2047,7 +2049,6 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     // A fence inside an admonition is stripped with the rest of the body, so
     // this runs over real code samples: a literal mirror leaves If/ElseIf/Else
     // bodies flush left and loses blank lines between examples.
-    const stripRe = indent ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm") : /^[ \t]*>[ \t]?/gm;
     const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
 
     // The gem emits the replacement <div> at column 0 regardless of how
@@ -2060,6 +2061,29 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     // a separate markdown block rather than absorbed into the html_block.
     return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}${tags}</p>\n\n${body}\n</div>\n\n`;
   });
+}
+
+// What an add-in adds to the IDE, on a page that documents the IDE itself:
+//
+//   > [!ADDIN] With the Help Add-In
+//   > The add-in replaces this pane with a table of every command...
+//
+// It is written as a callout is, but it is none: no label, no icon, and the tools that read
+// callouts (lib/callout-labels.mjs) do not see it. The rest of the `[!ADDIN]` line is its
+// title, as plain text, and is required. It renders as a grey box (`.ide-addin`, admonitions.scss
+// and print.css) holding a <details> that is open, so that a reader who does not use the add-in
+// can fold it away. The book unwraps <details> and <summary> (book.mjs, bookChapterTransform),
+// and keeps the box and its title, which is why the title is a span of its own inside the
+// summary.
+function addinBox(titleRaw, bodyRaw, stripRe) {
+  const title = titleRaw.trim();
+  if (!title) throw new Error("callout [!ADDIN] needs a title on its line: > [!ADDIN] With the Help Add-In");
+  const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
+  return (
+    `<div class="ide-addin" markdown="1">\n<details open>\n` +
+    `<summary><span class="ide-addin-title">${escapeMarkup(title)}</span></summary>\n\n` +
+    `${body}\n</details>\n</div>\n\n`
+  );
 }
 
 // ---------- markdown="1" attribute strip -----------------------------------

@@ -767,5 +767,23 @@ blockquote {
 .markdown-alert-tip          { border-left-color: #1a7f37; }
 .markdown-alert-tip          .markdown-alert-title { color: #1a7f37; }
 
+/* What an add-in adds to the IDE (`> [!ADDIN] title`, render.mjs's addinBox). Its
+   <details> and <summary> are unwrapped for the book (book.mjs), which leaves the box
+   and the title's own span. No break-inside: avoid, since the box may hold a picture. */
+.ide-addin {
+  background: #f3f3f3;
+  border-radius: 3pt;
+  margin: 0.8em 0;
+  padding: 0.4em 0.8em 0.5em;
+}
+
+.ide-addin-title {
+  display: block;
+  font-weight: 700;
+  margin: 0 0 0.3em;
+}
+
+.ide-addin > :last-child { margin-bottom: 0; }
+
 /* A command's name on the Keyboard Shortcuts page: custom.scss says why. */
 .command-prefix { font-size: 0; }

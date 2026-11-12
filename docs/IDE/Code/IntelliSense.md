@@ -81,7 +81,8 @@ Under the signature is the first line of the procedure's documentation. For a pr
 
 <kbd>F1</kbd> expands the box to the whole documentation, shown as formatted text. <kbd>F1</kbd> again collapses it. The fold icon at the left of the box does the same when you click it.
 
-With the [Help Add-In](../AddIns/Help#f1-and-the-help-pane) loaded, <kbd>F1</kbd> on a name also opens the name's page of this documentation in a tool window, whether or not the box is open.
+> [!ADDIN] With the Help Add-In
+> <kbd>F1</kbd> on a name also opens the name's page of this documentation in a tool window, whether or not the box is open: see [F1 and the help pane](../AddIns/Help#f1-and-the-help-pane).
 
 ![The signature-help box above a line reading MsgBox(), expanded with F1. Under the signature of MsgBox, with Prompt highlighted, the documentation scrolls in the box as formatted text: the name MsgBox and VBA.Interaction, a description, and the Syntax and Parameters sections.](Images/SignatureHelp_Expanded.png){:width="1400" height="306"}
 
@@ -105,9 +106,10 @@ Hovering over a wavy underline shows the compiler's message, as `TBnnnn:` follow
 
 While a program is stopped in the debugger, the popup also evaluates the expression under the pointer.
 
-The [Help Add-In](../AddIns/Help#hover-help) can add a link at the top of the popup, to the page of this documentation that describes the name.
-
-![The hover popup over Collection in the line Dim names As New Collection, with the Help Add-In loaded. It starts with the link Help: Collection class (VBA), followed by the class's declaration and its members.](../AddIns/Images/Help_Hover.png){:width="889" height="495" secondary}
+> [!ADDIN] With the Help Add-In
+> The popup can start with a link to the page of this documentation that describes the name: see [Hover help](../AddIns/Help#hover-help).
+>
+> ![The hover popup over Collection in the line Dim names As New Collection, with the Help Add-In loaded. It starts with the link Help: Collection class (VBA), followed by the class's declaration and its members.](../AddIns/Images/Help_Hover.png){:width="889" height="495" secondary}
 
 The hover text is in English whatever the [language of the IDE](../Customising/#the-language-of-the-ide) is.
 

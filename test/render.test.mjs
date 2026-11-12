@@ -663,6 +663,37 @@ describe("callout labels", () => {
   });
 });
 
+describe("[!ADDIN] boxes", () => {
+  const render = (src) => md.render(applyPreRenderRewrites(src, md), { page: { srcRel: "IDE/Page.md" } });
+
+  test("a box is an open <details> in a grey div, its title in a span of its own, its body markdown", () => {
+    const html = render(
+      "Before.\n\n> [!ADDIN] With the Help Add-In\n> Press <kbd>F1</kbd>: see [F1](#f1).\n>\n> A second *paragraph*.\n\nAfter.\n",
+    );
+    assert.match(
+      html,
+      /<div class="ide-addin">\n<details open(="")?>\n<summary><span class="ide-addin-title">With the Help Add-In<\/span><\/summary>/,
+    );
+    assert.match(
+      html,
+      /<p>Press <kbd>F1<\/kbd>: see <a href="#f1">F1<\/a>\.<\/p>\n<p>A second <em>paragraph<\/em>\.<\/p>\n<\/details>\n<\/div>/,
+    );
+    assert.match(html, /<\/div>\n<p>After\.<\/p>/);
+    assert.doesNotMatch(html, /markdown-alert|\[!ADDIN\]|markdown="1"/);
+  });
+
+  test("a box is no callout: a label-like title is its text, and it needs one", () => {
+    assert.match(render("> [!ADDIN] BETA 1005\n> body\n"), /<span class="ide-addin-title">BETA 1005<\/span>/);
+    assert.throws(() => render("> [!ADDIN]\n> body\n"), /needs a title/);
+    assert.deepEqual(calloutLabelsOf("> [!ADDIN] With the Help Add-In\n> body\n"), []);
+  });
+
+  test("a box in a code sample is left as written", () => {
+    const src = "```md\n> [!ADDIN] With the Help Add-In\n> body\n```\n";
+    assert.equal(applyPreRenderRewrites(src, md), src);
+  });
+});
+
 describe("figurePlugin", () => {
   const md = createMarkdownIt({
     highlighter: null,
