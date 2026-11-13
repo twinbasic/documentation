@@ -231,6 +231,8 @@ The help's own panel, **TWINBASIC HELP**, has one more box, **With the Help Add-
 **In its own window**
 : Choosing the layout detaches the help into its window, placed at **Left** and **Top** and sized to **Width** and **Height**: pixels on the screen. The window is drawn in the picture at that place, inside the picture if it is outside the IDE window. Clicking it selects the help's panel, or shows the box alone when the layout has no pane for the help.
 
+![Manage Panel Layouts with the layout Mine selected and the help's panel, TWINBASIC HELP, selected under Properties; its tile says in its own window. The box beside the picture opens with With the Help Add-In: In its own window is pressed, with Left 600, Top 200, Width 540 and Height 600. Over the Editor in the picture, a dashed window titled Help: its own window reads 540 × 600 at 600, 200 on the screen.](Images/Help_LayoutHelp.png){:width="1016" height="642"}
+
 A layout for which neither has been chosen leaves the help where it is. Like every other change, the choice is kept by **Save Changes** and discarded by **Cancel**. **Save Changes** also forgets what the add-in kept for the layouts deleted in the dialog.
 
 A tile of an add-in's window that no loaded add-in has is marked *not loaded*. That is no problem: the IDE keeps the window's place, empty and marked *(currently unavailable)*, until the add-in opens it. The line under the picture counts the layout's panels and its problems: a layout with no Editor, a panel in it twice, or an id that is not a panel of the IDE. A layout with a problem is marked with **!** in the list.

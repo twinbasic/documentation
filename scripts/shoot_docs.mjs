@@ -13739,6 +13739,66 @@ function helpTakes(ctx) {
     }
   });
 
+  // The same layout with the help's panel selected and its box, With the Help Add-In, saying the
+  // layout puts the help in its own window, which the picture draws over the IDE window. The
+  // layout's record is a change in the open dialog (the add-in's layouts.js keeps those apart
+  // from what the add-in has saved, and they win), so nothing is saved and Save Changes stays
+  // greyed out. The place is in the add-in's pixels, which are physical (at 150% here): the
+  // window is drawn over the Editor, clear of the help's selected tile.
+  const HELP_RECORD = { detached: true, left: 600, top: 200, width: 540, height: 600 };
+  shoot("LayoutHelp", async () => {
+    const saved = await c.evaluate("JSON.stringify(customPanelLayouts)");
+    await c.evaluate(`(() => {
+  const d = JSON.parse(builtInPanelLayouts["<DEFAULT>"].layoutData);
+  const column = d.content[1].content[1].content;
+  column[0].size = "35%";
+  column.push({ id: "ADDIN_tbDocsHelpPane", variableSize: false, size: "35%" });
+  customPanelLayouts = { Mine: { layoutData: JSON.stringify(d), floatingData: "[]" } };
+})()`);
+    try {
+      return await inDialog(
+        c,
+        { command: "tbPanels_ShowManagePanelLayouts", title: "Manage Panel Layouts", close: "Cancel" },
+        async () => {
+          const clickIn = async (js, what) => {
+            if (!(await c.evaluate(`(() => { const e = ${js}; if (!e) return false; e.click(); return true; })()`))) {
+              throw new Error(`the layout editor has no ${what}`);
+            }
+          };
+          await clickIn(
+            `[...document.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === "Mine")`,
+            "layout Mine",
+          );
+          const recorded = await c.evaluate(`(() => {
+  const h = window.tbDocsHelpLayouts;
+  if (!h || !h.dialog) return false;
+  h.edit("Mine", ${JSON.stringify(HELP_RECORD)});
+  return true;
+})()`);
+          if (!recorded) throw new Error("the add-in's layouts.js is not in the page, or not in the dialog");
+          await clickIn(`document.querySelector('.tbLeDock .tbLeTile[title="ADDIN_tbDocsHelpPane"]')`, "help tile");
+          const shows = () =>
+            c.evaluate(
+              `!!document.querySelector(".tbLeInsp .tbLeAddin [data-act=helpnum]") && !!document.querySelector(".tbLePic .tbLeOwn")`,
+            );
+          if (!(await waitFor(c, shows))) throw new Error("the help's box or its window does not show");
+          await dialogStill(c);
+          // The dialog's rounded top corners, as for KeyEditor.
+          const m = await c.evaluate(`(() => {
+            const r = [...document.querySelectorAll(".modalDialogContainer")].pop().getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width };
+          })()`);
+          const corner = (x) => ({ on: { rect: { x, y: m.y, width: 5, height: 5 } }, pad: 1 });
+          return dialogShot(c, "LayoutHelp", undefined, null, {
+            unsteady: [corner(m.x), corner(m.x + m.width - 5)],
+          });
+        },
+      );
+    } finally {
+      await c.evaluate(`customPanelLayouts = JSON.parse(${JSON.stringify(saved)})`);
+    }
+  });
+
   return takes;
 }
 
@@ -14882,6 +14942,7 @@ const SHOTS = [
     "Find",
     "KeyEditor",
     "LayoutEditor",
+    "LayoutHelp",
   ].map(helpShot),
   aboutShot,
   servicesShot,
