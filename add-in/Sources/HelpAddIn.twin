@@ -23,8 +23,12 @@
 ' hidden window stays hidden after a compiler restart. When the IDE's option
 ' "Show real OS titlebar" is on, the window has the Windows title bar instead,
 ' dark or light with the theme, and the page draws none; the option is read
-' each time the window is shown. Every line it prints to the DEBUG CONSOLE
-' starts "[tbDocsHelp] ", except "open <url>" (see OpenUrl).
+' each time the window is shown. Where the help is, in the pane or in the
+' window and where that window is, is kept for each panel layout as well: saving
+' a layout records it, and applying one with a record puts the help there
+' (layouts.js tells the add-in which layout was saved or applied). Every line it
+' prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except "open <url>" (see
+' OpenUrl).
 Private Class HelpAddIn
     Implements AddIn
     Private WithEvents Host As Host
@@ -57,6 +61,7 @@ Private Class HelpAddIn
     Private EditorHost As HtmlElement       ' where keyeditor.js is put in
     Private LayoutBox As HtmlElement        ' the pane's Panel layout editor checkbox
     Private LayoutHost As HtmlElement       ' where layouteditor.js is put in
+    Private LayoutsHost As HtmlElement      ' where layouts.js is put in, and its messages come
     Private CommandText As String           ' the commands' descriptions, for keyeditor.js; "" until first needed
     Private Referenced As Collection        ' the project's packages, keyed by name; Nothing if unknown
     Private DetachButton As HtmlElement
@@ -99,6 +104,13 @@ Private Class HelpAddIn
     ' The settings of the page-side fixes: addinkeys.js, textfind.js,
     ' keyeditor.js and layouteditor.js.
     Private Const FIXES_SECTION As String = "Fixes"
+    ' Where the help is for each panel layout: a section inside this one for
+    ' each layout, named as layouts.js writes the layout's name (LayoutKey),
+    ' with Detached and the window's place, as the Window section has them.
+    ' The Window section is where the help is now, whichever layout that is.
+    Private Const LAYOUTS_SECTION As String = "Layouts"
+    ' What layouts.js sends.
+    Private Const LAYOUT_EVENT As String = "tbDocsLayout"
 
     Public Sub New(ByVal Host As Host)
         Set Me.Host = Host
@@ -427,6 +439,13 @@ Private Class HelpAddIn
                 Set LayoutHost = .ChildDomElements.Add("helpLayoutEditor", "div")
                 LayoutHost.Properties.style.display = "none"
                 ApplyFix LayoutHost, "layouteditor.js", LayoutOn
+                ' Which panel layout the IDE applies or saves (layouts.js),
+                ' always: where the help is is kept for each layout.
+                Set LayoutsHost = .ChildDomElements.Add("helpLayouts", "div")
+                LayoutsHost.Properties.style.display = "none"
+                LayoutsHost.AddEventListener(LAYOUT_EVENT, AddressOf LayoutMessage)
+                Dim layoutsJs As String = StrConv(LoadResDataInternal("layouts.js", "SCRIPTS"), VbStrConv.vbFromUTF8)
+                LayoutsHost.Properties.innerHTML = PageScript(Replace(layoutsJs, "$STATE$", LayoutState()))
             End With
         End With
         Set ResultIds = New Collection
@@ -439,6 +458,10 @@ Private Class HelpAddIn
             LoadedFrame = FrameUrl(PageUrl)
             Frame.Properties.src = LoadedFrame
         End If
+        ' The IDE shows a pane made again where a layout docks it (applying a
+        ' layout closes every add-in's tool window, and Pane_OnClose makes the
+        ' pane again); while the help is in the window, the pane stays hidden.
+        If Detached Then Pane.Visible = False
     End Sub
 
     ' Hover help is off until the box is ticked, and stays as it was left.
@@ -912,12 +935,13 @@ Private Class HelpAddIn
     ' Hides the pane and shows the window, which is made the first time and
     ' kept after, with the page it has. The page says "ready" once it has
     ' loaded, and is sent the state then; a window already loaded is sent it
-    ' now.
-    Private Sub Detach()
+    ' now. A window that is not made here is activated only when activate says
+    ' so (OpenWindow).
+    Private Sub Detach(Optional ByVal activate As Boolean = True)
         On Error GoTo Failed
         Detached = True
         Pane.Visible = False
-        OpenWindow True
+        OpenWindow activate
         SaveSetting SETTINGS_APP, WINDOW_SECTION, "Detached", "1"
         If HelpWin.IsReady Then SendWindowState
         If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "detached"
@@ -1143,6 +1167,241 @@ Private Class HelpAddIn
         Dim w As Long = Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Width", "0"))
         Dim h As Long = Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Height", "0"))
         If w > 0 And h > 0 And IsOnScreen(x, y, w, h) Then PlaceWindow HelpWin.hWnd, x, y, w, h
+    End Sub
+
+    ' ------------------------------------------------------------ the panel layouts
+
+    ' What layouts.js sends: "applied" or "saved" with a layout's name as it
+    ' writes it, "records" with what Save Changes in Manage Panel Layouts
+    ' keeps, and "ask" when that dialog opens, for where the help is now.
+    Private Sub LayoutMessage(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        Dim verb As String = eventInfo.verb
+        Dim key As String = eventInfo.layout
+        Select Case verb
+            Case "applied"
+                If IsLayoutKey(key) Then LayoutApplied key
+            Case "saved"
+                If IsLayoutKey(key) Then LayoutSaved key
+            Case "records"
+                LayoutRecords eventInfo.value
+            Case "ask"
+                PushLayoutState
+        End Select
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Whether text is a layout's name as layouts.js writes it: letters, digits
+    ' and %, - and _ only, so that it names one section of the settings.
+    Private Function IsLayoutKey(ByVal text As String) As Boolean
+        If Len(text) = 0 Or Len(text) > 200 Then Return False
+        Dim i As Long
+        For i = 1 To Len(text)
+            Select Case AscW(Mid$(text, i, 1))
+                Case 48 To 57, 65 To 90, 97 To 122, 37, 45, 95
+                Case Else
+                    Return False
+            End Select
+        Next
+        Return True
+    End Function
+
+    Private Function LayoutSection(ByVal key As String) As String
+        Return LAYOUTS_SECTION & "\" & key
+    End Function
+
+    ' Where the window is, in pixels: where it is now when it has a place
+    ' there, else where it was last left (the Window section). False when
+    ' neither is known.
+    Private Function CurrentPlace(ByRef x As Long, ByRef y As Long, ByRef w As Long, ByRef h As Long) As Boolean
+        If Not HelpWin Is Nothing Then
+            If WindowPlace(HelpWin.hWnd, x, y, w, h) Then Return True
+        End If
+        x = CLng(Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Left", "0")))
+        y = CLng(Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Top", "0")))
+        w = CLng(Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Width", "0")))
+        h = CLng(Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Height", "0")))
+        Return w > 0 And h > 0
+    End Function
+
+    Private Function PlaceJson(ByVal isDetached As Boolean, ByVal x As Long, ByVal y As Long, _
+            ByVal w As Long, ByVal h As Long) As String
+        Return "{""detached"":" & IIf(isDetached, "true", "false") & ",""left"":" & x & ",""top"":" & y & _
+            ",""width"":" & w & ",""height"":" & h & "}"
+    End Function
+
+    ' A layout's record as JSON (PlaceJson), or "" when it has none.
+    Private Function RecordJson(ByVal key As String) As String
+        Dim section As String = LayoutSection(key)
+        Dim d As String = GetSetting(SETTINGS_APP, section, "Detached", "")
+        If Len(d) = 0 Then Return ""
+        Return PlaceJson(d = "1", CLng(Val(GetSetting(SETTINGS_APP, section, "Left", "0"))), _
+            CLng(Val(GetSetting(SETTINGS_APP, section, "Top", "0"))), _
+            CLng(Val(GetSetting(SETTINGS_APP, section, "Width", "0"))), _
+            CLng(Val(GetSetting(SETTINGS_APP, section, "Height", "0"))))
+    End Function
+
+    ' What layouts.js is given, as one JSON object: the pane's id in a layout,
+    ' the dots per inch of the pixels the window's place is in, where the help
+    ' is now, and the record of each layout that has one.
+    Private Function LayoutState() As String
+        Dim x As Long, y As Long, w As Long, h As Long
+        If Not CurrentPlace(x, y, w, h) Then
+            x = 0
+            y = 0
+            w = 0
+            h = 0
+        End If
+        Dim json As String = "{""pane"":""ADDIN_" & PANE_ID & """,""dpi"":" & ProcessDpi() & _
+            ",""now"":" & PlaceJson(Detached, x, y, w, h) & ",""records"":{"
+        Dim first As Boolean = True
+        Dim v As Variant
+        For Each v In SettingSections(SETTINGS_APP, LAYOUTS_SECTION)
+            Dim key As String = v
+            If IsLayoutKey(key) Then
+                Dim record As String = RecordJson(key)
+                If Len(record) > 0 Then
+                    json = json & IIf(first, "", ",") & """" & key & """:" & record
+                    first = False
+                End If
+            End If
+        Next
+        Return json & "}}"
+    End Function
+
+    ' Gives layouts.js what LayoutState holds now; the panel layout editor
+    ' draws its picture again with it.
+    Private Sub PushLayoutState()
+        If LayoutsHost Is Nothing Then Exit Sub
+        LayoutsHost.Properties.innerHTML = PageScript("if (window.tbDocsHelpLayouts) window.tbDocsHelpLayouts.update(" & _
+            LayoutState() & ");")
+    End Sub
+
+    ' For the tests: a layout's record, "detached" or "attached" and its place.
+    Private Function RecordText(ByVal key As String) As String
+        Dim section As String = LayoutSection(key)
+        Dim d As String = GetSetting(SETTINGS_APP, section, "Detached", "")
+        If Len(d) = 0 Then Return "unrecorded"
+        Return IIf(d = "1", "detached", "attached") & " at " & GetSetting(SETTINGS_APP, section, "Left", "0") & "," & _
+            GetSetting(SETTINGS_APP, section, "Top", "0") & "," & GetSetting(SETTINGS_APP, section, "Width", "0") & "," & _
+            GetSetting(SETTINGS_APP, section, "Height", "0")
+    End Function
+
+    ' Save Current Layout As: the layout's record is where the help is now,
+    ' and where the window is, or was last left.
+    Private Sub LayoutSaved(ByVal key As String)
+        Dim section As String = LayoutSection(key)
+        Dim x As Long, y As Long, w As Long, h As Long
+        Dim known As Boolean = CurrentPlace(x, y, w, h)
+        SaveSetting SETTINGS_APP, section, "Detached", IIf(Detached, "1", "0")
+        If known Then
+            SaveSetting SETTINGS_APP, section, "Left", CStr(x)
+            SaveSetting SETTINGS_APP, section, "Top", CStr(y)
+            SaveSetting SETTINGS_APP, section, "Width", CStr(w)
+            SaveSetting SETTINGS_APP, section, "Height", CStr(h)
+        End If
+        PushLayoutState
+        If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "layout saved " & key & " " & RecordText(key)
+    End Sub
+
+    ' A layout was applied: the help goes where the layout's record puts it,
+    ' into the pane, or into the window, shown without taking the focus and
+    ' put at its place when that is on a monitor. A layout with no record, a
+    ' built-in one among them, leaves the help where it is. Applying a layout
+    ' closed the pane, and BuildPane made it again, hidden while detached.
+    Private Sub LayoutApplied(ByVal key As String)
+        Dim section As String = LayoutSection(key)
+        Dim d As String = GetSetting(SETTINGS_APP, section, "Detached", "")
+        If Len(d) = 0 Then
+            If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "layout applied " & key & " unrecorded"
+            Exit Sub
+        End If
+        If d = "1" Then
+            If Not Detached Then
+                Detach False
+            ElseIf Not WindowShown Then
+                OpenWindow False
+            End If
+            If Not Detached Then Exit Sub
+            Dim x As Long = CLng(Val(GetSetting(SETTINGS_APP, section, "Left", "0")))
+            Dim y As Long = CLng(Val(GetSetting(SETTINGS_APP, section, "Top", "0")))
+            Dim w As Long = CLng(Val(GetSetting(SETTINGS_APP, section, "Width", "0")))
+            Dim h As Long = CLng(Val(GetSetting(SETTINGS_APP, section, "Height", "0")))
+            If w > 0 And h > 0 And StateOfWindow(HelpWin.hWnd) = "normal" Then
+                If IsOnScreen(x, y, w, h) Then
+                    PlaceWindow HelpWin.hWnd, x, y, w, h
+                    SaveWindowPlace
+                End If
+            End If
+        ElseIf Detached Then
+            Attach
+        End If
+        If TestSwitchOn() Then
+            Dim where As String = IIf(Detached, "detached", "attached")
+            Dim px As Long, py As Long, pw As Long, ph As Long
+            If Detached Then
+                If WindowPlace(HelpWin.hWnd, px, py, pw, ph) Then where = where & " at " & px & "," & py & "," & pw & "," & ph
+            End If
+            Host.DebugConsole.PrintText TAG & "layout applied " & key & " " & where
+        End If
+    End Sub
+
+    ' Save Changes in Manage Panel Layouts: a line "keep" and the names of the
+    ' layouts the dialog keeps, then a line "set <name> <detached> <left>
+    ' <top> <width> <height>" for each record changed in it. The records of
+    ' layouts it no longer has go.
+    Private Sub LayoutRecords(ByVal text As String)
+        Dim lines() As String = Split(Replace(text, vbCr, ""), vbLf)
+        Dim parts() As String
+        Dim keep As New Collection
+        Dim i As Long, j As Long
+        For i = 0 To UBound(lines)
+            parts = Split(Trim$(lines(i)), " ")
+            If UBound(parts) >= 0 Then
+                If parts(0) = "keep" Then
+                    For j = 1 To UBound(parts)
+                        If IsLayoutKey(parts(j)) Then
+                            If Not keep.Exists(parts(j)) Then keep.Add parts(j), parts(j)
+                        End If
+                    Next
+                End If
+            End If
+        Next
+        Dim removed As String
+        Dim v As Variant
+        For Each v In SettingSections(SETTINGS_APP, LAYOUTS_SECTION)
+            If Not keep.Exists(CStr(v)) Then
+                RemoveSection LayoutSection(CStr(v))
+                removed = removed & " " & v
+            End If
+        Next
+        Dim changed As Long
+        For i = 0 To UBound(lines)
+            parts = Split(Trim$(lines(i)), " ")
+            If UBound(parts) = 6 Then
+                If parts(0) = "set" And keep.Exists(parts(1)) Then
+                    Dim section As String = LayoutSection(parts(1))
+                    SaveSetting SETTINGS_APP, section, "Detached", IIf(parts(2) = "1", "1", "0")
+                    SaveSetting SETTINGS_APP, section, "Left", CStr(CLng(Val(parts(3))))
+                    SaveSetting SETTINGS_APP, section, "Top", CStr(CLng(Val(parts(4))))
+                    SaveSetting SETTINGS_APP, section, "Width", CStr(CLng(Val(parts(5))))
+                    SaveSetting SETTINGS_APP, section, "Height", CStr(CLng(Val(parts(6))))
+                    changed = changed + 1
+                End If
+            End If
+        Next
+        PushLayoutState
+        If TestSwitchOn() Then
+            Host.DebugConsole.PrintText TAG & "layout records set " & changed & ", removed" & IIf(Len(removed) = 0, " none", removed)
+        End If
+    End Sub
+
+    ' Deletes a section of the settings, if it is there.
+    Private Sub RemoveSection(ByVal section As String)
+        On Error Resume Next
+        DeleteSetting SETTINGS_APP, section
     End Sub
 
     ' The selection when it is on one line, line then -1; else the name under

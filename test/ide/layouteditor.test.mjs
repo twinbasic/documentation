@@ -37,6 +37,28 @@ function script(file, on) {
 }
 const editorScript = (on) => script("layouteditor.js", on);
 
+// layouts.js as BuildPane puts it in, with the add-in's state in its marker, run with `this` an
+// image inside a sink of the test's own: a hidden element whose tbDocsLayout, which the add-in's
+// listener would be, keeps each message in window.__layoutMsgs.
+const HELP = "ADDIN_tbDocsHelpPane";
+function layoutsScript(state) {
+  const js = readFileSync(path.join(SCRIPTS, "layouts.js"), "utf8").replace("$STATE$", () => JSON.stringify(state));
+  return `(() => {
+    let sink = document.getElementById("__layoutsSink");
+    if (!sink) {
+      sink = document.createElement("div");
+      sink.id = "__layoutsSink";
+      sink.style.display = "none";
+      document.body.appendChild(sink);
+      window.__layoutMsgs = [];
+      sink.tbDocsLayout = (m) => window.__layoutMsgs.push({ verb: m.verb, layout: m.layout, value: m.value });
+    }
+    const img = document.createElement("img");
+    sink.appendChild(img);
+    (function () {\n${js}\n}).call(img);
+  })()`;
+}
+
 const GUARD_JS = `(() => {
   if (window.__guarded) return;
   window.__guarded = true;
@@ -69,6 +91,13 @@ const LAYOUTS_JS = `(() => {
     },
     Elsewhere: { layoutData: JSON.stringify(d), floatingData: JSON.stringify([{ id: "ADDIN_NoSuchTool", left: 200, top: 300, width: 320, height: 240 }]) },
     Broken: { layoutData: "{not json", floatingData: "[]" },
+    Helped: {
+      layoutData: JSON.stringify({ type: "vertical", variableSize: true, size: "0%", content: [
+        Object.assign(d, { variableSize: true, size: "0%" }),
+        { id: "${HELP}", variableSize: false, size: "25%" },
+      ] }),
+      floatingData: "[]",
+    },
   };
   return true;
 })()`;
@@ -445,6 +474,174 @@ scenario("the panel layout editor", (lane) => {
     })()`);
     assert.ok(await waitFor(c, () => c.evaluate("modalDialogs.length === 0")), "Save Changes did not close the dialog");
     assert.equal(await c.evaluate(`customPanelLayouts["No Editor"].layoutData`), now);
+  });
+
+  // ---- the help add-in's own window, kept for each layout (layouts.js) ----
+
+  const messages = () => c.evaluate("window.__layoutMsgs.splice(0)");
+  // What the page is told where the help is now: its window at 300, 120 of the page, 420 by
+  // 500, the add-in's pixels given as 96 to the inch, as the page's CSS pixels are.
+  const NOW = `({ left: window.screenX + 300, top: window.screenY + 120, width: 420, height: 500 })`;
+  async function putLayoutsIn(records = {}) {
+    const now = await c.evaluate(NOW);
+    await c.evaluate(layoutsScript({ pane: HELP, dpi: 96, now: { detached: true, ...now }, records }));
+    await sleep(50);
+    await messages();
+    return now;
+  }
+  const helpBox = () =>
+    c.evaluate(`(() => {
+      const b = document.querySelector(".tbLeInsp .tbLeAddin");
+      if (!b) return null;
+      return {
+        pressed: [...b.querySelectorAll('[data-act="helpwhere"]')].filter((e) => e.getAttribute("aria-pressed") === "true").map((e) => e.textContent),
+        place: Object.fromEntries([...b.querySelectorAll('[data-act="helpnum"]')].map((e) => [e.getAttribute("data-k"), Number(e.value)])),
+        text: b.textContent,
+      };
+    })()`);
+
+  test("layouts.js tells the add-in which layout was saved or applied, by its name encoded, after the IDE has", async () => {
+    await putLayoutsIn();
+    assert.deepEqual(
+      await c.evaluate(
+        "[typeof setActivePanelLayoutName.tbDocsOriginal, typeof saveCurrentPanelLayoutAs.tbDocsOriginal]",
+      ),
+      ["function", "function"],
+      "the IDE's functions are not wrapped",
+    );
+    try {
+      await c.evaluate(`saveCurrentPanelLayoutAs("A\\\\B (x)")`);
+      await sleep(50);
+      assert.equal(await c.evaluate(`activePanelLayoutName`), "A\\B (x)");
+      await c.evaluate(`setActivePanelLayoutName("<DEFAULT>")`);
+      await sleep(50);
+      assert.equal(await c.evaluate(`activePanelLayoutName`), "<DEFAULT>");
+      assert.deepEqual(await messages(), [
+        { verb: "saved", layout: "A%5CB%20%28x%29", value: "" },
+        { verb: "applied", layout: "%3CDEFAULT%3E", value: "" },
+      ]);
+      // Run again, the script wraps the IDE's functions, not its own, and sends each message once.
+      await putLayoutsIn();
+      assert.equal(await c.evaluate("setActivePanelLayoutName.tbDocsOriginal.tbDocsOriginal"), undefined);
+      await c.evaluate(`setActivePanelLayoutName("<DEFAULT>")`);
+      await sleep(50);
+      assert.deepEqual(await messages(), [{ verb: "applied", layout: "%3CDEFAULT%3E", value: "" }]);
+    } finally {
+      await c.evaluate(`delete customPanelLayouts["A\\\\B (x)"]`);
+    }
+  });
+
+  test("the help's panel has the With the Help Add-In box; In its own window is kept at Save Changes, with the layouts kept", async () => {
+    const now = await putLayoutsIn();
+    await openDialog();
+    let saved = false;
+    try {
+      assert.deepEqual(
+        await messages(),
+        [{ verb: "ask", layout: "", value: "" }],
+        "the dialog did not ask where the help is",
+      );
+      await selectLayout("Helped");
+      assert.equal(
+        await c.evaluate(`document.querySelector(".tbLeOwn")`),
+        null,
+        "a layout with no record draws the window",
+      );
+      await clickIn(tile(HELP));
+      let b = await helpBox();
+      assert.ok(b, "the help's panel has no box");
+      assert.deepEqual(b.pressed, []);
+      assert.match(b.text, /Not chosen for this layout: applying it leaves the help where it is\./);
+      await clickIn('[data-act="helpwhere"][data-v="own"]');
+      b = await helpBox();
+      assert.deepEqual(b.pressed, ["In its own window"]);
+      assert.deepEqual(b.place, now, "the window's place is not where it is now");
+      assert.equal((await state()).saveDisabled, false, "the choice did not enable Save Changes");
+      assert.match(
+        await c.evaluate(`document.querySelector(${JSON.stringify(tile(HELP))}).textContent`),
+        /in its own window/,
+      );
+      // The window, drawn where it is on the picture's scale.
+      const drawn = await c.evaluate(`(() => {
+        const w = document.querySelector(".tbLeOwn"), p = document.querySelector(".tbLePic");
+        if (!w) return null;
+        const k = p.clientWidth / document.body.clientWidth;
+        return { left: w.offsetLeft / k, top: w.offsetTop / k, width: w.offsetWidth / k, text: w.textContent };
+      })()`);
+      assert.ok(drawn, "the window is not drawn");
+      assert.ok(
+        Math.abs(drawn.left - 300) < 3 && Math.abs(drawn.top - 120) < 3 && Math.abs(drawn.width - 420) < 3,
+        JSON.stringify(drawn),
+      );
+      assert.match(drawn.text, /^Help: its own window420 × 500at /);
+      // Its place, changed in the box.
+      await setValue('[data-act="helpnum"][data-k="left"]', now.left + 40);
+      assert.equal((await helpBox()).place.left, now.left + 40);
+      await shot("help-box");
+      await c.evaluate(`(() => {
+        const m = [...document.querySelectorAll(".modalDialogContainer")].pop();
+        [...m.querySelectorAll("button, .dialogButton, [class*=Button]")].find((e) => e.textContent.trim() === "Save Changes").click();
+      })()`);
+      saved = await waitFor(c, () => c.evaluate("modalDialogs.length === 0"));
+      assert.ok(saved, "Save Changes did not close the dialog");
+      await sleep(50);
+      // The records first, then the layout the IDE applies again.
+      const sent = await messages();
+      assert.deepEqual(
+        sent.map((m) => m.verb),
+        ["records", "applied"],
+      );
+      assert.deepEqual(sent[0].value.split("\n"), [
+        "keep Mine No%20Editor Elsewhere Broken Helped",
+        `set Helped 1 ${now.left + 40} ${now.top} 420 500`,
+      ]);
+    } finally {
+      if (!saved) await cancelDialog();
+    }
+  });
+
+  test("In this panel, for a layout whose help is in its own window, floats the pane where the window was, inside the IDE window", async () => {
+    const page = await c.evaluate(`({ x: window.screenX, y: window.screenY, w: document.body.clientWidth })`);
+    const own = { detached: true, left: page.x + 200, top: page.y + 150, width: 420, height: 500 };
+    await putLayoutsIn({ Helped: own });
+    await openDialog();
+    try {
+      await selectLayout("Helped");
+      // A click on the window selects the help's tile.
+      await clickIn(".tbLeOwn");
+      assert.match((await state()).head, new RegExp(`^${HELP.replace("ADDIN_", "")} ${HELP}`));
+      assert.deepEqual((await helpBox()).pressed, ["In its own window"]);
+      await clickIn('[data-act="helpwhere"][data-v="panel"]');
+      let t = await parsedText();
+      assert.equal(JSON.stringify(t.docked).includes(HELP), false, "the pane is still docked");
+      assert.deepEqual(t.floating.at(-1), { id: HELP, left: 200, top: 150, width: 420, height: 500 });
+      assert.deepEqual((await helpBox()).pressed, ["In this panel"]);
+      assert.equal(await c.evaluate(`document.querySelector(".tbLeOwn")`), null, "the window is still drawn");
+      await messages();
+    } finally {
+      await cancelDialog();
+    }
+    // Cancel keeps nothing; a window off to the right floats the pane at the IDE window's edge.
+    await sleep(50);
+    assert.deepEqual(await messages(), []);
+    await putLayoutsIn({ Helped: { ...own, left: page.x + 5000 } });
+    await openDialog();
+    try {
+      await selectLayout("Helped");
+      await clickIn(tile(HELP));
+      await clickIn('[data-act="helpwhere"][data-v="panel"]');
+      assert.deepEqual((await parsedText()).floating.at(-1), {
+        id: HELP,
+        left: page.w - 420,
+        top: 150,
+        width: 420,
+        height: 500,
+      });
+      await shot("help-panel");
+    } finally {
+      await cancelDialog();
+      await c.evaluate("window.tbDocsHelpLayouts.off(); window.tbDocsHelpLayouts = null;");
+    }
   });
 
   test("the keyboard shortcut editor shares the hook; run again, nothing stacks; turned off, the text area comes back", async () => {

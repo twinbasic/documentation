@@ -1152,23 +1152,26 @@ if (
 
     // ---- the one replacement of showConfigEditor ----
     // Each script of the add-in that changes a dialog of showConfigEditor
-    // claims that dialog's title here; the replacement calls its adapter, then
-    // the IDE's function. layouteditor.js has the same two functions.
+    // puts its adapter here under the dialog's title, or the title, "|" and a
+    // name of its own; the replacement calls every adapter for the dialog's
+    // title, then the IDE's function. layouteditor.js and layouts.js have the
+    // same two functions.
     var hookOf = function () {
       var h = window.tbDocsConfigEditors;
       if (h && window.showConfigEditor === h.dispatch) return h;
       var current = window.showConfigEditor;
       var nh = { original: current.tbDocsOriginal || current, adapters: (h && h.adapters) || {} };
       nh.dispatch = function (opts) {
-        try {
-          var a =
-            opts && typeof opts.title === "string" && Object.prototype.hasOwnProperty.call(nh.adapters, opts.title)
-              ? nh.adapters[opts.title]
-              : null;
-          if (a) a(opts);
-        } catch (err) {
-          console.error(err);
-        }
+        var title = opts && typeof opts.title === "string" ? opts.title : null;
+        if (title !== null)
+          Object.keys(nh.adapters).forEach(function (k) {
+            if (k !== title && k.indexOf(title + "|") !== 0) return;
+            try {
+              nh.adapters[k](opts);
+            } catch (err) {
+              console.error(err);
+            }
+          });
         return nh.original.apply(this, arguments);
       };
       nh.dispatch.tbDocsOriginal = nh.original;

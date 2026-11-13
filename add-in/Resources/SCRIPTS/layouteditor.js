@@ -9,7 +9,11 @@
 // IDE's own text area, which it hides, and writes every change back into it
 // with an input event, so that the IDE's own handler keeps the dialog's copy
 // and turns on Save Changes. Save, Cancel, Add New and Delete are the IDE's. A
-// JSON button at the bottom shows the text area again.
+// JSON button at the bottom shows the text area again. The help add-in's own
+// pane has a box more, With the Help Add-In: whether the layout puts the help
+// in its pane or in its own window, and where that window is, which the add-in
+// keeps for the layout and layouts.js gives the page; that window is drawn in
+// the picture too.
 //
 // It changes only the call of showConfigEditor for this dialog, through the
 // one replacement of that function the help add-in's scripts share (see
@@ -79,20 +83,26 @@ if (
 
     // ---- the one replacement of showConfigEditor ----
     // Each script of the add-in that changes a dialog of showConfigEditor
-    // claims that dialog's title here; the replacement calls its adapter, then
-    // the IDE's function. keyeditor.js has the same two functions.
+    // puts its adapter here under the dialog's title, or the title, "|" and a
+    // name of its own; the replacement calls every adapter for the dialog's
+    // title, then the IDE's function. keyeditor.js and layouts.js have the
+    // same two functions.
     var hookOf = function () {
       var h = window.tbDocsConfigEditors;
       if (h && window.showConfigEditor === h.dispatch) return h;
       var current = window.showConfigEditor;
       var nh = { original: current.tbDocsOriginal || current, adapters: (h && h.adapters) || {} };
       nh.dispatch = function (opts) {
-        try {
-          var a = opts && typeof opts.title === "string" && has(nh.adapters, opts.title) ? nh.adapters[opts.title] : null;
-          if (a) a(opts);
-        } catch (err) {
-          console.error(err);
-        }
+        var title = opts && typeof opts.title === "string" ? opts.title : null;
+        if (title !== null)
+          Object.keys(nh.adapters).forEach(function (k) {
+            if (k !== title && k.indexOf(title + "|") !== 0) return;
+            try {
+              nh.adapters[k](opts);
+            } catch (err) {
+              console.error(err);
+            }
+          });
         return nh.original.apply(this, arguments);
       };
       nh.dispatch.tbDocsOriginal = nh.original;
@@ -304,6 +314,64 @@ if (
       return obj.floating.length - 1;
     };
 
+    // ---- the help add-in's own window (layouts.js) ----
+    // The help add-in keeps, for each layout, whether its help is in its pane or in a window of
+    // its own, and where that window is; layouts.js gives the page what it keeps. Without it
+    // (the add-in's scripts put in by hand) the editor shows no box for it.
+    var helpApi = function () {
+      var h = window.tbDocsHelpLayouts;
+      return h && typeof h.record === "function" && typeof h.edit === "function" && h.pane ? h : null;
+    };
+    var isHelp = function (id) {
+      var h = helpApi();
+      return !!h && id === h.pane;
+    };
+    // Whether the help is in its own window for the layout the dialog shows.
+    var helpOwn = function (s) {
+      var h = helpApi();
+      var r = h && s.m ? h.record(s.m.id) : null;
+      return !!(r && r.detached);
+    };
+    // A window's place as the add-in keeps it, on the screen in its pixels, as a place in the
+    // page in CSS pixels, and back. The add-in's pixels are at api.dpi dots per inch (the
+    // display's: the compiler's process is aware of its scaling), the page's CSS pixels at 96;
+    // the page's top left corner is at screenX, screenY in CSS pixels.
+    var toPage = function (api, r) {
+      var f = 96 / (api.dpi || 96);
+      return { left: r.left * f - (window.screenX || 0), top: r.top * f - (window.screenY || 0), width: r.width * f, height: r.height * f };
+    };
+    var fromPage = function (api, r) {
+      var f = (api.dpi || 96) / 96;
+      return {
+        left: Math.round((r.left + (window.screenX || 0)) * f),
+        top: Math.round((r.top + (window.screenY || 0)) * f),
+        width: Math.round(r.width * f),
+        height: Math.round(r.height * f),
+      };
+    };
+    var clamp = function (v, lo, hi) {
+      return Math.max(lo, Math.min(Math.max(lo, hi), v));
+    };
+    var enableSave = function (s) {
+      try {
+        s.m.ctl.setSaveChangesEnabled(true);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    // What selecting the help selects: its tile or its floating panel, else its own window.
+    var helpSel = function (s, obj) {
+      var h = helpApi();
+      var p = h
+        ? panelsOf(obj).filter(function (x) {
+            return x.id === h.pane;
+          })[0]
+        : null;
+      if (p && p.floating !== undefined) return { kind: "float", i: p.floating };
+      if (p) return { kind: "node", key: pathKey(p.path) };
+      return { kind: "own" };
+    };
+
     // ---- the editor ----
 
     var newSession = function (opts) {
@@ -352,11 +420,13 @@ if (
       var gone = isAddin(id) ? !s.addins[id] : !known(id);
       if (gone) cls += " tbLeGone";
       if (sel) cls += " tbLeSel";
-      var note = gone ? (isAddin(id) ? "not loaded" : "not a panel") : "";
+      var notes = [];
+      if (gone) notes.push(isAddin(id) ? "not loaded" : "not a panel");
+      if (isHelp(id) && helpOwn(s)) notes.push("in its own window");
       return (
         '<div class="' + cls + '" role="button" tabindex="0" data-act="select" data-key="' + key + '" aria-pressed="' + sel + '" style="flex:' +
         flexOf(n) + '" title="' + esc(id) + '"><span class="tbLeNm">' + esc(nameOf(s, id)) + '</span><span class="tbLeSz">' +
-        (note ? esc(note) + " &middot; " : "") + esc(sizeLabel(n)) + "</span></div>"
+        (notes.length ? esc(notes.join(", ")) + " &middot; " : "") + esc(sizeLabel(n)) + "</span></div>"
       );
     };
     var flexOf = function (n) {
@@ -388,9 +458,32 @@ if (
           '<div class="tbLeFloat' + (gone ? " tbLeGone" : "") + (sel ? " tbLeSel" : "") + '" data-act="selectfloat" data-i="' + i + '" style="left:' + Math.round((f.left || 0) * k) +
           "px;top:" + Math.round((f.top || 0) * k) + "px;width:" + Math.max(24, Math.round((f.width || 0) * k)) + "px;height:" + Math.max(18, Math.round((f.height || 0) * k)) +
           'px"><div class="tbLeFt" data-drag="' + i + '">' + esc(nameOf(s, f.id)) + '</div><div class="tbLeFb">' + (gone ? (isAddin(f.id) ? "not loaded<br>" : "not a panel<br>") : "") +
-          esc(f.width) + " &times; " + esc(f.height) + "</div></div>";
+          (isHelp(f.id) && helpOwn(s) ? "in its own window<br>" : "") + esc(f.width) + " &times; " + esc(f.height) + "</div></div>";
       });
       return h;
+    };
+    // The help's own window, where the add-in's record for the layout puts it on the screen,
+    // drawn over the picture on its scale and kept inside it, so that it can be clicked.
+    var ownHtml = function (s, obj, k) {
+      var api = helpApi();
+      var r = api && api.record(s.m.id);
+      if (!r || !r.detached) return "";
+      var pw = s.m.pic.clientWidth;
+      var ph = s.m.pic.clientHeight;
+      var placed = r.width > 0 && r.height > 0;
+      var at = placed ? toPage(api, r) : FLOAT_AT;
+      var w = clamp(at.width * k, 40, pw);
+      var hh = clamp(at.height * k, 24, ph);
+      var x = clamp((at.left || 0) * k, 0, pw - w);
+      var y = clamp((at.top || 0) * k, 0, ph - hh);
+      // Selected with the help's tile or floating panel, which a click on it selects.
+      var p = helpSel(s, obj);
+      var sel = !!s.sel && p.kind === s.sel.kind && (p.kind === "own" || (p.kind === "float" ? p.i === s.sel.i : p.key === s.sel.key));
+      return (
+        '<div class="tbLeFloat tbLeOwn' + (sel ? " tbLeSel" : "") + '" data-act="selectown" style="left:' + Math.round(x) + "px;top:" + Math.round(y) + "px;width:" + Math.round(w) + "px;height:" +
+        Math.round(hh) + 'px"><div class="tbLeFt">Help: its own window</div><div class="tbLeFb">' +
+        (placed ? esc(r.width) + " &times; " + esc(r.height) + "<br>at " + esc(r.left) + ", " + esc(r.top) + " on the screen" : "where it is not known") + "</div></div>"
+      );
     };
 
     var segHtml = function (act, value, choices, ro) {
@@ -421,9 +514,16 @@ if (
           return s.addins[id] ? "" : '<div class="tbLeNote">No loaded add-in has this window. The IDE keeps its place, empty and marked <i>(currently unavailable)</i>, until the add-in opens it.</div>';
         return known(id) ? "" : '<div class="tbLeNote tbLeError">This is not a panel of the IDE: applying the layout shows an error.</div>';
       };
+      if (s.sel.kind === "own") {
+        var api = helpApi();
+        return (
+          '<div class="tbLeHead">' + esc(nameOf(s, api.pane)) + ' <span class="tbLeMuted">in its own window</span></div>' +
+          '<p class="tbLeMuted">Not among this layout\'s panels.</p>' + helpBoxHtml(s)
+        );
+      }
       if (s.sel.kind === "float") {
         var f = obj.floating[s.sel.i];
-        h = '<div class="tbLeHead">' + esc(nameOf(s, f.id)) + " <code>" + esc(f.id) + "</code> <span class=tbLeMuted>floating</span></div>" + note(f.id);
+        h = '<div class="tbLeHead">' + esc(nameOf(s, f.id)) + " <code>" + esc(f.id) + "</code> <span class=tbLeMuted>floating</span></div>" + note(f.id) + (isHelp(f.id) ? helpBoxHtml(s) : "");
         h += '<div class="tbLeLabel">Place in the IDE window, in pixels</div><div class="tbLeLine tbLeNums">';
         ["left", "top", "width", "height"].forEach(function (k) {
           h += '<label>' + k.charAt(0).toUpperCase() + k.slice(1) + ' <input class="tbLeNum" type="number" step="1" data-act="floatnum" data-k="' + k + '" value="' + esc(f[k]) + '"' + (ro ? " disabled" : "") + "></label>";
@@ -438,7 +538,7 @@ if (
       var root = !path.length;
       var par = root ? null : at(obj, path.slice(0, -1));
       if (grp) h = '<div class="tbLeHead">' + (root ? "The whole window" : "A group of " + n.content.length) + " <code>" + esc(n.type) + "</code></div>";
-      else h = '<div class="tbLeHead">' + esc(nameOf(s, n.id)) + " <code>" + esc(n.id) + "</code></div>" + note(n.id);
+      else h = '<div class="tbLeHead">' + esc(nameOf(s, n.id)) + " <code>" + esc(n.id) + "</code></div>" + note(n.id) + (isHelp(n.id) ? helpBoxHtml(s) : "");
       if (!root) h += '<div class="tbLeLabel">Where</div><div class="tbLeLine">' + crumbsHtml(s, obj, path) + "</div>";
       if (grp)
         h += '<div class="tbLeLabel">Its members are</div><div class="tbLeLine">' + segHtml("dir", n.type, [["vertical", "Side by side"], ["horizontal", "One above another"]], ro) + "</div>";
@@ -456,6 +556,79 @@ if (
         }
       }
       return h;
+    };
+    // The grey box under the help's panel: in this panel or in its own window, and where that
+    // window is, which the help add-in keeps for the layout (layouts.js). Applying a layout the
+    // add-in has no record for leaves the help where it is, until one is chosen here or the
+    // layout is saved again; no built-in layout has the help's panel.
+    var helpBoxHtml = function (s) {
+      var api = helpApi();
+      if (!api) return "";
+      var r = api.record(s.m.id);
+      var own = !!(r && r.detached);
+      var out = '<div class="tbLeAddin"><div class="tbLeAddinTitle">With the Help Add-In</div>';
+      out +=
+        '<div class="tbLeLine">' +
+        segHtml(
+          "helpwhere",
+          r ? (own ? "own" : "panel") : "",
+          [
+            ["panel", "In this panel"],
+            ["own", "In its own window"],
+          ],
+          s.ro,
+        ) +
+        "</div>";
+      if (!r) out += '<p class="tbLeMuted">Not chosen for this layout: applying it leaves the help where it is.</p>';
+      if (own) {
+        out += '<div class="tbLeLine tbLeNums">';
+        ["left", "top", "width", "height"].forEach(function (k) {
+          out +=
+            "<label>" + k.charAt(0).toUpperCase() + k.slice(1) + ' <input class="tbLeNum" type="number" step="1" data-act="helpnum" data-k="' + k + '" value="' + esc(r[k] | 0) + '"' +
+            (s.ro ? " disabled" : "") + "></label>";
+        });
+        out +=
+          '</div><p class="tbLeMuted">Pixels on the screen. Back in this panel, the pane floats where the window was, inside the IDE window; dock it again if you wish.</p>';
+      }
+      return out + '<p class="tbLeMuted">Kept by the add-in for this layout, not in its JSON.</p></div>';
+    };
+    // In this panel or in its own window, chosen in the box. Back in this panel from its own
+    // window, the pane floats where the window was, at its size, kept inside the IDE window:
+    // taken out of the dock, or added when the layout lacks it.
+    var helpWhere = function (s, obj, where) {
+      var api = helpApi();
+      if (!api) return;
+      var id = s.m.id;
+      var r = api.record(id);
+      var was = !!(r && r.detached);
+      var place = r && r.width > 0 ? r : api.now && api.now.width > 0 ? api.now : fromPage(api, FLOAT_AT);
+      var rec = { detached: where === "own", left: place.left | 0, top: place.top | 0, width: place.width | 0, height: place.height | 0 };
+      api.edit(id, rec);
+      var at = panelsOf(obj).filter(function (p) {
+        return p.id === api.pane;
+      })[0];
+      if (where === "panel" && was && !(at && at.floating === undefined && !at.path.length)) {
+        var size = ideSize();
+        var p = rec.width > 0 && rec.height > 0 ? toPage(api, rec) : FLOAT_AT;
+        var w = Math.round(Math.min(p.width, size.w));
+        var hh = Math.round(Math.min(p.height, size.h));
+        var rect = { left: Math.round(clamp(p.left, 0, size.w - w)), top: Math.round(clamp(p.top, 0, size.h - hh)), width: w, height: hh };
+        if (at && at.floating !== undefined) {
+          var f = obj.floating[at.floating];
+          f.left = rect.left;
+          f.top = rect.top;
+          f.width = rect.width;
+          f.height = rect.height;
+          s.sel = { kind: "float", i: at.floating };
+        } else {
+          if (at) takeOut(obj, at.path);
+          s.sel = { kind: "float", i: floatAt(obj, api.pane, rect) };
+        }
+        return write(s, obj);
+      }
+      if (where === "panel" && s.sel && s.sel.kind === "own") s.sel = null;
+      enableSave(s);
+      render(s);
     };
 
     var barHtml = function (s, obj, free) {
@@ -534,6 +707,7 @@ if (
       }
       s.obj = obj;
       if (s.sel && s.sel.kind === "float" && !(Array.isArray(obj.floating) && obj.floating[s.sel.i])) s.sel = null;
+      if (s.sel && s.sel.kind === "own" && !helpOwn(s)) s.sel = null;
       if (s.sel && s.sel.kind === "node") {
         try {
           if (!at(obj, pathOf(s.sel.key))) s.sel = null;
@@ -563,7 +737,7 @@ if (
       var k = m.pic.clientWidth / size.w || 0;
       var dock = '<div class="tbLeDock" style="left:' + (dr.left / size.w) * 100 + "%;top:" + (dr.top / size.h) * 100 + "%;width:" + (dr.width / size.w) * 100 + "%;height:" + (dr.height / size.h) * 100 + '%">' + treeHtml(s, obj.docked, []) + "</div>";
       m.pic.className = "tbLePic" + (s.placing ? " tbLePlacing" : "");
-      m.pic.innerHTML = '<div class="tbLeChrome" style="height:' + (dr.top / size.h) * 100 + '%"></div>' + dock + floatsHtml(s, obj, k);
+      m.pic.innerHTML = '<div class="tbLeChrome" style="height:' + (dr.top / size.h) * 100 + '%"></div>' + dock + floatsHtml(s, obj, k) + ownHtml(s, obj, k);
       m.insp.innerHTML = inspHtml(s, obj);
       var docked = 0;
       var floating = 0;
@@ -597,6 +771,11 @@ if (
         s.sel = { kind: "float", i: Number(el.getAttribute("data-i")) };
         return render(s);
       }
+      if (a === "selectown") {
+        if (s.placing) return;
+        s.sel = helpSel(s, obj);
+        return render(s);
+      }
       if (a === "placecancel") {
         s.placing = null;
         return render(s);
@@ -613,10 +792,22 @@ if (
           s.placing = null;
           return write(s, obj);
         case "current": {
+          // As Save Current Layout As stores it, where the help is now included.
           var cfg = getPanelsConfiguration();
+          var api = helpApi();
+          if (api && api.now)
+            api.edit(s.m.id, {
+              detached: !!api.now.detached,
+              left: api.now.left | 0,
+              top: api.now.top | 0,
+              width: api.now.width | 0,
+              height: api.now.height | 0,
+            });
           s.sel = null;
           return write(s, { docked: cfg.docked[0], floating: cfg.floating });
         }
+        case "helpwhere":
+          return helpWhere(s, obj, el.getAttribute("data-v"));
         case "dir":
           n.type = el.getAttribute("data-v");
           return write(s, obj);
@@ -695,6 +886,18 @@ if (
         if (isNaN(w)) return render(s);
         f[el.getAttribute("data-k")] = w;
         return write(s, obj);
+      }
+      if (a === "helpnum") {
+        var api = helpApi();
+        var r = api && api.record(s.m.id);
+        var x = parseInt(el.value, 10);
+        if (!r || isNaN(x)) return render(s);
+        var k = el.getAttribute("data-k");
+        var rec = { detached: !!r.detached, left: r.left | 0, top: r.top | 0, width: r.width | 0, height: r.height | 0 };
+        rec[k] = k === "width" || k === "height" ? Math.max(1, x) : x;
+        api.edit(s.m.id, rec);
+        enableSave(s);
+        return render(s);
       }
     };
 
@@ -940,6 +1143,13 @@ if (
     // Changes the options of the one dialog.
     var adapt = function (opts) {
       var s = newSession(opts);
+      // The help add-in answers the dialog's question where its help is now after the
+      // dialog shows; the picture is drawn again with the answer.
+      var api = helpApi();
+      if (api)
+        api.onUpdate = function () {
+          if (live && s.m && s.m.node.isConnected) render(s);
+        };
       var getNode = opts.getEntryEditorDomNode;
       var addNew = opts.addNewEntry;
       var del = opts.deleteEntry;
@@ -1065,6 +1275,11 @@ if (
       ".tbLeFoot{display:flex;gap:10px;align-items:center;padding:6px 8px;background:#b5b5b5}",
       ".tbLeStatus{color:#1e1e1e}.tbLeBad{color:#8e1c1c;font-weight:bold}",
       ".tbLeMark{color:#c62828;font-weight:bold}",
+      // The help add-in's box and its own window: grey, as an add-in's box on the IDE's pages.
+      ".tbLeAddin{margin:6px 0 8px;padding:0 10px 4px;border:1px solid rgba(128,128,128,.45);border-radius:4px;background:#f3f3f3}",
+      ".tbLeAddinTitle{margin:0 -10px 6px;padding:4px 8px;border-bottom:1px solid rgba(128,128,128,.35);background:#e4e4e4;font-weight:600}",
+      ".tbLeAddin p{margin:4px 0 6px;font-size:95%}",
+      ".tbLeOwn{border-style:dashed;background:#f7f7f7}.tbLeOwn .tbLeFt{cursor:pointer;background:#d4d4d4}",
     ].join("\n");
 
     window.tbDocsLayoutEditor = {
@@ -1077,6 +1292,8 @@ if (
         mounts = [];
         var st = document.getElementById("tbDocsLayoutEditorStyle");
         if (st) st.remove();
+        var api = helpApi();
+        if (api) api.onUpdate = null;
         Array.prototype.forEach.call(document.querySelectorAll(".tbLeMark"), function (e) {
           e.remove();
         });

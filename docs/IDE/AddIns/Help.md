@@ -121,6 +121,10 @@ The gear
 
 The window is open again the next time the IDE starts, if it was open when the IDE closed. With **Show real OS titlebar** turned on in the IDE's options, the window has an ordinary Windows title bar instead, in the IDE's dark or light colours, and **Attach** and the gear move next to the search box.
 
+### The help window in panel layouts
+
+Each [panel layout](../Customising/Panel-Layouts) also keeps where the help is: in its pane, or in its own window and where that window is on the screen. **Window > Panel Layouts > Save Current Panel Layout As...** records where the help is at that moment. Choosing the layout later puts the help back there: it detaches the help into its window at the recorded place, or attaches it to its pane. A built-in layout, and a layout saved while the add-in was not loaded, leave the help where it is. The add-in keeps this itself, by the layout's name, and not in the layout's text. In **Manage Panel Layouts**, the help's panel has a box to change it: see [The panel layout editor](#the-panel-layout-editor).
+
 ## Other add-ins' shortcuts
 
 While this add-in is loaded, the keyboard shortcuts that other add-ins register with Ctrl or Alt work. Without it, the IDE does not run an add-in's shortcut that includes Ctrl or Alt: see [KeyboardShortcuts](../../Packages/tbIDE/KeyboardShortcuts). The IDE's own command on the same keys still runs as well. The setting **Ctrl and Alt shortcuts of add-ins** turns this off.
@@ -217,7 +221,17 @@ A floating panel's box has its place in the IDE window, in pixels, and **Dock it
 
 The panels the layout lacks are listed above the picture, the tool windows of the add-ins that are loaded among them. Clicking one, or **Dock it...**, then clicking near an edge of a tile docks the panel on that side of it: in the tile's group when the group's members run that way, or in a new group of the two. **Make it float** floats it instead.
 
-**Use the current arrangement** replaces the layout with the panels as the IDE shows them now.
+**Use the current arrangement** replaces the layout with the panels as the IDE shows them now, and with where the help is now.
+
+The help's own panel, **TWINBASIC HELP**, has one more box, **With the Help Add-In**, for [where the layout puts the help](#the-help-window-in-panel-layouts):
+
+**In this panel**
+: Choosing the layout attaches the help to its pane. Chosen for a layout whose help was in its own window, it also floats the pane where the window was, at the window's size and inside the IDE window, and adds the pane to the layout if it lacked it. Dock it again if you wish.
+
+**In its own window**
+: Choosing the layout detaches the help into its window, placed at **Left** and **Top** and sized to **Width** and **Height**: pixels on the screen. The window is drawn in the picture at that place, inside the picture if it is outside the IDE window. Clicking it selects the help's panel, or shows the box alone when the layout has no pane for the help.
+
+A layout for which neither has been chosen leaves the help where it is. Like every other change, the choice is kept by **Save Changes** and discarded by **Cancel**. **Save Changes** also forgets what the add-in kept for the layouts deleted in the dialog.
 
 A tile of an add-in's window that no loaded add-in has is marked *not loaded*. That is no problem: the IDE keeps the window's place, empty and marked *(currently unavailable)*, until the add-in opens it. The line under the picture counts the layout's panels and its problems: a layout with no Editor, a panel in it twice, or an id that is not a panel of the IDE. A layout with a problem is marked with **!** in the list.
 

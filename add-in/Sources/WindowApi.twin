@@ -1,7 +1,7 @@
 ' The Win32 calls the detached help window needs: where the compiler is, the
 ' window's place, state and frame, the move loop its title bar starts, the IDE's
-' "Show real OS titlebar" setting, and the compiler's environment, so that no
-' other file declares a Win32 function.
+' "Show real OS titlebar" setting, the compiler's environment, and the sections
+' of the add-in's own settings, so that no other file declares a Win32 function.
 Module WindowApi
     Private Type RECT
         Left As Long
@@ -66,6 +66,14 @@ Module WindowApi
         ByVal lpValue As LongPtr, ByVal dwFlags As Long, ByVal pdwType As LongPtr, ByVal pvData As LongPtr, _
         ByRef pcbData As Long) As Long
 
+    Private Declare PtrSafe Function RegOpenKeyExW Lib "advapi32" (ByVal hKey As LongPtr, ByVal lpSubKey As LongPtr, _
+        ByVal ulOptions As Long, ByVal samDesired As Long, ByRef phkResult As LongPtr) As Long
+    Private Declare PtrSafe Function RegEnumKeyExW Lib "advapi32" (ByVal hKey As LongPtr, ByVal dwIndex As Long, _
+        ByVal lpName As LongPtr, ByRef lpcchName As Long, ByVal lpReserved As LongPtr, ByVal lpClass As LongPtr, _
+        ByVal lpcchClass As LongPtr, ByVal lpftLastWriteTime As LongPtr) As Long
+    Private Declare PtrSafe Function RegCloseKey Lib "advapi32" (ByVal hKey As LongPtr) As Long
+    Private Declare PtrSafe Function GetDpiForSystem Lib "user32" () As Long
+
     Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
     Private Declare PtrSafe Function ClientToScreen Lib "user32" (ByVal hWnd As LongPtr, ByRef lpPoint As POINTAPI) As Long
 
@@ -99,6 +107,9 @@ Module WindowApi
     Private Const DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 As Long = 19
     Private Const HKEY_CURRENT_USER As Long = &H80000001
     Private Const RRF_RT_REG_SZ As Long = &H2
+    Private Const KEY_READ As Long = &H20019
+    ' Where SaveSetting keeps an application's sections, each a key of its own.
+    Private Const SETTINGS_ROOT As String = "Software\VB and VBA Program Settings\"
     ' Where the IDE keeps its options: one value, GENERAL, a JSON object.
     Private Const IDE_SETTINGS_KEY As String = "Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings"
 
@@ -355,6 +366,40 @@ Module WindowApi
             End Select
         Loop
         Return i
+    End Function
+
+    ' The dots per inch of the pixels this process places windows in: the
+    ' display's, as the compiler's process is aware of its scaling, or 96 in a
+    ' process that is not, whose places Windows scales.
+    Public Function ProcessDpi() As Long
+        On Error GoTo Failed
+        Dim dpi As Long = GetDpiForSystem()
+        If dpi > 0 Then Return dpi
+    Failed:
+        Return 96
+    End Function
+
+    ' The names of the sections SaveSetting has made inside an application's
+    ' section, such as "Layouts\Mine" inside "Layouts": the keys of the
+    ' registry inside its key, which GetAllSettings does not list. Empty when
+    ' the section is not there.
+    Public Function SettingSections(ByVal app As String, ByVal section As String) As Collection
+        Dim found As New Collection
+        Dim key As LongPtr
+        If RegOpenKeyExW(HKEY_CURRENT_USER, StrPtr(SETTINGS_ROOT & app & "\" & section), 0, KEY_READ, key) <> 0 Then
+            Return found
+        End If
+        Dim i As Long
+        Do
+            ' A key's name is at most 255 characters.
+            Dim size As Long = 256
+            Dim buffer As String = String$(size, vbNullChar)
+            If RegEnumKeyExW(key, i, StrPtr(buffer), size, 0, 0, 0, 0) <> 0 Then Exit Do
+            found.Add Left$(buffer, size)
+            i = i + 1
+        Loop
+        RegCloseKey key
+        Return found
     End Function
 
     ' The text of the IDE's GENERAL option value, or "" if the IDE has not

@@ -42,7 +42,7 @@ import { createStaticHandler } from "../../builder/static-files.mjs";
 import { writeHelpArchive } from "../../lib/help-archive.mjs";
 import { attach } from "../../scripts/lib/tb-cdp.mjs";
 import { timeoutMs } from "../../scripts/lib/harness-settings.mjs";
-import { leaseSlot, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { desktopWindows, leaseSlot, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { fixPageSize, PAGE } from "../../scripts/lib/tb-lane.mjs";
@@ -2220,6 +2220,203 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await clickInWindow("#helpAttach");
     await waitForLine(mark, "attached");
     assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+  });
+
+  // ------------------------------------------------------------ where the help is, for each panel layout
+
+  // The add-in's first line after `mark` that starts with `start`, waited for.
+  async function lineStarting(mark, start, timeout = 15 * 1000) {
+    let found;
+    await waitFor(c, async (c) => (found = (await addinLines(c, mark)).find((l) => l.startsWith(start))), { timeout });
+    assert.ok(found, `no line starting "${start}" in ${JSON.stringify(await addinLines(c, mark))}`);
+    return found;
+  }
+  // The place at the end of a "layout ..." line: [left, top, width, height].
+  const placeOf = (line) =>
+    line
+      .match(/ at (-?\d+),(-?\d+),(\d+),(\d+)$/)
+      ?.slice(1)
+      .map(Number) ?? null;
+  // Whether the pane's body shows: a docked pane the add-in hides keeps its place, its body
+  // hidden and "(currently unavailable)" shown.
+  const paneBody = (c) =>
+    c.evaluate(`(() => {
+      const w = toolWindowsById[${JSON.stringify(PANE)}];
+      if (!w) return null;
+      const r = w.shadowDom.host.getBoundingClientRect();
+      return { shown: !!(r.width && r.height) && w.bodyElement.style.display !== "none", unavailable: w.emptyBodyElement.style.display === "flex" };
+    })()`);
+  const inDialog = (js) =>
+    c.evaluate(
+      `(() => { const m = [...document.querySelectorAll(".modalDialogContainer")].pop(); if (!m) return null; ${js} })()`,
+    );
+  async function openLayouts(name) {
+    await c.evaluate("showManagePanelLayouts()");
+    assert.ok(
+      await waitFor(c, () =>
+        inDialog(`return (m.querySelector(".modalTitleBar")?.innerText || "").includes("Manage Panel Layouts");`),
+      ),
+      "Manage Panel Layouts did not open",
+    );
+    assert.ok(
+      await inDialog(
+        `const e = [...m.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === ${JSON.stringify(name)}); if (!e) return false; e.click(); return true;`,
+      ),
+      `the dialog lists no layout ${name}`,
+    );
+    await sleep(300);
+  }
+  async function clickInDialog(css) {
+    assert.ok(
+      await inDialog(
+        `const e = m.querySelector(${JSON.stringify(css)}); if (!e) return false; e.click(); return true;`,
+      ),
+      `no ${css} in the dialog`,
+    );
+    await sleep(150);
+  }
+  async function setInDialog(css, value) {
+    assert.ok(
+      await inDialog(
+        `const e = m.querySelector(${JSON.stringify(css)}); if (!e) return false; e.value = ${JSON.stringify(String(value))}; e.dispatchEvent(new Event("change", { bubbles: true })); return true;`,
+      ),
+      `no ${css} in the dialog`,
+    );
+    await sleep(150);
+  }
+  const helpBoxIn = () =>
+    inDialog(`const b = m.querySelector(".tbLeInsp .tbLeAddin"); if (!b) return null; return {
+      pressed: [...b.querySelectorAll('[data-act="helpwhere"]')].filter((e) => e.getAttribute("aria-pressed") === "true").map((e) => e.textContent),
+      place: ["left", "top", "width", "height"].map((k) => Number(b.querySelector('[data-act="helpnum"][data-k="' + k + '"]')?.value)),
+    };`);
+  async function saveLayouts() {
+    await inDialog(
+      `[...m.querySelectorAll("button, .dialogButton, [class*=Button]")].find((e) => e.textContent.trim() === "Save Changes").click();`,
+    );
+    assert.ok(await waitFor(c, () => c.evaluate("modalDialogs.length === 0")), "Save Changes did not close the dialog");
+  }
+  let apart; // the window's place as the layout Apart records it
+
+  test("a layout saved with the help in its own window records where the window is, and applying it puts the help there", async () => {
+    await detach();
+    await connectWindow();
+    let mark = await consoleMark(c);
+    await c.evaluate(`saveCurrentPanelLayoutAs("Apart")`);
+    apart = placeOf(await lineStarting(mark, "layout saved Apart detached at "));
+    assert.ok(apart && apart[2] > 0 && apart[3] > 0, `the place recorded: ${apart}`);
+    // The add-in's pixels are at the dots per inch it tells the page: the window Windows shows
+    // is that place at the window's own, which is what the panel layout editor counts on.
+    const shown = (await desktopWindows(lane.desktop)).find((w) => w.visible && w.title === "twinBASIC Help");
+    assert.ok(shown, "Windows shows no window titled twinBASIC Help");
+    const f = shown.dpi / (await c.evaluate("window.tbDocsHelpLayouts.dpi"));
+    assert.ok(
+      Math.abs(shown.rect[0] - apart[0] * f) <= 3 && Math.abs(shown.rect[2] - shown.rect[0] - apart[2] * f) <= 3,
+      `the window is at ${shown.rect} at ${shown.dpi} dpi, the add-in says ${apart}`,
+    );
+    mark = await consoleMark(c);
+    await clickInWindow("#helpAttach");
+    await waitForLine(mark, "attached");
+    mark = await consoleMark(c);
+    await c.evaluate(`saveCurrentPanelLayoutAs("Together")`);
+    await lineStarting(mark, "layout saved Together attached at ");
+    mark = await consoleMark(c);
+    await c.evaluate(`setActivePanelLayoutName("Apart")`);
+    assert.equal(
+      await lineStarting(mark, "layout applied Apart "),
+      `layout applied Apart detached at ${apart.join(",")}`,
+    );
+    assert.ok((await addinLines(c, mark)).includes("detached"));
+    assert.equal((await paneBody(c))?.shown, false, "the pane shows beside the window");
+  });
+
+  test("a layout recorded with the help in its pane attaches it; one with no record leaves the help where it is, a docked pane hidden while it is in its window", async () => {
+    let mark = await consoleMark(c);
+    await c.evaluate(`setActivePanelLayoutName("Together")`);
+    assert.equal(await lineStarting(mark, "layout applied Together "), "layout applied Together attached");
+    assert.ok((await addinLines(c, mark)).includes("attached"));
+    assert.ok(await waitFor(c, async (c) => (await paneBody(c))?.shown), "the pane does not show");
+    mark = await consoleMark(c);
+    await c.evaluate(`setActivePanelLayoutName("<DEFAULT>")`);
+    assert.equal(await lineStarting(mark, "layout applied %3CDEFAULT%3E"), "layout applied %3CDEFAULT%3E unrecorded");
+    await sleep(1000);
+    assert.deepEqual(
+      (await addinLines(c, mark)).filter((l) => l === "detached" || l === "attached"),
+      [],
+      "a layout with no record moved the help",
+    );
+    // In its window, a layout with no record that docks the pane leaves the pane hidden in its place.
+    mark = await consoleMark(c);
+    await c.evaluate(`setActivePanelLayoutName("Apart")`);
+    await lineStarting(mark, "layout applied Apart detached");
+    await c.evaluate(`customPanelLayouts["Docked help"] = {
+      layoutData: JSON.stringify({ type: "vertical", variableSize: true, size: "0%", content: [
+        Object.assign(JSON.parse(builtInPanelLayouts["<DEFAULT>"].layoutData), { variableSize: true, size: "0%" }),
+        { id: ${JSON.stringify(`ADDIN_${PANE}`)}, variableSize: false, size: "25%" },
+      ] }),
+      floatingData: "[]",
+    }`);
+    mark = await consoleMark(c);
+    await c.evaluate(`setActivePanelLayoutName("Docked help")`);
+    await lineStarting(mark, "layout applied Docked%20help unrecorded");
+    await sleep(1000);
+    const lines = await addinLines(c, mark);
+    assert.ok(!lines.includes("attached") && !lines.includes("window hidden"), JSON.stringify(lines));
+    assert.deepEqual(await paneBody(c), { shown: false, unavailable: true });
+  });
+
+  test("in Manage Panel Layouts the help's box shows a layout's record, a place changed there is kept at Save Changes, and a deleted layout's record goes", async () => {
+    let mark = await consoleMark(c);
+    await c.evaluate(`setActivePanelLayoutName("Apart")`);
+    await lineStarting(mark, "layout applied Apart detached");
+    await openLayouts("Apart");
+    await clickInDialog(".tbLeOwn");
+    let box = await helpBoxIn();
+    assert.deepEqual(box, { pressed: ["In its own window"], place: apart });
+    await setInDialog('[data-act="helpnum"][data-k="left"]', apart[0] + 40);
+    await setInDialog('[data-act="helpnum"][data-k="top"]', apart[1] + 30);
+    box = await helpBoxIn();
+    assert.deepEqual(box.place, [apart[0] + 40, apart[1] + 30, apart[2], apart[3]]);
+    // Together, deleted with its X.
+    assert.ok(
+      await inDialog(
+        `const e = [...m.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === "Together"); const x = e && e.querySelector(".configEditorEntryIcon"); if (!x) return false; x.click(); return true;`,
+      ),
+      "Together has no X",
+    );
+    await sleep(200);
+    mark = await consoleMark(c);
+    await saveLayouts();
+    assert.equal(await lineStarting(mark, "layout records "), "layout records set 1, removed Together");
+    apart = [apart[0] + 40, apart[1] + 30, apart[2], apart[3]];
+    assert.equal(
+      await lineStarting(mark, "layout applied Apart "),
+      `layout applied Apart detached at ${apart.join(",")}`,
+    );
+  });
+
+  test("In this panel for a layout whose help is in its own window floats the pane where the window was, and applying the layout attaches it there", async () => {
+    await openLayouts("Apart");
+    await clickInDialog(".tbLeOwn");
+    await clickInDialog('[data-act="helpwhere"][data-v="panel"]');
+    const want = await c.evaluate(`(() => {
+      const f = 96 / window.tbDocsHelpLayouts.dpi, a = ${JSON.stringify(apart)};
+      const w = Math.round(Math.min(a[2] * f, document.body.clientWidth)), h = Math.round(Math.min(a[3] * f, document.body.clientHeight));
+      const clamp = (v, hi) => Math.round(Math.max(0, Math.min(Math.max(0, hi), v)));
+      return { id: ${JSON.stringify(`ADDIN_${PANE}`)}, left: clamp(a[0] * f - window.screenX, document.body.clientWidth - w), top: clamp(a[1] * f - window.screenY, document.body.clientHeight - h), width: w, height: h };
+    })()`);
+    const text = JSON.parse(await inDialog(`return m.querySelector("textarea.genericMonospaceTextArea").value;`));
+    assert.deepEqual(text.floating.at(-1), want);
+    const mark = await consoleMark(c);
+    await saveLayouts();
+    assert.equal(await lineStarting(mark, "layout records "), "layout records set 1, removed none");
+    assert.equal(await lineStarting(mark, "layout applied Apart "), "layout applied Apart attached");
+    assert.ok(await waitFor(c, async (c) => (await paneBody(c))?.shown), "the pane does not show");
+    const box = await floatingBox(c);
+    assert.ok(box, "the pane does not float");
+    assert.ok(
+      Math.abs(box.left - want.left) <= 2 && Math.abs(box.top - want.top) <= 2 && Math.abs(box.width - want.width) <= 2,
+      `the pane floats at ${JSON.stringify(box)}, the layout says ${JSON.stringify(want)}`,
+    );
   });
 
   // The IDE's option "Show real OS titlebar" gives the window the Windows title

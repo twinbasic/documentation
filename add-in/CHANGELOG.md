@@ -4,6 +4,24 @@ What changed in the twinBASIC Documentation Help add-in, newest first. The versi
 DLL's (its file properties show it). The documentation the add-in shows and its index of
 symbols change with every build of the documentation and are not listed here.
 
+## 1.4.0 (2026-11-13)
+
+- **Each panel layout keeps where the help is**: in its pane, or in its own window and where that
+  window is on the screen. **Save Current Panel Layout As** records where the help is now, and
+  choosing a layout puts the help back there, detaching it, attaching it or moving its window. A
+  layout saved before, and a built-in one, leave the help where it is.
+- In **Manage Panel Layouts**, the help's panel has a box, **With the Help Add-In**: *In this
+  panel* or *In its own window* for the layout, and the window's place on the screen. The window
+  is drawn in the picture too. Choosing *In this panel* for a layout whose help is in its own
+  window floats the pane where the window was, inside the IDE window. **Use the current
+  arrangement** takes where the help is now as well. **Save Changes** keeps the choice and forgets
+  the layouts deleted in the dialog; Cancel keeps nothing.
+- Choosing a layout no longer loses the help's pane when it floats or is docked: the IDE took it
+  out of the window without closing it, so the pane did not come back until the compiler
+  restarted. The tool windows of other add-ins come back too. A pane the layout floats keeps the
+  layout's size when it is shown, and while the help is in its own window, the pane no longer
+  shows in the layout beside the window.
+
 ## 1.3.0 (2026-11-12)
 
 - **Window > Panel Layouts > Manage Panel Layouts** shows each layout as a picture of the IDE

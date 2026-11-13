@@ -1350,18 +1350,19 @@ not: a restart saves a harness about a second against opening a new IDE.
       and by `test/ide-js.test.mjs`), and put in place of the script's `$COMMANDS$` marker by
       `ApplyFix`.
 14. **A panel layout editor** (owner, 2026-11-12: Manage Panel Layouts in the spirit of item
-    13, on by default). **The editor is done (add-in 1.3.0); the help's detached state per
-    layout is not** (the last two bullets). `Resources/SCRIPTS/layouteditor.js`, put in by
+    13, on by default). The editor is add-in 1.3.0, the help's detached state per layout 1.4.0
+    (the last bullets). `Resources/SCRIPTS/layouteditor.js`, put in by
     `BuildPane` as item 13's script is, with a settings row of its own (`Fixes`,
     `LayoutEditor`, on by default; the window's box follows through `layouteditor:<1|0>`),
     tested by the `ide-test` lane `layouteditor` (`test/ide/layouteditor.test.mjs`, the script
     put into a bare IDE with layouts set in the page, as `keyeditor` does) and by the `help`
     lanes (the settings box). Picture `Help_LayoutEditor` from `shoot_docs`' help setup.
     Facts below are from BETA 1042's `main.js`.
-    - **Reached** through one replacement of `showConfigEditor` that both scripts share,
-      `window.tbDocsConfigEditors` (`hookOf` and `unhook`, the same code in each script): each
-      claims its dialog's title in `adapters`, and the replacement calls that adapter before
-      the IDE's function. Neither wraps the other's, turning one off leaves the other in, and
+    - **Reached** through one replacement of `showConfigEditor` that the scripts share,
+      `window.tbDocsConfigEditors` (`hookOf` and `unhook`, the same code in keyeditor.js,
+      layouteditor.js and layouts.js): each puts its adapter in `adapters` under its dialog's
+      title, or the title, `|` and a name of its own (layouts.js: `Manage Panel Layouts|help`),
+      and the replacement calls every adapter for the title before the IDE's function. Neither wraps the other's, turning one off leaves the other in, and
       the IDE's function goes back when the last is off. The editor returns a node of its own
       in place of the IDE's text area, which it holds, hidden; turned off, the text area takes
       the node's place again.
@@ -1407,14 +1408,60 @@ not: a restart saves a harness about a second against opening a new IDE.
       setting `LAYOUTv2`, written at every panel change) are built again from the window by
       `getDockedPanelConfig` and `getFloatingPanelsConfig`, which write only the id, the sizes
       and the position, so anything extra is lost at the next save; and a later IDE may check
-      the JSON. Planned: a settings section per layout (`Layouts\<name>`, the name encoded,
-      since a layout name may hold `\`) with `Detached` and the window's place in screen
-      pixels; the page script wraps `setActivePanelLayoutName` and `saveCurrentPanelLayoutAs`
-      and tells the add-in, through a hidden element as hover help does, which layout was
-      applied or saved; the add-in then detaches, attaches or moves its window. Sections of
-      deleted layouts go at Save Changes. *Custom Layout (Unsaved)* keeps today's one `Window`
-      section. The edit box of the Help panel has a grey *With the Help Add-In* box: *In this
-      panel* or *In its own window*, and the window's place.
+      the JSON. So: a settings section per layout, `Layouts\<name>`, with `Detached`, `Left`,
+      `Top`, `Width` and `Height`, the name as `enc()` in layouts.js writes it
+      (`encodeURIComponent` with `!'()*~.` encoded too, since a name may hold `\`; the add-in
+      takes only letters, digits, `%`, `-` and `_`). The `Window` section stays where the help
+      is now, whichever layout is in use (*Custom Layout (Unsaved)* included); a layout's
+      section changes only when it is saved or edited in the dialog.
+    - **layouts.js**, put in by `BuildPane` always (no settings row: it is the add-in's own
+      behaviour, not a fix), with the add-in's state in its `$STATE$` marker and later through
+      `update()` (`PushLayoutState`): the pane's id, `dpi`, `now` (detached, and the window's
+      place now or last left) and `records`. It wraps `setActivePanelLayoutName` and
+      `saveCurrentPanelLayoutAs` and sends `applied` or `saved` with the encoded name through
+      `tbDocsLayout` on its hidden element, as hover help does; its dialog adapter sends `ask`
+      when Manage Panel Layouts opens, and wraps `saveChanges` to send `records` (`keep` and
+      the names left, then a `set` line per record changed) ahead of the `applied` that the
+      IDE's Save Changes causes. `window.tbDocsHelpLayouts` (`record`, `edit`, `dialog`,
+      `onUpdate`) is what layouteditor.js reads and writes. The add-in: `saved` records
+      `Detached` and the window's place; `applied` with a record detaches (the window shown
+      without activating, at the record's place when it is on a monitor and the window is
+      neither minimized nor maximized) or attaches; with none it does nothing; `records`
+      writes the `set` lines and deletes every `Layouts\` section not kept (`SettingSections`
+      enumerates them with `RegEnumKeyExW`). Under the test switch it prints `layout saved
+      <name> <detached|attached> at L,T,W,H`, `layout applied <name> <detached at
+      L,T,W,H|attached|unrecorded>` and `layout records set <n>, removed <names|none>`.
+    - **Applying a layout closes every add-in's tool window** (`restorePanelLayout` calls
+      `closeAllAddinToolwindows`), and `Pane_OnClose` makes the pane again, which runs
+      layouts.js again: a message waits while the sink's tool window is no longer
+      `toolWindowsById`'s (`stale`), and the new run sends what the old one held. `BuildPane`
+      hides the new pane while the help is detached, since `createToolWindow` shows one a
+      layout docks. **Two IDE defects (BETA 1042), worked round in layouts.js:**
+      `removeAllFloatingPanels` first takes a floating add-in window that shows out of the page
+      as a built-in panel, and `restorePanelLayout` takes the dock out of the page, before
+      `closeAllAddinToolwindows`; closing such a window then throws inside `toolWindowClose`,
+      which swallows it, so the add-in never hears of the close and its window is gone until
+      the compiler restarts (a hidden floating window is closed rightly). The wrapper closes
+      every add-in's window with `addInEvents.toolWindowClose` first, while all are in the
+      page, as long as the function's text still calls `removeAllFloatingPanels()`. And
+      `toolWindowSetVisible` gives a floating add-in window its suggested size whenever
+      `floatingToolWindowsData` has no place for it, which a layout's floating entry never
+      writes: the wrapper writes each `ADDIN_` entry of the applied layout there, as a move by
+      hand does. Neither is in BUGS-TO-REPORT.md yet.
+    - **Pixels.** The add-in places its window in its process's pixels, which are physical:
+      the compiler's process is aware of the display's scaling (the help lane checks the
+      window's rectangle against Windows' at 144 dpi). `ProcessDpi` (`GetDpiForSystem`) goes
+      to the page as `dpi`, and the editor converts with `96 / dpi` and the page's
+      `screenX`/`screenY`, its top left corner on the screen in CSS pixels (measured: 571, 272
+      against a client area at 856, 408 physical at 150%). With monitors at different scales
+      this is approximate.
+    - **The With the Help Add-In box** sits under the heading of the help's panel, floating or
+      docked, and of its own window, which the picture draws (dashed, kept inside the
+      picture) when the record says *In its own window*; a click on it selects the help's tile
+      or floating panel, else `{kind: "own"}`, the box alone. *In this panel*, *In its own
+      window* (from the record, else `now`, else `FLOAT_AT`), neither pressed when there is no
+      record, and Left, Top, Width and Height. Changes go into `dialog.edits` and turn on Save
+      Changes; Cancel drops them. *Use the current arrangement* records `now` as well.
     - **What Detach does to the pane:** `Pane.Visible = False` reaches
       `toolWindowSetVisible`. A docked pane keeps its place, its body hidden and
       *(currently unavailable)* shown, which the picture shows; a floating one is hidden, and
