@@ -663,6 +663,37 @@ describe("callout labels", () => {
   });
 });
 
+describe("[!ADDIN] boxes", () => {
+  const render = (src) => md.render(applyPreRenderRewrites(src, md), { page: { srcRel: "IDE/Page.md" } });
+
+  test("a box is an open <details> in a grey div, its title in a span of its own, its body markdown", () => {
+    const html = render(
+      "Before.\n\n> [!ADDIN] With the Help Add-In\n> Press <kbd>F1</kbd>: see [F1](#f1).\n>\n> A second *paragraph*.\n\nAfter.\n",
+    );
+    assert.match(
+      html,
+      /<div class="ide-addin">\n<details open(="")?>\n<summary><span class="ide-addin-title">With the Help Add-In<\/span><\/summary>/,
+    );
+    assert.match(
+      html,
+      /<p>Press <kbd>F1<\/kbd>: see <a href="#f1">F1<\/a>\.<\/p>\n<p>A second <em>paragraph<\/em>\.<\/p>\n<\/details>\n<\/div>/,
+    );
+    assert.match(html, /<\/div>\n<p>After\.<\/p>/);
+    assert.doesNotMatch(html, /markdown-alert|\[!ADDIN\]|markdown="1"/);
+  });
+
+  test("a box is no callout: a label-like title is its text, and it needs one", () => {
+    assert.match(render("> [!ADDIN] BETA 1005\n> body\n"), /<span class="ide-addin-title">BETA 1005<\/span>/);
+    assert.throws(() => render("> [!ADDIN]\n> body\n"), /needs a title/);
+    assert.deepEqual(calloutLabelsOf("> [!ADDIN] With the Help Add-In\n> body\n"), []);
+  });
+
+  test("a box in a code sample is left as written", () => {
+    const src = "```md\n> [!ADDIN] With the Help Add-In\n> body\n```\n";
+    assert.equal(applyPreRenderRewrites(src, md), src);
+  });
+});
+
 describe("figurePlugin", () => {
   const md = createMarkdownIt({
     highlighter: null,
@@ -722,6 +753,22 @@ describe("figurePlugin", () => {
     assert.doesNotMatch(render('![x](Images/B.png){:width="1472" height="250"}'), /data-tall/);
     // A size the page does not state is taken as short.
     assert.doesNotMatch(render("![x](Images/B.png)"), /data-tall/);
+  });
+
+  test("a picture marked secondary is shown at 3/4 of its size in the column, Zoom told by how much", () => {
+    // 1016px wide: the column shows it at 736, so it is drawn at 552, its pair alike.
+    const html = render('![x](Images/A.png){:width="1016" height="723" secondary}');
+    assert.match(html, /^<div class="fig-wrap" data-kind="picture" data-tall data-scale="0.75">/);
+    const sizes = [...html.matchAll(/<img [^>]*width="(\d+)" height="(\d+)"/g)].map((m) => `${m[1]}x${m[2]}`);
+    assert.deepEqual(sizes, ["552x393", "552x393"]);
+    assert.doesNotMatch(html, /secondary/);
+    // Narrower than the column: 3/4 of its own size.
+    assert.match(render('![x](Images/B.png){:width="400" height="200" secondary}'), /width="300" height="150"/);
+    // Not a figure: the word goes, the size stays.
+    const inText = render('See ![x](Images/B.png){:width="400" height="200" secondary} here.');
+    assert.match(inText, /width="400" height="200"/);
+    assert.doesNotMatch(inText, /secondary|data-scale/);
+    assert.doesNotMatch(render('![x](Images/B.png){:width="400" height="200"}'), /data-scale/);
   });
 
   test("a diagram is inlined, tall or short by its own size in pt", () => {

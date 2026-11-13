@@ -80,7 +80,7 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: four boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins and Find in the shortcut editors are ticked.](Images/Help_Settings.png){:width="480" height="200"}
+![The top of the help pane with the settings open under the gear: six boxes. Hover help and All packages are unticked; Ctrl and Alt shortcuts of add-ins, Find in the shortcut editors, Keyboard shortcut editor and Panel layout editor are ticked.](Images/Help_Settings.png){:width="480" height="234"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.
@@ -93,6 +93,12 @@ The gear opens the settings. A click anywhere else, or Esc, closes them.
 
 **Find in the shortcut editors**
 : Ctrl+F and F3 in the text of **Manage Keyboard Shortcuts** and **Manage Panel Layouts**: see [Finding text in the shortcut editors](#finding-text-in-the-shortcut-editors). On by default.
+
+**Keyboard shortcut editor**
+: Shows the groups of **Manage Keyboard Shortcuts** as a table of commands: see [The keyboard shortcut editor](#the-keyboard-shortcut-editor). On by default. Turned off, the dialog shows the IDE's own pane again at once.
+
+**Panel layout editor**
+: Shows the layouts of **Manage Panel Layouts** as a picture: see [The panel layout editor](#the-panel-layout-editor). On by default. Turned off, the dialog shows the layout's text again at once.
 
 The settings, the last page shown and the help window's place are kept in the registry, under `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\tbDocsHelp`. After the IDE restarts, the pane shows the page it showed last.
 
@@ -114,6 +120,10 @@ The gear
 : Work as in any window. **Close** only hides the window: the help stays detached, and the next F1 shows the window again.
 
 The window is open again the next time the IDE starts, if it was open when the IDE closed. With **Show real OS titlebar** turned on in the IDE's options, the window has an ordinary Windows title bar instead, in the IDE's dark or light colours, and **Attach** and the gear move next to the search box.
+
+### The help window in panel layouts
+
+Each [panel layout](../Customising/Panel-Layouts) also keeps where the help is: in its pane, or in its own window and where that window is on the screen. **Window > Panel Layouts > Save Current Panel Layout As...** records where the help is at that moment. Choosing the layout later puts the help back there: it detaches the help into its window at the recorded place, or attaches it to its pane. A built-in layout, and a layout saved while the add-in was not loaded, leave the help where it is. The add-in keeps this itself, by the layout's name, and not in the layout's text. In **Manage Panel Layouts**, the help's panel has a box to change it: see [The panel layout editor](#the-panel-layout-editor).
 
 ## Other add-ins' shortcuts
 
@@ -138,6 +148,96 @@ Esc
 The search goes round past the end, and ignores case. The text scrolls to show each match. A search that finds nothing draws a red ring inside the box where the text is typed, and leaves the selection where it was. The setting **Find in the shortcut editors** turns this off.
 
 ![The top of the text of Manage Keyboard Shortcuts, with the find box hanging from its top right edge: a dark red bar holding a box with ctrl typed in it, and a close button. In the text, the first match, CTRL in the line {KEYDOWN}{CTRL}A, is selected.](Images/Help_Find.png){:width="795" height="184"}
+
+## The keyboard shortcut editor
+
+On its own, **Window > Keyboard Shortcuts > Manage Keyboard Shortcuts** shows each group of shortcuts as JSON text, and with **Edit as JSON** cleared only the line *Keyboard editor coming soon*. While this add-in is loaded, the dialog shows the selected group as a table instead, with a row for every command of the IDE. [Keyboard shortcuts](../Customising/Keyboard-Shortcuts) explains the groups and how they are layered.
+
+![Manage Keyboard Shortcuts with the group Mine selected and the Changed here filter on: four rows under their prefixes tbDebug_, tbDebugConsole_ and tbEditor_. tbEditor_ClipboardCut shows Shift+Delete struck through and Ctrl+X in blue. The row for tbEditor_ToggleWordWrap is open: Alt+Z from the built-in group, and Ctrl+D added by this group in yellow, with a note that Ctrl+D is also tbEditor_AddSelectionToNextFindMatch in the built-in group. Under the table are the Table and JSON buttons.](Images/Help_KeyEditor.png){:width="1016" height="723"}
+
+A row has the command's name, its keys, and a line on what the command does, from the [keyboard shortcuts reference](../Reference/Keyboard-Shortcuts). The rows are grouped by the prefix of the command's name; clicking a prefix folds its rows. In a group of your own, the keys of a row show what the earlier groups give the command and what this group changes:
+
+- a grey key comes from an earlier group;
+- a blue key is set by this group;
+- a dashed key that is struck through is one this group removes;
+- a yellow key is also bound to another command, and a group of your own made one of the two bindings. Its tooltip names the other command and the group. The IDE runs each command bound to a key whose context applies, in its own order, until one of them ends the key's handling. Keys that the built-in group gives to several commands are not marked, since those commands apply in different places;
+- a red key that is struck through can never run, such as a key the IDE has no name for, or a key with Ctrl or Alt that runs when released. Its tooltip says why.
+
+The conflicts are found across every group that is switched on, the group shown and any group added in the dialog included. A row also says when a later group changes the command again, since this group's keys are then not the ones that apply.
+
+The box at the top finds commands by name, by description, or by the name of a key, such as `ctrl+d`. **Find a key** waits for a key and finds the commands bound to it. The buttons beside it show every command, only those with keys, only those this group changes, or only those with a problem.
+
+Clicking a row of a group of your own opens its editor:
+
+Keys from earlier groups
+: **Keep them, and add these** writes the entry as `+command`, and **Replace them with these** as `command`, so that only this group's keys apply.
+
+Add a key
+: Waits for a key: press it with its modifiers. Esc stops waiting. Esc and Tab on their own, and keys the IDE has no name for, such as `;`, cannot be added here; the JSON view takes any key string.
+
+When a key runs
+: **When pressed**, **When pressed, and while held**, or **When released**. A key with Ctrl or Alt never runs when released, so that choice is not offered for it.
+
+With an argument
+: For `tbDebugConsole_ExecuteCode`, a key that runs the command with an argument, such as `? Now`. Type the argument, then add its key.
+
+Reset to earlier groups
+: Removes the group's entry for the command.
+
+No keys
+: Gives the command no keys, whatever the earlier groups give it.
+
+Each change is written into the group's text: **Save Changes** saves it, and **Cancel** discards it. The built-in group is read-only, and its rows open no editor. The **JSON** button at the bottom shows the group's text, as the IDE shows it with **Edit as JSON** ticked, and **Table** shows the table again. A group whose text is not valid JSON is shown as text until it is corrected. Entries for a command the IDE does not have are listed at the top of the table, where a group of your own can remove them.
+
+In the table, Esc closes the open editor, then clears the search, and never closes the dialog. Ctrl+F goes to the search box. While the table is on, the dialog's text leaves out its last line, which promises a proper editor. The setting **Keyboard shortcut editor** turns the table off, and gives the dialog its own pane and text back.
+
+## The panel layout editor
+
+On its own, **Window > Panel Layouts > Manage Panel Layouts** shows each layout as JSON text. While this add-in is loaded, the dialog shows the selected layout as a picture instead: a small IDE window, at the proportions of the IDE's own, with every docked panel in its place and every floating panel over them. [Panel layouts](../Customising/Panel-Layouts) explains the layouts and their text.
+
+![Manage Panel Layouts with the layout Mine selected: a picture of the IDE window with the Toolbar across the top, the Toolbox, the Editor and the row of the Debug Console, Diagnostics, Call Stack and Variables, and a column at the right holding Project Explorer, Properties and the Help add-in's pane, TWINBASIC HELP. Watches floats over the Editor. The Toolbox is selected, and the box beside the picture shows where it is and its width, 13% of its group. Above the picture are the panels the layout lacks, and the button Use the current arrangement; under it are the Picture and JSON buttons.](Images/Help_LayoutEditor.png){:width="1016" height="642"}
+
+Each tile shows the panel's name and its size: a share of its group, *takes the rest* or *fits its contents*. Clicking a tile selects it, and clicking the gap round a group selects the group. The box beside the picture then shows what can be changed:
+
+Where
+: The groups that hold the panel, from the whole window inwards. Clicking one selects it.
+
+Its members are
+: For a group: **Side by side** or **One above another**. In the layout's text these are `vertical` and `horizontal`.
+
+Its width, Its height
+: **The rest** gives the panel the room its neighbours leave, **A share** a percentage of its group, and **To fit** as much as its contents need.
+
+Move left, Move right, Move up, Move down
+: Swaps the panel with its neighbour.
+
+Make it float
+: Takes the panel out of its group and floats it where the IDE floats a panel it shows: 100 pixels from the left and from the top, 300 wide and 500 high. A group left with one member is replaced by it.
+
+Remove from this layout
+: Takes the panel out of the layout.
+
+A floating panel's box has its place in the IDE window, in pixels, and **Dock it...**. Dragging a splitter between two tiles resizes them, and dragging a floating panel by its title moves it.
+
+The panels the layout lacks are listed above the picture, the tool windows of the add-ins that are loaded among them. Clicking one, or **Dock it...**, then clicking near an edge of a tile docks the panel on that side of it: in the tile's group when the group's members run that way, or in a new group of the two. **Make it float** floats it instead.
+
+**Use the current arrangement** replaces the layout with the panels as the IDE shows them now, and with where the help is now.
+
+The help's own panel, **TWINBASIC HELP**, has one more box, **With the Help Add-In**, for [where the layout puts the help](#the-help-window-in-panel-layouts):
+
+**In this panel**
+: Choosing the layout attaches the help to its pane. Chosen for a layout whose help was in its own window, it also floats the pane where the window was, at the window's size and inside the IDE window, and adds the pane to the layout if it lacked it. Dock it again if you wish.
+
+**In its own window**
+: Choosing the layout detaches the help into its window, placed at **Left** and **Top** and sized to **Width** and **Height**: pixels on the screen. The window is drawn in the picture at that place, inside the picture if it is outside the IDE window. Clicking it selects the help's panel, or shows the box alone when the layout has no pane for the help.
+
+![Manage Panel Layouts with the layout Mine selected and the help's panel, TWINBASIC HELP, selected under Properties; its tile says in its own window. The box beside the picture opens with With the Help Add-In: In its own window is pressed, with Left 600, Top 200, Width 540 and Height 600. Over the Editor in the picture, a dashed window titled Help: its own window reads 540 × 600 at 600, 200 on the screen.](Images/Help_LayoutHelp.png){:width="1016" height="642"}
+
+A layout for which neither has been chosen leaves the help where it is. Like every other change, the choice is kept by **Save Changes** and discarded by **Cancel**. **Save Changes** also forgets what the add-in kept for the layouts deleted in the dialog.
+
+A tile of an add-in's window that no loaded add-in has is marked *not loaded*. That is no problem: the IDE keeps the window's place, empty and marked *(currently unavailable)*, until the add-in opens it. The line under the picture counts the layout's panels and its problems: a layout with no Editor, a panel in it twice, or an id that is not a panel of the IDE. A layout with a problem is marked with **!** in the list.
+
+Each change is written into the layout's text: **Save Changes** saves it, and **Cancel** discards it. The built-in layouts are read-only. The **JSON** button at the bottom shows the layout's text, and **Picture** shows the picture again. A layout whose text is not valid JSON is shown as text until it is corrected. In the picture, Esc ends what is being done --- docking a panel, then the selection --- and never closes the dialog. The setting **Panel layout editor** turns the picture off, and gives the dialog its text back.
 
 ## Getting the add-in
 

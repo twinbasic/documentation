@@ -13476,7 +13476,7 @@ function helpTakes(ctx) {
     await showPage(AT.msgBox, HELP_PAGE);
     await click(c, { toolWindow: PANE, css: "#helpSettings" });
     if (!(await waitFor(c, settingsOpen))) throw new Error("the gear did not open the settings panel");
-    // the picture shows the defaults: Hover help and All packages unticked, the two
+    // the picture shows the defaults: Hover help and All packages unticked, the three
     // fixes ticked; the Hover picture ticks Hover help
     if (await inPane(`return root.querySelector("#helpHover").checked;`)) {
       await click(c, { toolWindow: PANE, css: "#helpHover" });
@@ -13485,8 +13485,11 @@ function helpTakes(ctx) {
     await sleep(500);
     await paneAside();
     const pane = await paneRect();
-    // 200 CSS pixels holds the four rows and ends between the page's heading and its first paragraph.
-    const png = await snap(c, "Settings", inside({ ...pane, height: 200 }), { frame: origin });
+    // Down to 8 CSS pixels under the panel, its last row and border included.
+    const bottom = await inPane(`return root.querySelector("#helpSettingsPanel").getBoundingClientRect().bottom;`);
+    if (typeof bottom !== "number") throw new Error("the settings panel has no box");
+    const height = Math.ceil(bottom - pane.y + 8);
+    const png = await snap(c, "Settings", inside({ ...pane, height }), { frame: origin });
     await closeSettings();
     return png;
   });
@@ -13587,6 +13590,12 @@ function helpTakes(ctx) {
           c.evaluate(
             `(() => { const a = document.querySelector(${JSON.stringify(AREA)}); return a ? ${expr} : null; })()`,
           );
+        // The add-in's keyboard shortcut editor shows the group as a table; its JSON button
+        // shows the IDE's text area, where the find box works.
+        await c.evaluate(`document.querySelector('.modalDialogContainer .tbKeFoot [data-view="json"]')?.click()`);
+        if (!(await waitFor(c, () => onArea("a.getBoundingClientRect().height > 0")))) {
+          throw new Error("the dialog's text area does not show");
+        }
         if (!(await onArea("(a.focus(), a.setSelectionRange(0, 0), (a.scrollTop = 0), true)"))) {
           throw new Error("the dialog has no text area");
         }
@@ -13622,6 +13631,173 @@ function helpTakes(ctx) {
       },
     ),
   );
+
+  // The add-in's keyboard shortcut editor in Manage Keyboard Shortcuts: a group of four entries,
+  // set in the page only (the IDE has --no-save-ide-settings), shown by Changed here, with the
+  // editor of the command whose added Ctrl+D the built-in group gives another command.
+  const KEY_GROUP = {
+    tbEditor_ClipboardCut: ["{KEYDOWN}{CTRL}X"],
+    "+tbEditor_ToggleWordWrap": ["{KEYDOWN}{CTRL}D"],
+    "tbDebugConsole_ExecuteCode('? Now')": ["{KEYDOWN}{CTRL}{SHIFT}J"],
+    tbDebug_Stop: ["{KEYDOWN}{SHIFT}F5"],
+  };
+  const setKeyGroups = (groups, active) =>
+    c.evaluate(`(() => {
+  customKeyboardShortcutGroups = ${JSON.stringify(groups)};
+  activeKeyboardShortcutGroupNames = ${JSON.stringify(active)};
+  syncActiveKeyboardShortcuts();
+})()`);
+  shoot("KeyEditor", async () => {
+    await setKeyGroups({ Mine: { data: JSON.stringify(KEY_GROUP) } }, "|Mine|");
+    try {
+      return await inDialog(
+        c,
+        { command: "tbKeyboardShortcuts_ShowManageKeyboardShortcuts", title: "Manage Keyboard", close: "Cancel" },
+        async () => {
+          const clickIn = async (js, what) => {
+            if (!(await c.evaluate(`(() => { const e = ${js}; if (!e) return false; e.click(); return true; })()`))) {
+              throw new Error(`the key editor has no ${what}`);
+            }
+          };
+          await clickIn(
+            `[...document.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === "Mine")`,
+            "group Mine",
+          );
+          await clickIn(`document.querySelector('.tbKeChip[data-filter="changed"]')`, "Changed here filter");
+          await clickIn(
+            `document.querySelector('.tbKeRow[data-cmd="tbEditor_ToggleWordWrap"] .tbKeCmd')`,
+            "row for tbEditor_ToggleWordWrap",
+          );
+          if (!(await waitFor(c, () => c.evaluate(`!!document.querySelector(".tbKeEditor .tbKeNote")`)))) {
+            throw new Error("the editor shows no note of the shared key");
+          }
+          await dialogStill(c);
+          // The dialog's rounded top corners show the IDE under them, which draws them a little
+          // differently from capture to capture (the tool window's header there), so captures
+          // never agree: the corners are left out of the comparison.
+          const m = await c.evaluate(`(() => {
+            const r = [...document.querySelectorAll(".modalDialogContainer")].pop().getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width };
+          })()`);
+          const corner = (x) => ({ on: { rect: { x, y: m.y, width: 5, height: 5 } }, pad: 1 });
+          return dialogShot(c, "KeyEditor", undefined, null, {
+            unsteady: [corner(m.x), corner(m.x + m.width - 5)],
+          });
+        },
+      );
+    } finally {
+      await setKeyGroups({}, "");
+    }
+  });
+
+  // The add-in's panel layout editor in Manage Panel Layouts: a layout set in the page only (the
+  // IDE has --no-save-ide-settings), <DEFAULT> with the help pane docked under Properties and
+  // Watches floating, with the Toolbox selected.
+  shoot("LayoutEditor", async () => {
+    const saved = await c.evaluate("JSON.stringify(customPanelLayouts)");
+    await c.evaluate(`(() => {
+  const d = JSON.parse(builtInPanelLayouts["<DEFAULT>"].layoutData);
+  const column = d.content[1].content[1].content;
+  column[0].size = "35%";
+  column.push({ id: "ADDIN_tbDocsHelpPane", variableSize: false, size: "35%" });
+  customPanelLayouts = {
+    Mine: { layoutData: JSON.stringify(d), floatingData: JSON.stringify([{ id: "WATCHES", left: 560, top: 170, width: 320, height: 340 }]) },
+  };
+})()`);
+    try {
+      return await inDialog(
+        c,
+        { command: "tbPanels_ShowManagePanelLayouts", title: "Manage Panel Layouts", close: "Cancel" },
+        async () => {
+          const clickIn = async (js, what) => {
+            if (!(await c.evaluate(`(() => { const e = ${js}; if (!e) return false; e.click(); return true; })()`))) {
+              throw new Error(`the layout editor has no ${what}`);
+            }
+          };
+          await clickIn(
+            `[...document.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === "Mine")`,
+            "layout Mine",
+          );
+          await clickIn(`document.querySelector('.tbLeDock .tbLeTile[title="TOOLBOX"]')`, "Toolbox tile");
+          if (!(await waitFor(c, () => c.evaluate(`!!document.querySelector('.tbLeInsp [data-act="pct"]')`)))) {
+            throw new Error("the edit box does not show the Toolbox's share");
+          }
+          await dialogStill(c);
+          // The dialog's rounded top corners, as for KeyEditor.
+          const m = await c.evaluate(`(() => {
+            const r = [...document.querySelectorAll(".modalDialogContainer")].pop().getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width };
+          })()`);
+          const corner = (x) => ({ on: { rect: { x, y: m.y, width: 5, height: 5 } }, pad: 1 });
+          return dialogShot(c, "LayoutEditor", undefined, null, {
+            unsteady: [corner(m.x), corner(m.x + m.width - 5)],
+          });
+        },
+      );
+    } finally {
+      await c.evaluate(`customPanelLayouts = JSON.parse(${JSON.stringify(saved)})`);
+    }
+  });
+
+  // The same layout with the help's panel selected and its box, With the Help Add-In, saying the
+  // layout puts the help in its own window, which the picture draws over the IDE window. The
+  // layout's record is a change in the open dialog (the add-in's layouts.js keeps those apart
+  // from what the add-in has saved, and they win), so nothing is saved and Save Changes stays
+  // greyed out. The place is in the add-in's pixels, which are physical (at 150% here): the
+  // window is drawn over the Editor, clear of the help's selected tile.
+  const HELP_RECORD = { detached: true, left: 600, top: 200, width: 540, height: 600 };
+  shoot("LayoutHelp", async () => {
+    const saved = await c.evaluate("JSON.stringify(customPanelLayouts)");
+    await c.evaluate(`(() => {
+  const d = JSON.parse(builtInPanelLayouts["<DEFAULT>"].layoutData);
+  const column = d.content[1].content[1].content;
+  column[0].size = "35%";
+  column.push({ id: "ADDIN_tbDocsHelpPane", variableSize: false, size: "35%" });
+  customPanelLayouts = { Mine: { layoutData: JSON.stringify(d), floatingData: "[]" } };
+})()`);
+    try {
+      return await inDialog(
+        c,
+        { command: "tbPanels_ShowManagePanelLayouts", title: "Manage Panel Layouts", close: "Cancel" },
+        async () => {
+          const clickIn = async (js, what) => {
+            if (!(await c.evaluate(`(() => { const e = ${js}; if (!e) return false; e.click(); return true; })()`))) {
+              throw new Error(`the layout editor has no ${what}`);
+            }
+          };
+          await clickIn(
+            `[...document.querySelectorAll(".configEditorEntry")].find((e) => e.innerText.trim() === "Mine")`,
+            "layout Mine",
+          );
+          const recorded = await c.evaluate(`(() => {
+  const h = window.tbDocsHelpLayouts;
+  if (!h || !h.dialog) return false;
+  h.edit("Mine", ${JSON.stringify(HELP_RECORD)});
+  return true;
+})()`);
+          if (!recorded) throw new Error("the add-in's layouts.js is not in the page, or not in the dialog");
+          await clickIn(`document.querySelector('.tbLeDock .tbLeTile[title="ADDIN_tbDocsHelpPane"]')`, "help tile");
+          const shows = () =>
+            c.evaluate(
+              `!!document.querySelector(".tbLeInsp .tbLeAddin [data-act=helpnum]") && !!document.querySelector(".tbLePic .tbLeOwn")`,
+            );
+          if (!(await waitFor(c, shows))) throw new Error("the help's box or its window does not show");
+          await dialogStill(c);
+          // The dialog's rounded top corners, as for KeyEditor.
+          const m = await c.evaluate(`(() => {
+            const r = [...document.querySelectorAll(".modalDialogContainer")].pop().getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width };
+          })()`);
+          const corner = (x) => ({ on: { rect: { x, y: m.y, width: 5, height: 5 } }, pad: 1 });
+          return dialogShot(c, "LayoutHelp", undefined, null, {
+            unsteady: [corner(m.x), corner(m.x + m.width - 5)],
+          });
+        },
+      );
+    } finally {
+      await c.evaluate(`customPanelLayouts = JSON.parse(${JSON.stringify(saved)})`);
+    }
+  });
 
   return takes;
 }
@@ -14754,7 +14930,20 @@ const helpShot = (name) => ({
 });
 
 const SHOTS = [
-  ...["Pane", "Hover", "Search", "Choices", "Description", "Settings", "Toolbar", "Window", "Find"].map(helpShot),
+  ...[
+    "Pane",
+    "Hover",
+    "Search",
+    "Choices",
+    "Description",
+    "Settings",
+    "Toolbar",
+    "Window",
+    "Find",
+    "KeyEditor",
+    "LayoutEditor",
+    "LayoutHelp",
+  ].map(helpShot),
   aboutShot,
   servicesShot,
   servicesTooltipShot,

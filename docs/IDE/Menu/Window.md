@@ -29,6 +29,9 @@ Switches the arrangement of the panels, and saves and manages arrangements. See 
 
 Opens a dialog that lists the built-in layouts, which are read-only, and the saved ones. See [Manage layouts](../../Customising/Panel-Layouts#manage-layouts).
 
+> [!ADDIN] With the Help Add-In
+> The dialog shows each layout as a picture of the IDE window instead of text: see [The panel layout editor](../../AddIns/Help#the-panel-layout-editor). The [Help Add-In](../../AddIns/Help#finding-text-in-the-shortcut-editors) also adds a find to the dialog's text.
+
 ## Panel Features
 
 Five switches decide what can be done to panels. A tick means the action is allowed. See [Panel Features](../../Customising/Panel-Layouts#panel-features).
@@ -44,6 +47,9 @@ Switches groups of keyboard shortcuts on and off. See [Keyboard shortcuts](../..
 ### Manage Keyboard Shortcuts
 
 Opens a dialog that lists the built-in group, which is read-only, and the groups that have been created, and shows each as JSON text. See [Manage keyboard shortcuts](../../Customising/Keyboard-Shortcuts#manage-keyboard-shortcuts) and [The text of a group](../../Customising/Keyboard-Shortcuts#the-text-of-a-group).
+
+> [!ADDIN] With the Help Add-In
+> The dialog shows each group as a table of commands instead of JSON text: see [The keyboard shortcut editor](../../AddIns/Help#the-keyboard-shortcut-editor).
 
 [Keyboard shortcuts](../Keyboard-Shortcuts) lists the built-in group in tables.
 

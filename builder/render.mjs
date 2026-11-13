@@ -1981,7 +1981,7 @@ const ADMONITION_TYPES = {
 // per-line anchor on the body lines.
 // The rest of the `[!TYPE]` line is the callout's label (lib/callout-labels.mjs).
 const ADMONITION_RE =
-  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]([^\n]*)\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
+  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|ADDIN)\]([^\n]*)\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
 // An admonition written inside a code region is a sample of the syntax, and is
 // left as it is. This rewrite runs outside the mask, so it asks lib/markdown
 // where the regions are, with the site's parser for the reason
@@ -2019,6 +2019,8 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     if (inCode[line]) return match;
 
     const type = typeRaw.toLowerCase();
+    const stripRe = indent ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm") : /^[ \t]*>[ \t]?/gm;
+    if (type === "addin") return `${leading}${addinBox(labelRaw, bodyRaw, stripRe)}`;
     const meta = ADMONITION_TYPES[type];
     const label = parseCalloutLabel(labelRaw);
     const problem =
@@ -2047,7 +2049,6 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     // A fence inside an admonition is stripped with the rest of the body, so
     // this runs over real code samples: a literal mirror leaves If/ElseIf/Else
     // bodies flush left and loses blank lines between examples.
-    const stripRe = indent ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm") : /^[ \t]*>[ \t]?/gm;
     const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
 
     // The gem emits the replacement <div> at column 0 regardless of how
@@ -2060,6 +2061,29 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     // a separate markdown block rather than absorbed into the html_block.
     return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}${tags}</p>\n\n${body}\n</div>\n\n`;
   });
+}
+
+// What an add-in adds to the IDE, on a page that documents the IDE itself:
+//
+//   > [!ADDIN] With the Help Add-In
+//   > The add-in replaces this pane with a table of every command...
+//
+// It is written as a callout is, but it is none: no label, no icon, and the tools that read
+// callouts (lib/callout-labels.mjs) do not see it. The rest of the `[!ADDIN]` line is its
+// title, as plain text, and is required. It renders as a grey box (`.ide-addin`, admonitions.scss
+// and print.css) holding a <details> that is open, so that a reader who does not use the add-in
+// can fold it away. The book unwraps <details> and <summary> (book.mjs, bookChapterTransform),
+// and keeps the box and its title, which is why the title is a span of its own inside the
+// summary.
+function addinBox(titleRaw, bodyRaw, stripRe) {
+  const title = titleRaw.trim();
+  if (!title) throw new Error("callout [!ADDIN] needs a title on its line: > [!ADDIN] With the Help Add-In");
+  const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
+  return (
+    `<div class="ide-addin" markdown="1">\n<details open>\n` +
+    `<summary><span class="ide-addin-title">${escapeMarkup(title)}</span></summary>\n\n` +
+    `${body}\n</details>\n</div>\n\n`
+  );
 }
 
 // ---------- markdown="1" attribute strip -----------------------------------
@@ -2433,6 +2457,37 @@ function remoteImagePlugin(md, ctx) {
 // this).
 const RASTER_FORMATS = { png: "PNG", jpg: "JPEG", jpeg: "JPEG", gif: "GIF", webp: "WebP" };
 
+// A picture marked `secondary` in its attribute block, `{:width="1016" height="723" secondary}`,
+// is shown at SECONDARY_SCALE of the size it would otherwise have in the content column: a
+// picture of something the page mentions in passing, such as what an add-in adds to the IDE.
+// The page keeps the picture's own size, which the screenshot tools write and
+// check_shot_sizes.mjs checks; the build scales the width and height it writes, each image of a
+// pair by the same factor, and puts the factor on the figure as `data-scale`, so that Zoom
+// (figure.js) shows the picture as large as it would show it unmarked.
+const SECONDARY_SCALE = 0.75;
+
+function dropAttr(token, name) {
+  token.attrs = token.attrs.filter(([n]) => n !== name);
+}
+
+// The images of a figure, `kids`, with `secondary` taken out and their sizes scaled when any of
+// them has it; returns the factor Zoom divides by, or null for a figure not marked.
+function shrinkSecondary(kids) {
+  if (!kids.some((k) => k.attrGet("secondary") !== null)) return null;
+  for (const k of kids) dropAttr(k, "secondary");
+  const dark = kids[kids.length - 1];
+  const w = Number(dark.attrGet("width"));
+  if (!(w > 0)) return SECONDARY_SCALE;
+  const scale = SECONDARY_SCALE * Math.min(1, FIGURE_COLUMN / w);
+  for (const k of kids) {
+    for (const attr of ["width", "height"]) {
+      const v = Number(k.attrGet(attr));
+      if (v > 0) k.attrSet(attr, String(Math.round(v * scale)));
+    }
+  }
+  return SECONDARY_SCALE;
+}
+
 function figurePlugin(md, ctx) {
   const orig = md.renderer.rules.image;
   const prefix = `${ctx.baseurl || ""}/`;
@@ -2464,10 +2519,16 @@ function figurePlugin(md, ctx) {
       toks[i].hidden = true;
       toks[i + 2].hidden = true;
       const open = new state.Token("figure_open", "div", 1);
-      open.meta = { images: kids.slice() };
+      open.meta = { images: kids.slice(), secondary: shrinkSecondary(kids) };
       if (kids.length === 1 && inlinableSvgRel(kids[0])) kids[0].meta = { ...(kids[0].meta || {}), figureInline: true };
       kids.unshift(open);
       kids.push(new state.Token("figure_close", "div", -1));
+    }
+    // `secondary` on an image that is no figure (text beside it, or inside a link) does
+    // nothing; the word is taken out all the same, as `png` is.
+    for (const t of toks) {
+      if (t.type !== "inline" || !t.children) continue;
+      for (const k of t.children) if (k.type === "image" && k.attrGet("secondary") !== null) dropAttr(k, "secondary");
     }
   });
 
@@ -2488,7 +2549,12 @@ function figurePlugin(md, ctx) {
     // and the page's width and height are the dark one's.
     const dark = images[images.length - 1];
     const src = dark.attrGet("src") ?? "";
-    return pictureFigureOpen(resolveVendoredAttachment(src, ctx) ?? src, dark.attrGet("width"), dark.attrGet("height"));
+    return pictureFigureOpen(
+      resolveVendoredAttachment(src, ctx) ?? src,
+      dark.attrGet("width"),
+      dark.attrGet("height"),
+      tokens[idx].meta.secondary,
+    );
   };
   md.renderer.rules.figure_close = () => `</div></div>`;
 
@@ -2614,7 +2680,7 @@ function diagramFigureOpen(svgContent, alt, stem, srcRel) {
 // The opening of a picture's or an image's figure. A picture drawn as SVG offers both
 // formats, its PNG being beside it; a raster image offers its own format, copied as PNG,
 // the one image format a clipboard takes. An image of any other kind gets Zoom alone.
-function pictureFigureOpen(src, width, height) {
+function pictureFigureOpen(src, width, height, secondary = null) {
   const ext = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(src)?.[1]?.toLowerCase() ?? "";
   const raster = ext === "svg" ? "PNG" : RASTER_FORMATS[ext];
   const groups = [];
@@ -2639,7 +2705,7 @@ function pictureFigureOpen(src, width, height) {
   }
   groups.push(zoomGroup());
   return (
-    `<div class="fig-wrap" data-kind="picture"${tallAttr(width, height, shape)}>` +
+    `<div class="fig-wrap" data-kind="picture"${tallAttr(width, height, shape)}${secondary ? ` data-scale="${secondary}"` : ""}>` +
     `<div class="fig-controls">` +
     groups.join("") +
     `</div>` +

@@ -829,6 +829,8 @@ An image that stands alone in its paragraph is shown as a *figure*: the image wi
 
 Give a picture its `{:width="..." height="..."}`. A figure at least as tall as the bar stood on end gets the bar beside it, in the margin of a wide window and in view while the figure scrolls past. A shorter figure gets the bar above it or at its top right. A picture with no stated size is treated as short, however tall it is.
 
+A picture of something the page mentions only in passing --- on an IDE page, what an add-in adds to the IDE --- can be shown smaller: put `secondary` in its attribute block, `{:width="1016" height="723" secondary}`. The page keeps the picture's own size, and the build shows it at three quarters of the size it would otherwise have in the column. **Zoom** shows it as large as it would show it without the word. The build takes the word out of the page.
+
 ### A picture in both themes
 
 A screenshot of the IDE shows one of its themes, and the site has two. To give a picture a version for the light theme, save it beside the first one under the same name with `.light` before the extension:
@@ -993,6 +995,19 @@ A search that backtracks without end gives up instead of hanging.
 ```
 
 A region may hold paragraphs, lists, tables and samples, and regions do not nest. The folder's README says how to write a case, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with neither a marker nor a region, a region left open, and a case no marker names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`. [Updating a Contributed Package](Contributed-Packages) lists the steps that move a section to a new version of its package.
+
+### What an add-in adds to the IDE
+
+A page about the IDE documents the IDE as it ships. Where an add-in changes what the page describes, such as the [Help Add-In](../../tB/IDE/AddIns/Help) giving **Manage Keyboard Shortcuts** a table of commands, say so after the IDE's own behaviour, in a box of its own:
+
+```markdown
+> [!ADDIN] With the Help Add-In
+> The [Help Add-In](../AddIns/Help#the-keyboard-shortcut-editor) replaces this pane with a table of every command.
+>
+> ![Manage Keyboard Shortcuts with the Help Add-In loaded.](../AddIns/Images/Help_KeyEditor.png){:width="1016" height="723" secondary}
+```
+
+It is written as a callout is, but it is none. The rest of the `[!ADDIN]` line is its title, as plain text, and the build stops on a box without one. The website and the offline copy show it on a grey background, as a disclosure that is open until the reader folds it; the PDF book shows the grey box and its title. Keep the box short: link to the section of the add-in's own page that has the details, and mark a picture in it `secondary` (see [A figure's buttons](#a-figures-buttons)).
 
 ## Document the product as it is
 

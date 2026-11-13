@@ -89,6 +89,34 @@ $alert-colors-dark: (
   @include alert-palette($alert-colors-light);
 }
 
+// What an add-in adds to the IDE, on a page that documents the IDE itself
+// (`> [!ADDIN] title`, render.mjs's addinBox): a grey box holding a <details>,
+// open until the reader folds it. The tint is the text colour's, as a figure's
+// bar is (custom.scss, .fig-group), so it darkens the page in the light theme
+// and lightens it in the dark one with no rule per theme, and every colour
+// inside it keeps the contrast it has on the page. The summary keeps the UA's
+// `list-item` display: its triangle is what says it folds (see .section-links
+// in custom.scss).
+.ide-addin {
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+
+  > details > summary {
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  > details[open] > summary {
+    margin-bottom: 0.5rem;
+  }
+
+  > details > :last-child {
+    margin-bottom: 0;
+  }
+}
+
 // custom.scss is emitted once at root level -- just-the-docs-dark.scss
 // deliberately does not @use it -- so the dark variants are scoped here
 // rather than inherited from a dark-theme compilation pass. The dark-theme

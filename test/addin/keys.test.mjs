@@ -119,7 +119,7 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     if (withHelp) {
       assert.ok(
         await waitFor(c, async (c) => ((await readConsole(c)) ?? "").includes("[tbDocsHelp] loaded")),
-        "the help add-in never printed that it had loaded",
+        "the help add-in never printed that it had loaded (an empty console is console-cleared-at-open: is its page fix, IDE_FIXES in tb-defaults.mjs, still taking?)",
       );
     }
     assert.ok(await blurAll(c), "the focus stayed on an element");

@@ -291,7 +291,10 @@
       // size is known. The element's own inline style is kept to be put back
       // as it was: an SVG may carry its size there.
       el._pageStyle = el.getAttribute("style");
-      el.style.width = zoomWidth(el, rect.width, rect.height / rect.width, container) + "px";
+      // A picture marked secondary (render.mjs, SECONDARY_SCALE) is shown smaller on the
+      // page by this factor; zoomed, it is as large as it would be unmarked.
+      var scale = parseFloat(container.closest(".fig-wrap").dataset.scale) || 1;
+      el.style.width = zoomWidth(el, rect.width / scale, rect.height / rect.width, container) + "px";
       el.style.height = "auto";
       el.style.maxWidth = "none";
     }

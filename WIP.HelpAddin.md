@@ -924,8 +924,10 @@ not: a restart saves a harness about a second against opening a new IDE.
      lookup from there goes through the search box.
    - **The pane's first floating size** is `min(480px, 85vw)` by `min(640px, 85vh)`,
      the root's `suggestedWidth` and `suggestedHeight`. `toolWindowSetVisible` in `main.js`
-     copies them into the floating panel's `style` the first time the window shows floating,
-     when the IDE has no saved place for it (`floatingToolWindowsData`), and then centres the
+     copies them into the floating panel's `style` each time the window shows floating
+     when the IDE has no saved place for it (`floatingToolWindowsData`), which nothing in BETA
+     1042 writes, so a resize by hand is undone too (BUGS-TO-REPORT.md's
+     toolwindow-show-suggested-size), and then centres the
      panel by its laid-out size, so a CSS `min()` works. A plain 640px was taller than the page
      of a 1200 by 900 IDE window at 150% (800 by 600): the IDE centred it at a negative
      `top`, its title bar partly above the page, and it covered the toolbar. The lane checks 480 by 640 in a
@@ -1287,6 +1289,197 @@ not: a restart saves a harness about a second against opening a new IDE.
     options scale text but not icons or controls. Emulated device scaling (what a WebView2
     `ZoomFactor` does) was right throughout, so whole-IDE zoom needs that host call
     upstream. The probe and pictures are in `.claude/scratch/zoom/`.
+13. **A keyboard shortcut editor** (owner, 2026-11-12: on by default, Table first, the built-in
+    group read-only with no actions, conflicts across every active group), tested by the
+    `ide-test` lane `keyeditor` (`test/ide/keyeditor.test.mjs`, the script put into the page
+    with no add-in) and by the `help` lanes (the settings box, and the script with its
+    descriptions put in by the add-in). `Resources/SCRIPTS/keyeditor.js`, put in by `BuildPane`
+    with a third settings row (`Fixes`, `KeyEditor`, on by default; the window's box follows
+    through `keyeditor:<1|0>`), fills the pane `showManageKeyboardShortcuts` leaves at *Keyboard
+    editor coming soon*. It goes in only while that text is in the function's source.
+    - **Reached by** replacing the global `showConfigEditor` (main.js is a classic script, and
+      the dialog calls it by name) with a function that changes only the call titled *Manage
+      Keyboard Shortcuts*: it wraps the options' `getEntryEditorDomNode`, `addNewEntry` and
+      `deleteEntry`, which `showConfigEditor` looks up on the options at each call. The
+      original is kept as `tbDocsOriginal` on the wrapper and in `window.tbDocsKeyEditor`, so a
+      second run never wraps a wrapper; turned off, the original goes back and an open dialog
+      gets its text area and Edit as JSON box back.
+    - **The group stays the IDE's.** The IDE's JSON pane is built as always (its closure's
+      flag starts true, and the table hides the box that would change it) and hidden; the table
+      reads the group from its text area and writes every change into it with an `input` event,
+      so the IDE's own `oninput` keeps the dialog's copy and turns on Save Changes. The table
+      edits the parsed object in place, so the entries keep their order and an entry it does
+      not touch keeps its strings as written. A group that is not a JSON object is shown as
+      text, and nothing is written to it.
+    - **What the table cannot edit** is listed, never dropped: entries for a command
+      `ideCommands` lacks, a value that is not a list (the IDE stops reading the group there,
+      and so does the table's layering), and a command with two plain entries or `cmd()`, whose
+      row says to edit it as JSON.
+    - **The keys are read as the IDE reads them**: the layering is
+      `applyKeyboardShortcutsLayering`'s (an argument entry adds unless the argument is empty;
+      a value that is not a list ends the group), the codes are `getKeyBindingCodeFromString`'s
+      (copied, since it has `debugger` statements), and a captured key is named as
+      `globalKeyDown` names it (a letter by `e.code`; a key `VirtualKeyCodeLookup` lacks, such
+      as `;`, is refused, as is AltGr). A key bound for its release with Ctrl or Alt never runs
+      (`realKeyPresses`), so the table marks it and does not offer it.
+    - **Conflicts** are codes shared by two commands across the built-in group, every group
+      switched on, the group shown and any added in the dialog (Save switches it on), with the
+      unsaved text of any group shown in the dialog. A shared code is marked only when a group
+      of your own gives one of the commands that code and the built-in group does not, since
+      the built-in group shares keys between commands that apply in different places (Ctrl+X,
+      Ctrl+A), and a group that keeps such a key adds no conflict; `{ALLEXCEPT}` is left out.
+    - **The dialog's own key handler** (on its container: Enter presses the focused button, Esc
+      cancels outside a text box, Tab and the arrows are held) never sees a key from the table,
+      which stops each at its own elements; Esc there closes the editor, then clears the
+      search. Ctrl+F goes to the table's search, and the table removes `textfind.js`'s bar when
+      it shows.
+    - **Its look is the IDE's** (owner, 2026-11-12: fit in with the IDE's controls, and respect
+      each theme's shape of button). Its buttons are the dialog's buttons, from the theme's
+      `--themeDialogButton*` variables (`.msgBoxButton`), so they are square in Dark and Light
+      and rounded in Aurora, with the theme's focus ring. Everything else is taken from the
+      IDE Options and Project Settings dialogs (`tips_injectCss` and `tbps_injectCss` in
+      main.js), which are the same in every theme: the No / Yes control for a choice of one
+      (the filters, Keep / Replace, Table / JSON), their text boxes and drop-downs, their
+      section title (a 4px `#4271ae` bar) for a prefix, their option rows, their yellow banner
+      for a note and their red error line for an error; a plain key is drawn as the dialog's
+      `<pre>`, and the glyphs are codicons. The pane is white in every theme
+      (`.configEditorRHS`), so text and fields are dark on white whatever the theme.
+    - **The header's last line**, *ps. in future we'll have a proper editor for this* (owner,
+      2026-11-12), is taken out of the options' `info` while the table is on, and put back
+      into an open dialog's `.configEditorInfoHeader` when it is turned off.
+    - **The descriptions** are `scripts/ide-js/command-text.json`, copied on one line to
+      `Resources/KEYS/commands.json` by `ide_js.mjs keymap --update` (and compared by `--check`
+      and by `test/ide-js.test.mjs`), and put in place of the script's `$COMMANDS$` marker by
+      `ApplyFix`.
+14. **A panel layout editor** (owner, 2026-11-12: Manage Panel Layouts in the spirit of item
+    13, on by default). The editor is add-in 1.3.0, the help's detached state per layout 1.4.0
+    (the last bullets). `Resources/SCRIPTS/layouteditor.js`, put in by
+    `BuildPane` as item 13's script is, with a settings row of its own (`Fixes`,
+    `LayoutEditor`, on by default; the window's box follows through `layouteditor:<1|0>`),
+    tested by the `ide-test` lane `layouteditor` (`test/ide/layouteditor.test.mjs`, the script
+    put into a bare IDE with layouts set in the page, as `keyeditor` does) and by the `help`
+    lanes (the settings box). Picture `Help_LayoutEditor` from `shoot_docs`' help setup.
+    Facts below are from BETA 1042's `main.js`.
+    - **Reached** through one replacement of `showConfigEditor` that the scripts share,
+      `window.tbDocsConfigEditors` (`hookOf` and `unhook`, the same code in keyeditor.js,
+      layouteditor.js and layouts.js): each puts its adapter in `adapters` under its dialog's
+      title, or the title, `|` and a name of its own (layouts.js: `Manage Panel Layouts|help`),
+      and the replacement calls every adapter for the title before the IDE's function. Neither wraps the other's, turning one off leaves the other in, and
+      the IDE's function goes back when the last is off. The editor returns a node of its own
+      in place of the IDE's text area, which it holds, hidden; turned off, the text area takes
+      the node's place again.
+    - **The layout stays the IDE's.** `showManagePanelLayouts` edits a copy of
+      `customPanelLayouts`, each entry `{layoutData, floatingData}` as JSON strings; its text
+      area shows `{docked, floating}`, and its `oninput` stores `JSON.stringify` of those two
+      members back and turns on Save Changes. The editor hides the text area, reads it, and
+      writes every change into it with an `input` event, as item 13 does; Picture / JSON at
+      the bottom shows the IDE's own text area again. Text that is not JSON is shown as text.
+    - **How a layout is read** (`restoreDockConfig`): `flexBasis` is `size` (`0%` when
+      missing) and `flexGrow` is 1 when `variableSize` is true, else 0. `vertical` makes a
+      `dockGroupVertical`, whose members are **side by side** (its splitter resizes widths);
+      `horizontal` puts them **one above another**. The editor names the directions in words,
+      never by the JSON's names, and shows one size choice that writes both fields: *Takes the
+      rest* (`true`, `0%`), *A share* (`false`, a percentage), *Fits its contents* (`false`,
+      `fit-content`; the toolbar is forced to it in a `horizontal` group).
+    - **The picture** is drawn at the IDE window's proportions (owner), from `rootTop`'s size;
+      floating panels at their pixels on the same scale. Tiles are selected by a click, a group
+      by the gap round it; splitters drag; the edit box sets direction and size, moves a member
+      earlier or later, floats it or removes it. A panel not in the layout is docked by
+      clicking an edge of a tile: into the tile's group when the direction matches, else into
+      a new group of the other direction round the two. A group left with one member is
+      replaced by it, which takes the group's size; a group with no member that takes the rest
+      gives it to its last member.
+    - **Use the current arrangement** (owner): a button for a layout of your own, which
+      replaces it with `getPanelsConfiguration()` as `saveCurrentPanelLayoutAs` stores it
+      (`docked[0]` and `floating`). Cancel undoes it, as any change.
+    - **Problems** (owner: a layout without the Editor is one), counted in the status line and
+      marked in the list: no `EDITOR`; a panel listed twice; an id that is neither a built-in
+      panel nor `ADDIN_...`, which `restorePanelConfiguration` reports with an *unknown panel
+      type* alert when docked, and `restoreFloatingConfig` turns into a numbered
+      `testDockedElement` when floating.
+    - **Add-in windows** (owner: offered). An add-in's tool window is `ADDIN_<id>`, the id
+      being `ToolWindows.Add`'s second argument (ours `tbDocsHelpPane`). The loaded ones are
+      `toolWindowsById`, named by their header. An `ADDIN_` id no loaded add-in has is not a
+      problem: applying the layout makes a placeholder with `createToolWindowById`, which
+      shows *(currently unavailable)* until the add-in opens its window and takes the place.
+      Windows given no id all share `ADDIN_`, so the editor does not offer them.
+    - **The help's detached state is kept per layout, by the add-in** (owner), never in the
+      layout's JSON. A member at the top of the dialog's text is dropped at Save Changes; one
+      inside a panel's entry survives, and the restore ignores it. But
+      `saveCurrentPanelLayoutAs` and the current arrangement (`savePanelsConfiguration`,
+      setting `LAYOUTv2`, written at every panel change) are built again from the window by
+      `getDockedPanelConfig` and `getFloatingPanelsConfig`, which write only the id, the sizes
+      and the position, so anything extra is lost at the next save; and a later IDE may check
+      the JSON. So: a settings section per layout, `Layouts\<name>`, with `Detached`, `Left`,
+      `Top`, `Width` and `Height`, the name as `enc()` in layouts.js writes it
+      (`encodeURIComponent` with `!'()*~.` encoded too, since a name may hold `\`; the add-in
+      takes only letters, digits, `%`, `-` and `_`). The `Window` section stays where the help
+      is now, whichever layout is in use (*Custom Layout (Unsaved)* included); a layout's
+      section changes only when it is saved or edited in the dialog.
+    - **layouts.js**, put in by `BuildPane` always (no settings row: it is the add-in's own
+      behaviour, not a fix), with the add-in's state in its `$STATE$` marker and later through
+      `update()` (`PushLayoutState`): the pane's id, `dpi`, `now` (detached, and the window's
+      place now or last left) and `records`. It wraps `setActivePanelLayoutName` and
+      `saveCurrentPanelLayoutAs` and sends `applied` or `saved` with the encoded name through
+      `tbDocsLayout` on its hidden element, as hover help does; its dialog adapter sends `ask`
+      when Manage Panel Layouts opens, and wraps `saveChanges` to send `records` (`keep` and
+      the names left, then a `set` line per record changed) ahead of the `applied` that the
+      IDE's Save Changes causes. `window.tbDocsHelpLayouts` (`record`, `edit`, `dialog`,
+      `onUpdate`) is what layouteditor.js reads and writes. The add-in: `saved` records
+      `Detached` and the window's place; `applied` with a record detaches (the window shown
+      without activating, at the record's place when it is on a monitor and the window is
+      neither minimized nor maximized) or attaches; with none it does nothing; `records`
+      writes the `set` lines and deletes every `Layouts\` section not kept (`SettingSections`
+      enumerates them with `RegEnumKeyExW`). Under the test switch it prints `layout saved
+      <name> <detached|attached> at L,T,W,H`, `layout applied <name> <detached at
+      L,T,W,H|attached|unrecorded>` and `layout records set <n>, removed <names|none>`.
+    - **Applying a layout closes every add-in's tool window** (`restorePanelLayout` calls
+      `closeAllAddinToolwindows`), and `Pane_OnClose` makes the pane again, which runs
+      layouts.js again: a message waits while the sink's tool window is no longer
+      `toolWindowsById`'s (`stale`), and the new run sends what the old one held. `BuildPane`
+      hides the new pane while the help is detached, since `createToolWindow` shows one a
+      layout docks. **Two IDE defects (BETA 1042), worked round in layouts.js:**
+      `removeAllFloatingPanels` first takes a floating add-in window that shows out of the page
+      as a built-in panel, and `restorePanelLayout` takes the dock out of the page, before
+      `closeAllAddinToolwindows`; closing such a window then throws inside `toolWindowClose`,
+      which swallows it, so the add-in never hears of the close and its window is gone until
+      the IDE restarts (a compiler restart hands the add-in the lost window again; a hidden
+      floating window is closed rightly). The wrapper closes
+      every add-in's window with `addInEvents.toolWindowClose` first, while all are in the
+      page, as long as the function's text still calls `removeAllFloatingPanels()`. And
+      `toolWindowSetVisible` gives a floating add-in window its suggested size whenever
+      `floatingToolWindowsData` has no place for it, which a layout's floating entry never
+      writes: the wrapper writes each `ADDIN_` entry of the applied layout there. Nothing else
+      in BETA 1042 writes there either (`saveFloatingToolWindowPosition` is called only from
+      `createToolWindow`'s dead `if (0)` branch), so a resize by hand is undone at the next
+      show as well, which the add-in does not work round. Both are in BUGS-TO-REPORT.md:
+      `layout-loses-addin-toolwindow` and `toolwindow-show-suggested-size`, asserted by
+      `addin-test.bat --only toolwindow-layouts` (its own probe add-in, not the help).
+    - **Pixels.** The add-in places its window in its process's pixels, which are physical:
+      the compiler's process is aware of the display's scaling (the help lane checks the
+      window's rectangle against Windows' at 144 dpi). `ProcessDpi` (`GetDpiForSystem`) goes
+      to the page as `dpi`, and the editor converts with `96 / dpi` and the page's
+      `screenX`/`screenY`, its top left corner on the screen in CSS pixels (measured: 571, 272
+      against a client area at 856, 408 physical at 150%). With monitors at different scales
+      this is approximate.
+    - **The With the Help Add-In box** sits under the heading of the help's panel, floating or
+      docked, and of its own window, which the picture draws (dashed, kept inside the
+      picture) when the record says *In its own window*; a click on it selects the help's tile
+      or floating panel, else `{kind: "own"}`, the box alone. *In this panel*, *In its own
+      window* (from the record, else `now`, else `FLOAT_AT`), neither pressed when there is no
+      record, and Left, Top, Width and Height. Changes go into `dialog.edits` and turn on Save
+      Changes; Cancel drops them. *Use the current arrangement* records `now` as well.
+    - **What Detach does to the pane:** `Pane.Visible = False` reaches
+      `toolWindowSetVisible`. A docked pane keeps its place, its body hidden and
+      *(currently unavailable)* shown, which the picture shows; a floating one is hidden, and
+      `getFloatingPanelsConfig` leaves out hidden floating panels, so a layout saved from the
+      window while the help is detached has no help pane. The add-in records where the pane
+      was.
+    - **Re-attaching in the editor floats the pane** (owner, 2026-11-12): choosing *In this
+      panel* for a layout whose help is in its own window takes the pane out of the dock (as
+      *Make it float* does), or adds it when the layout lacks it, and floats it at the window's
+      size, placed where the window was and kept inside the IDE window. The user can dock it
+      again.
 
 **Lookup:**
 

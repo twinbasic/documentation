@@ -1549,7 +1549,7 @@ On BETA 1034 (and 1010) the read crashed the compiler, under `On Error Resume Ne
 
 Severity: low. The error can be handled, and the workaround is to stop at the folder whose `Path` is `twinbasic:/` without reading its `Parent`.
 
-<!-- Reproducer: bugs/rootfolder-parent-error/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e and g; f is the control that reads, r the control for an unhandled error; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. On BETA 1042 the lane must be run on a copy of the install patched with bugs/console-cleared-at-open/fix.js (`--ide <copy>`), because the console defect erases the add-in's lines; on the plain install its cases fail for want of lines. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Retitled 2026-11-09, when BETA 1042 turned the crash (the entry was "Reading `Parent` of the file system's root folder crashes the compiler", slug rootfolder-parent-crash) into this error; the lane on BETA 1034 still showed the crash, case g included. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the NOTE under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the NOTE goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
+<!-- Reproducer: bugs/rootfolder-parent-error/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only parent` (test/addin/parent.test.mjs, cases a to e and g; f is the control that reads, r the control for an unhandled error; the ParentProbe add-in is test/addin/probes/parent), which passes while the bug is there. On BETA 1042 the console defect (console-cleared-at-open) would erase the add-in's lines; since 2026-11-12 every tool's IDE has it fixed in its page (IDE_FIXES in scripts/lib/tb-defaults.mjs), so the lane runs on the plain install. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Retitled 2026-11-09, when BETA 1042 turned the crash (the entry was "Reading `Parent` of the file system's root folder crashes the compiler", slug rootfolder-parent-crash) into this error; the lane on BETA 1034 still showed the crash, case g included. Stated in docs/Reference/Built-In/tbIDE/FileSystemItem.md, the NOTE under "Parent", and in WIP.HelpAddin.md (P21): when fixed, the NOTE goes and the page states what Parent of the root is, with no mention of the defect; update the lane's tests (parent.test.mjs, which then assert the fixed behaviour) and P21. -->
 
 ---
 
@@ -13404,7 +13404,7 @@ The list starts with the flag `false`, the value **Smoother Scrolling** has when
 
 On a patched copy of the BETA 1042 install, the lane's test of the second emptying fails, its two controls pass, and both add-in tests pass.
 
-<!-- Reproducer: bugs/console-cleared-at-open/ (mode lane: asserted by `ide-test.bat --only console-cleared` (test/ide/console-cleared.test.mjs), the test named in repro.json, which passes on BETA 1042; its two controls pass on 1042 and on a patched copy. No project and no zip. The add-in tests are addin:keys-help ("the add-in loads and registers its shortcuts, lowercased") and addin:parent ("case none: the control that reads nothing"), both failing on 1042 and passing on the patched copy; so do the lanes addin:help and addin:help-offline, whose setup waits for the help add-in's loaded line and whose first test reads it ("the add-in never printed its loaded line" on 1042; 92 and 93 passing on the patched copy, 2026-11-11). Run those four with `--ide` on a patched copy while this is open. Found 2026-11-09 by the BETA 1042 recheck, when those two lanes failed with their controls. The help setup of scripts/shoot_docs.mjs, which waited for the help add-in's loaded line, failed on 1042 for this reason alone ("the add-in never printed its loaded line"); since 2026-11-11 it also takes the add-in's built pane as the sign, so it needs no change when this is fixed. Its fusion setup, whose picture is the DEBUG CONSOLE with the line that says the Fusion host was built, lost that line the same way ("the compiler did not build the Fusion host: undefined" in every retake on 1042); since 2026-11-11 it opens the project a second time, from a copy, whose open empties the console once, so it too needs no change. Pages with a callout that goes when this is fixed: docs/IDE/Debugging/Debug-Console.md, docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText). Fix: bugs/console-cleared-at-open/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/console-cleared-at-open/fix.js` on BETA 1042. -->
+<!-- Reproducer: bugs/console-cleared-at-open/ (mode lane: asserted by `ide-test.bat --only console-cleared` (test/ide/console-cleared.test.mjs), the test named in repro.json, which passes on BETA 1042; its two controls pass on 1042 and on a patched copy. No project and no zip. The add-in tests are addin:keys-help ("the add-in loads and registers its shortcuts, lowercased") and addin:parent ("case none: the control that reads nothing"), both failing on 1042 and passing on the patched copy; so do the lanes addin:help and addin:help-offline, whose setup waits for the help add-in's loaded line and whose first test reads it ("the add-in never printed its loaded line" on 1042; 92 and 93 passing on the patched copy, 2026-11-11). Since 2026-11-12 every tool's IDE has this fixed in its page (IDE_FIXES in scripts/lib/tb-defaults.mjs, fix.js's one line set as main.js assigns the console's list, only where the build left the flag unset), so those four run on the plain install; the lane ide:console-cleared leaves the fix out (`unfixed`) and still asserts the defect. When this is retired, remove the fix from IDE_FIXES and the lane's `unfixed` with it. Found 2026-11-09 by the BETA 1042 recheck, when those two lanes failed with their controls. The help setup of scripts/shoot_docs.mjs, which waited for the help add-in's loaded line, failed on 1042 for this reason alone ("the add-in never printed its loaded line"); since 2026-11-11 it also takes the add-in's built pane as the sign, so it needs no change when this is fixed. Its fusion setup, whose picture is the DEBUG CONSOLE with the line that says the Fusion host was built, lost that line the same way ("the compiler did not build the Fusion host: undefined" in every retake on 1042); since 2026-11-11 it opens the project a second time, from a copy, whose open empties the console once, so it too needs no change. Pages with a callout that goes when this is fixed: docs/IDE/Debugging/Debug-Console.md, docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText). Fix: bugs/console-cleared-at-open/fix.js; the Fix shape is `node scripts/ide_js.mjs shape bugs/console-cleared-at-open/fix.js` on BETA 1042. -->
 
 ---
 
@@ -13496,3 +13496,185 @@ Severity: high. An access violation that `On Error` cannot catch ends the progra
 Checked on BETA 1034, which raises 438 for the `Collection` too, so the crash is new in a build after 1034.
 
 <!-- Reproducer: bugs/stdole-idispatch-collection-crash/ (mode test: the first case fails with an access violation, the two controls pass, on BETA 1042). Found 2026-11-09 by the BETA 1042 recheck, when the OLEGuids test case StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods, which used a Collection, crashed; that case now uses the project's Calculator class. The exe was checked in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a WARNING in "The stdole declaration"). When the entry above is fixed as well, that section changes as its comment says. -->
+
+---
+
+## Applying a panel layout loses an add-in's tool window that floats shown or is docked: it leaves the page, and the add-in's OnClose never runs
+
+**Describe the bug**
+Applying a panel layout closes every add-in's tool window, so that each add-in can make its window again where the new layout puts it, and the add-in hears of it through the window's `OnClose` event. On BETA 1042 that works only for a floating window that is hidden. A window that floats and shows, or that is docked, is taken out of the IDE's page before it is closed, and the close then fails without a message: the window disappears, the add-in's `OnClose` never runs, and the add-in still holds a `ToolWindow` that shows nothing. Setting its `Visible` to `True` raises no error and shows nothing. A floating window lost this way stays lost until the IDE is restarted: neither applying a layout that floats it nor restarting the compiler brings it back.
+
+**To Reproduce**
+`layout-loses-addin-toolwindow` is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.
+
+Steps to reproduce the behavior:
+1. Open `layout-loses-addin-toolwindow.twinproj` (attached as `layout-loses-addin-toolwindow.zip`) and build it for Win32. Copy `Build\LayoutLosesAddinToolwindow_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE. Open any project: the toolbar has a button, *Show the tool window*. The add-in adds one tool window, hidden, and makes it again when it is closed, as an add-in that keeps its window does:
+   ```
+   Private Sub MakePane()
+       Set Pane = Host.ToolWindows.Add("Repro", "ReproPane")
+       Pane.Title = "REPRO WINDOW"
+       Pane.RootDomElement.ChildDomElements.Add("reproText", "div").Properties.innerText = "the add-in's tool window"
+   End Sub
+
+   Private Sub ShowButton_OnClick()
+       Pane.Visible = True
+       Host.DebugConsole.PrintText "shown"
+   End Sub
+
+   Private Sub Pane_OnClose()
+       Host.DebugConsole.PrintText "OnClose"
+       MakePane
+   End Sub
+   ```
+2. With the window hidden, choose **Window > Panel Layouts > Default Built-in Layout**. The DEBUG CONSOLE prints `OnClose`: the IDE closed the window, and the add-in made it again. This is right.
+3. Click *Show the tool window*. The window *REPRO WINDOW* floats over the editor.
+4. Choose **Window > Panel Layouts > Default Built-in Layout** again. The window disappears, and the DEBUG CONSOLE prints no `OnClose`.
+5. Click *Show the tool window*. The DEBUG CONSOLE prints `shown`, with no error, and no window appears.
+6. Close the IDE and delete `LayoutLosesAddinToolwindow_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
+
+**Expected behavior**
+The shown window is closed as the hidden one is in step 2: the add-in's `OnClose` runs, and the window it makes again is placed by the new layout. Applying a layout should never lose an add-in's window, nor leave the add-in holding a window that shows nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+A docked window is lost the same way: with a layout that docks the window (an entry `{"id": "ADDIN_ReproPane", ...}` among its docked panels) applied, and the window showing there, applying any other layout takes it out of the page with no `OnClose`. That window comes back in its place, hidden, when a layout that docks it is applied again, and `Visible = True` then shows it, but the add-in has still heard no `OnClose`.
+
+What does not reproduce it: a floating window that is hidden (step 2).
+
+The cause is in `ide/main.js`. `setActivePanelLayoutName` calls `removeAllFloatingPanels` first, which takes every floating panel that has a size out of the page with `closePanelBySectionHeader`, as if it were a built-in panel; a floating add-in window that shows is one of them. Then `restorePanelLayout` takes the dock (`outermostDock`) out of the page, and only then calls `closeAllAddinToolwindows`, which closes each add-in window with `addInEvents.toolWindowClose`. That calls the window's `onClose`, set by `createToolWindowById`, which calls `closePanelBySectionHeader` again on a window that is no longer in the page. It throws, and `toolWindowClose` catches the error and answers with `sendModalResultFailed`, so neither the rest of `onClose` (`delete toolWindowsById[...]`) nor the `closeEventJob` that raises `OnClose` in the add-in runs. The window stays in `toolWindowsById`, out of the page, and a later `ToolWindows.Add` with its id, after a compiler restart too, is handed that window by `createToolWindowById`. A hidden floating window has no size, so `removeAllFloatingPanels` skips it and it is still in the page when it is closed. Closing every add-in window before `removeAllFloatingPanels` runs closes each while it is in the page, with its `OnClose`; an add-in can do that by wrapping `setActivePanelLayoutName`, which is how the twinBASIC help add-in keeps its pane.
+
+Severity: medium. An add-in's window disappears with no message whenever the user applies a layout while it shows, and an add-in that makes its window again in `OnClose`, as one that keeps its window across layouts has to, never gets it back while the IDE runs.
+
+<!-- Reproducer: bugs/layout-loses-addin-toolwindow/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only toolwindow-layouts` (test/addin/toolwindow-layouts.test.mjs; its add-in is the LayoutsProbe, test/addin/probes/layouts), the two tests named in repro.json (floating and shown, docked), which pass on BETA 1042 (2026-11-13). The control "control: applying a layout while the window floats hidden closes it ..." passes too, and so do "neither a layout that floats the lost window nor a compiler restart puts it back in the page" and "a layout that docks the lost window puts the same window back in the page, hidden, ...", which the paragraphs above report. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-13 making the help add-in 1.4.0 keep the help's place per layout (WIP.HelpAddin.md item 14), whose pane disappeared when a layout was applied while it floated. Worked round in add-in/Resources/SCRIPTS/layouts.js, `closeAddinWindows`, which closes every add-in's window before the IDE's setActivePanelLayoutName runs, as long as that function's text still calls removeAllFloatingPanels(); when this is fixed, remove the workaround, and the lane's tests then assert the fixed behaviour. No page carries a callout for it; docs/Reference/Built-In/tbIDE/ToolWindow.md (OnClose) says the event fires whenever the pane is closed. No Fix shape yet: a fix of setActivePanelLayoutName that calls closeAllAddinToolwindows first is a unit ide_js.mjs can patch. -->
+
+---
+
+## Showing a floating add-in tool window again gives it the add-in's suggested size, losing the size a panel layout or a resize by hand gave it
+
+**Describe the bug**
+An add-in can suggest the size its tool window floats at, with `RootDomElement.Properties.suggestedWidth` and `suggestedHeight`. On BETA 1042 the IDE applies that size every time the add-in shows the floating window again with `Visible = True`, not only the first time: a window the user resized by hand, or one a panel layout floats at a size of its own, is back at the suggested size once it has been hidden and shown. Its place is kept.
+
+**To Reproduce**
+`toolwindow-show-suggested-size` is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.
+
+Steps to reproduce the behavior:
+1. Open `toolwindow-show-suggested-size.twinproj` (attached as `toolwindow-show-suggested-size.zip`) and build it for Win32. Copy `Build\ToolwindowShowSuggestedSize_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE. Open any project: the toolbar has a button, *Show or hide the tool window*. The add-in adds one tool window, hidden:
+   ```
+   Set Pane = Host.ToolWindows.Add("Repro", "ReproPane")
+   Pane.Title = "REPRO WINDOW"
+   With Pane.RootDomElement
+       .Properties.suggestedWidth = "500px"
+       .Properties.suggestedHeight = "600px"
+       .ChildDomElements.Add("reproText", "div").Properties.innerText = "the add-in's tool window"
+   End With
+   ```
+   and the button runs:
+   ```
+   Shown = Not Shown
+   Pane.Visible = Shown
+   ```
+2. Click the button. *REPRO WINDOW* floats in the middle of the IDE, 500 by 600 (CSS) pixels.
+3. Drag the window's right edge to the left and its bottom edge up, to make it about 350 by 400.
+4. Click the button twice. The window hides, then shows at its place, 500 by 600 again.
+5. Close the IDE and delete `ToolwindowShowSuggestedSize_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
+
+**Expected behavior**
+The window shows again at the size it had when it was hidden, 350 by 400. A suggested size is the size of a window that has none yet, its first time; once the user or a layout has given it one, that one is kept.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+The same happens to a window a panel layout floats. A layout whose floating panels include `{"id": "ADDIN_ReproPane", "left": 100, "top": 80, "width": 320, "height": 240}` puts the window there at 320 by 240 when it is applied, and once the window has been hidden and shown it is 500 by 600.
+
+What does not reproduce it: a window for which the IDE has a place in `floatingToolWindowsData`, which keeps its size. That object is loaded from the `floatingToolWindows` of the saved panel layout setting, and nothing in BETA 1042 adds to it.
+
+The cause is in `ide/main.js`. `addInEvents.toolWindowSetVisible`, given true for a floating window, sets the floating panel's width and height from `bodyElement.suggestedWidth` and `suggestedHeight` whenever `floatingToolWindowsData[persistenceId]` is missing. The function that writes that entry, `saveFloatingToolWindowPosition`, is called only by the resize bars made in the `if (0)` branch of `addInEvents.createToolWindow`, which never runs. The resize bars of the floating panel the window is actually in (`moveToFloatingPanel`) call `savePanelsConfiguration` alone, and `restoreFloatingConfig`, which floats an add-in window at a layout's place, sets the panel's style alone. Writing the entry where a floating add-in window is resized and where a layout places it, or applying the suggested size only to a window that has not been shown before, would keep the size.
+
+Severity: low. Nothing is lost but the size, but it is lost every time: an add-in that hides and shows its window often, as a help pane does, undoes the user's resize each time, and a layout's size for the window holds only until it is next shown.
+
+<!-- Reproducer: bugs/toolwindow-show-suggested-size/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only toolwindow-layouts` (test/addin/toolwindow-layouts.test.mjs; its add-in is the LayoutsProbe, test/addin/probes/layouts), the two tests named in repro.json (a layout's size, a resize with the mouse by CDP input events), which pass on BETA 1042 (2026-11-13); the control "control: with a place in floatingToolWindowsData, the window keeps its size when hidden and shown" passes too. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-13 making the help add-in 1.4.0 keep the help's place per layout (WIP.HelpAddin.md item 14): a layout that floats the help's pane lost its size when the help was attached. The resize by hand was found writing this entry, from main.js. Worked round in add-in/Resources/SCRIPTS/layouts.js, `keepFloatingPlaces`, which writes each `ADDIN_` floating entry of the applied layout into floatingToolWindowsData; a resize by hand is not worked round. When this is fixed, remove the workaround, and the lane's tests then assert the fixed behaviour. docs/Reference/Built-In/tbIDE/ToolWindow.md, "Suggested initial size", says the suggested size is used the first time only and the user's size is remembered, which BETA 1042 does not do; it carries no callout yet. No Fix shape yet: toolWindowSetVisible is a method of the addInEvents object, not a unit ide_js.mjs names. -->
+
+---
+
+## Alt+A and Alt+R run the Find / Replace panel's Replace All and Replace from the code and from Quick Find, with the panel closed
+
+**Describe the bug**
+The Find / Replace panel's keys for **Replace** (Alt+R) and **Replace All** (Alt+A) work outside the panel: in the code, and in the editor's Quick Find widget, while the panel is closed. They run the panel's own search, with the text its **Find What** and **Replace With** hold. Alt+A is also the key of **Edit → Select All Matches**: once **Find What** holds text, Alt+A in the code selects no match and replaces every match of **Find What** in the file with **Replace With** instead. Ctrl+F empties **Replace With**, so after any search with the panel, Alt+A deletes every match of that search. In Quick Find, Alt+R and Alt+A act on the panel's search, not on Quick Find's; Alt+R is the key Monaco's own find widget gives to *Use Regular Expression*, so a user who presses it there to turn regular expressions on changes the code instead. It was observed by operating the IDE with key events in an IDE started with an `APPDATA` of its own, and reading the code, the selections and the message boxes after each key.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module such as:
+   ```
+   Module Fruit
+       Public Sub Main()
+           Dim apple As Long
+           Dim banana As Long
+           apple = 1
+           banana = 2
+           Debug.Print apple + banana
+       End Sub
+   End Module
+   ```
+2. Put the caret inside `banana` on the `Dim banana` line and press Ctrl+F. The panel shows with `banana` in **Find What** and **Replace With** empty. Press Esc: the panel closes.
+3. Put the caret inside `apple` on the `Dim apple` line and press Alt+A. A box says *The specified region has been searched. 3 replacements were made.* Every `banana` is gone, and there is one cursor, not one on each `apple`.
+4. Put the module's text back. Put the caret inside `apple` again and press Alt+R: the next `banana` is selected. Press Alt+R again: that `banana` is deleted.
+5. Put the module's text back. Press Alt+H, type `apple` in the box to find, press Tab, type `pear` in the replace box, and press Shift+Tab. Press Alt+R twice: a `banana` is deleted and no `apple` is replaced. Press Alt+A: every `banana` is deleted, with the same box as in step 3.
+
+**Expected behavior**
+Alt+R and Alt+A run the panel's **Replace** and **Replace All** only while the focus is in the panel, as its other Alt keys do. In the code, Alt+A runs **Select All Matches**: a cursor on each `apple`, as in an IDE whose panel has not been used. In Quick Find, neither key touches the panel's search.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+The cause, read from `ide\main.js`: `globalKeyDown`, a keydown listener on the document in the capture phase, passes each key to `executeKeyboardShortcuts`, which runs every command bound to the key whose `defaultContext` holds, until one sets `completelyStopKeyEventProcesing`. `tbFindReplace_ReplaceNext` and `tbFindReplace_ReplaceAll` have the context `focusedFindReplace || focusedEditor`, like `tbFindReplace_Next` and `tbFindReplace_Prev` (F3 and Shift+F3, which are meant to work from the code too), while the panel's other Alt keys have `focusedFindReplace` alone. `focusedEditor` holds wherever the focus is in the code editor's panel, Quick Find's boxes included. `tbEditor_FindWidget_SelectAllMatches`, also Alt+A, sets no stop flag. Giving the two commands the context `focusedFindReplace` alone would fix both.
+
+What does not reproduce it: Ctrl+Shift+L in the code, which selects every match of the word at the caret and changes nothing, with the panel closed and **Find What** holding text; and Alt+A in an IDE whose panel has not been used, which selects every match.
+
+Severity: high. A key the Edit menu shows for selecting text changes the code instead, every time once the panel has been used, and Alt+R does it with no message at all.
+
+<!-- Reproducer: bugs/find-panel-keys-outside-panel/ (mode lane: asserted by `ide-test.bat --only quick-find-keys` (test/ide/quick-find-keys.test.mjs), the four tests named in repro.json, which pass on BETA 1042 (2026-11-13); the controls "control: with the Find / Replace panel never used, Alt+A in the code selects every match of the word at the caret" and "control: with the panel closed, Ctrl+Shift+L in the code selects every apple and replaces nothing" pass too. Its project, test/ide/probes/quick-find-keys, holds apple and banana four times each, where the module above holds each three times). No project and no zip: the steps give the code. docs/IDE/Code/Finding.md carries a WARNING for it under "Select all matches"; when a fixed build is released, that WARNING goes. Found 2026-11-13 checking whether Quick Find's tooltips name keys that do nothing (they name no keys at all), after documenting regular expressions in Quick Find. No Fix shape yet: the fix is the two defaultContext strings of the commands in ideCommands, which ide_js.mjs could patch. -->
+
+---
+
+## Enter in Quick Find's replace box adds a line break to the replacement instead of replacing
+
+**Describe the bug**
+In the replace row of the editor's Quick Find widget (Alt+H), Enter puts a line break into the replace box, which grows to two lines, and replaces nothing. **Replace All** then writes that line break into the code after each replacement. In the box to find, Enter goes to the next match. It was observed by operating the IDE with key events in an IDE started with an `APPDATA` of its own, and reading the widget's state and the code.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module such as:
+   ```
+   Module Fruit
+       Public Sub Main()
+           Dim apple As Long
+           apple = 1
+           Debug.Print apple
+       End Sub
+   End Module
+   ```
+2. Press Alt+H, type `apple` in the box to find, press Tab and type `pear` in the replace box.
+3. Press Enter. Nothing is replaced, and the replace box grows from one line to two: the replacement is now `pear` and a line break.
+4. Click **Replace All** (the button at the right of the replace box). Each `apple` becomes `pear` followed by a line break, and the module has three lines more: `Dim pear` and ` As Long` are on two lines.
+
+**Expected behavior**
+Enter in the replace box replaces the current match and goes to the next one, as it does in Monaco's own find widget, which Quick Find is, or it does nothing. It does not change the replacement.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+None of the keys Monaco's find widget has of its own works in Quick Find on BETA 1042 (Alt+C, Alt+W, Alt+L and Alt+P for the toggles, Ctrl+Shift+1 to replace, Ctrl+Alt+Enter to replace all), and its tooltips name no keys, so the IDE handles the widget's keys with its own keymap alone. In it, Enter in Quick Find is `tbFindWidget_FindNext`, with the context `focusedFindWidget`; nothing takes Enter in the replace box, and the box, a text area that holds several lines, takes it as a line break.
+
+Severity: low. The box shows a second line, but nothing says that the replacement now ends with a line break, and **Replace All** then breaks every line it changes.
+
+<!-- Reproducer: bugs/quick-find-enter-in-replace-box/ (mode lane: asserted by `ide-test.bat --only quick-find-keys` (test/ide/quick-find-keys.test.mjs), the test named in repro.json, which passes on BETA 1042 (2026-11-13)). No project and no zip: the steps give the code. docs/IDE/Code/Finding.md carries a NOTE for it under "Quick Find"; when a fixed build is released, that NOTE goes. Found 2026-11-13 with find-panel-keys-outside-panel, pressing each key in Quick Find. -->
+

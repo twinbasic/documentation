@@ -170,6 +170,30 @@
         }
       }
     },
+    "IDE/AddIns/Images/Help_KeyEditor.light.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_KeyEditor.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_LayoutEditor.light.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_LayoutEditor.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_LayoutHelp.light.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_LayoutHelp.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_Settings.light.png": {
+      "build": 1042
+    },
+    "IDE/AddIns/Images/Help_Settings.png": {
+      "build": 1042
+    },
     "IDE/AddIns/Images/Help_Window.light.png": {
       "build": 1033
     },

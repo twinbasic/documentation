@@ -346,6 +346,9 @@ The palette also lists **Rename Symbol** (see [above](#rename-symbol-and-change-
 
 The key beside an action in the palette is the key Monaco gives it. It is not always a key that works in the IDE. The IDE stops every key press with <kbd>Ctrl</kbd> held from reaching the editor, apart from the commands it binds itself. So a palette action that shows a key with <kbd>Ctrl</kbd> does not respond to that key. The Monaco keys <kbd>F1</kbd>, <kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F8</kbd> and <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> do nothing. <kbd>F1</kbd> does not open the palette, so open it from the menu.
 
+> [!ADDIN] With the Help Add-In
+> <kbd>F1</kbd> opens the page of this documentation that describes the name at the cursor: see [F1 and the help pane](../AddIns/Help#f1-and-the-help-pane).
+
 ![The command palette open at the top of the editor, over the code. Its box holds only the prompt character, and the list under it starts with Add Cursor Above, Add Cursor Below, Add Cursors To Bottom and Add Cursors to Line Ends.](Images/Command_Palette.png){:width="736" height="235"}
 
 ## Save often

@@ -65,7 +65,9 @@
 #helpHoverLabel,
 #helpAllPackagesLabel,
 #helpKeysLabel,
-#helpFindLabel {
+#helpFindLabel,
+#helpKeyEditorLabel,
+#helpLayoutEditorLabel {
   display: flex;
   align-items: center;
   gap: 4px;

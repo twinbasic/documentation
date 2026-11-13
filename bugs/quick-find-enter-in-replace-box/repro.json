@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:quick-find-keys",
+  "tests": [
+    "Enter in Quick Find's replace box adds a line break to the replacement, which Replace All writes into the code"
+  ],
+  "steps": "1. Open a module that holds apple four times. Press Alt+H, type apple in the box to find, press Tab and type pear in the replace box.\n2. Press Enter in the replace box: nothing is replaced, and the box grows to two lines; the replacement is now pear and a line break.\n3. Click Replace All: each apple becomes pear followed by a line break, and the module has four lines more."
+}

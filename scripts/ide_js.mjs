@@ -20,6 +20,7 @@ import path from "node:path";
 import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
+  addinCommandText,
   buildOf,
   builtInCommandIds,
   builtInKeymap,
@@ -52,6 +53,7 @@ exitOnCrash();
 const DEFAULT_MAP = path.join(REPO_ROOT, "scripts", "ide-js", "names.json");
 const KEYMAP_PAGE = path.join(REPO_ROOT, "docs", "IDE", "Reference", "Keyboard-Shortcuts.md");
 const COMMAND_TEXT = path.join(REPO_ROOT, "scripts", "ide-js", "command-text.json");
+const ADDIN_COMMAND_TEXT = path.join(REPO_ROOT, "add-in", "Resources", "KEYS", "commands.json");
 
 const USAGE = `usage: node scripts/ide_js.mjs <command> [arguments] [--ide <install>] [--map <names.json>] [--out <file>] [--copy-to <dir>] [--all] [--json] [--check] [--update] [-h, --help]
 
@@ -91,7 +93,9 @@ Commands:
                             --check compares the page with them and also fails
                             for a command with no description, or a description
                             for a command the build lacks; --update writes the
-                            page
+                            page; both do the same for the help add-in's copy
+                            of the descriptions, add-in/Resources/KEYS/
+                            commands.json
 
 Options:
   --ide <install>   the install: its twinBASIC.exe, its folder or a main.js
@@ -414,15 +418,25 @@ if (command === "keymap") {
   const page = readFileSync(KEYMAP_PAGE, "utf8");
   const { current, expected, text: updated } = pageKeymap(page, sections);
   const name = path.relative(REPO_ROOT, KEYMAP_PAGE);
+  // The help add-in's copy of the descriptions, which its shortcut editor shows.
+  const copyName = path.relative(REPO_ROOT, ADDIN_COMMAND_TEXT);
+  const copy = addinCommandText(text);
+  const copyNow = existsSync(ADDIN_COMMAND_TEXT) ? readFileSync(ADDIN_COMMAND_TEXT, "utf8") : null;
   if (values.update) {
     writeFileSync(KEYMAP_PAGE, updated);
     console.log(`${name}: ${current === expected ? "unchanged" : `written from ${build ?? "the build"}`}`);
+    if (copyNow !== copy) {
+      mkdirSync(path.dirname(ADDIN_COMMAND_TEXT), { recursive: true });
+      writeFileSync(ADDIN_COMMAND_TEXT, copy);
+    }
+    console.log(`${copyName}: ${copyNow === copy ? "unchanged" : `written from ${dataName}`}`);
     process.exit(0);
   }
   const diff = lineDiff(current, expected, { context: 0 });
   if (diff) console.log(diff);
   console.log(`${name}: ${diff ? `differs from ${build ?? "the build"}` : `the same as ${build ?? "the build"}`}`);
-  process.exit(diff || missing.length || extra.length ? 1 : 0);
+  console.log(`${copyName}: ${copyNow === copy ? `the same as ${dataName}` : `differs from ${dataName}`}`);
+  process.exit(diff || missing.length || extra.length || copyNow !== copy ? 1 : 0);
 }
 
 // patch and shape

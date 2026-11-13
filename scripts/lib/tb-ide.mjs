@@ -17,7 +17,7 @@ import { secondsText, timeoutMs } from "./harness-settings.mjs";
 import { connectBroker } from "./tb-broker.mjs";
 import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
-import { checkDefaults, installDefaultsHook } from "./tb-defaults.mjs";
+import { checkDefaults, fixesWithout, installDefaultsHook } from "./tb-defaults.mjs";
 import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 import { unsupportedIde } from "./tb-install.mjs";
@@ -251,6 +251,10 @@ export async function leaseSlot({ tag = "", port = false } = {}) {
  *                            layouts and keyboard groups, in the page only, so it runs with
  *                            the defaults; tb-defaults.mjs). Only a tool that is the user's own
  *                            IDE in all but its project passes true: try-help-addin
+ * @param {string[]} [o.unfixed]  slugs of IDE_FIXES (tb-defaults.mjs) to leave out: the page
+ *                            fixes every defect named there unless told otherwise. Only the
+ *                            lane that asserts a defect leaves its fix out; a slug that is not
+ *                            one throws. With userSettings nothing is fixed
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[], port: number | null, slot: number, desktop: string | null, hook: object | null}>}
  *   `pid` is the IDE's own. `folders` are its temp folder and WebView2 profile,
  *   which shutdownIde removes. `port` is its DevTools port, for attachIde, or
@@ -269,17 +273,32 @@ export async function launchIde({
   browserArgs = "",
   flags = IDE_FLAGS,
   userSettings = false,
+  unfixed = [],
 }) {
   // Before anything starts: an IDE older than the flags would write the user's settings.
   const tooOld = unsupportedIde(exe);
   if (tooOld) throw new Error(tooOld);
+  const fixes = fixesWithout(unfixed);
   if (port != null) await waitForPort(port);
   const t0 = Date.now();
   const own = slot ? null : await leaseSlot({ tag: `IDE ${path.basename(project || exe)}` });
   const s = slot ?? own;
   try {
     const leased = Date.now();
-    const started = await startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags, userSettings });
+    const started = await startIde({
+      exe,
+      project,
+      s,
+      own,
+      port,
+      show,
+      keep,
+      env,
+      browserArgs,
+      flags,
+      userSettings,
+      fixes,
+    });
     timing("launch", {
       project: project ? path.resolve(project) : null,
       leaseMs: leased - t0,
@@ -293,7 +312,7 @@ export async function launchIde({
 }
 
 // launchIde once the slot is settled; `own` is the slot when it is launchIde's own to hand on.
-async function startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags, userSettings }) {
+async function startIde({ exe, project, s, own, port, show, keep, env, browserArgs, flags, userSettings, fixes }) {
   const exeWin = exe.split("/").join("\\");
   const target = project ? path.resolve(project).split("/").join("\\") : "";
   // Each IDE has a temp folder of its own, emptied at each launch in its slot
@@ -336,7 +355,7 @@ async function startIde({ exe, project, s, own, port, show, keep, env, browserAr
   // Started before the IDE is, since main.htm commits a fraction of a second after its port file
   // is written; attachIde checks the hook ran, by the port. The hook's connection lives as long
   // as this process, so a kept IDE (`keep`) is hooked only until this process ends.
-  const hook = userSettings ? null : installDefaultsHook({ profile: ideProfile, since: started });
+  const hook = userSettings ? null : installDefaultsHook({ profile: ideProfile, since: started, fixes });
   const hooked = async (pid, launcher) => {
     const p = await found(pid);
     if (hook && p) defaultsHooks.set(p, hook);

@@ -158,7 +158,7 @@ If **Find What** is not in the `/pattern/flags` form, a box says **Invalid forma
 
 <!-- test: bug find-regex-line-break -->
 > [!NOTE] BETA 1042
-> A regular expression whose match spans a line break, such as `/^\s+end sub$/`, selects nothing. The selection is an empty one at the end of the line before the match, and **Find Next** stays there. Search for one line at a time.
+> A regular expression whose match spans a line break, such as `/^\s+end sub$/`, selects nothing. The selection is an empty one at the end of the line before the match, and **Find Next** stays there. Search for one line at a time, or use [Quick Find](#regular-expressions-in-quick-find), which can match across lines.
 
 <!-- test: bug find-regex-alert-reason -->
 > [!NOTE] BETA 1042
@@ -196,17 +196,58 @@ The Quick Find widget searches the file you are in, with a small box at the top 
 | Show an earlier search | <kbd>Up</kbd> |
 | Show a later search | <kbd>Down</kbd> |
 
-The widget opens with the selected text in its box, and with the count of the matches, such as *1 of 10*. Its toggles are **Match Case**, **Match Whole Word**, **Use Regular Expression** and **Find in Selection**, and the replace row has **Preserve Case**. <kbd>Shift</kbd>+<kbd>Enter</kbd> does nothing. The IDE does not remember the toggles between uses.
+The widget opens with the selected text in its box, and with the count of the matches, such as *1 of 10*. Its toggles are **Match Case**, **Match Whole Word**, **Use Regular Expression** and **Find in Selection**, and the replace row has **Preserve Case**. The toggles have no keys: click them. <kbd>Shift</kbd>+<kbd>Enter</kbd> does nothing. The IDE does not remember the toggles between uses.
 
 ![The Quick Find widget at the top right of the editor, opened with Quick Replace so that its replace row shows. Its box holds Twice, with the toggles beside it and the count 2 of 2, and both matches of Twice are marked in the code.](Images/Quick_Find.png){:width="752" height="430"}
 
 With a word selected, <kbd>Ctrl</kbd>+<kbd>F3</kbd> in the code goes to its next occurrence and shows the widget.
+
+<!-- test: bug quick-find-enter-in-replace-box, lane ide:quick-find-keys -->
+> [!NOTE] BETA 1042
+> <kbd>Enter</kbd> in the replace box replaces nothing. It adds a line break to the replacement, and the box grows to two lines; **Replace All** then writes that line break into the code after each replacement. Take the line break out with <kbd>Backspace</kbd>, and click **Replace** or **Replace All** instead.
+
+### Regular expressions in Quick Find
+
+With **Use Regular Expression** on, the text in the box is a JavaScript regular expression, written without slashes: `/total/` looks for the slashes too. A pattern with capital letters finds text in any case unless **Match Case** is on.
+
+Quick Find reads the file one line at a time, so a match never spans a line break, unless the pattern holds `\n`, `\r` or `\W`. Then it reads the whole file, with each line break as `\n`:
+
+- Write `\n` where a line breaks. `\r\n` finds nothing.
+- `\s` and `[\s\S]` on their own keep the search on one line. `Info[\s\S]*Name` finds nothing when `Info` and `Name` are on different lines.
+- In a pattern that holds `\n`, `\s` matches a line break too. Match the spaces at the start of the next line with `[ \t]*` rather than `\s*`, which can also take in blank lines.
+
+In the replace row, `$1`, `$2` and so on put back the text that each group in brackets matched, and `\n` starts a new line. For example, to change each pair of lines such as
+
+```text
+s.Enum_Info "Red"
+s.Enum_Info 1
+```
+
+into
+
+```text
+s.Enum_Name "Red"
+s.Enum_Value 1
+```
+
+open Quick Replace with <kbd>Alt</kbd>+<kbd>H</kbd>, click **Use Regular Expression** to turn it on, fill in the two boxes, and click **Replace All**:
+
+| Box | Text |
+|---|---|
+| Find | `s\.Enum_Info(.*)\n([ \t]*)s\.Enum_Info` |
+| Replace | `s.Enum_Name$1\n$2s.Enum_Value` |
+
+`(.*)` takes the rest of the first line, and `([ \t]*)` the spaces in front of the second.
 
 ### Select all matches
 
 **Edit → Select All Matches** (<kbd>Alt</kbd>+<kbd>A</kbd>) opens the widget, gives a cursor to every match of the text in it, and closes the widget. You can then type to change every match at once; see [several cursors](Editor#several-cursors-at-once). <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> does the same with the word at the caret, with no widget.
 
 While the focus is in the Find / Replace panel, <kbd>Alt</kbd>+<kbd>A</kbd> is **Replace All** and <kbd>Alt</kbd>+<kbd>F</kbd> goes to **Find What**. In the editor they run Select All Matches and Quick Find.
+
+<!-- test: bug find-panel-keys-outside-panel, lane ide:quick-find-keys -->
+> [!WARNING] BETA 1042
+> Once the panel's **Find What** holds text, as it does after any search with the panel, <kbd>Alt</kbd>+<kbd>A</kbd> and <kbd>Alt</kbd>+<kbd>R</kbd> run the panel's **Replace All** and **Replace** in the code and in Quick Find too, even with the panel closed. They use the panel's **Find What** and **Replace With**, not the text in Quick Find. <kbd>Alt</kbd>+<kbd>A</kbd> in the code then selects nothing, replaces every match of **Find What** in the file, and a box says how many; <kbd>Ctrl</kbd>+<kbd>F</kbd> empties **Replace With**, so the matches are deleted. <kbd>Alt</kbd>+<kbd>R</kbd> selects the panel's next match, and a second press replaces it with no message. To select every match, use <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> on the word, and press neither <kbd>Alt</kbd>+<kbd>A</kbd> nor <kbd>Alt</kbd>+<kbd>R</kbd> in the code or in Quick Find.
 
 ## See Also
 

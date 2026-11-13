@@ -17,7 +17,9 @@
 // Each test states what BETA 1042 does. If one fails after an IDE update, the IDE has changed:
 // update the entry "The DEBUG CONSOLE is emptied twice as the first project opens, so output written
 // in between, an add-in's included, is lost" in BUGS-TO-REPORT.md, or its report in bugs/filed/, and
-// then this file. bugs/console-cleared-at-open/fix.js is the fix, tested on a patched copy.
+// then this file. bugs/console-cleared-at-open/fix.js is the fix, tested on a patched copy. Every
+// other tool's IDE has the same fix made in its page (IDE_FIXES, scripts/lib/tb-defaults.mjs); this
+// lane leaves it out (`unfixed`), and goes with it when the entry is retired.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -97,7 +99,10 @@ scenario("the DEBUG CONSOLE when a project opens", (lane) => {
   }
 
   before(async () => {
-    c = await lane.openNoProject();
+    // Every other tool's IDE has this defect fixed in its page (IDE_FIXES, tb-defaults.mjs); this
+    // lane states it, so its IDE is left as the build is.
+    c = await lane.openNoProject({ unfixed: ["console-cleared-at-open"] });
+    assert.deepEqual(await c.evaluate("window.__tbDefaults.fixes"), [], "the page fixed the defect it tests");
     assert.ok(await waitFor(c, () => c.evaluate(READY_JS)), "the page never became ready");
     await c.evaluate("cancelAllModalDialogs()");
     const first = pack("ConsoleClearedProbe");

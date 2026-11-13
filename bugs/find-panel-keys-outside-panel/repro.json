@@ -1,0 +1,11 @@
+{
+  "mode": "lane",
+  "lane": "ide:quick-find-keys",
+  "tests": [
+    "with the panel closed, Alt+A in the code deletes every banana, the panel's Replace All, and selects no apple",
+    "with the panel closed, Alt+R in the code selects the next banana, and a second Alt+R deletes it",
+    "in Quick Find with apple and pear, Alt+R twice deletes a banana and replaces no apple",
+    "in Quick Find with apple and pear, Alt+A deletes every banana and replaces no apple"
+  ],
+  "steps": "1. Open a module that holds apple four times and banana four times. Put the caret inside a banana and press Ctrl+F: the Find / Replace panel floats with banana in Find What and Replace With empty. Press Esc to close it.\n2. Put the caret inside an apple and press Alt+A (Edit -> Select All Matches): a box says The specified region has been searched. 4 replacements were made., every banana is gone, and only the one cursor is left.\n3. Undo, put the caret inside an apple and press Alt+R twice: the first press selects the next banana, the second deletes it.\n4. Undo, press Alt+H, type apple in the box to find and pear in the replace box, and press Alt+R twice in the box to find: a banana is deleted and no apple is replaced. Alt+A there deletes every banana, with the same box."
+}

@@ -32,10 +32,11 @@
 // bugs/, and then this file.
 //
 // BETA 1042 also empties the DEBUG CONSOLE a second time as the first project
-// opens (the entry "The DEBUG CONSOLE is emptied twice ..."), which erases what
-// the add-in printed, so on that build every case but the controls fails for
-// want of lines. Judge the lane there on a copy of the install patched with
-// bugs/console-cleared-at-open/fix.js (addin-test.bat --ide <copy>).
+// opens (the entry "The DEBUG CONSOLE is emptied twice ..."), which would erase
+// what the add-in printed. Every tool's IDE has that defect fixed in its page
+// (IDE_FIXES, scripts/lib/tb-defaults.mjs), so the lane runs on the plain
+// install; every case but the controls failing for want of lines means that
+// fix no longer takes.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 

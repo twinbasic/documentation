@@ -63,6 +63,11 @@ Choose **Window → Panel Layouts → Manage Panel Layouts...** to add and delet
 
 The list on the left holds `<DEFAULT> (built-in)` and `<FULLSCREEN> (built-in)`, which are read-only, and then your layouts. Each of yours has a close icon that removes it. The pane on the right shows the selected layout as text, which you can edit unless it is a built-in layout.
 
+> [!ADDIN] With the Help Add-In
+> The [Help Add-In](../AddIns/Help#the-panel-layout-editor) shows each layout as a picture of the IDE window instead of text, where a panel is resized, moved, floated or docked by clicking and dragging, and a layout without the Editor is marked. Each layout also keeps [whether the help is in its pane or in its own window](../AddIns/Help#the-help-window-in-panel-layouts), and where that window is. The text has no find of its own: the add-in also adds <kbd>Ctrl</kbd>+<kbd>F</kbd> and <kbd>F3</kbd> to search it, as described in [Finding text in the shortcut editors](../AddIns/Help#finding-text-in-the-shortcut-editors).
+>
+> ![Manage Panel Layouts with the Help Add-In loaded: the layout Mine drawn as a small IDE window of tiles, one for each panel, with the Toolbox selected and its place and width in a box beside the picture.](../AddIns/Images/Help_LayoutEditor.png){:width="1016" height="642" secondary}
+
 **Add New...**
 : Asks for a name in a box that reads *&lt;new name&gt;*. <kbd>Enter</kbd> creates a layout that is a copy of the Default layout, and <kbd>Esc</kbd> cancels. A name that starts with `<` is refused with the message *Custom panel name cannot begin with '<'*. A name that contains a vertical bar is refused with *Group name cannot contain '|'*, and a name already in use with *Group already exists*.
 

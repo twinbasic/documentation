@@ -52,19 +52,47 @@ export const BLANKED_KEYS = {
   ALLOWERRORREPORTINGV3: "DISAGREED_TOOLS",
 };
 
+// Defects of the IDE itself that every tool's IDE has fixed in its page, each named by the slug of
+// its entry in BUGS-TO-REPORT.md, whose own fix (bugs/<slug>/fix.js) this applies at run time
+// rather than to the install. A fix acts only where the build still has the defect, so a build
+// that ships the fix leaves it nothing to do. The lane that asserts the defect leaves it unfixed
+// (launchIde's `unfixed`), so the entry is still checked against the plain build; and when the
+// entry is retired, its fix goes from here, and that lane's `unfixed` then fails until it goes too.
+//   console-cleared-at-open: BETA 1042 empties the DEBUG CONSOLE a second time as the first project
+//   opens, erasing what an add-in prints as it loads. The console's list (createListView) starts
+//   with its useCachedItemHeights unset, and the first setUseCachedItemHeights(false) empties it. The
+//   page sets the flag false as main.js assigns the list to `debugConsoleContent`, a `var` of
+//   main.js with no initialiser, so the setter put on window here stays and sees the assignment.
+export const IDE_FIXES = ["console-cleared-at-open"];
+
 // Runs in the page, in every document of the IDE's browser; only main.htm does anything.
-// `window.__tbDefaults` is the marker that it ran, and its `keys` the keys it answered
-// (never their values). A key it answers is never saved either: IDE_FLAGS stop every save of
+// `window.__tbDefaults` is the marker that it ran, its `keys` the keys it answered
+// (never their values), and its `fixes` the IDE_FIXES that found their defect and fixed it. A key it answers is never saved either: IDE_FLAGS stop every save of
 // these keys but two, OBJECT_BROWSER's and NEWFRONTPAGE's, which test no flag (BETA 1034), so
 // that merely closing the New / Open Project dialog would write the user's registry. Every
 // function of the host object is bound to the real object: the proxy of a WebView2 host object
 // refuses to be called with another `this`. A request for the error-report address is answered
 // here and counted in `reports`, never sent, whatever g_ErrorReporting says: a page that turns
 // reporting on (the question's YES) stays a page of a tool.
-export function pageHook(answers) {
+export function pageHook(answers, fixes = []) {
   if (!/main\.htm$/i.test(location.pathname)) return;
-  const marker = { keys: [], reports: 0 };
+  const marker = { keys: [], reports: 0, fixes: [] };
   window.__tbDefaults = marker;
+  if (fixes.includes("console-cleared-at-open")) {
+    let list;
+    Object.defineProperty(window, "debugConsoleContent", {
+      configurable: true,
+      enumerable: true,
+      get: () => list,
+      set: (v) => {
+        if (v && typeof v === "object" && v.useCachedItemHeights === undefined) {
+          v.useCachedItemHeights = false;
+          if (!marker.fixes.includes("console-cleared-at-open")) marker.fixes.push("console-cleared-at-open");
+        }
+        list = v;
+      },
+    });
+  }
   const send = window.fetch;
   window.fetch = function (resource, ...rest) {
     if (!/\/\/(www\.)?twinbasic\.com\/notify\b/i.test(String(resource?.url ?? resource))) {
@@ -132,7 +160,25 @@ export function pageHook(answers) {
   });
 }
 
-export const hookSource = () => `(${pageHook})(${JSON.stringify(BLANKED_KEYS)})`;
+export const hookSource = (fixes = IDE_FIXES) =>
+  `(${pageHook})(${JSON.stringify(BLANKED_KEYS)}, ${JSON.stringify(fixes)})`;
+
+/**
+ * The IDE_FIXES an IDE gets when `unfixed` are left out. Throws on a slug that is not one, so a
+ * caller still naming a fix that was removed with its retired entry fails rather than passes.
+ *
+ * @param {string[]} unfixed
+ * @returns {string[]}
+ */
+export function fixesWithout(unfixed = []) {
+  const unknown = unfixed.filter((s) => !IDE_FIXES.includes(s));
+  if (unknown.length) {
+    throw new Error(
+      `unfixed names no IDE fix: ${unknown.join(", ")} (tb-defaults.mjs IDE_FIXES: ${IDE_FIXES.join(", ")})`,
+    );
+  }
+  return IDE_FIXES.filter((s) => !unfixed.includes(s));
+}
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -152,6 +198,7 @@ const LOOK = "({ main: /main\\.htm$/i.test(location.pathname), ran: !!window.__t
  * @param {object} o
  * @param {string} o.profile  the IDE's WEBVIEW2_USER_DATA_FOLDER
  * @param {number} o.since    when it was started; a DevToolsActivePort older than 2 s before is left over
+ * @param {string[]} [o.fixes]  the IDE_FIXES its page makes (default all; fixesWithout)
  * @returns {{ error: Error | null, closed: Promise<void>, ready: Promise<void>, stop: () => void }}
  *   `error` is why no hook was installed (set once known); `failures` the pages it could not
  *   prepare; `ready` settles once the hook is installed with every page then known prepared,
@@ -159,9 +206,11 @@ const LOOK = "({ main: /main\\.htm$/i.test(location.pathname), ran: !!window.__t
  *   connection, and is called when the IDE ends or fails to start. A hook that was installed leaves
  *   the page's `window.__tbDefaults`, which attachIde checks.
  */
-export function installDefaultsHook({ profile, since }) {
+export function installDefaultsHook({ profile, since, fixes = IDE_FIXES }) {
   let markReady;
   const hook = {
+    // The page's script, which checkDefaults adds again before a reload.
+    source: hookSource(fixes),
     error: null,
     failures: [],
     trace: [],
@@ -203,7 +252,7 @@ export function installDefaultsHook({ profile, since }) {
     client = await connect(`ws://127.0.0.1:${port}${wsPath}`, { what: `the IDE's browser on port ${port}` });
     note("connected");
     client.onClose(() => note("the connection closed"));
-    const source = hookSource();
+    const { source } = hook;
     // Every page prepared while the hook is set up, which `ready` waits for. A page that existed
     // before the auto-attach (the case checkDefaults reloads for) is attached by setAutoAttach
     // itself and prepared from its event: a reload before its script is added loads it unhooked
@@ -304,7 +353,7 @@ export async function checkDefaults(c, hook) {
   // The script is added on this connection too, which stays open while the page reloads, so the
   // reload is hooked whatever became of the hook's own session: a shoot_docs run of ten IDEs at
   // once on BETA 1033 still reloaded a page unhooked once the hook waited for its pages.
-  await c.send("Page.addScriptToEvaluateOnNewDocument", { source: hookSource() }).then(
+  await c.send("Page.addScriptToEvaluateOnNewDocument", { source: hook.source ?? hookSource() }).then(
     () => step("the script added to the page"),
     (e) => step(`adding the script to the page failed: ${e.message}`),
   );

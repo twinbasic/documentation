@@ -17,6 +17,7 @@ import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import {
+  addinCommandText,
   bindings,
   builtInCommandIds,
   builtInKeymap,
@@ -435,6 +436,14 @@ describe("the built-in keyboard shortcuts", () => {
       extra: ["tbOld"],
     });
     assert.deepEqual(commandTextProblems(["tbA_One"], { tbA_One: "x" }), { missing: [], extra: [] });
+  });
+
+  // `keymap --update` writes the copy; this catches a change to the data file committed without it.
+  test("the help add-in's copy of the descriptions is the data file's, on one line", () => {
+    const data = JSON.parse(readFileSync(path.join(REPO_ROOT, "scripts", "ide-js", "command-text.json"), "utf8"));
+    const copy = readFileSync(path.join(REPO_ROOT, "add-in", "Resources", "KEYS", "commands.json"), "utf8");
+    assert.equal(copy, addinCommandText(data), "run `node scripts/ide_js.mjs keymap --update`");
+    assert.equal(copy.split("\n").length, 2, "the copy is not one line");
   });
 
   test("a page keeps everything round its sections, in its own line endings", () => {

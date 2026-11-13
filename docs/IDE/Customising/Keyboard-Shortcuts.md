@@ -52,6 +52,11 @@ The **Edit as JSON** box is ticked. If you clear it, the pane shows only the tex
 
 ![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon.](../Menu/Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png){:width="1016" height="740"}
 
+> [!ADDIN] With the Help Add-In
+> The [Help Add-In](../AddIns/Help#the-keyboard-shortcut-editor) replaces this pane with a table of every command, where a group's keys are changed by pressing them, and conflicts between commands are marked. It also adds <kbd>Ctrl</kbd>+<kbd>F</kbd> and <kbd>F3</kbd> to search the JSON text, which has no find of its own: see [Finding text in the shortcut editors](../AddIns/Help#finding-text-in-the-shortcut-editors).
+>
+> ![Manage Keyboard Shortcuts with the Help Add-In loaded: the group Mine as a table of commands, each with its keys and a line on what it does, and the editor of one command open under its row.](../AddIns/Images/Help_KeyEditor.png){:width="1016" height="723" secondary}
+
 **Add New...**
 : Asks for a name, then creates a group that holds one sample entry, `{"tbMisc_ShowTestMessage":["{KEYDOWN}{CTRL}0"]}`. <kbd>Ctrl</kbd>+<kbd>0</kbd> then opens a test dialog that reads *This is just a test modal dialog.* A name that starts with `<` is refused with a message that says *Custom panel name cannot begin with '<'*, although it means a group name. A name that contains a vertical bar is refused with *Group name cannot contain '|'*, because the IDE saves the list of groups that are on as their names, each between two bars, such as `|Mine||Other|`. A name already in use is refused with *Group already exists*.
 

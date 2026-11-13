@@ -206,10 +206,13 @@ export class Lane {
    * @param {string} [o.arch]  the build target, "win32" (the default) or "win64"
    * @param {boolean} [o.show]  build on the user's desktop; by default where the
    *   lane opens its IDEs
+   * @param {number} [o.timeout]  milliseconds for the compile phase (default
+   *   waitForCompile's: test/harness.json's compile), for an add-in whose compile
+   *   is known to take longer, with the reason at the call
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   buildAddin's result; it throws, with an exitCode, when the add-in does not build
    */
-  async buildAddin(src, { arch = "win32", show = this.show } = {}) {
+  async buildAddin(src, { arch = "win32", show = this.show, timeout } = {}) {
     if (this.run) throw new Error(`lane ${this.name}: close the open project before building an add-in`);
     return buildAddin({
       ide: this.copy(),
@@ -219,6 +222,7 @@ export class Lane {
       arch,
       show,
       appdata: this.appdataDir(),
+      timeout,
     });
   }
 
@@ -231,11 +235,12 @@ export class Lane {
    * @param {object} [o]
    * @param {string} [o.arch]  as for buildAddin
    * @param {boolean} [o.show]  as for buildAddin
+   * @param {number} [o.timeout]  as for buildAddin
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   as buildAddin
    */
-  async addAddin(src, { arch = "win32", show = this.show } = {}) {
-    const built = await this.buildAddin(src, { arch, show });
+  async addAddin(src, { arch = "win32", show = this.show, timeout } = {}) {
+    const built = await this.buildAddin(src, { arch, show, timeout });
     this.placeAddin(built.dll, { arch });
     return built;
   }
@@ -285,9 +290,14 @@ export class Lane {
    *                              (default IDE_FLAGS)
    * @param {{ width: number, height: number } | null} [o.page]  the page's size for this
    *                              IDE (default the lane's `page`); null leaves the window's own
+   * @param {string[]} [o.unfixed]  IDE defects the page leaves as the build has them, as
+   *                              launchIde takes them: only a lane that asserts one
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout, env = {}, folder = this.work, buildPath = null, flags, page = this.page } = {}) {
+  async open(
+    src,
+    { timeout, env = {}, folder = this.work, buildPath = null, flags, page = this.page, unfixed = [] } = {},
+  ) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
     const slot = await this.leased();
@@ -312,6 +322,7 @@ export class Lane {
       browserArgs: this.browserArgs,
       flags,
       userSettings: this.userSettings,
+      unfixed,
     });
     Object.assign(this, { src, project, port: this.run.port });
     this.c = await attachIde(this.port);
@@ -337,9 +348,10 @@ export class Lane {
    * @param {object} [o]
    * @param {object} [o.env]  extra environment for the IDE, as for open
    * @param {{ width: number, height: number } | null} [o.page]  as for open
+   * @param {string[]} [o.unfixed]  as for open
    * @returns {Promise<object>} the connection (attachIde's)
    */
-  async openNoProject({ env = {}, page = this.page } = {}) {
+  async openNoProject({ env = {}, page = this.page, unfixed = [] } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has an IDE open already: one IDE at a time`);
     const exe = this.copy();
     this.run = await launchIde({
@@ -349,6 +361,7 @@ export class Lane {
       env: { APPDATA: this.appdataDir(), ...env },
       browserArgs: this.browserArgs,
       userSettings: this.userSettings,
+      unfixed,
     });
     Object.assign(this, { src: null, project: null, port: this.run.port });
     this.c = await attachIde(this.port);

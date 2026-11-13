@@ -924,6 +924,12 @@ phase keep their numbers in the code: the licence and overlay before a press (`p
 a crash's file name (`awaitCrashName`, 5 s), `waitForCompile`'s 5 s stand-still and 300 ms
 early quiet, the two seconds a failure line is given before a build is taken as failed, and the
 operation waits of the lanes and `shoot_docs`.
+One compile has more than the file's limit: the `help-offline` lane's build of the help add-in,
+which embeds the ~60 MB help archive, gets the file's `compile` plus 20 s (`ARCHIVE_COMPILE_MS`
+in `test/addin/help.test.mjs`, through `Lane.addAddin`'s `timeout`). The archive holds the
+compiler's start: on BETA 1042 that compile settled 8.0 to 9.7 s after the project opened (the
+compile itself 6 ms), the add-in without it 1 to 2 s, so the 10 s limit failed the lane now and
+then ("did not settle within 10 s").
 
 ### Timing each phase: `TB_TIMINGS`
 
@@ -1263,6 +1269,23 @@ every page prepared). So `checkDefaults` first waits, a minute at most, for the 
 main.htm" rather than reload a page that has not. A marker still
 missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
 connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
+
+**The same script fixes defects of the IDE that would mislead every tool** (`IDE_FIXES` in
+`tb-defaults.mjs`, each named by its BUGS-TO-REPORT.md entry's slug and applying that entry's
+`bugs/<slug>/fix.js` in the page rather than to the install). The first is
+*console-cleared-at-open*: BETA 1042 empties the DEBUG CONSOLE a second time as the first project
+opens, which erased an add-in's loaded line and failed `help`, `help-offline`, `keys-help` and
+`parent` on the plain install (2026-11-12; before that they were judged on a patched copy, which
+every other tool reading the console at an open had no way to use). The console's list is assigned to
+`debugConsoleContent`, a `var` of `main.js` with no initialiser, so the setter the script puts on
+`window` stays and sees the assignment; it sets the list's `useCachedItemHeights` to `false` when the
+build left it unset, which is the fix's one line. **A fix never hides its defect:** it acts only where
+the build still has the defect (BETA 1034's list, or a fixed build's, has the flag set, and is left
+alone), it is listed in `__tbDefaults.fixes` only when it acted, and the lane that asserts the defect
+leaves it out (`unfixed`, which `launchIde` and `Lane.open`/`openNoProject` take), so `bug_repro.mjs
+verify` still judges the plain build. When the entry is retired, its fix goes from `IDE_FIXES`, and the
+lane's `unfixed` then throws until it goes too. `try-help-addin` (`userSettings`) has no hook, so no
+fixes: it is the user's own IDE. `test/ide-folders.test.mjs` tests the fix and its controls.
 
 ## A private IDE for every lane
 
@@ -1784,6 +1807,16 @@ probe lanes:
   The probe opens nothing, so running an IDE without the variable is safe. Two IDEs in one
   lane need no change to the runner, and the second takes the lane's slot once the first has
   been ended.
+- [test/addin/toolwindow-layouts.test.mjs](test/addin/toolwindow-layouts.test.mjs): two IDE
+  defects of BUGS-TO-REPORT.md, `toolwindow-show-suggested-size` and
+  `layout-loses-addin-toolwindow`, which the help add-in works round in `layouts.js`. Its
+  LayoutsProbe add-in ([test/addin/probes/layouts](test/addin/probes/layouts)) has one tool
+  window with a suggested size, two buttons that show and hide it, and an `OnClose` that
+  prints `closed` and makes the window again. The scenario makes layouts in
+  `customPanelLayouts`, applies them with `setActivePanelLayoutName`, resizes the floating
+  window with mouse events on its resize bars, and reads `toolWindowsById`. A floating window
+  the IDE loses stays lost through a compiler restart, so the docked case opens a second IDE.
+  About 35 s.
 
 **Timing:** the thirteen lanes other than widgets (24 s alone) take about two minutes at the default two at a time
 (the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
