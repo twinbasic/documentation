@@ -1,5 +1,5 @@
 Module Finder
-    ' test/ide/code-find.test.mjs searches this file with the Find / Replace panel.
+    ' test/ide/code-find.test.mjs searches this file with the Find / Replace panel and Quick Find.
     ' Its first word must stay at line 1, column 1, and no comment may hold it.
     Public Sub Main()
         Dim total As Long

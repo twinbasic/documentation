@@ -11,8 +11,16 @@
 //   "After a search in Selected Text, the scope stays on a greyed Selected Text, and Find Next stops
 //   at once" (bugs/find-scope-stuck-selected-text)
 //
-// Last, it checks Replace All in Current Project, as docs/IDE/Code/Finding.md describes it under
+// Then it checks Replace All in Current Project, as docs/IDE/Code/Finding.md describes it under
 // "Search the whole project" (BETA 1036 made it work; it changes both files of the project).
+//
+// Last, it checks regular expressions in the Quick Find widget (Monaco's find widget, Alt+F and
+// Alt+H), as Finding.md describes them under "Regular expressions in Quick Find": a pattern is
+// written without slashes; a match spans a line break only when the pattern holds \n, \r or \W
+// (Monaco's isMultilineRegexSource), and then the file is searched with every line ending as \n;
+// \s and [\s\S] alone keep the search on one line, while \s matches a line break once the pattern
+// holds \n; and the replace row reads $1, $2 and \n. These work on the lines of Second, which the
+// Replace All before them leaves as they are.
 //
 // The project in probes/code-find holds Finder.twin, whose first word, Module, is at line 1,
 // column 1, and Sums.twin, a second file for the Replace All. Each test starts the search from a place it sets, with the options it needs
@@ -69,6 +77,9 @@ const FIRST_END_SUB = lineOf("End Sub");
 const MAIN_DIM = lineOf("Dim total As Long");
 const MAIN_PRINT = lineOf('Debug.Print "total is "');
 const SECOND_PRINT = lineOf('Debug.Print "second"');
+// where "second" starts on its line, and where End Sub on the next line ends
+const SECOND_QUOTE = SOURCE[SECOND_PRINT - 1].indexOf('"second"') + 1;
+const SECOND_END = SOURCE[SECOND_PRINT].indexOf("End Sub") + "End Sub".length + 1;
 
 const SEARCHED = "The specified region has been searched.";
 const END_OF_SCOPE = "End of search scope has been reached; do you want to continue from the beginning?";
@@ -113,6 +124,29 @@ const centreOf = (expr) => `(() => {
   if (!e) return null;
   const q = e.getBoundingClientRect();
   return q.width && q.height ? { x: q.x + q.width / 2, y: q.y + q.height / 2 } : null;
+})()`;
+
+// The Quick Find widget: its text, its toggles, the count of its matches, where the focus is, and
+// the editor's selection with the text it holds.
+const QUICK = `editor.getContribution("editor.contrib.findController")`;
+const WIDGET = `editor.getDomNode().querySelector(".find-widget")`;
+const QUICK_JS = `(() => {
+  const s = ${QUICK}.getState();
+  const w = ${WIDGET};
+  const a = document.activeElement;
+  const sel = editor.getSelection();
+  return {
+    open: !!w && w.classList.contains("visible"),
+    replaceRow: !!w && w.classList.contains("replaceToggled"),
+    focus: !w || !w.contains(a) ? "elsewhere" : a.closest(".replace-part") ? "replace" : a.closest(".find-part") ? "find" : "widget",
+    search: s.searchString,
+    replace: s.replaceString,
+    regex: s.isRegex,
+    mcase: s.matchCase,
+    count: s.matchesCount,
+    sel: sel.startLineNumber + ":" + sel.startColumn + "-" + sel.endLineNumber + ":" + sel.endColumn,
+    text: editor.getModel().getValueInRange(sel, 1),
+  };
 })()`;
 
 // A button of the panel by its caption.
@@ -193,6 +227,62 @@ scenario("the Find / Replace panel", (lane) => {
     })()`);
     assert.ok(at, `no point on line ${line} of the code editor is clear of the panel`);
     return at;
+  }
+
+  const quick = () => c.evaluate(QUICK_JS);
+  async function quickUntil(check, what) {
+    if (await waitFor(c, async () => check(await quick()), { timeout: 5000, interval: 100 })) return;
+    assert.fail(`${what}: ${JSON.stringify(await quick())}`);
+  }
+
+  // Clicks a part of the Quick Find widget, once nothing covers it.
+  async function clickWidget(selector, what) {
+    const part = `${WIDGET}.querySelector(${JSON.stringify(selector)})`;
+    const at = await c.evaluate(centreOf(part));
+    assert.ok(at, `${what} of Quick Find is not on screen`);
+    assert.ok(
+      await c.evaluate(`${part}.contains(document.elementFromPoint(${at.x}, ${at.y}))`),
+      `something covers ${what} of Quick Find`,
+    );
+    await clickAt(c, at.x, at.y);
+  }
+
+  // Empties the box of Quick Find that has the focus, "search" or "replace", with End and
+  // Backspace: Ctrl+A does not select its text.
+  async function emptyBox(field) {
+    const n = (await quick())[field].length;
+    await pressKey(c, "End");
+    for (let i = 0; i < n; i++) await pressKey(c, "Backspace");
+    await quickUntil((q) => q[field] === "", `the ${field} box of Quick Find was not emptied`);
+  }
+
+  // Opens Quick Replace (Alt+H) from line 1, column 1 of Finder.twin, types `pattern` over what its
+  // box holds, and turns on Use Regular Expression by clicking its toggle when it is off: Alt+R,
+  // Monaco's own key for it, is the panel's Replace in the IDE's keymap and does nothing here.
+  // Returns what the widget holds once its count has settled.
+  async function quickFind(pattern) {
+    await openFile(c, FILE);
+    await setCursor(c, 1, 1);
+    await pressKey(c, "h", { alt: true });
+    // Alt+H puts the focus in the replace box when the box to find already holds text
+    await quickUntil(
+      (q) => q.open && q.replaceRow && (q.focus === "find" || q.focus === "replace"),
+      "Alt+H did not show Quick Find with its replace row and the focus in it",
+    );
+    if ((await quick()).focus === "replace") await pressKey(c, "Tab", { shift: true });
+    await quickUntil((q) => q.focus === "find", "the focus is not in the box of Quick Find");
+    await emptyBox("search");
+    await typeText(c, pattern);
+    await quickUntil((q) => q.search === pattern, "the box of Quick Find does not hold what was typed");
+    if (!(await quick()).regex) {
+      await clickWidget(".codicon-regex", "the Use Regular Expression toggle");
+      await quickUntil((q) => q.regex, "a click on its toggle did not turn on Use Regular Expression in Quick Find");
+    }
+    await sleep(500);
+    const q = await quick();
+    assert.equal(q.mcase, false, "Match Case is on in Quick Find");
+    assert.equal(q.focus, "find", "the focus left the box of Quick Find");
+    return q;
   }
 
   before(async () => {
@@ -346,5 +436,79 @@ scenario("the Find / Replace panel", (lane) => {
     const undone = await editorText(c);
     t.diagnostic(`after Ctrl+Z in Sums.twin: ${(undone.match(/total/g) ?? []).length} total`);
     assert.equal(undone.match(/\btotal\b/g)?.length, 3, "Ctrl+Z did not undo the replacements in Sums.twin");
+  });
+
+  // Quick Find, after the Replace All above, which leaves Second as it is.
+  const countOf = async (t, pattern) => {
+    const q = await quickFind(pattern);
+    t.diagnostic(`${pattern}: ${q.count}`);
+    return q.count;
+  };
+
+  test("Quick Find: a regular expression has no slashes, and a capital letter finds text in any case", async (t) => {
+    assert.equal(await countOf(t, '"Second"'), 1, '"Second" did not find "second"');
+    assert.equal(await countOf(t, '/"second"/'), 0, '/"second"/ found something');
+  });
+
+  test("Quick Find: \\s and [\\s\\S] keep the search on one line, so a pattern across a line break finds nothing", async (t) => {
+    assert.equal(
+      await countOf(t, '"second"[\\s\\S]*'),
+      1,
+      '"second"[\\s\\S]* did not find "second" to the end of its line',
+    );
+    assert.equal(await countOf(t, '"second"\\s+End Sub'), 0, '"second"\\s+End Sub found something');
+    assert.equal(await countOf(t, '"second"[\\s\\S]*End Sub'), 0, '"second"[\\s\\S]*End Sub found something');
+  });
+
+  test("Quick Find: a pattern with \\n or \\W spans a line break, which reads as \\n, so \\r\\n finds nothing", async (t) => {
+    const q = await quickFind('"second"\\n\\s*End Sub');
+    assert.equal(q.count, 1, '"second"\\n\\s*End Sub did not find one match');
+    await pressKey(c, "Enter");
+    await sleep(400);
+    const found = await quick();
+    t.diagnostic(`Enter: ${found.sel} ${JSON.stringify(found.text)}`);
+    assert.equal(found.sel, `${SECOND_PRINT}:${SECOND_QUOTE}-${SECOND_PRINT + 1}:${SECOND_END}`);
+    assert.equal(found.text, `"second"\n${SOURCE[SECOND_PRINT].slice(0, SECOND_END - 1)}`);
+    assert.equal(await countOf(t, '"second"\\W+End Sub'), 1, '"second"\\W+End Sub did not find one match');
+    // once the pattern holds \n, \s matches a line break too
+    assert.equal(
+      await countOf(t, '"second"\\n\\s*End Sub\\s+End Module'),
+      1,
+      '"second"\\n\\s*End Sub\\s+End Module did not find one match',
+    );
+    assert.equal(await countOf(t, '"second"\\r\\n\\s*End Sub'), 0, '"second"\\r\\n\\s*End Sub found something');
+  });
+
+  // The shape of the example on the page: (.*) takes the rest of one line, ([ \t]*) the next
+  // line's indent, and the replace row puts them back with $1 and $2 around a new line.
+  test("Quick Find: Replace All reads $1, $2 and \\n in the replace row", async (t) => {
+    const q = await quickFind('Debug\\.Print( "second".*)\\n([ \\t]*)End Sub');
+    assert.equal(q.count, 1, "the pattern did not find one match");
+    const lines = (await editorText(c)).split(/\r?\n/);
+    await pressKey(c, "Tab");
+    await quickUntil((x) => x.focus === "replace", "Tab did not move the focus to the replace box");
+    const replace = 'Debug.Print "2nd"\\n$2Debug.Print$1\\n$2End Sub';
+    await emptyBox("replace");
+    await typeText(c, replace);
+    await quickUntil((x) => x.replace === replace, "the replace box does not hold what was typed");
+    await clickWidget(".codicon-find-replace-all", "the Replace All button");
+    const after = await waitFor(
+      c,
+      async () => {
+        const text = (await editorText(c)).split(/\r?\n/);
+        return text.length !== lines.length ? text : null;
+      },
+      { timeout: 5000, interval: 100 },
+    );
+    assert.ok(after, "Replace All did not replace");
+    t.diagnostic(JSON.stringify(after.slice(SECOND_PRINT - 2, SECOND_PRINT + 3)));
+    const indent = SOURCE[SECOND_PRINT].match(/^[ \t]*/)[0];
+    assert.deepEqual(after.slice(SECOND_PRINT - 1, SECOND_PRINT + 2), [
+      SOURCE[SECOND_PRINT - 1].replace('"second"', '"2nd"'),
+      `${indent}Debug.Print "second"`,
+      `${indent}End Sub`,
+    ]);
+    assert.equal(after.length, lines.length + 1);
+    await pressKey(c, "Escape");
   });
 });

@@ -158,7 +158,7 @@ If **Find What** is not in the `/pattern/flags` form, a box says **Invalid forma
 
 <!-- test: bug find-regex-line-break -->
 > [!NOTE] BETA 1042
-> A regular expression whose match spans a line break, such as `/^\s+end sub$/`, selects nothing. The selection is an empty one at the end of the line before the match, and **Find Next** stays there. Search for one line at a time.
+> A regular expression whose match spans a line break, such as `/^\s+end sub$/`, selects nothing. The selection is an empty one at the end of the line before the match, and **Find Next** stays there. Search for one line at a time, or use [Quick Find](#regular-expressions-in-quick-find), which can match across lines.
 
 <!-- test: bug find-regex-alert-reason -->
 > [!NOTE] BETA 1042
@@ -201,6 +201,39 @@ The widget opens with the selected text in its box, and with the count of the ma
 ![The Quick Find widget at the top right of the editor, opened with Quick Replace so that its replace row shows. Its box holds Twice, with the toggles beside it and the count 2 of 2, and both matches of Twice are marked in the code.](Images/Quick_Find.png){:width="752" height="430"}
 
 With a word selected, <kbd>Ctrl</kbd>+<kbd>F3</kbd> in the code goes to its next occurrence and shows the widget.
+
+### Regular expressions in Quick Find
+
+With **Use Regular Expression** on, the text in the box is a JavaScript regular expression, written without slashes: `/total/` looks for the slashes too. A pattern with capital letters finds text in any case unless **Match Case** is on.
+
+Quick Find reads the file one line at a time, so a match never spans a line break, unless the pattern holds `\n`, `\r` or `\W`. Then it reads the whole file, with each line break as `\n`:
+
+- Write `\n` where a line breaks. `\r\n` finds nothing.
+- `\s` and `[\s\S]` on their own keep the search on one line. `Info[\s\S]*Name` finds nothing when `Info` and `Name` are on different lines.
+- In a pattern that holds `\n`, `\s` matches a line break too. Match the spaces at the start of the next line with `[ \t]*` rather than `\s*`, which can also take in blank lines.
+
+In the replace row, `$1`, `$2` and so on put back the text that each group in brackets matched, and `\n` starts a new line. For example, to change each pair of lines such as
+
+```text
+s.Enum_Info "Red"
+s.Enum_Info 1
+```
+
+into
+
+```text
+s.Enum_Name "Red"
+s.Enum_Value 1
+```
+
+open Quick Replace with <kbd>Alt</kbd>+<kbd>H</kbd>, turn on **Use Regular Expression**, fill in the two boxes, and click **Replace All**:
+
+| Box | Text |
+|---|---|
+| Find | `s\.Enum_Info(.*)\n([ \t]*)s\.Enum_Info` |
+| Replace | `s.Enum_Name$1\n$2s.Enum_Value` |
+
+`(.*)` takes the rest of the first line, and `([ \t]*)` the spaces in front of the second.
 
 ### Select all matches
 
