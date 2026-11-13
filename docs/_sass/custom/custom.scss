@@ -912,7 +912,9 @@ div.highlight:focus-visible,
 // heading, a paragraph, a `.download-meta` line and a `.download-actions` row
 // of `.btn` links (the theme's, styled in both themes) and one
 // `.download-doc` link. The grid takes as many 18rem columns as fit, and one
-// at phone width. The actions row follows the text directly.
+// at phone width. Each card is a column the height of its grid row, and the
+// actions row's top margin takes the slack, so the buttons of the cards in one
+// row line up along the bottom whatever the length of the text above them.
 //
 // The heading's top margin is the theme's `.main-content h3`, which the dark
 // re-emission raises to (0,2,2); `> :first-child` here is (0,3,0) and wins in
@@ -925,6 +927,8 @@ div.highlight:focus-visible,
 }
 
 .download-card {
+  display: flex;
+  flex-direction: column;
   padding: 1rem 1.25rem;
   border: 1px solid #e6e1e8; // $grey-lt-300
   border-radius: 6px;
@@ -935,6 +939,12 @@ div.highlight:focus-visible,
 }
 
 .main-content .download-card > :first-child {
+  margin-top: 0;
+}
+
+// A flex column does not collapse margins, so the meta line's top margin would
+// add to the paragraph's bottom one; collapsed, the paragraph's was the gap.
+.main-content .download-card > .download-meta {
   margin-top: 0;
 }
 
@@ -953,7 +963,7 @@ div.highlight:focus-visible,
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-  margin: 0;
+  margin: auto 0 0;
 }
 
 .download-size {
