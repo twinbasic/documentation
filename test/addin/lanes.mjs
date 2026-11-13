@@ -49,6 +49,9 @@ export default [
   { file: "widgets.test.mjs" },
   // Detaching the help pane: a Form with a WebView2, shown by an add-in. Saves nothing.
   { file: "detach.test.mjs" },
+  // An add-in's tool window against the panel layouts: two IDE defects the help
+  // add-in works round (layouts.js). Its add-in saves nothing.
+  { file: "toolwindow-layouts.test.mjs" },
   // The help add-in, add-in/ at the repository's root. It saves the page its
   // pane shows. The second lane builds it with the help archive, so its pane's
   // pages come from the add-in's own server.

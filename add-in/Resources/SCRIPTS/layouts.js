@@ -126,10 +126,11 @@ if (
     // that shows out of the page as a built-in panel (removeAllFloatingPanels) and the dock out
     // of the page (restorePanelLayout). Closing such a window then throws inside
     // toolWindowClose, which swallows the error: the add-in never hears of it and never makes
-    // it again, and the help's pane is gone until the compiler restarts. A hidden floating
+    // it again, and the help's pane is gone until the IDE restarts. A hidden floating
     // window is closed as it should be. Every add-in's window is closed here first, while all
     // are in the page, as closeAllAddinToolwindows closes them, as long as a build's
-    // setActivePanelLayoutName still starts by removing the floating panels.
+    // setActivePanelLayoutName still starts by removing the floating panels. The IDE defect is
+    // BUGS-TO-REPORT.md's layout-loses-addin-toolwindow.
     var closesLate = /removeAllFloatingPanels\(\)/.test(String(apply)) && typeof addInEvents === "object";
     var closeAddinWindows = function () {
       if (!closesLate || typeof toolWindowsById !== "object") return;
@@ -142,10 +143,11 @@ if (
         }
       });
     };
-    // An add-in's window that a layout floats is put at the layout's place, but showing it later
-    // (the help's pane once it is attached) gives it its add-in's suggested size, unless the IDE
-    // has a place for it in floatingToolWindowsData, which it writes when the window is moved or
-    // resized by hand. The layout's place is written there, as if it had been.
+    // BETA 1042: an add-in's window that a layout floats is put at the layout's place, but
+    // showing it later (the help's pane once it is attached) gives it its add-in's suggested
+    // size, unless the IDE has a place for it in floatingToolWindowsData, which nothing the IDE
+    // runs writes (BUGS-TO-REPORT.md's toolwindow-show-suggested-size; a resize by hand is lost
+    // the same way, and is not worked round). The layout's place is written there.
     var keepFloatingPlaces = function (name) {
       if (typeof floatingToolWindowsData !== "object" || !floatingToolWindowsData) return;
       var e = has(builtInPanelLayouts, name) ? builtInPanelLayouts[name] : has(customPanelLayouts, name) ? customPanelLayouts[name] : null;

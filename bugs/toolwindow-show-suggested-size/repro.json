@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "addin:toolwindow-layouts",
+  "tests": [
+    "hidden and shown again, a window the layout floats takes the add-in's suggested size, not the layout's",
+    "a window resized by hand with the mouse takes the suggested size too when hidden and shown"
+  ],
+  "steps": "This is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.\n1. Open toolwindow-show-suggested-size.twinproj and build it for Win32. Copy Build\\ToolwindowShowSuggestedSize_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\ and restart the IDE. Open any project: the toolbar has a button, Show or hide the tool window.\n2. Click the button. The window REPRO WINDOW floats in the middle of the IDE, 500 by 600 pixels, the size the add-in suggests.\n3. Drag the window's right edge to the left and its bottom edge up, to make it about half that size.\n4. Click the button twice: the window hides, then shows again at 500 by 600.\n5. Close the IDE and delete ToolwindowShowSuggestedSize_win32.dll from %APPDATA%\\twinBASIC\\addins\\win32\\.\nThe same happens to a window a panel layout floats at its own size. Asserted on BETA 1042 by `addin-test.bat --only toolwindow-layouts` (the LayoutsProbe add-in in test/addin/probes/layouts, of which this project is a cut-down copy)."
+}

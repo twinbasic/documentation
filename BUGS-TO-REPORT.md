@@ -13496,3 +13496,105 @@ Severity: high. An access violation that `On Error` cannot catch ends the progra
 Checked on BETA 1034, which raises 438 for the `Collection` too, so the crash is new in a build after 1034.
 
 <!-- Reproducer: bugs/stdole-idispatch-collection-crash/ (mode test: the first case fails with an access violation, the two controls pass, on BETA 1042). Found 2026-11-09 by the BETA 1042 recheck, when the OLEGuids test case StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods, which used a Collection, crashed; that case now uses the project's Calculator class. The exe was checked in a scratch copy, not kept. Pages with a callout that goes when this is fixed: docs/Reference/COM-Interfaces/IDispatch.md (a WARNING in "The stdole declaration"). When the entry above is fixed as well, that section changes as its comment says. -->
+
+---
+
+## Applying a panel layout loses an add-in's tool window that floats shown or is docked: it leaves the page, and the add-in's OnClose never runs
+
+**Describe the bug**
+Applying a panel layout closes every add-in's tool window, so that each add-in can make its window again where the new layout puts it, and the add-in hears of it through the window's `OnClose` event. On BETA 1042 that works only for a floating window that is hidden. A window that floats and shows, or that is docked, is taken out of the IDE's page before it is closed, and the close then fails without a message: the window disappears, the add-in's `OnClose` never runs, and the add-in still holds a `ToolWindow` that shows nothing. Setting its `Visible` to `True` raises no error and shows nothing. A floating window lost this way stays lost until the IDE is restarted: neither applying a layout that floats it nor restarting the compiler brings it back.
+
+**To Reproduce**
+`layout-loses-addin-toolwindow` is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.
+
+Steps to reproduce the behavior:
+1. Open `layout-loses-addin-toolwindow.twinproj` (attached as `layout-loses-addin-toolwindow.zip`) and build it for Win32. Copy `Build\LayoutLosesAddinToolwindow_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE. Open any project: the toolbar has a button, *Show the tool window*. The add-in adds one tool window, hidden, and makes it again when it is closed, as an add-in that keeps its window does:
+   ```
+   Private Sub MakePane()
+       Set Pane = Host.ToolWindows.Add("Repro", "ReproPane")
+       Pane.Title = "REPRO WINDOW"
+       Pane.RootDomElement.ChildDomElements.Add("reproText", "div").Properties.innerText = "the add-in's tool window"
+   End Sub
+
+   Private Sub ShowButton_OnClick()
+       Pane.Visible = True
+       Host.DebugConsole.PrintText "shown"
+   End Sub
+
+   Private Sub Pane_OnClose()
+       Host.DebugConsole.PrintText "OnClose"
+       MakePane
+   End Sub
+   ```
+2. With the window hidden, choose **Window > Panel Layouts > Default Built-in Layout**. The DEBUG CONSOLE prints `OnClose`: the IDE closed the window, and the add-in made it again. This is right.
+3. Click *Show the tool window*. The window *REPRO WINDOW* floats over the editor.
+4. Choose **Window > Panel Layouts > Default Built-in Layout** again. The window disappears, and the DEBUG CONSOLE prints no `OnClose`.
+5. Click *Show the tool window*. The DEBUG CONSOLE prints `shown`, with no error, and no window appears.
+6. Close the IDE and delete `LayoutLosesAddinToolwindow_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
+
+**Expected behavior**
+The shown window is closed as the hidden one is in step 2: the add-in's `OnClose` runs, and the window it makes again is placed by the new layout. Applying a layout should never lose an add-in's window, nor leave the add-in holding a window that shows nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+A docked window is lost the same way: with a layout that docks the window (an entry `{"id": "ADDIN_ReproPane", ...}` among its docked panels) applied, and the window showing there, applying any other layout takes it out of the page with no `OnClose`. That window comes back in its place, hidden, when a layout that docks it is applied again, and `Visible = True` then shows it, but the add-in has still heard no `OnClose`.
+
+What does not reproduce it: a floating window that is hidden (step 2).
+
+The cause is in `ide/main.js`. `setActivePanelLayoutName` calls `removeAllFloatingPanels` first, which takes every floating panel that has a size out of the page with `closePanelBySectionHeader`, as if it were a built-in panel; a floating add-in window that shows is one of them. Then `restorePanelLayout` takes the dock (`outermostDock`) out of the page, and only then calls `closeAllAddinToolwindows`, which closes each add-in window with `addInEvents.toolWindowClose`. That calls the window's `onClose`, set by `createToolWindowById`, which calls `closePanelBySectionHeader` again on a window that is no longer in the page. It throws, and `toolWindowClose` catches the error and answers with `sendModalResultFailed`, so neither the rest of `onClose` (`delete toolWindowsById[...]`) nor the `closeEventJob` that raises `OnClose` in the add-in runs. The window stays in `toolWindowsById`, out of the page, and a later `ToolWindows.Add` with its id, after a compiler restart too, is handed that window by `createToolWindowById`. A hidden floating window has no size, so `removeAllFloatingPanels` skips it and it is still in the page when it is closed. Closing every add-in window before `removeAllFloatingPanels` runs closes each while it is in the page, with its `OnClose`; an add-in can do that by wrapping `setActivePanelLayoutName`, which is how the twinBASIC help add-in keeps its pane.
+
+Severity: medium. An add-in's window disappears with no message whenever the user applies a layout while it shows, and an add-in that makes its window again in `OnClose`, as one that keeps its window across layouts has to, never gets it back while the IDE runs.
+
+<!-- Reproducer: bugs/layout-loses-addin-toolwindow/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only toolwindow-layouts` (test/addin/toolwindow-layouts.test.mjs; its add-in is the LayoutsProbe, test/addin/probes/layouts), the two tests named in repro.json (floating and shown, docked), which pass on BETA 1042 (2026-11-13). The control "control: applying a layout while the window floats hidden closes it ..." passes too, and so do "neither a layout that floats the lost window nor a compiler restart puts it back in the page" and "a layout that docks the lost window puts the same window back in the page, hidden, ...", which the paragraphs above report. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-13 making the help add-in 1.4.0 keep the help's place per layout (WIP.HelpAddin.md item 14), whose pane disappeared when a layout was applied while it floated. Worked round in add-in/Resources/SCRIPTS/layouts.js, `closeAddinWindows`, which closes every add-in's window before the IDE's setActivePanelLayoutName runs, as long as that function's text still calls removeAllFloatingPanels(); when this is fixed, remove the workaround, and the lane's tests then assert the fixed behaviour. No page carries a callout for it; docs/Reference/Built-In/tbIDE/ToolWindow.md (OnClose) says the event fires whenever the pane is closed. No Fix shape yet: a fix of setActivePanelLayoutName that calls closeAllAddinToolwindows first is a unit ide_js.mjs can patch. -->
+
+---
+
+## Showing a floating add-in tool window again gives it the add-in's suggested size, losing the size a panel layout or a resize by hand gave it
+
+**Describe the bug**
+An add-in can suggest the size its tool window floats at, with `RootDomElement.Properties.suggestedWidth` and `suggestedHeight`. On BETA 1042 the IDE applies that size every time the add-in shows the floating window again with `Visible = True`, not only the first time: a window the user resized by hand, or one a panel layout floats at a size of its own, is back at the suggested size once it has been hidden and shown. Its place is kept.
+
+**To Reproduce**
+`toolwindow-show-suggested-size` is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.
+
+Steps to reproduce the behavior:
+1. Open `toolwindow-show-suggested-size.twinproj` (attached as `toolwindow-show-suggested-size.zip`) and build it for Win32. Copy `Build\ToolwindowShowSuggestedSize_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\` and restart the IDE. Open any project: the toolbar has a button, *Show or hide the tool window*. The add-in adds one tool window, hidden:
+   ```
+   Set Pane = Host.ToolWindows.Add("Repro", "ReproPane")
+   Pane.Title = "REPRO WINDOW"
+   With Pane.RootDomElement
+       .Properties.suggestedWidth = "500px"
+       .Properties.suggestedHeight = "600px"
+       .ChildDomElements.Add("reproText", "div").Properties.innerText = "the add-in's tool window"
+   End With
+   ```
+   and the button runs:
+   ```
+   Shown = Not Shown
+   Pane.Visible = Shown
+   ```
+2. Click the button. *REPRO WINDOW* floats in the middle of the IDE, 500 by 600 (CSS) pixels.
+3. Drag the window's right edge to the left and its bottom edge up, to make it about 350 by 400.
+4. Click the button twice. The window hides, then shows at its place, 500 by 600 again.
+5. Close the IDE and delete `ToolwindowShowSuggestedSize_win32.dll` from `%APPDATA%\twinBASIC\addins\win32\`.
+
+**Expected behavior**
+The window shows again at the size it had when it was hidden, 350 by 400. A suggested size is the size of a window that has none yet, its first time; once the user or a layout has given it one, that one is kept.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+The same happens to a window a panel layout floats. A layout whose floating panels include `{"id": "ADDIN_ReproPane", "left": 100, "top": 80, "width": 320, "height": 240}` puts the window there at 320 by 240 when it is applied, and once the window has been hidden and shown it is 500 by 600.
+
+What does not reproduce it: a window for which the IDE has a place in `floatingToolWindowsData`, which keeps its size. That object is loaded from the `floatingToolWindows` of the saved panel layout setting, and nothing in BETA 1042 adds to it.
+
+The cause is in `ide/main.js`. `addInEvents.toolWindowSetVisible`, given true for a floating window, sets the floating panel's width and height from `bodyElement.suggestedWidth` and `suggestedHeight` whenever `floatingToolWindowsData[persistenceId]` is missing. The function that writes that entry, `saveFloatingToolWindowPosition`, is called only by the resize bars made in the `if (0)` branch of `addInEvents.createToolWindow`, which never runs. The resize bars of the floating panel the window is actually in (`moveToFloatingPanel`) call `savePanelsConfiguration` alone, and `restoreFloatingConfig`, which floats an add-in window at a layout's place, sets the panel's style alone. Writing the entry where a floating add-in window is resized and where a layout places it, or applying the suggested size only to a window that has not been shown before, would keep the size.
+
+Severity: low. Nothing is lost but the size, but it is lost every time: an add-in that hides and shows its window often, as a help pane does, undoes the user's resize each time, and a layout's size for the window holds only until it is next shown.
+
+<!-- Reproducer: bugs/toolwindow-show-suggested-size/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only toolwindow-layouts` (test/addin/toolwindow-layouts.test.mjs; its add-in is the LayoutsProbe, test/addin/probes/layouts), the two tests named in repro.json (a layout's size, a resize with the mouse by CDP input events), which pass on BETA 1042 (2026-11-13); the control "control: with a place in floatingToolWindowsData, the window keeps its size when hidden and shown" passes too. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-13 making the help add-in 1.4.0 keep the help's place per layout (WIP.HelpAddin.md item 14): a layout that floats the help's pane lost its size when the help was attached. The resize by hand was found writing this entry, from main.js. Worked round in add-in/Resources/SCRIPTS/layouts.js, `keepFloatingPlaces`, which writes each `ADDIN_` floating entry of the applied layout into floatingToolWindowsData; a resize by hand is not worked round. When this is fixed, remove the workaround, and the lane's tests then assert the fixed behaviour. docs/Reference/Built-In/tbIDE/ToolWindow.md, "Suggested initial size", says the suggested size is used the first time only and the user's size is remembered, which BETA 1042 does not do; it carries no callout yet. No Fix shape yet: toolWindowSetVisible is a method of the addInEvents object, not a unit ide_js.mjs names. -->

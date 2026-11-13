@@ -1,0 +1,82 @@
+' An add-in's tool window against the IDE's panel layouts, for two BETA 1042
+' defects in BUGS-TO-REPORT.md: applying a layout loses a tool window that floats
+' shown, or is docked (layout-loses-addin-toolwindow), and a floating window shown
+' again takes its suggested size (toolwindow-show-suggested-size).
+' toolwindow-layouts.test.mjs builds it into its lane's copy of the install.
+'
+' As the project loads it adds one tool window, id LayoutsProbePane, with a
+' suggested size of 500 by 600 pixels, and leaves it hidden. Two toolbar buttons
+' show and hide it. When the IDE closes the window, as applying a layout does,
+' OnClose prints "closed" and the add-in adds the window again under the same id,
+' hidden, as an add-in that keeps its window does. Every line it prints starts
+' "[LayoutsProbe]".
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New LayoutsProbeAddin(Host)
+    End Function
+End Module
+
+Private Class LayoutsProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ShowButton As Button
+    Private WithEvents HideButton As Button
+    Private WithEvents Pane As ToolWindow
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "LayoutsProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        With Host.Toolbars(0)
+            Set ShowButton = .AddButton("LayoutsProbeShow", "Layouts probe: show")
+            Set HideButton = .AddButton("LayoutsProbeHide", "Layouts probe: hide")
+        End With
+        MakePane
+        Host.DebugConsole.PrintText "[LayoutsProbe] loaded"
+    End Sub
+
+    ' The window, hidden. The IDE uses the suggested size when it shows a
+    ' floating window it has no place for.
+    Private Sub MakePane()
+        Set Pane = Host.ToolWindows.Add("Layouts probe", "LayoutsProbePane")
+        Pane.Title = "LAYOUTS PROBE"
+        With Pane.RootDomElement
+            .Properties.suggestedWidth = "500px"
+            .Properties.suggestedHeight = "600px"
+            .ChildDomElements.Add("layoutsProbeText", "div").Properties.innerText = "layouts probe"
+        End With
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        SetVisible True, "shown"
+    End Sub
+
+    Private Sub HideButton_OnClick()
+        SetVisible False, "hidden"
+    End Sub
+
+    ' The page answers Visible with an error when it cannot find the window.
+    Private Sub SetVisible(ByVal value As Boolean, ByVal what As String)
+        On Error Resume Next
+        Pane.Visible = value
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        If n = 0 Then
+            Host.DebugConsole.PrintText "[LayoutsProbe] " & what
+        Else
+            Host.DebugConsole.PrintText "[LayoutsProbe] " & what & " error " & n
+        End If
+    End Sub
+
+    Private Sub Pane_OnClose()
+        Host.DebugConsole.PrintText "[LayoutsProbe] closed"
+        MakePane
+        Host.DebugConsole.PrintText "[LayoutsProbe] made again"
+    End Sub
+End Class

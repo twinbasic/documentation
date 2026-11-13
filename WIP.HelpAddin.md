@@ -924,8 +924,10 @@ not: a restart saves a harness about a second against opening a new IDE.
      lookup from there goes through the search box.
    - **The pane's first floating size** is `min(480px, 85vw)` by `min(640px, 85vh)`,
      the root's `suggestedWidth` and `suggestedHeight`. `toolWindowSetVisible` in `main.js`
-     copies them into the floating panel's `style` the first time the window shows floating,
-     when the IDE has no saved place for it (`floatingToolWindowsData`), and then centres the
+     copies them into the floating panel's `style` each time the window shows floating
+     when the IDE has no saved place for it (`floatingToolWindowsData`), which nothing in BETA
+     1042 writes, so a resize by hand is undone too (BUGS-TO-REPORT.md's
+     toolwindow-show-suggested-size), and then centres the
      panel by its laid-out size, so a CSS `min()` works. A plain 640px was taller than the page
      of a 1200 by 900 IDE window at 150% (800 by 600): the IDE centred it at a negative
      `top`, its title bar partly above the page, and it covered the toolbar. The lane checks 480 by 640 in a
@@ -1441,13 +1443,18 @@ not: a restart saves a harness about a second against opening a new IDE.
       as a built-in panel, and `restorePanelLayout` takes the dock out of the page, before
       `closeAllAddinToolwindows`; closing such a window then throws inside `toolWindowClose`,
       which swallows it, so the add-in never hears of the close and its window is gone until
-      the compiler restarts (a hidden floating window is closed rightly). The wrapper closes
+      the IDE restarts (a compiler restart hands the add-in the lost window again; a hidden
+      floating window is closed rightly). The wrapper closes
       every add-in's window with `addInEvents.toolWindowClose` first, while all are in the
       page, as long as the function's text still calls `removeAllFloatingPanels()`. And
       `toolWindowSetVisible` gives a floating add-in window its suggested size whenever
       `floatingToolWindowsData` has no place for it, which a layout's floating entry never
-      writes: the wrapper writes each `ADDIN_` entry of the applied layout there, as a move by
-      hand does. Neither is in BUGS-TO-REPORT.md yet.
+      writes: the wrapper writes each `ADDIN_` entry of the applied layout there. Nothing else
+      in BETA 1042 writes there either (`saveFloatingToolWindowPosition` is called only from
+      `createToolWindow`'s dead `if (0)` branch), so a resize by hand is undone at the next
+      show as well, which the add-in does not work round. Both are in BUGS-TO-REPORT.md:
+      `layout-loses-addin-toolwindow` and `toolwindow-show-suggested-size`, asserted by
+      `addin-test.bat --only toolwindow-layouts` (its own probe add-in, not the help).
     - **Pixels.** The add-in places its window in its process's pixels, which are physical:
       the compiler's process is aware of the display's scaling (the help lane checks the
       window's rectangle against Windows' at 144 dpi). `ProcessDpi` (`GetDpiForSystem`) goes

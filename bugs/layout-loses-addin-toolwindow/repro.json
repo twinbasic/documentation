@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "addin:toolwindow-layouts",
+  "tests": [
+    "applying a layout while the window floats shown takes it out of the page, keeps it in toolWindowsById, and the add-in hears no OnClose",
+    "applying a layout while the window is docked takes it out of the page, keeps it in toolWindowsById, and the add-in hears no OnClose"
+  ],
+  "steps": "This is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.\n1. Open layout-loses-addin-toolwindow.twinproj and build it for Win32. Copy Build\\LayoutLosesAddinToolwindow_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\ and restart the IDE. Open any project: the toolbar has a button, Show the tool window.\n2. Control: with the window hidden, choose Window > Panel Layouts > Default Built-in Layout. The DEBUG CONSOLE prints OnClose: the IDE closed the window, and the add-in made it again.\n3. Click Show the tool window. The window REPRO WINDOW floats over the editor.\n4. Choose Window > Panel Layouts > Default Built-in Layout again. The window disappears, and the DEBUG CONSOLE prints no OnClose. Clicking Show the tool window prints shown, and no window appears; a compiler restart does not bring it back either, only a new IDE.\n5. Close the IDE and delete LayoutLosesAddinToolwindow_win32.dll from %APPDATA%\\twinBASIC\\addins\\win32\\.\nThe same happens to a window a layout docks. Asserted on BETA 1042 by `addin-test.bat --only toolwindow-layouts` (the LayoutsProbe add-in in test/addin/probes/layouts, of which this project is a cut-down copy)."
+}

@@ -1807,6 +1807,16 @@ probe lanes:
   The probe opens nothing, so running an IDE without the variable is safe. Two IDEs in one
   lane need no change to the runner, and the second takes the lane's slot once the first has
   been ended.
+- [test/addin/toolwindow-layouts.test.mjs](test/addin/toolwindow-layouts.test.mjs): two IDE
+  defects of BUGS-TO-REPORT.md, `toolwindow-show-suggested-size` and
+  `layout-loses-addin-toolwindow`, which the help add-in works round in `layouts.js`. Its
+  LayoutsProbe add-in ([test/addin/probes/layouts](test/addin/probes/layouts)) has one tool
+  window with a suggested size, two buttons that show and hide it, and an `OnClose` that
+  prints `closed` and makes the window again. The scenario makes layouts in
+  `customPanelLayouts`, applies them with `setActivePanelLayoutName`, resizes the floating
+  window with mouse events on its resize bars, and reads `toolWindowsById`. A floating window
+  the IDE loses stays lost through a compiler restart, so the docked case opens a second IDE.
+  About 35 s.
 
 **Timing:** the thirteen lanes other than widgets (24 s alone) take about two minutes at the default two at a time
 (the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
