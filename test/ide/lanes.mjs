@@ -37,6 +37,7 @@ export default [
   { file: "keyeditor.test.mjs" },
   { file: "layouteditor.test.mjs" },
   { file: "code-find.test.mjs" },
+  { file: "quick-find-keys.test.mjs" },
   { file: "code-editor.test.mjs" },
   { file: "memory.test.mjs" },
   { file: "debugging.test.mjs" },

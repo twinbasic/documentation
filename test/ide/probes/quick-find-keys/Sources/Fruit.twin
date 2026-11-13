@@ -1,0 +1,11 @@
+Module Fruit
+    ' test/ide/quick-find-keys.test.mjs searches this file with Quick Find for apple, while the
+    ' Find / Replace panel holds banana to find and nothing to replace it with.
+    Public Sub Main()
+        Dim apple As Long
+        Dim banana As Long
+        apple = 1
+        banana = 2
+        Debug.Print apple + banana
+    End Sub
+End Module

@@ -13598,3 +13598,83 @@ The cause is in `ide/main.js`. `addInEvents.toolWindowSetVisible`, given true fo
 Severity: low. Nothing is lost but the size, but it is lost every time: an add-in that hides and shows its window often, as a help pane does, undoes the user's resize each time, and a layout's size for the window holds only until it is next shown.
 
 <!-- Reproducer: bugs/toolwindow-show-suggested-size/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only toolwindow-layouts` (test/addin/toolwindow-layouts.test.mjs; its add-in is the LayoutsProbe, test/addin/probes/layouts), the two tests named in repro.json (a layout's size, a resize with the mouse by CDP input events), which pass on BETA 1042 (2026-11-13); the control "control: with a place in floatingToolWindowsData, the window keeps its size when hidden and shown" passes too. The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-13 making the help add-in 1.4.0 keep the help's place per layout (WIP.HelpAddin.md item 14): a layout that floats the help's pane lost its size when the help was attached. The resize by hand was found writing this entry, from main.js. Worked round in add-in/Resources/SCRIPTS/layouts.js, `keepFloatingPlaces`, which writes each `ADDIN_` floating entry of the applied layout into floatingToolWindowsData; a resize by hand is not worked round. When this is fixed, remove the workaround, and the lane's tests then assert the fixed behaviour. docs/Reference/Built-In/tbIDE/ToolWindow.md, "Suggested initial size", says the suggested size is used the first time only and the user's size is remembered, which BETA 1042 does not do; it carries no callout yet. No Fix shape yet: toolWindowSetVisible is a method of the addInEvents object, not a unit ide_js.mjs names. -->
+
+---
+
+## Alt+A and Alt+R run the Find / Replace panel's Replace All and Replace from the code and from Quick Find, with the panel closed
+
+**Describe the bug**
+The Find / Replace panel's keys for **Replace** (Alt+R) and **Replace All** (Alt+A) work outside the panel: in the code, and in the editor's Quick Find widget, while the panel is closed. They run the panel's own search, with the text its **Find What** and **Replace With** hold. Alt+A is also the key of **Edit → Select All Matches**: once **Find What** holds text, Alt+A in the code selects no match and replaces every match of **Find What** in the file with **Replace With** instead. Ctrl+F empties **Replace With**, so after any search with the panel, Alt+A deletes every match of that search. In Quick Find, Alt+R and Alt+A act on the panel's search, not on Quick Find's; Alt+R is the key Monaco's own find widget gives to *Use Regular Expression*, so a user who presses it there to turn regular expressions on changes the code instead. It was observed by operating the IDE with key events in an IDE started with an `APPDATA` of its own, and reading the code, the selections and the message boxes after each key.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module such as:
+   ```
+   Module Fruit
+       Public Sub Main()
+           Dim apple As Long
+           Dim banana As Long
+           apple = 1
+           banana = 2
+           Debug.Print apple + banana
+       End Sub
+   End Module
+   ```
+2. Put the caret inside `banana` on the `Dim banana` line and press Ctrl+F. The panel shows with `banana` in **Find What** and **Replace With** empty. Press Esc: the panel closes.
+3. Put the caret inside `apple` on the `Dim apple` line and press Alt+A. A box says *The specified region has been searched. 3 replacements were made.* Every `banana` is gone, and there is one cursor, not one on each `apple`.
+4. Put the module's text back. Put the caret inside `apple` again and press Alt+R: the next `banana` is selected. Press Alt+R again: that `banana` is deleted.
+5. Put the module's text back. Press Alt+H, type `apple` in the box to find, press Tab, type `pear` in the replace box, and press Shift+Tab. Press Alt+R twice: a `banana` is deleted and no `apple` is replaced. Press Alt+A: every `banana` is deleted, with the same box as in step 3.
+
+**Expected behavior**
+Alt+R and Alt+A run the panel's **Replace** and **Replace All** only while the focus is in the panel, as its other Alt keys do. In the code, Alt+A runs **Select All Matches**: a cursor on each `apple`, as in an IDE whose panel has not been used. In Quick Find, neither key touches the panel's search.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+The cause, read from `ide\main.js`: `globalKeyDown`, a keydown listener on the document in the capture phase, passes each key to `executeKeyboardShortcuts`, which runs every command bound to the key whose `defaultContext` holds, until one sets `completelyStopKeyEventProcesing`. `tbFindReplace_ReplaceNext` and `tbFindReplace_ReplaceAll` have the context `focusedFindReplace || focusedEditor`, like `tbFindReplace_Next` and `tbFindReplace_Prev` (F3 and Shift+F3, which are meant to work from the code too), while the panel's other Alt keys have `focusedFindReplace` alone. `focusedEditor` holds wherever the focus is in the code editor's panel, Quick Find's boxes included. `tbEditor_FindWidget_SelectAllMatches`, also Alt+A, sets no stop flag. Giving the two commands the context `focusedFindReplace` alone would fix both.
+
+What does not reproduce it: Ctrl+Shift+L in the code, which selects every match of the word at the caret and changes nothing, with the panel closed and **Find What** holding text; and Alt+A in an IDE whose panel has not been used, which selects every match.
+
+Severity: high. A key the Edit menu shows for selecting text changes the code instead, every time once the panel has been used, and Alt+R does it with no message at all.
+
+<!-- Reproducer: bugs/find-panel-keys-outside-panel/ (mode lane: asserted by `ide-test.bat --only quick-find-keys` (test/ide/quick-find-keys.test.mjs), the four tests named in repro.json, which pass on BETA 1042 (2026-11-13); the controls "control: with the Find / Replace panel never used, Alt+A in the code selects every match of the word at the caret" and "control: with the panel closed, Ctrl+Shift+L in the code selects every apple and replaces nothing" pass too. Its project, test/ide/probes/quick-find-keys, holds apple and banana four times each, where the module above holds each three times). No project and no zip: the steps give the code. docs/IDE/Code/Finding.md carries a WARNING for it under "Select all matches"; when a fixed build is released, that WARNING goes. Found 2026-11-13 checking whether Quick Find's tooltips name keys that do nothing (they name no keys at all), after documenting regular expressions in Quick Find. No Fix shape yet: the fix is the two defaultContext strings of the commands in ideCommands, which ide_js.mjs could patch. -->
+
+---
+
+## Enter in Quick Find's replace box adds a line break to the replacement instead of replacing
+
+**Describe the bug**
+In the replace row of the editor's Quick Find widget (Alt+H), Enter puts a line break into the replace box, which grows to two lines, and replaces nothing. **Replace All** then writes that line break into the code after each replacement. In the box to find, Enter goes to the next match. It was observed by operating the IDE with key events in an IDE started with an `APPDATA` of its own, and reading the widget's state and the code.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module such as:
+   ```
+   Module Fruit
+       Public Sub Main()
+           Dim apple As Long
+           apple = 1
+           Debug.Print apple
+       End Sub
+   End Module
+   ```
+2. Press Alt+H, type `apple` in the box to find, press Tab and type `pear` in the replace box.
+3. Press Enter. Nothing is replaced, and the replace box grows from one line to two: the replacement is now `pear` and a line break.
+4. Click **Replace All** (the button at the right of the replace box). Each `apple` becomes `pear` followed by a line break, and the module has three lines more: `Dim pear` and ` As Long` are on two lines.
+
+**Expected behavior**
+Enter in the replace box replaces the current match and goes to the next one, as it does in Monaco's own find widget, which Quick Find is, or it does nothing. It does not change the replacement.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+None of the keys Monaco's find widget has of its own works in Quick Find on BETA 1042 (Alt+C, Alt+W, Alt+L and Alt+P for the toggles, Ctrl+Shift+1 to replace, Ctrl+Alt+Enter to replace all), and its tooltips name no keys, so the IDE handles the widget's keys with its own keymap alone. In it, Enter in Quick Find is `tbFindWidget_FindNext`, with the context `focusedFindWidget`; nothing takes Enter in the replace box, and the box, a text area that holds several lines, takes it as a line break.
+
+Severity: low. The box shows a second line, but nothing says that the replacement now ends with a line break, and **Replace All** then breaks every line it changes.
+
+<!-- Reproducer: bugs/quick-find-enter-in-replace-box/ (mode lane: asserted by `ide-test.bat --only quick-find-keys` (test/ide/quick-find-keys.test.mjs), the test named in repro.json, which passes on BETA 1042 (2026-11-13)). No project and no zip: the steps give the code. docs/IDE/Code/Finding.md carries a NOTE for it under "Quick Find"; when a fixed build is released, that NOTE goes. Found 2026-11-13 with find-panel-keys-outside-panel, pressing each key in Quick Find. -->
+
