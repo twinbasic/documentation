@@ -289,7 +289,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
-  alone), `programs`, `vbflexgrid`, `xcalendar`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
+  alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
   `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
@@ -832,6 +832,21 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   form (`AutoRedraw`): the annotation layer draws on the IDE's page only, and a line ends at the
   control's edge, since the form draws nothing over a child window. The heights it labels are
   worked out as the control does (a line of the font plus the margins).
+- **Setup `dialogs`**: `test/shots/dialogs`, DialogShots, the pictures of the VBComDlg and
+  AutoCompleteLib sections, both packages embedded by `startWithPackages`. A CommonDialog's dialog
+  is taken as the `vb` setup's MsgBox is (`programDialogShot`, which `vbDialogShot` now calls): a
+  timer in the program finds it by its title, keeps it active and in a mouse user's state, and the
+  tool ends the program. The Find and Replace dialogs are modeless and kept by the program's own
+  loop. The Folder Browser's root is a folder Projects that the program makes in the folder of the
+  signals, so the tree shows nothing of the machine; the new-style tree fades its expand buttons
+  with the focus, so the fading is switched off (`TVS_EX_FADEINOUTEXPANDOS`). **The Font dialog
+  lists the machine's fonts**: its list is scrolled to start at Microsoft Himalaya
+  (`CB_SETTOPINDEX`), so that the rows around Microsoft Sans Serif hold only fonts that come with
+  Windows or Office, and none of the novelty fonts this machine has. File Open and File Save are
+  not taken: their navigation pane shows the user's own folders. The AutoComplete scenes type
+  `Ap` into a text box (`WM_CHAR`, as the package's test cases do) and lay the suggestion list
+  (`Auto-Suggest Dropdown`) over the form, three runs in a row (`sceneRuns`); the caret is hidden,
+  since it blinks.
 - **Setup `vb`**: `test/shots/vb`, VBShots, the pictures of the VB, VBRUN and VBA sections
   (the VB package's controls, a form's drawing, its menus and MDI forms, MsgBox and InputBox),
   one scene per command line, taken by `sceneShot` as `vbflexgrid`'s are; the VB reference's

@@ -792,6 +792,26 @@
     "Reference/Built-In/tbIDE/Images/Toolbar.png": {
       "build": 1042
     },
+    "Reference/Contributed/AutoCompleteLib/Images/Options.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowColor.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowFind.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowFolderBrowser.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowFont.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Appearance_GridLines.png": {
       "build": 1042,
       "scale": 1.5

@@ -95,6 +95,9 @@
 //   xcalendar   test/shots/xcalendar, XCalendarShots, with the TWINSERV package xCalendar
 //               embedded as vbflexgrid's is: the xCalendar section's pictures of its control,
 //               taken as the programs setup's are
+//   dialogs     test/shots/dialogs, DialogShots, with the TWINSERV packages VBComDlg and
+//               AutoCompleteLib embedded: the dialogs of a CommonDialog, taken as the vb setup's
+//               MsgBox is, and an AutoComplete's suggestion list laid over its form
 //   tbide       test/shots/tbide, MyAddInDemo, an add-in built into the copy, the sample open:
 //               the tbIDE section's pictures of its toolbar buttons, its tool window floating
 //               and docked by a drag, and its DEBUG CONSOLE lines; tbide-sample10 Sample 10
@@ -1995,6 +1998,10 @@ const SETUPS = {
   xcalendar: {
     start: (run) => startWithPackages(run, XCALENDAR_SHOTS),
     prepare: (run) => preparePrograms(run, "XCalendarShots"),
+  },
+  dialogs: {
+    start: (run) => startWithPackages(run, DIALOG_SHOTS),
+    prepare: (run) => preparePrograms(run, "DialogShots"),
   },
   vb: { start: (run) => startPrograms(run, VB_SHOTS), prepare: (run) => preparePrograms(run, "VBShots") },
   commonctls: {
@@ -11774,33 +11781,48 @@ function overlaid(layers) {
   return { picture: { width, height, rgba }, dpi: layers[0].p.dpi };
 }
 
-// A scene of a program run as the programs setup's are, its command line `scene`, as `out`: the
-// form, active, and the visible top-level windows of the program whose class `popups` matches
-// (a drop-down list, a calendar, a menu) laid over it where they are on the desktop.
+// A scene of a program run as the programs setup's are, its command line `scene`: the form, active, and the visible top-level windows of the program whose class `popups` matches
+// (a drop-down list, a calendar, a menu, a suggestion list) laid over it where they are on the
+// desktop.
+const scenePicture = (ctx, setup, scene, popups) =>
+  withProgram(ctx, scene, async (dir, w) => {
+    // the program writes "error" with the error a scene's code raised, and shows its form all the same
+    const error = path.join(dir, "error");
+    if (existsSync(error)) throw new Error(`scene ${scene}: ${readFileSync(error, "utf8").trim()}`);
+    const layers = [
+      { w, p: await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true }) },
+    ];
+    // the grid's drop-down list and calendar, top-level windows of the program; not its other
+    // visible ones, such as the input-language indicator Windows gives a process
+    const mine = (await desktopWindows(ctx.desktop)).filter(
+      (x) => x.depth === 0 && x.visible && x.pid === w.pid && x.hwnd !== w.hwnd,
+    );
+    if (mine.length) say(setup, `${scene}: windows besides the form: ${mine.map((x) => x.class).join(", ")}`);
+    const shown = mine.filter((x) => popups.test(x.class) && x.rect[2] > x.rect[0] && x.rect[3] > x.rect[1]);
+    for (const [i, x] of shown.entries())
+      layers.push({ w: x, p: await windowPicture(ctx.desktop, x.hwnd, scene, path.join(dir, `popup${i}.png`)) });
+    return layers.length === 1 ? layers[0].p : overlaid(layers);
+  });
+// One scene as `out`.
 const sceneShot = (out, setup, scene, popups) => ({
   out,
   setup,
   once: true,
   window: true,
-  take: (ctx) =>
-    withProgram(ctx, scene, async (dir, w) => {
-      // the program writes "error" with the error a scene's code raised, and shows its form all the same
-      const error = path.join(dir, "error");
-      if (existsSync(error)) throw new Error(`scene ${scene}: ${readFileSync(error, "utf8").trim()}`);
-      const layers = [
-        { w, p: await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true }) },
-      ];
-      // the grid's drop-down list and calendar, top-level windows of the program; not its other
-      // visible ones, such as the input-language indicator Windows gives a process
-      const mine = (await desktopWindows(ctx.desktop)).filter(
-        (x) => x.depth === 0 && x.visible && x.pid === w.pid && x.hwnd !== w.hwnd,
-      );
-      if (mine.length) say(setup, `${scene}: windows besides the form: ${mine.map((x) => x.class).join(", ")}`);
-      const shown = mine.filter((x) => popups.test(x.class) && x.rect[2] > x.rect[0] && x.rect[3] > x.rect[1]);
-      for (const [i, x] of shown.entries())
-        layers.push({ w: x, p: await windowPicture(ctx.desktop, x.hwnd, scene, path.join(dir, `popup${i}.png`)) });
-      return besideEachOther([layers.length === 1 ? layers[0].p : overlaid(layers)]);
-    }),
+  take: async (ctx) => besideEachOther([await scenePicture(ctx, setup, scene, popups)]),
+});
+
+// Several scenes, each taken as sceneShot takes one, in rows of `perRow`.
+const sceneRuns = (out, setup, scenes, popups, perRow = scenes.length) => ({
+  out,
+  setup,
+  once: true,
+  window: true,
+  async take(ctx) {
+    const shown = [];
+    for (const scene of scenes) shown.push(await scenePicture(ctx, setup, scene, popups));
+    return inRows(shown, perRow);
+  },
 });
 
 // A scene of FlexGridShots, as `<Name>.png` beside the VBFlexGrid's topic pages.
@@ -11862,12 +11884,13 @@ const vbMenuShot = (out, scene) => ({
 // The windows the system gives a process besides its own: never part of a picture.
 const SYSTEM_WINDOWS = /^(UAC_InputIndicatorOverlayWnd|UAC Input Indicator|ThunderRT6Main|IME|MSCTFIME UI|SysShadow)$/;
 
-// The dialog a scene's program opens (MsgBox, InputBox) and nothing else: the program, started
-// on the setup's desktop with the scene as its command line, waits in the dialog until the tool
-// has it, and is then ended. Several scenes are laid out in rows of `perRow`.
-const vbDialogShot = (out, scenes, perRow = scenes.length) => ({
-  out: `Reference/Default/${out}.png`,
-  setup: "vb",
+// The dialog a scene's program opens (MsgBox, InputBox, a common dialog) and nothing else: the
+// program, started on the setup's desktop with the scene as its command line, waits in the
+// dialog until the tool has it, and is then ended. Several scenes are laid out in rows of
+// `perRow`. A program that writes "error" fails the picture with its text.
+const programDialogShot = (out, setup, scenes, perRow = scenes.length) => ({
+  out,
+  setup,
   once: true,
   window: true,
   async take(ctx) {
@@ -11882,10 +11905,15 @@ const vbDialogShot = (out, scenes, perRow = scenes.length) => ({
         desktop: ctx.desktop,
         env: { ...process.env, TB_SHOT_SIGNALS: dir },
       });
+      const error = path.join(dir, "error");
+      const failed = () => {
+        if (existsSync(error)) throw new Error(`scene ${scene}: ${readFileSync(error, "utf8").trim()}`);
+      };
       try {
         const box = await waitFor(
           null,
           async () =>
+            existsSync(error) ||
             (await desktopWindows(ctx.desktop)).find(
               (x) =>
                 x.depth === 0 &&
@@ -11897,10 +11925,12 @@ const vbDialogShot = (out, scenes, perRow = scenes.length) => ({
             ),
           { timeout: 15000, interval: 200 },
         );
+        failed();
         if (!box) throw new Error(`scene ${scene} opened no window`);
-        say("vb", `${scene}: ${box.class} ${JSON.stringify(box.title)}`);
+        say(setup, `${scene}: ${box.class} ${JSON.stringify(box.title)}`);
         // the program writes "shown" once it has put its box in the state the picture shows
         await signalled(dir, "shown");
+        failed();
         shown.push(await windowPicture(ctx.desktop, box.hwnd, scene, path.join(dir, "dialog.png"), { active: true }));
       } finally {
         killTree(run.pid);
@@ -11911,6 +11941,7 @@ const vbDialogShot = (out, scenes, perRow = scenes.length) => ({
     return inRows(shown, perRow);
   },
 });
+const vbDialogShot = (out, scenes, perRow) => programDialogShot(`Reference/Default/${out}.png`, "vb", scenes, perRow);
 
 const vbShots = [
   vbShot("VBRUN/Constants/Images/DrawStyleConstants", "drawstyle"),
@@ -12032,6 +12063,28 @@ const xCalendarShots = [
   xCalendarShot("Enabled", "enabled"),
   xCalendarShot("GridCellEffect", "effects"),
   xCalendarShot("Sample", "sample"),
+];
+
+// ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
+// pictures, with both TWINSERV packages embedded as vbflexgrid embeds VBFLXGRD18: the dialogs of a
+// CommonDialog, each taken as the vb setup's MsgBox is (programDialogShot), and a text box served by an
+// AutoComplete with "Ap" typed into it, its suggestion list laid over the form (sceneRuns).
+
+const DIALOG_SHOTS = path.join(REPO_ROOT, "test", "shots", "dialogs");
+const AUTOCOMPLETE_POPUPS = /^Auto-Suggest Dropdown$/;
+const comDlgShot = (name, scenes) =>
+  programDialogShot(`Reference/Contributed/VBComDlg/Images/${name}.png`, "dialogs", scenes);
+const comDlgShots = [
+  comDlgShot("ShowColor", ["color-basic", "color-full"]),
+  comDlgShot("ShowFont", ["font"]),
+  comDlgShot("ShowFolderBrowser", ["folder-old", "folder-new"]),
+  comDlgShot("ShowFind", ["find", "replace"]),
+  sceneRuns(
+    "Reference/Contributed/AutoCompleteLib/Images/Options.png",
+    "dialogs",
+    ["suggest", "append", "suggestappend"],
+    AUTOCOMPLETE_POPUPS,
+  ),
 ];
 
 // ---- codelens: test/shots/codelens, CodeLensDemo, two modules whose procedures the editor's
@@ -15683,6 +15736,7 @@ const SHOTS = [
   ...commonCtlsShots,
   ...waynesShots,
   ...xCalendarShots,
+  ...comDlgShots,
   ...tbIdeShots,
   ...codeLensShots,
   memoryShot,
@@ -15789,6 +15843,7 @@ const JOB_SECONDS = {
   commonctls: 40,
   waynes: 90,
   xcalendar: 40,
+  dialogs: 60,
   tbide: 40,
   "tbide-sample10": 30,
   codelens: 35,
