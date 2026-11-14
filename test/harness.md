@@ -162,8 +162,9 @@ to the file are made in one commit.
   `setup` and `licence` by the documentation's tools.
 - **The documentation's tools always read the file**, from the repository root; a missing or
   malformed file is exit 2, and no default value stays in their code. **tblaunch reads it with
-  `--harness <file>`**; without that option its built-in defaults apply, and they are kept equal
-  to the file's (a check on tblaunch's side compares them with `staging`'s copy).
+  `--harness <file>`**, and applies a package's entry in `packageTimeouts` with `--package <name>`;
+  without `--harness` its built-in defaults apply, and they are kept equal to the file's (a check
+  on tblaunch's side compares them with `staging`'s copy, and checks that tblaunch takes that copy).
 
 ## Modes and stages
 
@@ -340,7 +341,10 @@ own: what it embeds, or what its cases do.
 - `check_examples` applies a batch's package entry to that batch. `package_tests.mjs` passes the
   package's entry to `tbrun` as its options, all but `compilerRun` and `exeRun` in a `--tests` run,
   where its own `--timeout` is the case's limit. `tbbuild` and `tbrun` take a project or a tree,
-  not a package, so a direct run of either has the file's limits.
+  not a package, so a direct run of either has the file's limits. tblaunch is told the package
+  with `--package <name>` beside `--harness <file>` (a name with no entry applies none, and
+  `--package` without `--harness` is exit 2); its run check, `phase3/3-run-check.mjs` in the
+  launcher repository, passes each batch's package.
 - **An entry is a last resort, not a way round a slow build.** It is for a limit the package
   always outruns, as its cause says; each entry's cause and timings go under the version that
   added it, or under [Package entries](#package-entries).
@@ -367,8 +371,10 @@ Adds `packageTimeouts` ([Per-package timeouts](#per-package-timeouts)), optional
 package, each entry setting some of the five phases a person can override; a file of version 1
 that holds it is refused. Asked for by the owner, when Generics' compile cases outran the 10 s
 compile limit in a run of every package's tests on BETA 1042. A reader of version 1 refuses a
-file of version 2 (exit 2): until tblaunch knows version 2, its `--harness` is given a file of
-version 1 or left out (its built-in defaults). The documentation's tools read both versions.
+file of version 2 (exit 2). tblaunch reads both versions from its contract 18 (tblaunch 18.0,
+2026-11-14), which adds `--package <name>` to name the package whose entry applies; tblaunch 17
+and older read version 1 only, so their `--harness` is given a file of version 1 or left out
+(their built-in defaults). The documentation's tools read both versions.
 
 ### Version 1 (2026-10-17)
 
