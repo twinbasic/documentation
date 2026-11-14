@@ -6,9 +6,9 @@
 //
 //       <Package>         a package with a test project, matched to its folder without regard
 //                         to case (tbregexp is tbRegExp)
-//       --all-packages    every package with a test project but those in ALL_PACKAGES_SKIP, which
-//                         run only when named; a run of all of them takes several minutes a
-//                         package, so it is never the default
+//       --all-packages    every package with a test project but those in ALL_PACKAGES_SKIP
+//                         (lib/package-tests.mjs), which run only when named; a run of all of
+//                         them takes several minutes a package, so it is never the default
 //       --arch <a>        win32, win64 or both (default both)
 //       --timeout <secs>  how long one case may take (default 60)
 //       --hang-timeout <secs>  how long a case expect.json says never returns is given (default 20)
@@ -62,6 +62,7 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import {
+  ALL_PACKAGES_SKIP,
   COMPILE_DIR,
   compileOnlyNames,
   compileSources,
@@ -100,11 +101,6 @@ const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 const CACHE = path.join(tmpdir(), "tb-twinserv");
 const WORK = path.join(tmpdir(), "tb-package-tests");
-
-// The packages --all-packages leaves out, each run only when named (owner): GdiPlus, whose known
-// defects include cases that never return, which make a run of every package much longer. Keep the
-// usage text in step with this list.
-const ALL_PACKAGES_SKIP = new Set(["GdiPlus"]);
 
 const USAGE = `usage: node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json] [-h, --help]
 

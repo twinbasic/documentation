@@ -129,7 +129,7 @@ package-tests.bat tbRegExp --update         write expect.json from the run
 package-tests.bat --all-packages            every project but GdiPlus, several minutes a package
 ```
 
-`--all-packages` leaves out the packages in `ALL_PACKAGES_SKIP` (`scripts/package_tests.mjs`),
+`--all-packages` leaves out the packages in `ALL_PACKAGES_SKIP` (`lib/package-tests.mjs`),
 which run only when named: GdiPlus (owner), whose known defects include cases that never return.
 A package is named in any case. With no package named and no `--all-packages`, the run is
 refused and lists the packages that have a test project.
