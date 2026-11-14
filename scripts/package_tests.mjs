@@ -6,8 +6,9 @@
 //
 //       <Package>         a package with a test project, matched to its folder without regard
 //                         to case (tbregexp is tbRegExp)
-//       --all-packages    every package with a test project; a run of all of them takes several
-//                         minutes a package, so it is never the default
+//       --all-packages    every package with a test project but those in ALL_PACKAGES_SKIP, which
+//                         run only when named; a run of all of them takes several minutes a
+//                         package, so it is never the default
 //       --arch <a>        win32, win64 or both (default both)
 //       --timeout <secs>  how long one case may take (default 60)
 //       --hang-timeout <secs>  how long a case expect.json says never returns is given (default 20)
@@ -100,15 +101,20 @@ const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 const CACHE = path.join(tmpdir(), "tb-twinserv");
 const WORK = path.join(tmpdir(), "tb-package-tests");
 
+// The packages --all-packages leaves out, each run only when named (owner): GdiPlus, whose known
+// defects include cases that never return, which make a run of every package much longer. Keep the
+// usage text in step with this list.
+const ALL_PACKAGES_SKIP = new Set(["GdiPlus"]);
+
 const USAGE = `usage: node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json] [-h, --help]
 
 Runs package test projects under test/package-tests/ with tbrun --tests, each
 with its package embedded, and judges every case against the package's
 expect.json: documented (as it says), fixed (expected to fail or never return,
 and passes) or changed. Name one or more packages (in any case), or pass
---all-packages to run every project.
+--all-packages to run every project but GdiPlus, which runs only when named.
 
-  --all-packages          run every package's test project
+  --all-packages          run every package's test project but GdiPlus
   --arch <a>              win32, win64 or both (default both)
   --timeout <secs>        how long one case may take (default 60)
   --hang-timeout <secs>   how long a case that never returns is given (default 20)
@@ -179,12 +185,16 @@ const missing = positionals.filter((p) => !byLower.has(p.toLowerCase()));
 if (missing.length) {
   die(2, `no test project for ${missing.join(", ")}; packages with a test project: ${knownList}\n${USAGE}`);
 }
-const packages = values.allPackages ? known : [...new Set(positionals.map((p) => byLower.get(p.toLowerCase())))];
+const packages = values.allPackages
+  ? known.filter((p) => !ALL_PACKAGES_SKIP.has(p))
+  : [...new Set(positionals.map((p) => byLower.get(p.toLowerCase())))];
 if (!packages.length) die(2, "test/package-tests/ holds no test project");
+const skipped = values.allPackages ? known.filter((p) => ALL_PACKAGES_SKIP.has(p)) : [];
 
 const say = (s) => {
   if (!values.json) console.log(s);
 };
+if (skipped.length) say(`left out of --all-packages: ${skipped.join(", ")} (name it to run it)`);
 
 for (const pkg of packages) await ensurePackage(templateSettings(TEMPLATES, pkg));
 
@@ -195,7 +205,7 @@ for (const pkg of packages) {
   report.push(r);
   if (r.cases.some((c) => c.verdict !== "documented")) failed = true;
 }
-if (values.json) console.log(JSON.stringify({ packages: report }, null, 2));
+if (values.json) console.log(JSON.stringify({ packages: report, skipped }, null, 2));
 process.exit(failed ? 1 : 0);
 
 // ---------------------------------------------------------------- one package
