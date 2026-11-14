@@ -133,6 +133,9 @@
   "packageTimeouts": {
     "Generics": {
       "compile": 30
+    },
+    "WinReg": {
+      "compile": 30
     }
   }
 }

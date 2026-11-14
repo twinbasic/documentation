@@ -149,6 +149,9 @@ to the file are made in one commit.
   "packageTimeouts": {
     "Generics": {
       "compile": 30
+    },
+    "WinReg": {
+      "compile": 30
     }
   }
 }
@@ -352,9 +355,20 @@ own: what it embeds, or what its cases do.
 ### Package entries
 
 - **Generics** `compile`, 30 s: its compile cases (`test/package-tests/Generics/compile/`) embed
-  the package, which embeds WinDevLib 8.9.518.0 through WinDevLibImpl. On BETA 1042 that compile
-  settles 8.0--9.1 s after the project opens (nine runs, win32 and win64, `TB_TIMINGS`), and a
-  run of every package's tests met the file's 10 s once, which ended the run.
+  the package, which embeds WinDevLib 8.9.518.0 through WinDevLibImpl. On BETA 1042 their
+  compile waits took 8.0--9.1 s (nine runs, win32 and win64, `TB_TIMINGS`), and a run of every
+  package's tests met the file's 10 s once, which ended the run. 5 s of each wait was
+  `waitForCompile`'s stand-still, because its early ending never agreed for this project
+  ([WIP.Harness.md](../WIP.Harness.md#timing-each-phase-tb_timings), fixed 2026-11-14). The waits
+  then took 3.2--8.9 s (12 waits, on a machine loaded by other runs), the compile settling up to
+  7.5 s after the project opened; the time is the compiler's start, before the compile itself
+  (a few ms).
+- **WinReg** `compile`, 30 s: WinReg 1.0.1.1 does not compile on BETA 1042, so it has no test
+  project, and its compile cases (`test/package-tests/WinReg/compile/`) are the whole run. The
+  project embeds the package, which embeds WinDevLib twice. On a machine loaded by other runs, its
+  compile settled 6.2--20.7 s after the project opened (six waits, win32 and win64, `TB_TIMINGS`,
+  run with `TB_COMPILE_TIMEOUT=60`), the compile itself 1--5 ms, and two runs with the file's
+  10 s ended at it.
 
 ## Versions
 
