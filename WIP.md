@@ -28,6 +28,7 @@ one covering what you are about to change.
 | work on the IDE help add-in, or on testing IDE add-ins by machine | [WIP.HelpAddin.md](WIP.HelpAddin.md) --- the plan, the IDE facts it rests on, and the probes still open |
 | change the site search, or add an index term | [WIP.Search.md](WIP.Search.md) --- the design, the eval and its figures, the rules for index entries, term entries and what has been rejected |
 | find the documentation work a new twinBASIC build leaves, or change the package indexer (`indexer/`) | [WIP.Indexer.md](WIP.Indexer.md) --- the store and the snapshots, the one shared scanner, `api.json` format 3, the owner's decisions and the open items |
+| write down a suspected twinBASIC or package defect met while documenting, or pick one up to investigate | [WIP.BugHunt.md](WIP.BugHunt.md) --- the leads not yet investigated, and the steps that take a lead to a reproducer, a package's failing case or nothing |
 | add or check the run-time errors a procedure, statement or operator raises | [WIP.Errors.md](WIP.Errors.md) --- the owner's decisions, the data-driven design, and the batches with their status |
 | look up what a `TBnnnn` diagnostic code is, or document a compiler warning | [upstream/twinbasic-diagnostic-ids.h](upstream/twinbasic-diagnostic-ids.h) --- the compiler's full list of diagnostic codes and their internal names, from Wayne Phillips (current as of BETA 1007); `docs/Features/Compiler-IDE/Compiler-Warnings.md` is the public page for the warnings |
 | run a use-case evaluation round | [eval/README.md](eval/README.md) --- start every evaluator with `eval/run_case.mjs`, **never as a subagent**: a subagent inherits this session's `CLAUDE.md`, and with it this file, which is the answer key the corpus withholds |
@@ -735,7 +736,9 @@ in a clone with `git config core.hooksPath .githooks`.
 **A bug in twinBASIC itself goes in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)**, which is a
 queue rather than a record: an entry that has been filed upstream is marked and moved to `bugs/filed/<slug>/` by `bug_repro.mjs file --marked`, and deleted only once a fix is released and `verify` says it no longer reproduces. Each one
 carries the build it was seen on and a *narrowed* reproduction --- the compiler crash
-recorded there is two lines, and neither line reproduces it alone. Documentation defects
+recorded there is two lines, and neither line reproduces it alone. **A suspected defect that
+has not been narrowed goes in [WIP.BugHunt.md](WIP.BugHunt.md)**, in a few lines, and the work
+on the page goes on; it reaches BUGS-TO-REPORT only through the steps that file gives. Documentation defects
 do not go there; they are fixed in `docs/`, or recorded in the relevant `WIP.*.md` until
 they are.
 
