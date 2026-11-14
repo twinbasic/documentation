@@ -27,7 +27,15 @@ import {
   readHarness,
   timeoutMs,
 } from "../scripts/lib/harness-settings.mjs";
-import { BUILD_FAILED, LLVM_REFUSAL, linkedLog, orderSameNamedFiles } from "../scripts/lib/tb-ide.mjs";
+import {
+  BUILD_FAILED,
+  LLVM_REFUSAL,
+  linkedLog,
+  orderSameNamedFiles,
+  unlistedRows,
+  waitForCompile,
+} from "../scripts/lib/tb-ide.mjs";
+import { watchCompiles } from "../scripts/lib/tb-wire.mjs";
 import { buildTimeoutMessage, checkCapture } from "../scripts/lib/tb-run.mjs";
 import { reproAnswersBoxes, reproProblem, vb6Probes } from "../scripts/lib/vb6.mjs";
 
@@ -122,6 +130,102 @@ test("rows of files that share a base name are ordered by full name", () => {
   const kept = [z, a, row(nested, 1), z, row(top, 1), other, a];
   assert.deepEqual(orderSameNamedFiles(kept), kept);
   assert.deepEqual(orderSameNamedFiles([]), []);
+});
+
+// waitForCompile's early ending (tb-ide.mjs), on Generics' compile project as BETA 1042 compiles it: three listed
+// sources, a compile that also publishes the embedded package's Tuple.twin (4 errors), and WinDevLib's rows, which
+// it published at load and not again. The page shows 15 rows. A fake connection plays the page and its traffic.
+function genericsPage() {
+  const handlers = [];
+  const c = { on: (f) => handlers.push(f) };
+  const emit = (m) => {
+    for (const f of handlers) f(m);
+  };
+  const frame = (o) =>
+    emit({
+      method: "Network.webSocketFrameReceived",
+      params: { requestId: "lang", response: { opcode: 1, payloadData: JSON.stringify(o) } },
+    });
+  const publish = (uri, errors) =>
+    frame({
+      method: "textDocument/publishDiagnostics",
+      params: { uri, errorCount: errors, warningCount: 0, hintCount: 0, infoCount: 0 },
+    });
+  c.wire = watchCompiles(c);
+  emit({ method: "Network.webSocketCreated", params: { requestId: "lang", url: "ws://127.0.0.1/language" } });
+  const P = "/GenericsTests";
+  const src = ["CompileTests", "PackageTests", "TbRun"].map((n) => `twinbasic:${P}/Sources/${n}.twin`);
+  const tuple = `twinbasic:${P}/Packages/Generics/Sources/Tuple.twin`;
+  const wdl = `${P}/Packages/Generics/Packages/WinDevLibImpl/Packages/WinDevLib/Sources/wdGDIP.twin`;
+  const row = (file, n) => `{ERROR} ${file} [${n},1]: <span>TB0000</span>x`;
+  const rows = [
+    ...[1, 2, 3, 4, 5].map((n) => row(`${P}/Sources/CompileTests.twin`, n)),
+    ...[1, 2, 3, 4].map((n) => row(tuple.replace(/^twinbasic:/, ""), n)),
+    ...[1, 2, 3, 4, 5, 6].map((n) => row(wdl, n)),
+  ];
+  return { c, frame, publish, src, tuple, rows };
+}
+
+test("the wire counts only the files the page lists, and the package rows once", () => {
+  const { c, frame, publish, src, tuple, rows } = genericsPage();
+  frame({ event: "compilationStarted", body: { compileId: "1" } });
+  publish(src[1], 0);
+  publish(src[2], 0);
+  publish(src[0], 5);
+  publish(tuple, 4);
+  const w = c.wire.check(src);
+  // Summed over Tuple.twin as well, the wire said 9, and with the 10 unlisted rows 19 against the page's 15:
+  // the early ending never came, and every Generics compile waited out the five seconds of standing still.
+  assert.deepEqual(w.counts, [5, 0, 0, 0]);
+  const extra = unlistedRows(rows, src);
+  assert.deepEqual(extra, { n: 10, counts: [10, 0, 0, 0] });
+  assert.equal(w.counts[0] + extra.counts[0], 15);
+  assert.equal(w.counts[0] + extra.n, rows.length);
+  // `last` is the compile's latest publish of any file, Tuple.twin's here, which the quiet period runs from.
+  assert.ok(w.last >= w.at);
+});
+
+test("the early ending comes after the quiet period, timed from when the sample was read", async () => {
+  const { c, frame, publish, src, tuple, rows } = genericsPage();
+  const project = path.resolve("GenericsTests.twinproj");
+  const page = {
+    st: "tB Services: OPERATIONAL",
+    e: "15",
+    w: "0",
+    h: "0",
+    i: "0",
+    p: project,
+    safe: false,
+    src,
+    crash: null,
+    rows,
+  };
+  let lastPublish = 0;
+  let reads = 0;
+  // The first read takes 400 ms, as a busy page's did (480 ms measured), and the compile ends during it, its
+  // package file last. An agreement timed from before the read was already older than the quiet period.
+  c.evaluate = async () => {
+    if (reads++ === 0) {
+      frame({ event: "compilationStarted", body: { compileId: "1" } });
+      setTimeout(() => {
+        publish(src[1], 0);
+        publish(src[2], 0);
+        publish(src[0], 5);
+      }, 100);
+      setTimeout(() => {
+        publish(tuple, 4);
+        lastPublish = Date.now();
+      }, 200);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    return JSON.stringify(page);
+  };
+  const waited = await waitForCompile(c, { project, timeout: 10000 });
+  const end = Date.now();
+  assert.equal(waited.early, true, "the wait stood still for five seconds instead of agreeing with the wire");
+  assert.ok(lastPublish > 0);
+  assert.ok(end - lastPublish >= 300, `ended ${end - lastPublish} ms after the compile's last publish`);
+  assert.ok(end - lastPublish < 2000, `ended ${end - lastPublish} ms after the compile's last publish`);
 });
 
 test("a build that links reads on through the run's compile", () => {

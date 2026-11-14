@@ -1018,7 +1018,9 @@ const BUILD_STATE_JS = `JSON.stringify({
   safe: typeof buildConfigSelector !== "undefined" && !!buildConfigSelector &&
     buildConfigSelector.value === "nocompile",
   // The files waitForCompile waits for c.wire to see: every .twin file outside
-  // References (1) and Packages (7), which the compiler reports none for.
+  // References (1) and Packages (7). A package the compiler loaded from its
+  // cache publishes once, at load, so its files cannot be waited for; one a
+  // compile reaches (Generics' Tuple.twin) may publish again in it.
   src: (() => {
     if (typeof fs === "undefined" || !fs || !fs.tree || !fs.tree.rootFolder) return null;
     const root = fs.tree.rootFolder;
@@ -1144,11 +1146,13 @@ const EARLY_QUIET_MS = 300;
 const ROW_LABEL_COLUMN = { "{ERROR}": 0, "{WARNING}": 1, "{HINT}": 2, "{INFO}": 3 };
 
 /**
- * The panel rows that are not in a file the wire reports on. The compiler
- * reports no diagnostics for References or Packages (`src` in BUILD_STATE_JS
- * leaves both out), yet the panel and the status bar count what an embedded
- * package has wrong with itself, so for such a project the wire's counts can
- * never equal the page's. Those rows are the difference.
+ * The panel rows that are not in a file the wire waits for. `src` in
+ * BUILD_STATE_JS leaves out References and Packages, whose files may never
+ * publish in a given compile (a package loaded from the compiler's cache
+ * publishes once, at load), yet the panel and the status bar count what an
+ * embedded package has wrong with itself. The wire counts only the files of
+ * `src` (tb-wire.mjs, check), and those rows are the difference, whether or
+ * not the compile also published the package file again.
  *
  * A row that does not read as `{LABEL} <path> [line,col]: text`, or whose label
  * is unknown, is not counted here: the sample then has a row more than the
@@ -1184,10 +1188,12 @@ export function unlistedRows(rows, src) {
  *
  * The wait ends when the sample has stood still for five seconds, or sooner
  * when `c.wire` has seen the compile end and the sample agrees with it: the
- * same counts, and a row for each. The rows of files the wire does not report
- * on, an embedded package's own errors, are added to the wire's counts
+ * same counts, and a row for each. The rows of files the wire does not wait
+ * for, an embedded package's own errors, are added to the wire's counts
  * (unlistedRows), and the sample must then stand unchanged for the quiet
- * period as well, since nothing else vouches that they have all arrived. A
+ * period as well, since nothing else vouches that they have all arrived. The
+ * quiet period runs from when the agreeing sample was read, not asked for, and
+ * a later publish of the compile, of any file, starts it again. A
  * compile the wire had already seen end when the wait began does not count. A wait that follows an action --- an
  * Apply, an edit --- could otherwise begin before the action's compile and
  * take the one before it, so it waits for a newer compile, or for the sample
@@ -1226,7 +1232,8 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
     crash = null,
     safe = false,
     agreed = null,
-    early = false;
+    early = false,
+    check = null;
   // For tb-timings.mjs only: when the project was reported open, and why the wait ended.
   let loadedAt = null,
     ended = "timeout";
@@ -1243,9 +1250,9 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
   while (Date.now() < deadline()) {
     const ms = Math.max(0, Math.min(next, deadline()) - Date.now());
     await (wire ? wire.changed(ms) : sleep(ms));
-    const now = Date.now();
-    const scheduled = now >= due;
-    if (scheduled) due = now + 1000;
+    const asked = Date.now();
+    const scheduled = asked >= due;
+    if (scheduled) due = asked + 1000;
     next = due;
     let s;
     try {
@@ -1253,11 +1260,17 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
     } catch {
       continue;
     }
+    // The sample is known only now. The evaluate can take half a second while
+    // the page compiles (Generics on BETA 1042: 480 ms), and the wire goes on
+    // hearing the compile meanwhile; an agreement timed from before it was
+    // older than the quiet period the moment it was seen, and the wait ended
+    // 10 ms after the compile's last publish, with no quiet at all.
+    const now = Date.now();
     const v = JSON.parse(s);
     if (!loaded) {
       if (v.p && normPath(v.p) === want) {
         loaded = true;
-        loadedAt = now;
+        loadedAt = asked;
       } else continue;
     }
     if (v.crash) {
@@ -1291,9 +1304,15 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
       // What the wire cannot see, the rows of an embedded package's own files.
       const extra = w ? unlistedRows(v.rows, v.src) : null;
       const total = w ? w.counts.reduce((a, b) => a + b, 0) + extra.n : -1;
+      // For tb-timings.mjs: the latest comparison, which says why a wait that
+      // stood still never agreed with the wire.
+      if (w) check = { wire: w.counts, unlisted: extra.counts, page: counts, rows: v.rows.length, total };
       if (up && w && w.counts.every((n, k) => n + extra.counts[k] === counts[k]) && v.rows.length === total) {
         // With rows of the wire's blind spot, the quiet is the sample's too.
-        if (agreed?.seq !== w.seq || (extra.n > 0 && agreed.s !== s)) agreed = { seq: w.seq, at: now, s };
+        // A later publish in the same compile, of a file the page does not
+        // list, starts the quiet period again, as tblaunch's settle does.
+        if (agreed?.seq !== w.seq || agreed.last !== w.last || (extra.n > 0 && agreed.s !== s))
+          agreed = { seq: w.seq, last: w.last, at: now, s };
         else if (now - agreed.at >= EARLY_QUIET_MS) {
           last = s;
           early = true;
@@ -1351,6 +1370,11 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
         wire: history.map((h) => [h.seq, h.started - t0, h.ended === null ? null : h.ended - h.started, h.files]),
         drops,
         counts,
+        // The latest sample the wire's compile was compared with: the wire's
+        // counts (the listed files), the rows of the other files, the page's
+        // counts, its rows and the total they should come to. Null when the
+        // wire never had a complete compile.
+        check,
       },
       c,
     );

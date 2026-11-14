@@ -961,6 +961,37 @@ panel's rows of files the wire does not report on, `unlistedRows`); a build, Bui
 most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them
 printing for 15 s and finishing). None reached a timeout.
 
+**On BETA 1042, Generics' compile wait never took the early ending**, and it was two flaws of
+`waitForCompile` (fixed 2026-11-14), not the compile. Nine runs of `package_tests Generics --arch
+both` all ended `still`, with `waitMs` 8.0 to 9.1 s: the compile was done 2 to 3 s after the project
+opened, and the other 5 s was the stand-still fallback. tblaunch ends the same compile once every
+source has published, plus 150 ms. The `compile` line's `check` field (the wire's counts, the
+unlisted rows' counts, the page's counts, its rows and their expected total, from the last sample
+compared) shows why:
+
+- **The wire counted an embedded package's file twice.** `src` leaves out Packages because a package
+  loaded from the compiler's cache publishes once, at load (WinDevLib's TB0003 rows). But a compile
+  that reaches a package's code publishes for that package file again: Generics' `Tuple.twin`, 4
+  errors, in every compile of its tests. `c.wire.check` summed every file the compile published,
+  `unlistedRows` added the panel's rows of every file outside `src`, and `Tuple.twin` was counted by
+  both: 9 + 10 = 19 against the page's 15, every time. The wire's counts are now those of `src`
+  alone, and the rows count everything else. ArrayListLib and WinReg's early ending was never
+  affected, since their compiles publish nothing for their packages.
+- **The quiet period was timed from before the sample was read.** Once the counts agreed, the
+  wait ended 10 ms after the compile's last publish, not 300 ms after it. The loop took `now`
+  before `readBuildState`, the evaluate took 480 ms while the page compiled, and the wire heard the
+  compile end during that time. The agreement was then dated before the compile it agreed with, and
+  was already older than `EARLY_QUIET_MS` when it was seen. The quiet period now runs from when the
+  sample comes back (the deadline still runs from when it was asked for). A later publish in the same
+  compile, of any file, restarts the quiet, as tblaunch's settle does (`check`'s `last`).
+
+tblaunch has neither flaw. Its rows come from each file's latest publish and are compared with
+nothing, and its done and late-publish times are taken when the event is read (`CompileDone.twin`).
+After the fix, 12 Generics compile waits (6 runs, both arches) all ended `early`, with `waitMs` 3.2 to
+8.9 s, each about 320 ms after the compile's last publish. The spread is in when the compile started
+(2.9 to 8.5 s into the wait, with another session's corpus runs loading the machine), not in the
+wait. Both flaws are pinned in `test/example-batches.test.mjs`, with a fake page and its traffic.
+
 ### Building for win64
 
 **`tbrun` and `tbbuild` take `--arch win32|win64`, and set it on every run, win32
