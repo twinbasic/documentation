@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "exclusions": {
     "llvm": {
       "GdiPlus": {
@@ -129,5 +129,10 @@
     "compilerRun": 10,
     "compilerRunQuiet": 8,
     "exeRun": 10
+  },
+  "packageTimeouts": {
+    "Generics": {
+      "compile": 30
+    }
   }
 }

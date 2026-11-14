@@ -23,6 +23,7 @@ import {
   harnessProblems,
   OVERRIDES,
   optionSeconds,
+  packageTimeoutArgs,
   readHarness,
   timeoutMs,
 } from "../scripts/lib/harness-settings.mjs";
@@ -119,7 +120,7 @@ test("a build that links reads on through the run's compile", () => {
 // lib/harness-settings.mjs, the reader of test/harness.json (test/harness.md).
 test("test/harness.json is read as its contract says", () => {
   const good = readHarness();
-  assert.equal(good.version, 1);
+  assert.equal(good.version, 2);
   assert.deepEqual(harnessProblems(good), []);
   const copy = () => JSON.parse(JSON.stringify(good));
   const problems = (mutate) => {
@@ -129,7 +130,7 @@ test("test/harness.json is read as its contract says", () => {
   };
   // The version: missing, newer or not a whole number is refused.
   assert.equal(problems((d) => delete d.version).length, 1);
-  assert.match(problems((d) => (d.version = 2)).join(), /newer than this reader knows/);
+  assert.match(problems((d) => (d.version = 3)).join(), /newer than this reader knows/);
   assert.equal(problems((d) => (d.version = "1")).length, 1);
   // Unknown keys at every level, and a missing timeout.
   assert.match(problems((d) => (d.extra = 1)).join(), /extra: not a known key/);
@@ -155,6 +156,51 @@ test("test/harness.json is read as its contract says", () => {
   assert.equal(timeoutMs("compile", undefined, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness }), 2500);
   assert.equal(timeoutMs("compile", 0.25, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness }), 250);
   assert.equal(timeoutMs("projectOpen", undefined, { env: { TB_PROJECT_OPEN_TIMEOUT: "1" }, harness }), 15000);
+  // A package's entry in packageTimeouts (version 2) comes after the variable and before the
+  // file's timeouts, for that package only, and for the phases it sets only.
+  harness.packageTimeouts = { Big: { compile: 45, build: 20 } };
+  assert.equal(timeoutMs("compile", undefined, { env: {}, harness, pkg: "Big" }), 45000);
+  assert.equal(timeoutMs("compile", undefined, { env: {}, harness, pkg: "Small" }), 30000);
+  assert.equal(timeoutMs("compile", undefined, { env: {}, harness }), 30000);
+  assert.equal(timeoutMs("exeRun", undefined, { env: {}, harness, pkg: "Big" }), harness.timeouts.exeRun * 1000);
+  assert.equal(timeoutMs("compile", undefined, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness, pkg: "Big" }), 2500);
+  assert.equal(timeoutMs("compile", 0.25, { env: {}, harness, pkg: "Big" }), 250);
+  // As tool options for a tool that takes a tree: the phases the entry sets, a variable winning,
+  // the skipped ones left out, and nothing for a package with no entry.
+  assert.deepEqual(packageTimeoutArgs("Big", { env: {}, harness }), [
+    "--compile-timeout",
+    "45",
+    "--build-timeout",
+    "20",
+  ]);
+  assert.deepEqual(packageTimeoutArgs("Big", { env: { TB_BUILD_TIMEOUT: "3" }, harness, skip: ["compile"] }), [
+    "--build-timeout",
+    "3",
+  ]);
+  assert.deepEqual(packageTimeoutArgs("Small", { env: {}, harness }), []);
+  // Its shape: an object keyed by package, each a non-empty object of the phases a person can
+  // override, each a number of seconds; and none in a file of version 1.
+  assert.deepEqual(
+    problems((d) => (d.packageTimeouts = { Big: { compile: 60 } })),
+    [],
+  );
+  assert.match(
+    problems((d) => (d.packageTimeouts = [])).join(),
+    /packageTimeouts: it is not an object keyed by package/,
+  );
+  assert.match(problems((d) => (d.packageTimeouts = { Big: {} })).join(), /packageTimeouts: Big: not an object keyed/);
+  assert.match(
+    problems((d) => (d.packageTimeouts = { Big: { projectOpen: 20 } })).join(),
+    /Big\.projectOpen: not a phase a package may set/,
+  );
+  assert.match(problems((d) => (d.packageTimeouts = { Big: { compile: 0 } })).join(), /Big\.compile: not a number/);
+  assert.match(
+    problems((d) => {
+      d.version = 1;
+      d.packageTimeouts = { Big: { compile: 60 } };
+    }).join(),
+    /version 1 has no packageTimeouts/,
+  );
   for (const bad of ["0", "-3", "abc", " "]) {
     assert.throws(
       () => timeoutMs("build", undefined, { env: { TB_BUILD_TIMEOUT: bad }, harness }),

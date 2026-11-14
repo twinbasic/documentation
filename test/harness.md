@@ -15,7 +15,7 @@ to the file are made in one commit.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "exclusions": {
     "llvm": {
       "GdiPlus": {
@@ -135,16 +135,21 @@ to the file are made in one commit.
     }
   },
   "timeouts": {
-    "projectOpen": 15,
+    "projectOpen": 10,
     "handshake": 10,
-    "load": 120,
-    "setup": 30,
-    "compile": 30,
-    "licence": 60,
-    "build": 15,
-    "compilerRun": 60,
+    "load": 10,
+    "setup": 10,
+    "compile": 10,
+    "licence": 10,
+    "build": 10,
+    "compilerRun": 10,
     "compilerRunQuiet": 8,
-    "exeRun": 60
+    "exeRun": 10
+  },
+  "packageTimeouts": {
+    "Generics": {
+      "compile": 30
+    }
   }
 }
 ```
@@ -292,8 +297,9 @@ The `help-offline` add-in lane gives its build of the help add-in the file's `co
 it embeds holds the compiler's start, and on BETA 1042 that compile settles 8.0--9.7 s after the
 project opens, against 1--2 s for the add-in without it.
 
-**Overrides**, in seconds: **an option beats a variable, which beats the file**, which beats a
-built-in default (tblaunch only). A tool has the options of the phases it runs.
+**Overrides**, in seconds: **an option beats a variable, which beats the package's entry in
+`packageTimeouts`, which beats the file's `timeouts`**, which beat a built-in default (tblaunch
+only). A tool has the options of the phases it runs.
 
 | key | option | variable |
 |---|---|---|
@@ -308,6 +314,44 @@ Aliases: `--timeout` is `--compile-timeout` in `tbbuild` and tblaunch, but in `t
 tool's `--timeout` bounded before). `tbrun`'s and tblaunch's `--quiet <ms>` are gone. `projectOpen`,
 `handshake`, `load`, `setup` and `licence` have no override.
 
+### Per-package timeouts
+
+`packageTimeouts` (version 2, optional) gives a package limits of its own, for the projects whose
+compile or run takes longer than the file's limits allow, every time, for a reason of the package's
+own: what it embeds, or what its cases do.
+
+```json
+"packageTimeouts": {
+  "Generics": {
+    "compile": 30
+  }
+}
+```
+
+- **The package** is named as `exclusions` names it: a contributed package's name as on TWINSERV,
+  or the template a sample is compiled in. An entry applies to every run of that package's samples
+  (its `contributed-<name>` template) and of its test project, `test/package-tests/<name>/`,
+  compile cases and exe cases included.
+- **An entry sets only the phases a person can override** (the table above): `compile`, `build`,
+  `compilerRun`, `compilerRunQuiet`, `exeRun`, each a number of seconds greater than 0. Any other
+  key is refused (exit 2), as is an empty entry. The phases it does not set keep the file's limit.
+- **An option or a variable still wins**, as the order above says, so that a person can shorten or
+  lengthen a run without editing the file.
+- `check_examples` applies a batch's package entry to that batch. `package_tests.mjs` passes the
+  package's entry to `tbrun` as its options, all but `compilerRun` and `exeRun` in a `--tests` run,
+  where its own `--timeout` is the case's limit. `tbbuild` and `tbrun` take a project or a tree,
+  not a package, so a direct run of either has the file's limits.
+- **An entry is a last resort, not a way round a slow build.** It is for a limit the package
+  always outruns, as its cause says; each entry's cause and timings go under the version that
+  added it, or under [Package entries](#package-entries).
+
+### Package entries
+
+- **Generics** `compile`, 30 s: its compile cases (`test/package-tests/Generics/compile/`) embed
+  the package, which embeds WinDevLib 8.9.518.0 through WinDevLibImpl. On BETA 1042 that compile
+  settles 8.0--9.1 s after the project opens (nine runs, win32 and win64, `TB_TIMINGS`), and a
+  run of every package's tests met the file's 10 s once, which ended the run.
+
 ## Versions
 
 More than one version of the file can be in use at once: a tblaunch built for an older version
@@ -316,6 +360,15 @@ reading an older copy, while the documentation's tools read the newest. So this 
 what its version changed from the one before, who asked for it and why, so that a reader of an
 older version can tell what it does not have. An entry is removed only when no tool reads that
 version any more, and the removal says so here.
+
+### Version 2 (2026-11-14)
+
+Adds `packageTimeouts` ([Per-package timeouts](#per-package-timeouts)), optional, keyed by
+package, each entry setting some of the five phases a person can override; a file of version 1
+that holds it is refused. Asked for by the owner, when Generics' compile cases outran the 10 s
+compile limit in a run of every package's tests on BETA 1042. A reader of version 1 refuses a
+file of version 2 (exit 2): until tblaunch knows version 2, its `--harness` is given a file of
+version 1 or left out (its built-in defaults). The documentation's tools read both versions.
 
 ### Version 1 (2026-10-17)
 
