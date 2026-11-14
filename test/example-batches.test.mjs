@@ -27,7 +27,7 @@ import {
   readHarness,
   timeoutMs,
 } from "../scripts/lib/harness-settings.mjs";
-import { BUILD_FAILED, LLVM_REFUSAL, linkedLog } from "../scripts/lib/tb-ide.mjs";
+import { BUILD_FAILED, LLVM_REFUSAL, linkedLog, orderSameNamedFiles } from "../scripts/lib/tb-ide.mjs";
 import { buildTimeoutMessage, checkCapture } from "../scripts/lib/tb-run.mjs";
 import { reproAnswersBoxes, reproProblem, vb6Probes } from "../scripts/lib/vb6.mjs";
 
@@ -101,6 +101,29 @@ test("an LLVM refusal is a failed build wherever it is", () => {
 
 // buildProject follows a [RunAfterBuild] run's compile after the link (linkedLog): the
 // BETA 1010 tbRegExp log, where LLVM refuses only after Executing, fails the build.
+// orderSameNamedFiles (tb-ide.mjs): files of one base name in the order of their full names, every other row
+// as the panel had it. WinReg embeds WinDevLib twice, so two files are named wdAPIComCtl.twin.
+test("rows of files that share a base name are ordered by full name", () => {
+  const top = "twinbasic:/P/Packages/WinDevLib/Sources/wdAPIComCtl.twin";
+  const nested = "twinbasic:/P/Packages/WinReg/Packages/WinDevLib/Sources/wdAPIComCtl.twin";
+  const row = (file, line, text = "TB0003 x") => `{ERROR} ${file} [${line},1]: ${text}`;
+  const a = row("twinbasic:/P/Sources/a.twin", 1);
+  const z = row("twinbasic:/P/Sources/z.twin", 2);
+  const panel = [a, row(nested, 5), row(nested, 9), row(top, 5), row(top, 7), z];
+  assert.deepEqual(orderSameNamedFiles(panel), [a, row(top, 5), row(top, 7), row(nested, 5), row(nested, 9), z]);
+  // Either arrival order gives the same rows.
+  assert.deepEqual(
+    orderSameNamedFiles([a, row(top, 5), row(top, 7), row(nested, 5), row(nested, 9), z]),
+    orderSameNamedFiles(panel),
+  );
+  // Files of different names keep the panel's order, even out of name order; so does a name that comes back
+  // after another file, and a row of another shape.
+  const other = "Some row the IDE's copy helper wrote";
+  const kept = [z, a, row(nested, 1), z, row(top, 1), other, a];
+  assert.deepEqual(orderSameNamedFiles(kept), kept);
+  assert.deepEqual(orderSameNamedFiles([]), []);
+});
+
 test("a build that links reads on through the run's compile", () => {
   const start = "[BUILD] Starting...";
   const linked = "[LINKER] SUCCESS created output file 'C:\\x.exe'";

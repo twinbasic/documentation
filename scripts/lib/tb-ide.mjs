@@ -1358,6 +1358,39 @@ export async function waitForCompile(c, { project, timeout = timeoutMs("compile"
   return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early, timedOut, limitMs };
 }
 
+// The file a panel row names: `{ERROR} twinbasic:/P/Sources/a.twin [3,1]: ...`, the text between the label and
+// the position. Null for a row of another shape (the IDE's own copy helper, on an IDE without the constants).
+const ROW_FILE_RE = /^\{[A-Z0-9]+\} (\S.*?) \[\d+,\d+\]: /;
+
+/**
+ * The rows with every run of files that share a base name in the order of their full names. The problems panel
+ * lists files by base name, and puts a file whose name equals one it already holds before it, so two files of
+ * one name (a package embedded twice: WinReg's two copies of WinDevLib) come in the order their diagnostics
+ * reached the IDE, which another client of the compiler (tblaunch) cannot see. Every other row keeps the
+ * panel's order, and a file's rows stay together and in order. tblaunch applies the same rule (its contract,
+ * version 20), so that both tools list such rows alike.
+ * @param {string[]} rows
+ * @returns {string[]}
+ */
+export function orderSameNamedFiles(rows) {
+  const groups = [];
+  for (const row of rows) {
+    const file = ROW_FILE_RE.exec(row)?.[1] ?? null;
+    const last = groups.at(-1);
+    if (last && file !== null && last.file === file) last.rows.push(row);
+    else groups.push({ file, base: file === null ? null : file.slice(file.lastIndexOf("/") + 1), rows: [row] });
+  }
+  const out = [];
+  for (let i = 0; i < groups.length; ) {
+    let j = i + 1;
+    if (groups[i].base !== null) while (j < groups.length && groups[j].base === groups[i].base) j++;
+    const run = groups.slice(i, j).sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+    for (const g of run) out.push(...g.rows);
+    i = j;
+  }
+  return out;
+}
+
 /**
  * Turn what waitForCompile saw into diagnostics, or into the reason there are none.
  *
@@ -1427,11 +1460,13 @@ export function compileOutcome({ loaded, crash, safe, drops, last, blocked, time
   }
 
   const final = JSON.parse(last ?? "{}");
-  const rows = (final.rows ?? []).map((r) =>
-    r
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
+  const rows = orderSameNamedFiles(
+    (final.rows ?? []).map((r) =>
+      r
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    ),
   );
   const counts = ["e", "w", "h", "i"].map((k) => Number(final[k] ?? 0));
 

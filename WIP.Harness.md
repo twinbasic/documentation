@@ -475,6 +475,15 @@ Seven rules about the harness, each a comment in the file:
   they race: the compile can finish between them and give two diagnostics beside a zero error
   count. The harness refuses a sample where the two disagree rather than reporting either
   number.
+- **Files of one base name are listed in the order of their full names** (`orderSameNamedFiles`
+  in `scripts/lib/tb-ide.mjs`, in `compileOutcome`, so `tbrun` and `tbbuild` alike). The panel
+  lists files by base name and puts a file whose name it already holds before the other, so two
+  files of one name (WinReg embeds WinDevLib twice: `wdAPIComCtl.twin` under
+  `/Packages/WinDevLib/` and under `/Packages/WinReg/Packages/WinDevLib/`) come in the order
+  their diagnostics reached the IDE: on BETA 1042, the nested copy first. tblaunch, a client of
+  the compiler's own sockets, receives them the other way round and cannot see the IDE's order,
+  so both tools break that tie by the full name (the owner, 2026-11-14; tblaunch's contract 20).
+  Every other row keeps the panel's order.
 - **Watch for the compiler going down, in the DEBUG CONSOLE and not in the status bar.**
   twinBASIC runs the compiler in the same process as user code, so a probe can crash it, and
   the IDE then restarts it three times before giving up. Untreated that is a silent
