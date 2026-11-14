@@ -1,0 +1,43 @@
+Module TestStringUtils
+
+    Public Sub TestPadLeft_Normal()
+        ' Three spaces prefix "hi" to reach width 5
+        Assert.Exact.AreEqual "   hi", PadLeft("hi", 5)
+    End Sub
+
+    Public Sub TestPadLeft_CustomPadChar()
+        ' Zero-pad to width 5
+        Assert.Exact.AreEqual "00042", PadLeft("42", 5, "0")
+    End Sub
+
+    Public Sub TestPadLeft_AtWidth()
+        ' Already at width -- no change
+        Assert.Exact.AreEqual "hello", PadLeft("hello", 5)
+    End Sub
+
+    Public Sub TestPadLeft_ExceedsWidth()
+        ' Already longer than width -- not truncated
+        Assert.Exact.AreEqual "toolong", PadLeft("toolong", 5)
+    End Sub
+
+    Public Sub TestPadLeft_EmptyString()
+        ' Empty input -- result is all padding
+        Assert.Exact.AreEqual "   ", PadLeft("", 3)
+    End Sub
+
+    Public Sub TestPadLeft_SingleChar()
+        ' Width of 1, input already 1 char -- no change
+        Assert.Exact.AreEqual "x", PadLeft("x", 1)
+    End Sub
+
+    Public Sub RunAllTests()
+        TestPadLeft_Normal
+        TestPadLeft_CustomPadChar
+        TestPadLeft_AtWidth
+        TestPadLeft_ExceedsWidth
+        TestPadLeft_EmptyString
+        TestPadLeft_SingleChar
+        Debug.Print "All PadLeft tests passed."
+    End Sub
+
+End Module

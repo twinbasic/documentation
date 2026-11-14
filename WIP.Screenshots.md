@@ -289,9 +289,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
-  alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
+  alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
+  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `projects`, `projects-refs`,
   `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
   before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
@@ -428,6 +428,12 @@ plus `Menu_Debug` (paused, the code focused) and `Menu_Run` (WaitAWhile running)
   is opened inside the panel instead.
 - A line for the console is put in its input row whole and entered (`consoleRun`): a space typed
   while the row's completion list is open accepts the list's first entry.
+- **`Tutorials/Images/Assert_Failed`** (setup `assert`, `test/shots/assert`, AssertDemo): the
+  Testing with Assert tutorial's StringUtils and TestStringUtils, with Assert referenced and
+  `PadLeft` given a bug (it pads on the right), taken as Error_Panel is: `RunAllTests` run with
+  F6 and stopped at `TestPadLeft_Normal`'s assertion. The caret goes at the start of the
+  `Debug.Print` line's code: four characters in, it is past the column where `End Sub` ends, and
+  F6 finds no procedure (the defect Running.md states).
 
 ## The "Designing forms and reports" chapter
 
@@ -893,6 +899,30 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   ColorDepth32Bit (icons) and one of ColorDepth24Bit (bitmaps on silver, the default
   MaskColor): an icon added to a 24-bit list draws on black (not narrowed: the stock icon's own
   mask, or the package's `RuntimeCreateScaledPicture`).
+- **Setup `webview2`**: `test/shots/webview2`, WebView2Shots, the WebView2 section's one
+  picture, taken by `sceneShot`: frmWeb's control `Web1` shows the page `Page` returns, passed to
+  `NavigateToString` on Ready, and once NavigationComplete reports success, `Main` calls the
+  page's `setNote` with `JsRun` and waits a second before "shown"; a control's Error or a failed
+  navigation is written to "error". The control's user data folder is set on Create to
+  `wv2data` in the run's signals folder (under `%TEMP%`), not beside the exe. The WebView2
+  runtime starts on a private desktop, and `PW_RENDERFULLCONTENT` captures its content, byte for
+  byte alike from run to run (BETA 1042). The control is 300 px high: at 280 the page shows a
+  scrollbar.
+- **CEF has no picture yet** (BETA 1042, cefPackage v145 with the release's
+  `cefRuntime145_win32.zip`, extracted under `%TEMP%\tb-cef`, never `%LocalAppData%`). A fixture
+  like `webview2`'s, its CefBrowser `Cef1` given `BrowserExecutableFolder` (with a trailing
+  backslash: the package joins it and `libcef.dll` with nothing between), `UserDataFolder` in the
+  signals folder and a verbose `LogFilePath`, raises **Create** on a private desktop and then
+  neither **Ready** nor **Error** in 20 s. CEF's log shows the browser process (the exe again,
+  `--browser=`) starting, "No displays detected" and a fake 1920x1080 display, then nothing; no
+  renderer process ever logs. The browser process then ends with an access violation
+  (`0xC0000005`) in the exe's own code, not in `libcef.dll` (Application Error 1000, a different
+  offset each build; Windows wrote dumps to `%LocalAppData%\CrashDumps`, which were moved to
+  `%TEMP%`). Trace flag 32 (`Debug.TracePrint`, which the package uses at each step of
+  `Initialize`) wrote no file. Whether the private desktop is the cause is not known: a program
+  may not be started on the user's desktop to compare. Not narrowed, not in BUGS-TO-REPORT. The fixture and its setup code
+  are not committed (a copy is kept locally). A CefBrowser that reaches **Ready** in some
+  other harness run is the next step, before any picture.
 - **Setup `waynes`**: `test/shots/waynes`, WaynesShots, the pictures of the CustomControls
   section, taken by `sceneShot`, or by `waynesRuns` for a picture of several runs in rows (the
   button's states, the six border styles). A form of the package is a window of class `tbForm`

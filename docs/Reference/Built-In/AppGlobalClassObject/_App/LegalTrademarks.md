@@ -15,7 +15,7 @@ Syntax: *object*.**LegalTrademarks**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-The value is taken from the **Legal Trademarks** field in the project's version information, set in the twinBASIC project settings. When no value has been specified, an empty string is returned.
+The value is taken from the **Legal Trademarks** field of the project's version information, set in [Project Settings](../../../IDE/Project-Settings#legal-trademarks). When no value has been specified, an empty string is returned.
 
 ### Example
 

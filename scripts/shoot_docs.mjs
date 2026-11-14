@@ -67,6 +67,8 @@
 //               View menus with the code focused
 //   debugging   the same with test/shots/debugging staged as well: the "Running and
 //               debugging" chapter's pictures of a paused program, run from the IDE
+//   assert      test/shots/assert, AssertDemo: the Testing with Assert tutorial's tests,
+//               stopped at a failed assertion
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -89,6 +91,8 @@
 //   commonctls  test/shots/commonctls, CommonCtlsShots: the WinNativeCommonCtls section's
 //               pictures of its controls, taken as the programs setup's are, the DTPicker's
 //               calendar laid over the form
+//   webview2    test/shots/webview2, WebView2Shots: the WebView2 section's picture of the
+//               control showing a page, taken as the programs setup's are
 //   waynes      test/shots/waynes, WaynesShots: the CustomControls section's pictures of its
 //               controls on a form of the package, taken as the programs setup's are; a
 //               picture of several states or frames is several runs of the program in rows
@@ -1977,12 +1981,14 @@ const SETUPS = {
   featuremap: { start: startFeatureMap, prepare: prepareSample },
   "code-chapter": { start: startCodeChapter, prepare: prepareSample },
   debugging: { start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
+  assert: { start: startAssert, prepare: prepareSample },
   project: { start: startProject, prepare: prepareProject },
   community: { start: startProject, prepare: prepareCommunity },
   splash: { start: startProject, prepare: prepareProject },
   sample: { start: startSample, prepare: prepareSample },
   settings: { start: startSettings("base"), prepare: prepareSample },
   "settings-symbols": { start: startSettings("symbols"), prepare: prepareSample },
+  "settings-version": { start: startSettings("versioninfo"), prepare: prepareSample },
   "settings-webview2": {
     start: startSettings("webview2", { keepForm: true, stage: DESIGNER_WEBVIEW2 }),
     prepare: prepareWithDesigners,
@@ -2007,6 +2013,10 @@ const SETUPS = {
   commonctls: {
     start: (run) => startPrograms(run, COMMONCTLS_SHOTS),
     prepare: (run) => preparePrograms(run, "CommonCtlsShots"),
+  },
+  webview2: {
+    start: (run) => startPrograms(run, WEBVIEW2_SHOTS),
+    prepare: (run) => preparePrograms(run, "WebView2Shots"),
   },
   waynes: {
     start: (run) => startPrograms(run, WAYNES_SHOTS),
@@ -4133,6 +4143,20 @@ const settingsShots = [
         `[...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0).innerText.split("\\n").filter(Boolean).slice(0, 12).join(" | ")`,
       );
       say(c.shot.name, `  Available COM References starts: ${names}`);
+    },
+  }),
+  // the group Version Info of a project whose version resource is filled in (the fixture
+  // test/shots/settings/versioninfo.json), the whole dialog: what App.Major, App.ProductName,
+  // App.FileDescription and the others return; from the title bar to the version resource's
+  // Auto-Increment row, so neither the footer (whose count of changes comes and goes) nor the
+  // type library's rows, cut by the pane's edge
+  settingsShot("IDE/Images/ProjectSettings_VersionInfo.png", {
+    setup: "settings-version",
+    prepare: (c) => settingsGroup(c, "Version Info"),
+    clipOf: async (m, c) => {
+      const r = await settingRow(c, "project.versionAutoIncrement");
+      if (!r) throw new Error("Project Settings shows no Auto-Increment row");
+      return { x: m.x, y: m.y, width: m.width, height: r.y + r.height + 1 - m.y };
     },
   }),
   settingsShot("Features/Packages/Images/LibrarySymbols.png", {
@@ -11040,6 +11064,69 @@ const debuggingShots = [
   debugConsoleMenuShot,
 ];
 
+// ---- assert: test/shots/assert, AssertDemo, the Testing with Assert tutorial's two modules,
+// its PadLeft given a bug (it pads on the right), for the picture of a failed assertion: the
+// tutorial's RunAllTests run with F6 and stopped by its first test's Assert.Exact.AreEqual, the
+// editor with the error panel, and CALL STACK (the test over RunAllTests) and VARIABLES under it,
+// as Error_Panel is taken.
+const ASSERT_SHOTS = path.join(REPO_ROOT, "test", "shots", "assert");
+
+async function startAssert(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, ASSERT_SHOTS)}`);
+  const src = path.join(run.work, "assert-src");
+  cpSync(ASSERT_SHOTS, src, { recursive: true });
+  return run.lane.open(src);
+}
+
+const assertFailedShot = {
+  out: "Tutorials/Images/Assert_Failed.png",
+  setup: "assert",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      return await atSize(c, 1100, 700, async () => {
+        await useLayout(c, STOP_LAYOUT);
+        await openFile(c, "/AssertDemo/Sources/TestStringUtils.twin");
+        // the caret at the start of the line's code: F6 finds the procedure only left of the
+        // column where its End Sub line ends (BUGS-TO-REPORT, docs/IDE/Debugging/Running.md)
+        await caretOn(c, 'Debug.Print "All PadLeft tests passed."');
+        await command(c, "tbDebug_RunOrPreview");
+        // the error panel's buttons, its text and the call stack's frames, as the page has them
+        const state = () =>
+          c.evaluate(`({
+  buttons: document.querySelectorAll(".errorWidgetButton").length,
+  panel: [...document.querySelectorAll("[class*=errorWidget]")].map((e) => e.textContent).sort((a, b) => b.length - a.length)[0] ?? "",
+  frames: Math.max(0, ...Object.values(liveStackTraceInfo).map((t) => Object.values(t || {}).filter((f) => f && f.name).length)),
+})`);
+        const stopped = await waitFor(
+          c,
+          async () => {
+            const s = await state();
+            return (await isPaused(c)) && s.buttons === 4 && /Assertion FAILED/.test(s.panel) && s.frames >= 2;
+          },
+          { timeout: 60000, interval: 150 },
+        );
+        if (!stopped) {
+          throw new Error(
+            `the program did not stop at the failed assertion: paused ${await isPaused(c)}, running ${await codeExecuting(c)}, ${JSON.stringify(await state())}, console ${JSON.stringify(await c.evaluate(`(debugConsoleContent.dataNodes ?? []).map((l) => l.replace(/<[^>]*>/g, " ").slice(0, 200))`))}`,
+          );
+        }
+        await frames(c);
+        await c.evaluate(`editor.setScrollTop(0)`);
+        await frames(c);
+        const ed = await panelBox(c, "EDITOR 1");
+        const vars = await panelBox(c, "VARIABLES");
+        if (!ed || !vars) throw new Error("the editor or VARIABLES is not in the layout");
+        const area = { x: 0, y: ed.y, width: 1100, height: vars.y + vars.height - ed.y };
+        return capture(c, "Assert_Failed", snapOut(area, 1100, 700), { away: () => parkMouse(c) });
+      });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -11995,6 +12082,16 @@ const commonCtlsShots = [
   wnccShot("Images/MonthView", "monthview"),
   wnccShot("Images/DTPicker", "dtpicker"),
   wnccShot("Enumerations/Images/ImlDrawConstants", "imagelist"),
+];
+
+// ---- webview2: test/shots/webview2, WebView2Shots, the WebView2 section's picture of the
+// control on a form, showing a page the form passed to NavigateToString, one line of it set by
+// JsRun; taken as sceneShot takes a scene. The control's user data goes in the run's folder of
+// signals. The program writes "shown" only once the page has loaded.
+
+const WEBVIEW2_SHOTS = path.join(REPO_ROOT, "test", "shots", "webview2");
+const webView2Shots = [
+  sceneShot("Reference/Built-In/WebView2/WebView2/Images/WebView2_Page.png", "webview2", "page", /^$/),
 ];
 
 // ---- waynes: test/shots/waynes, WaynesShots, the CustomControls section's pictures of its
@@ -15729,11 +15826,13 @@ const SHOTS = [
   tourShot,
   ...codeChapterShots,
   ...debuggingShots,
+  assertFailedShot,
   newProjectOptionsShot,
   ...programShots,
   ...flexGridShots,
   ...vbShots,
   ...commonCtlsShots,
+  ...webView2Shots,
   ...waynesShots,
   ...xCalendarShots,
   ...comDlgShots,
@@ -15798,6 +15897,7 @@ const JOB_SECONDS = {
   "sample-3": 106,
   settings: 45,
   "settings-symbols": 10,
+  "settings-version": 10,
   "settings-webview2": 24,
   "settings-fusion": 14,
   glyphs: 45,
@@ -15832,6 +15932,7 @@ const JOB_SECONDS = {
   "code-chapter-2": 85,
   "code-chapter-3": 100,
   debugging: 74,
+  assert: 30,
   "debugging-2": 64,
   "debugging-3": 71,
   "no-project": 68,
@@ -15841,6 +15942,7 @@ const JOB_SECONDS = {
   vbflexgrid: 60,
   vb: 60,
   commonctls: 40,
+  webview2: 30,
   waynes: 90,
   xcalendar: 40,
   dialogs: 60,

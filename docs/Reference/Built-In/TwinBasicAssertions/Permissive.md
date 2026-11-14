@@ -45,7 +45,7 @@ Unconditionally records a test failure.
 Syntax: **Assert.Permissive.Fail** [ *Message* ]
 
 *Message*
-: *optional* A **String** describing the failure. It is not displayed: the IDE reports every failure as the run-time error **Assertion FAILED**, stopped on the line of the call.
+: *optional* A **String** describing the failure. It is not displayed: the IDE reports every failure as the run-time error **Assertion FAILED**, stopped on the line of the call, as [the tutorial's picture](../../../Tutorials/Testing-with-Assert#running-the-tests) shows.
 
 **Fail** marks code paths that should be unreachable in a passing test --- most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 

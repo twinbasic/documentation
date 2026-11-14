@@ -1,0 +1,37 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "Stock Counter",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "SampleProject description",
+	"project.exportPathIsV2": true,
+	"project.id": "{5C0F8A71-3B2E-4D69-8A14-7E91C2D4B6F3}",
+	"project.name": "SampleProject",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.versionMajor": 2,
+	"project.versionMinor": 4,
+	"project.versionBuild": 17,
+	"project.versionRevision": 0,
+	"project.versionProductName": "Stock Counter",
+	"project.versionCompanyName": "Example Software",
+	"project.versionFileDescription": "Counts the stock of a small shop",
+	"project.versionLegalCopyright": "Copyright 2026 Example Software",
+	"project.versionComments": "Built with twinBASIC",
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

@@ -12,6 +12,8 @@ indexed_from: beta-x-1042
 
 The **WebView2Package** wraps the Microsoft Edge WebView2 runtime and exposes it as an ordinary twinBASIC control. Drop a [**WebView2**](WebView2/) onto a form and the running Edge engine renders web content inside it --- navigate to URLs, run JavaScript, intercept HTTP requests, post messages between BASIC and JavaScript, and print pages to PDF.
 
+![A window titled WebView2 Demo, with a WebView2 control filling most of the form. The control shows a web page that the form passed to NavigateToString: a blue heading, Hello from a WebView2, a paragraph, three bullet points, and a pale blue box holding a line that the form's code set by calling a JavaScript function of the page with JsRun.](WebView2/Images/WebView2_Page.png){:width="601" height="381"}
+
 The package is a built-in package shipped with twinBASIC. See the [WebView2 tutorials](../../../Tutorials/WebView2/) for how to reference it in a project, and worked samples.
 
 Beyond the control itself, the package exposes a small set of wrapper objects that appear inside the control's event arguments --- the request / response pair on **WebResourceRequested**, the request-header collection on **NavigationStarting**, the environment-options object configured before **Create** --- together with the `wv2…` enumerations used to spell out option values.

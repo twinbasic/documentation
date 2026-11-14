@@ -390,6 +390,12 @@
     "IDE/Images/New_Project_Samples.png": {
       "build": 1042
     },
+    "IDE/Images/ProjectSettings_VersionInfo.light.png": {
+      "build": 1042
+    },
+    "IDE/Images/ProjectSettings_VersionInfo.png": {
+      "build": 1042
+    },
     "IDE/Images/Splash_Screen.light.png": {
       "build": 1042
     },
@@ -717,6 +723,10 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Built-In/WebView2/WebView2/Images/WebView2_Page.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Built-In/WinNativeCommonCtls/Enumerations/Images/ImlDrawConstants.png": {
       "build": 1042,
       "scale": 1.5
@@ -1024,6 +1034,12 @@
       "build": 1042
     },
     "Tutorials/CustomControls/Images/ccSampleProject.png": {
+      "build": 1042
+    },
+    "Tutorials/Images/Assert_Failed.light.png": {
+      "build": 1042
+    },
+    "Tutorials/Images/Assert_Failed.png": {
       "build": 1042
     },
     "Tutorials/WebView2/Images/tbWebView2Properties.light.png": {
