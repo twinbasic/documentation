@@ -679,11 +679,15 @@ function putBackAll(tidy, all) {
     if (base?.keysInTemp) {
       keys = repointAtInstall(base.keys, findIde());
       console.error(
-        keys
+        !keys
           ? "note: the .twinproj association pointed into the temp folder when this run " +
-              "began, at another run's copy of the IDE; it now points at the newest install"
-          : "note: the .twinproj association pointed into the temp folder when this run " +
-              "began, at another run's copy of the IDE, and no install was found, so it is left as it is now",
+              "began, at another run's copy of the IDE, and no install was found, so it is left as it is now"
+          : namesTempFolder(keys)
+            ? "note: the .twinproj association pointed into the temp folder when this run " +
+              "began, at another run's copy of the IDE; it now points at the newest install, " +
+              "but a value names a path outside that copy's folder and is put back as it was"
+            : "note: the .twinproj association pointed into the temp folder when this run " +
+              "began, at another run's copy of the IDE; it now points at the newest install",
       );
     }
     const association = keys ? restoreKeys(keys) : null;
@@ -771,19 +775,38 @@ function namesTempFolder(snapshot) {
   return [].concat(snapshot ?? []).some((e) => named(e?.snap));
 }
 
-// The association snapshot with every path to an IDE copy in the temp folder
-// (`...\Temp\...\twinBASIC.exe`) replaced by `exe`, another value left as it is.
+// The association snapshot with every path into an IDE copy in the temp folder
+// pointed at the install `exe` is in, another value left as it is: a path to the
+// copy's `twinBASIC.exe` becomes `exe`, and any other path inside the copy's folder
+// (the folder its twinBASIC.exe is in) the same path inside the install's folder,
+// such as ShellNew's FileName, `<install>\projects\_Standard EXE\projectName.twinproj`,
+// which the copy writes with its own folder at the same time as its open command.
 // Null when there is no install, or when it is itself in the temp folder (TB_IDE
 // naming a copy).
 export function repointAtInstall(snapshot, exe) {
   const tmp = norm(path.resolve(tmpdir())) + "\\";
   if (!exe || norm(path.resolve(exe)).includes(tmp)) return null;
+  const EXE = "\\twinbasic.exe";
+  const strings = (d) => (Array.isArray(d) ? d : [d]).filter((x) => typeof x === "string");
+  const allData = (s) =>
+    !s ? [] : [...(s.values ?? []).flatMap((v) => strings(v.data)), ...(s.keys ?? []).flatMap((k) => allData(k.snap))];
+  // The copies' folders, as the snapshot names them, from every path to a copy's twinBASIC.exe.
+  const roots = new Set();
+  for (const d of snapshot.flatMap((e) => allData(e.snap))) {
+    const at = norm(d).indexOf(tmp);
+    const end = at < 0 ? -1 : d.toLowerCase().indexOf(EXE, at);
+    if (end >= 0) roots.add(norm(d.slice(at, end)) + "\\");
+  }
+  const installRoot = path.dirname(exe) + "\\";
   const fix = (d) => {
     if (typeof d !== "string") return d;
     const at = norm(d).indexOf(tmp);
     if (at < 0) return d;
-    const end = d.toLowerCase().indexOf("\\twinbasic.exe", at);
-    return end < 0 ? d : d.slice(0, at) + exe + d.slice(end + "\\twinbasic.exe".length);
+    const end = d.toLowerCase().indexOf(EXE, at);
+    if (end >= 0) return d.slice(0, at) + exe + d.slice(end + EXE.length);
+    const rest = norm(d.slice(at));
+    const root = [...roots].find((r) => rest.startsWith(r));
+    return root ? d.slice(0, at) + installRoot + d.slice(at + root.length) : d;
   };
   const snap = (s) =>
     s && {

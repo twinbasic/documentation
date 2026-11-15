@@ -273,8 +273,9 @@ that:
   exactly as they are, because an IDE started with the two flags does not write them, and
   the read-only listing of the targets under the run's folders finds them in both separators;
 - a file association that pointed into the temp folder when a run began --- at another run's
-  private copy of the IDE --- is put back pointing at the newest install, or left as it is
-  when there is none;
+  private copy of the IDE --- is put back pointing at the newest install, every path into the
+  copy's folder (the open command, the icon, the template `ShellNew` makes a new project from)
+  pointed at the same file in the install's folder, or left as it is when there is none;
 - the window's geometry (the `Window` key) is put back value by value, an untouched key is not
   written, a key the run created is deleted, and the key is left as it is when a run of
   [`try_help_addin.mjs`](Tools-IDE#try-help-addin), whose IDE you move yourself, ended with it;

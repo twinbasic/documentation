@@ -289,13 +289,24 @@ try {
   const REAL = '"C:\\IDE\\twinBASIC.exe" "%1"';
   const COPY_EXE = path.join(tmpdir(), "tbaddin", "9870", "ide", "twinBASIC.exe");
   const COPY = `"${COPY_EXE}" "%1"`;
+  // The template a new .twinproj is made from, which the copy writes with its own folder at the
+  // same time as its open command: it comes back as the same file in the install's folder.
+  const SHELLNEW = ASSOC + "\\ShellNew";
+  const TEMPLATE = "projects\\_Standard EXE\\projectName.twinproj";
+  const COPY_TEMPLATE = path.join(path.dirname(COPY_EXE), TEMPLATE);
   const tbIde = process.env.TB_IDE;
   try {
     process.env.TB_IDE = "C:\\IDE\\twinBASIC.exe";
     setValues(COMMAND, { "": COPY }); // another run's copy has it
+    setValues(SHELLNEW, { FileName: COPY_TEMPLATE });
     const dirty = R.startTidy({ root: ROOT, keys: [ASSOC] });
     assert.ok(R.finishTidy(dirty).association >= 1);
     assert.equal(readValue(COMMAND, ""), REAL, "an association naming the temp folder points at the install");
+    assert.equal(
+      readValue(SHELLNEW, "FileName"),
+      `C:\\IDE\\${TEMPLATE}`,
+      "ShellNew's FileName in the copy's folder points into the install's folder",
+    );
     process.env.TB_IDE = COPY_EXE; // no install outside the temp folder
     setValues(COMMAND, { "": COPY });
     const noInstall = R.startTidy({ root: ROOT, keys: [ASSOC] });
