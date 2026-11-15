@@ -1,0 +1,504 @@
+[
+ {
+  "kind": "Type",
+  "name": "ANON_OBJECT_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "ANON_OBJECT_HEADER_BIGOBJ",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "ANON_OBJECT_HEADER_V2",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FPO_DATA",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-fpo_data",
+  "syntax": "typedef struct _FPO_DATA {\n  DWORD ulOffStart;\n  DWORD cbProcSize;\n  DWORD cdwLocals;\n  WORD  cdwParams;\n  WORD  cbProlog : 8;\n  WORD  cbRegs : 3;\n  WORD  fHasSEH : 1;\n  WORD  fUseBP : 1;\n  WORD  reserved : 1;\n  WORD  cbFrame : 2;\n} FPO_DATA, *PFPO_DATA;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_ARCHIVE_MEMBER_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_AUX_SYMBOL",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_AUX_SYMBOL_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_AUX_SYMBOL_TOKEN_DEF",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_BASE_RELOCATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_BOUND_FORWARDER_REF",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_BOUND_IMPORT_DESCRIPTOR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_COFF_SYMBOLS_HEADER",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_coff_symbols_header",
+  "syntax": "typedef struct _IMAGE_COFF_SYMBOLS_HEADER {\n  DWORD NumberOfSymbols;\n  DWORD LvaToFirstSymbol;\n  DWORD NumberOfLinenumbers;\n  DWORD LvaToFirstLinenumber;\n  DWORD RvaToFirstByteOfCode;\n  DWORD RvaToLastByteOfCode;\n  DWORD RvaToFirstByteOfData;\n  DWORD RvaToLastByteOfData;\n} IMAGE_COFF_SYMBOLS_HEADER, *PIMAGE_COFF_SYMBOLS_HEADER;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DATA_DIRECTORY",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_data_directory",
+  "syntax": "typedef struct _IMAGE_DATA_DIRECTORY {\n  DWORD VirtualAddress;\n  DWORD Size;\n} IMAGE_DATA_DIRECTORY, *PIMAGE_DATA_DIRECTORY;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DEBUG_DIRECTORY",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_debug_directory",
+  "syntax": "typedef struct _IMAGE_DEBUG_DIRECTORY {\n  DWORD Characteristics;\n  DWORD TimeDateStamp;\n  WORD  MajorVersion;\n  WORD  MinorVersion;\n  DWORD Type;\n  DWORD SizeOfData;\n  DWORD AddressOfRawData;\n  DWORD PointerToRawData;\n} IMAGE_DEBUG_DIRECTORY, *PIMAGE_DEBUG_DIRECTORY;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DEBUG_MISC",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DELAYLOAD_DESCRIPTOR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DOS_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION32",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION32_V2",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION64",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION64_V2",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION_TABLE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_DYNAMIC_RELOCATION_V2",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_EXPORT_DIRECTORY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_FILE_HEADER",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_file_header",
+  "syntax": "typedef struct _IMAGE_FILE_HEADER {\n  WORD  Machine;\n  WORD  NumberOfSections;\n  DWORD TimeDateStamp;\n  DWORD PointerToSymbolTable;\n  DWORD NumberOfSymbols;\n  WORD  SizeOfOptionalHeader;\n  WORD  Characteristics;\n} IMAGE_FILE_HEADER, *PIMAGE_FILE_HEADER;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_IMPORT_BY_NAME",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_IMPORT_DESCRIPTOR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_LINENUMBER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_LOAD_CONFIG_CODE_INTEGRITY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_LOAD_CONFIG_DIRECTORY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_LOAD_CONFIG_DIRECTORY32",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_load_config_directory32",
+  "syntax": "typedef struct _IMAGE_LOAD_CONFIG_DIRECTORY32 {\n  DWORD                            Size;\n  DWORD                            TimeDateStamp;\n  WORD                             MajorVersion;\n  WORD                             MinorVersion;\n  DWORD                            GlobalFlagsClear;\n  DWORD                            GlobalFlagsSet;\n  DWORD                            CriticalSectionDefaultTimeout;\n  DWORD                            DeCommitFreeBlockThreshold;\n  DWORD                            DeCommitTotalFreeThreshold;\n  DWORD                            LockPrefixTable;\n  DWORD                            MaximumAllocationSize;\n  DWORD                            VirtualMemoryThreshold;\n  DWORD                            ProcessHeapFlags;\n  DWORD                            ProcessAffinityMask;\n  WORD                             CSDVersion;\n  WORD                             DependentLoadFlags;\n  DWORD                            EditList;\n  DWORD                            SecurityCookie;\n  DWORD                            SEHandlerTable;\n  DWORD                            SEHandlerCount;\n  DWORD                            GuardCFCheckFunctionPointer;\n  DWORD                            GuardCFDispatchFunctionPointer;\n  DWORD                            GuardCFFunctionTable;\n  DWORD                            GuardCFFunctionCount;\n  DWORD                            GuardFlags;\n  IMAGE_LOAD_CONFIG_CODE_INTEGRITY CodeIntegrity;\n  DWORD                            GuardAddressTakenIatEntryTable;\n  DWORD                            GuardAddressTakenIatEntryCount;\n  DWORD                            GuardLongJumpTargetTable;\n  DWORD                            GuardLongJumpTargetCount;\n  DWORD                            DynamicValueRelocTable;\n  DWORD                            CHPEMetadataPointer;\n  DWORD                            GuardRFFailureRoutine;\n  DWORD                            GuardRFFailureRoutineFunctionPointer;\n  DWORD                            DynamicValueRelocTableOffset;\n  WORD                             DynamicValueRelocTableSection;\n  WORD                             Reserved2;\n  DWORD                            GuardRFVerifyStackPointerFunctionPointer;\n  DWORD                            HotPatchTableOffset;\n  DWORD                            Reserved3;\n  DWORD                            EnclaveConfigurationPointer;\n  DWORD                            VolatileMetadataPointer;\n  DWORD                            GuardEHContinuationTable;\n  DWORD                            GuardEHContinuationCount;\n  DWORD                            GuardXFGCheckFunctionPointer;\n  DWORD                            GuardXFGDispatchFunctionPointer;\n  DWORD                            GuardXFGTableDispatchFunctionPointer;\n  DWORD                            CastGuardOsDeterminedFailureMode;\n  DWORD                            GuardMemcpyFunctionPointer;\n  DWORD                            UmaFunctionPointers;\n} IMAGE_LOAD_CONFIG_DIRECTORY32, *PIMAGE_LOAD_CONFIG_DIRECTORY32;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_LOAD_CONFIG_DIRECTORY64",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_load_config_directory64",
+  "syntax": "typedef struct _IMAGE_LOAD_CONFIG_DIRECTORY64 {\n  DWORD                            Size;\n  DWORD                            TimeDateStamp;\n  WORD                             MajorVersion;\n  WORD                             MinorVersion;\n  DWORD                            GlobalFlagsClear;\n  DWORD                            GlobalFlagsSet;\n  DWORD                            CriticalSectionDefaultTimeout;\n  ULONGLONG                        DeCommitFreeBlockThreshold;\n  ULONGLONG                        DeCommitTotalFreeThreshold;\n  ULONGLONG                        LockPrefixTable;\n  ULONGLONG                        MaximumAllocationSize;\n  ULONGLONG                        VirtualMemoryThreshold;\n  ULONGLONG                        ProcessAffinityMask;\n  DWORD                            ProcessHeapFlags;\n  WORD                             CSDVersion;\n  WORD                             DependentLoadFlags;\n  ULONGLONG                        EditList;\n  ULONGLONG                        SecurityCookie;\n  ULONGLONG                        SEHandlerTable;\n  ULONGLONG                        SEHandlerCount;\n  ULONGLONG                        GuardCFCheckFunctionPointer;\n  ULONGLONG                        GuardCFDispatchFunctionPointer;\n  ULONGLONG                        GuardCFFunctionTable;\n  ULONGLONG                        GuardCFFunctionCount;\n  DWORD                            GuardFlags;\n  IMAGE_LOAD_CONFIG_CODE_INTEGRITY CodeIntegrity;\n  ULONGLONG                        GuardAddressTakenIatEntryTable;\n  ULONGLONG                        GuardAddressTakenIatEntryCount;\n  ULONGLONG                        GuardLongJumpTargetTable;\n  ULONGLONG                        GuardLongJumpTargetCount;\n  ULONGLONG                        DynamicValueRelocTable;\n  ULONGLONG                        CHPEMetadataPointer;\n  ULONGLONG                        GuardRFFailureRoutine;\n  ULONGLONG                        GuardRFFailureRoutineFunctionPointer;\n  DWORD                            DynamicValueRelocTableOffset;\n  WORD                             DynamicValueRelocTableSection;\n  WORD                             Reserved2;\n  ULONGLONG                        GuardRFVerifyStackPointerFunctionPointer;\n  DWORD                            HotPatchTableOffset;\n  DWORD                            Reserved3;\n  ULONGLONG                        EnclaveConfigurationPointer;\n  ULONGLONG                        VolatileMetadataPointer;\n  ULONGLONG                        GuardEHContinuationTable;\n  ULONGLONG                        GuardEHContinuationCount;\n  ULONGLONG                        GuardXFGCheckFunctionPointer;\n  ULONGLONG                        GuardXFGDispatchFunctionPointer;\n  ULONGLONG                        GuardXFGTableDispatchFunctionPointer;\n  ULONGLONG                        CastGuardOsDeterminedFailureMode;\n  ULONGLONG                        GuardMemcpyFunctionPointer;\n  ULONGLONG                        UmaFunctionPointers;\n} IMAGE_LOAD_CONFIG_DIRECTORY64, *PIMAGE_LOAD_CONFIG_DIRECTORY64;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_NT_HEADERS",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_NT_HEADERS32",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_nt_headers32",
+  "syntax": "typedef struct _IMAGE_NT_HEADERS {\n  DWORD                   Signature;\n  IMAGE_FILE_HEADER       FileHeader;\n  IMAGE_OPTIONAL_HEADER32 OptionalHeader;\n} IMAGE_NT_HEADERS32, *PIMAGE_NT_HEADERS32;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_NT_HEADERS64",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_nt_headers64",
+  "syntax": "typedef struct _IMAGE_NT_HEADERS64 {\n  DWORD                   Signature;\n  IMAGE_FILE_HEADER       FileHeader;\n  IMAGE_OPTIONAL_HEADER64 OptionalHeader;\n} IMAGE_NT_HEADERS64, *PIMAGE_NT_HEADERS64;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_OPTIONAL_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_OPTIONAL_HEADER32",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32",
+  "syntax": "typedef struct _IMAGE_OPTIONAL_HEADER {\n  WORD                 Magic;\n  BYTE                 MajorLinkerVersion;\n  BYTE                 MinorLinkerVersion;\n  DWORD                SizeOfCode;\n  DWORD                SizeOfInitializedData;\n  DWORD                SizeOfUninitializedData;\n  DWORD                AddressOfEntryPoint;\n  DWORD                BaseOfCode;\n  DWORD                BaseOfData;\n  DWORD                ImageBase;\n  DWORD                SectionAlignment;\n  DWORD                FileAlignment;\n  WORD                 MajorOperatingSystemVersion;\n  WORD                 MinorOperatingSystemVersion;\n  WORD                 MajorImageVersion;\n  WORD                 MinorImageVersion;\n  WORD                 MajorSubsystemVersion;\n  WORD                 MinorSubsystemVersion;\n  DWORD                Win32VersionValue;\n  DWORD                SizeOfImage;\n  DWORD                SizeOfHeaders;\n  DWORD                CheckSum;\n  WORD                 Subsystem;\n  WORD                 DllCharacteristics;\n  DWORD                SizeOfStackReserve;\n  DWORD                SizeOfStackCommit;\n  DWORD                SizeOfHeapReserve;\n  DWORD                SizeOfHeapCommit;\n  DWORD                LoaderFlags;\n  DWORD                NumberOfRvaAndSizes;\n  IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];\n} IMAGE_OPTIONAL_HEADER32, *PIMAGE_OPTIONAL_HEADER32;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_OPTIONAL_HEADER64",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header64",
+  "syntax": "typedef struct _IMAGE_OPTIONAL_HEADER64 {\n  WORD                 Magic;\n  BYTE                 MajorLinkerVersion;\n  BYTE                 MinorLinkerVersion;\n  DWORD                SizeOfCode;\n  DWORD                SizeOfInitializedData;\n  DWORD                SizeOfUninitializedData;\n  DWORD                AddressOfEntryPoint;\n  DWORD                BaseOfCode;\n  ULONGLONG            ImageBase;\n  DWORD                SectionAlignment;\n  DWORD                FileAlignment;\n  WORD                 MajorOperatingSystemVersion;\n  WORD                 MinorOperatingSystemVersion;\n  WORD                 MajorImageVersion;\n  WORD                 MinorImageVersion;\n  WORD                 MajorSubsystemVersion;\n  WORD                 MinorSubsystemVersion;\n  DWORD                Win32VersionValue;\n  DWORD                SizeOfImage;\n  DWORD                SizeOfHeaders;\n  DWORD                CheckSum;\n  WORD                 Subsystem;\n  WORD                 DllCharacteristics;\n  ULONGLONG            SizeOfStackReserve;\n  ULONGLONG            SizeOfStackCommit;\n  ULONGLONG            SizeOfHeapReserve;\n  ULONGLONG            SizeOfHeapCommit;\n  DWORD                LoaderFlags;\n  DWORD                NumberOfRvaAndSizes;\n  IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];\n} IMAGE_OPTIONAL_HEADER64, *PIMAGE_OPTIONAL_HEADER64;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_POLICY_ENTRY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_image_policy_entry",
+  "syntax": "typedef struct _IMAGE_POLICY_ENTRY {\n  IMAGE_POLICY_ENTRY_TYPE Type;\n  IMAGE_POLICY_ID         PolicyId;\n  union {\n    const VOID *None;\n    BOOLEAN    BoolValue;\n    INT8       Int8Value;\n    UINT8      UInt8Value;\n    INT16      Int16Value;\n    UINT16     UInt16Value;\n    INT32      Int32Value;\n    UINT32     UInt32Value;\n    INT64      Int64Value;\n    UINT64     UInt64Value;\n    PCSTR      AnsiStringValue;\n    PCWSTR     UnicodeStringValue;\n  } u;\n} IMAGE_POLICY_ENTRY;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_POLICY_METADATA",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_image_policy_metadata",
+  "syntax": "typedef struct _IMAGE_POLICY_METADATA {\n  UCHAR              Version;\n  UCHAR              Reserved0[7];\n  ULONGLONG          ApplicationId;\n  IMAGE_POLICY_ENTRY Policies[];\n} IMAGE_POLICY_METADATA;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RELOCATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RESOURCE_DATA_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RESOURCE_DIRECTORY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RESOURCE_DIRECTORY_STRING",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RESOURCE_DIR_STRING_U",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_ROM_HEADERS",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_ROM_OPTIONAL_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_RUNTIME_FUNCTION_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_SECTION_HEADER",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_section_header",
+  "syntax": "typedef struct _IMAGE_SECTION_HEADER {\n  BYTE  Name[IMAGE_SIZEOF_SHORT_NAME];\n  union {\n    DWORD PhysicalAddress;\n    DWORD VirtualSize;\n  } Misc;\n  DWORD VirtualAddress;\n  DWORD SizeOfRawData;\n  DWORD PointerToRawData;\n  DWORD PointerToRelocations;\n  DWORD PointerToLinenumbers;\n  WORD  NumberOfRelocations;\n  WORD  NumberOfLinenumbers;\n  DWORD Characteristics;\n} IMAGE_SECTION_HEADER, *PIMAGE_SECTION_HEADER;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_SYMBOL",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_SYMBOL_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_THUNK_DATA",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_THUNK_DATA32",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_THUNK_DATA64",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_TLS_DIRECTORY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_TLS_DIRECTORY32",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_TLS_DIRECTORY64",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PDB_INFO",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RUNTIME_FUNCTION",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-runtime_function",
+  "syntax": "typedef struct _IMAGE_RUNTIME_FUNCTION_ENTRY {\n  DWORD BeginAddress;\n  DWORD EndAddress;\n  union {\n    DWORD UnwindInfoAddress;\n    DWORD UnwindData;\n  } DUMMYUNIONNAME;\n} RUNTIME_FUNCTION, *PRUNTIME_FUNCTION, _IMAGE_RUNTIME_FUNCTION_ENTRY, *_PIMAGE_RUNTIME_FUNCTION_ENTRY;"
+ },
+ {
+  "kind": "Type",
+  "name": "UNWIND_HISTORY_TABLE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "UNWIND_HISTORY_TABLE_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FPO_FRAME",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_AUX_SYMBOL_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_COMMUNAL_SELTYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_DEBUG_EX_CH",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_DEBUG_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_MAGIC_VALUES",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_POLICY_ENTRY_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_image_policy_entry_type",
+  "syntax": "typedef enum _IMAGE_POLICY_ENTRY_TYPE {\n  ImagePolicyEntryTypeNone,\n  ImagePolicyEntryTypeBool,\n  ImagePolicyEntryTypeInt8,\n  ImagePolicyEntryTypeUInt8,\n  ImagePolicyEntryTypeInt16,\n  ImagePolicyEntryTypeUInt16,\n  ImagePolicyEntryTypeInt32,\n  ImagePolicyEntryTypeUInt32,\n  ImagePolicyEntryTypeInt64,\n  ImagePolicyEntryTypeUInt64,\n  ImagePolicyEntryTypeAnsiString,\n  ImagePolicyEntryTypeUnicodeString,\n  ImagePolicyEntryTypeOverride,\n  ImagePolicyEntryTypeMaximum\n} IMAGE_POLICY_ENTRY_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_POLICY_ID",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_image_policy_id",
+  "syntax": "typedef enum _IMAGE_POLICY_ID {\n  ImagePolicyIdNone,\n  ImagePolicyIdEtw,\n  ImagePolicyIdDebug,\n  ImagePolicyIdCrashDump,\n  ImagePolicyIdCrashDumpKey,\n  ImagePolicyIdCrashDumpKeyGuid,\n  ImagePolicyIdParentSd,\n  ImagePolicyIdParentSdRev,\n  ImagePolicyIdSvn,\n  ImagePolicyIdDeviceId,\n  ImagePolicyIdCapability,\n  ImagePolicyIdScenarioId,\n  ImagePolicyIdCapabilityOverridable,\n  ImagePolicyIdTrustletIdOverridable,\n  ImagePolicyIdMaximum\n} IMAGE_POLICY_ID;"
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_AMD64",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_ARM",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_ARM64",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_CEE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_CEF",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_EBC",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_I386",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_IA64",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_M32R",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_MIPS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_PPC",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_RELOC_TYPE_SH3",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_REL_BASED",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_REL_NS_BASED",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_SECTION_VALUES",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_STORAGE_CLASS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_SYM_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_SYM_TYPE_DERIVED",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IMAGE_WEAK_EXTERN",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageDirectories",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageDllCharacteristics",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageFileCharacteristics",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageLoadConfigGuardFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageMachineType",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageSectionCharacteristics",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ImageSubsystemType",
+  "url": null
+ }
+]

@@ -1,0 +1,136 @@
+' tbKMode, modWDM: calls written as the WDK's prototypes (wdm.h, ntifs.h) have them, each of which
+' should compile, and one call that shows which MsgBox a bare name means. Nothing here is ever run.
+' Each line ends in a comment ' CASE <Name>: <code>.
+Module WDMCompileTests
+
+    ' ZwDuplicateObject takes seven parameters: TargetProcessHandle comes after SourceHandle.
+    Public Sub WDM_ZwDuplicateObject_TakesTargetProcessHandle()
+        Dim target As LongPtr, st As Long
+        st = ZwDuplicateObject(-1, 0, -1, target, 0, 0, DUPLICATE_SAME_ACCESS) ' CASE ZwDuplicateObjectTakesTargetProcessHandle: none
+    End Sub
+
+    ' IoCreateDevice's DeviceObject is a PDEVICE_OBJECT *: the routine writes the new device's
+    ' address into the variable.
+    Public Sub WDM_IoCreateDevice_ReturnsThePointer()
+        Dim drv As DRIVER_OBJECT, name As UNICODE_STRING, dev As LongPtr, st As Long
+        st = IoCreateDevice(drv, 0, name, FILE_DEVICE_UNKNOWN, 0, 0, dev) ' CASE IoCreateDeviceReturnsThePointer: none
+    End Sub
+
+    ' ExTryToAcquireFastMutex returns a BOOLEAN: whether it acquired the mutex.
+    Public Sub WDM_ExTryToAcquireFastMutex_ReturnsWhetherAcquired()
+        Dim fm As FAST_MUTEX, got As Byte
+        got = ExTryToAcquireFastMutex(fm) ' CASE ExTryToAcquireFastMutexReturnsWhetherAcquired: none
+    End Sub
+
+    ' SeLocateProcessImageName's ImageFileName is a PUNICODE_STRING *: the routine allocates the
+    ' string and writes its address into the variable.
+    Public Sub WDM_SeLocateProcessImageName_ReturnsThePointer()
+        Dim name As LongPtr, st As Long
+        st = SeLocateProcessImageName(0, name) ' CASE SeLocateProcessImageNameReturnsThePointer: none
+    End Sub
+
+    ' ExInitializeNPagedLookasideList's Lookaside is a PNPAGED_LOOKASIDE_LIST: the routine fills the
+    ' structure.
+    Public Sub WDM_ExInitializeNPagedLookasideList_TakesTheList()
+        Dim list As NPAGED_LOOKASIDE_LIST
+        ExInitializeNPagedLookasideList list, 0, 0, 0, 64, &H6C6F6F50, 0 ' CASE ExInitializeNPagedLookasideListTakesTheList: none
+    End Sub
+
+    ' InterlockedIncrement returns the incremented value.
+    Public Sub WDM_InterlockedIncrement_ReturnsTheValue()
+        Dim v As Long, n As Long
+        n = InterlockedIncrement(v) ' CASE InterlockedIncrementReturnsTheValue: none
+    End Sub
+
+    ' CmCallbackGetKeyObjectIDEx returns the key's name as a PCUNICODE_STRING, which C passes on to
+    ' CmCallbackReleaseKeyObjectIDEx as it is.
+    Public Sub WDM_CmCallbackReleaseKeyObjectIDEx_TakesThePointer()
+        Dim cookie As LARGE_INTEGER, id As LongPtr, name As LongPtr, st As Long
+        st = CmCallbackGetKeyObjectIDEx(cookie, 0, id, name, 0)
+        CmCallbackReleaseKeyObjectIDEx name ' CASE CmCallbackReleaseKeyObjectIDExTakesThePointer: none
+    End Sub
+
+    ' Four optional pointers (_In_opt_ in the WDK), each passed as a null pointer, which C writes
+    ' NULL and twinBASIC ByVal vbNullPtr.
+    Public Sub WDM_ZwCreateKey_ClassIsOptional()
+        Dim h As LongPtr, oa As OBJECT_ATTRIBUTES, disp As RegistryCreateDispositions, st As Long
+        st = ZwCreateKey(h, KEY_READ, oa, 0, ByVal vbNullPtr, 0, disp) ' CASE ZwCreateKeyClassIsOptional: none
+    End Sub
+
+    Public Sub WDM_ZwCreateKeyTransacted_ClassIsOptional()
+        Dim h As LongPtr, oa As OBJECT_ATTRIBUTES, disp As RegistryCreateDispositions, st As Long
+        st = ZwCreateKeyTransacted(h, KEY_READ, oa, 0, ByVal vbNullPtr, 0, 0, disp) ' CASE ZwCreateKeyTransactedClassIsOptional: none
+    End Sub
+
+    Public Sub WDM_ZwCreateRegistryTransaction_ObjAttributesIsOptional()
+        Dim h As LongPtr, st As Long
+        st = ZwCreateRegistryTransaction(h, 0, ByVal vbNullPtr, 0) ' CASE ZwCreateRegistryTransactionObjAttributesIsOptional: none
+    End Sub
+
+    Public Sub WDM_ZwOpenProcess_ClientIDIsOptional()
+        Dim h As LongPtr, oa As OBJECT_ATTRIBUTES, st As Long
+        st = ZwOpenProcess(h, 0, oa, ByVal vbNullPtr) ' CASE ZwOpenProcessClientIDIsOptional: none
+    End Sub
+
+    ' ExReleaseResource releases the resource in a 32-bit build as in a 64-bit one: a call of it
+    ' gives no warning (TB0009 is the warning for a call of an [Unimplemented] procedure).
+    Public Sub WDM_ExReleaseResource_IsImplemented()
+        Dim r As ERESOURCE
+        ExReleaseResource r ' CASE ExReleaseResourceIsImplemented: none
+    End Sub
+
+    ' A call of UNREFERENCED_PARAMETER is a use of the parameter, as the WDK's macro is in C, so the
+    ' warning of an unused parameter, TB0025, does not name it. (TB0025 names a ByRef parameter.)
+    [EnforceWarnings(TB0025)]
+    Public Sub WDM_UNREFERENCED_PARAMETER_MarksTheParameterUsed(Context As LongPtr) ' CASE UNREFERENCED_PARAMETERMarksTheParameterUsed: none
+        UNREFERENCED_PARAMETER Context
+    End Sub
+
+    ' The Tag of a remove lock is a PVOID: IoReleaseRemoveLockAndWait takes it as IoAcquireRemoveLock
+    ' does, a LongPtr.
+    Public Sub WDM_IoReleaseRemoveLockAndWait_TakesALongPtrTag()
+        Dim lk As IO_REMOVE_LOCK, tag As LongPtr
+        IoReleaseRemoveLockAndWait lk, tag, LenB(lk) ' CASE IoReleaseRemoveLockAndWaitTakesALongPtrTag: none
+    End Sub
+
+    ' modWDM's MsgBox (three arguments) is meant to override VBA's, as its LCase, UCase and InStr
+    ' are: a bare MsgBox should be modWDM's, and VBA's one-argument form refused.
+    Public Sub WDM_MsgBox_BareNameIsTheModules()
+        MsgBox "Hello" ' CASE MsgBoxBareNameIsTheModules: error
+    End Sub
+
+    ' DbgPrintEx takes the component ID and the level before the format (wdm.h:
+    ' DbgPrintEx(ULONG ComponentId, ULONG Level, PCSTR Format, ...)), and so do the package's forms of
+    ' it with one, two and three arguments, which call the same routine.
+    Public Sub WDM_DbgPrintEx_TakesTheComponentAndTheLevel()
+        Dim fmt As String = "%d"
+        Dim n As Long
+        n = DbgPrintEx1(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, StrPtr(fmt), ByVal 1&) ' CASE DbgPrintEx1TakesTheComponentAndTheLevel: none
+        n = DbgPrintEx2(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, StrPtr(fmt), ByVal 1&, ByVal 2&) ' CASE DbgPrintEx2TakesTheComponentAndTheLevel: none
+        n = DbgPrintEx3(DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL, StrPtr(fmt), ByVal 1&, ByVal 2&, ByVal 3&) ' CASE DbgPrintEx3TakesTheComponentAndTheLevel: none
+    End Sub
+
+    ' ZwMapViewOfSection takes ten parameters (wdm.h), the eighth the SECTION_INHERIT disposition,
+    ' between ViewSize and AllocationType.
+    Public Sub WDM_ZwMapViewOfSection_TakesTheInheritDisposition()
+        Dim baseAddress As LongPtr, viewSize As LongPtr, offset As LARGE_INTEGER
+        Dim st As Long
+        st = ZwMapViewOfSection(0, -1, baseAddress, 0, 0, offset, viewSize, SECINH_ViewUnmap, 0, PAGE_READWRITE) ' CASE ZwMapViewOfSectionTakesTheInheritDisposition: none
+    End Sub
+
+    ' ExAllocatePool2 and ExAllocatePool3 take POOL_FLAGS (wdm.h: typedef ULONG64 POOL_FLAGS), the
+    ' POOL_FLAG_ bits, such as POOL_FLAG_NON_PAGED (0x40), not a POOL_TYPE.
+    Public Sub WDM_ExAllocatePool2_TakesPoolFlags()
+        Dim p As LongPtr
+        p = ExAllocatePool2(POOL_FLAG_NON_PAGED, 64, &H6B6D7462) ' CASE ExAllocatePool2TakesPoolFlags: none
+    End Sub
+
+    ' RtlCompareUnicodeStrings takes each string's address and its length in characters (wdm.h:
+    ' String1, String1Length, String2, String2Length, CaseInSensitive).
+    Public Sub WDM_RtlCompareUnicodeStrings_TakesTheLengths()
+        Dim a As String = "kernel", b As String = "mode"
+        Dim r As Long
+        r = RtlCompareUnicodeStrings(StrPtr(a), Len(a), StrPtr(b), Len(b), 0) ' CASE RtlCompareUnicodeStringsTakesTheLengths: none
+    End Sub
+
+End Module

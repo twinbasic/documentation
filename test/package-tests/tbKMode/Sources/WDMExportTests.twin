@@ -1,0 +1,119 @@
+[TestFixture]
+Module WDMExportTests
+
+    ' modWDM's Declares against the export table of the x64 kernel, %SystemRoot%\System32\ntoskrnl.exe
+    ' (Sysnative from a 32-bit process). The file is mapped as an image resource, which runs none of
+    ' its code and resolves none of its imports, and its export names are read from its headers. A
+    ' driver whose import names a routine the kernel does not export does not load.
+
+    Private Declare PtrSafe Function LoadLibraryExW Lib "kernel32" (ByVal lpLibFileName As LongPtr, ByVal hFile As LongPtr, ByVal dwFlags As Long) As LongPtr
+    Private Declare PtrSafe Function FreeLibrary Lib "kernel32" (ByVal hLibModule As LongPtr) As Long
+    Private Declare PtrSafe Function lstrlenA Lib "kernel32" (ByVal lpString As LongPtr) As Long
+    Private Declare PtrSafe Sub GetMem Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Private Const LOAD_LIBRARY_AS_DATAFILE As Long = &H2
+    Private Const LOAD_LIBRARY_AS_IMAGE_RESOURCE As Long = &H20
+
+    ' The entry point of each Declare that a 64-bit build of the package compiles: its Alias, or its
+    ' name. (InterlockedIncrement is a Sub of the package there.)
+    Private Function EntryPoints() As String
+        Dim s As String
+        s = "CmCallbackGetKeyObjectID CmCallbackGetKeyObjectIDEx CmCallbackReleaseKeyObjectIDEx CmGetBoundTransaction CmGetCallbackVersion CmRegisterCallback CmRegisterCallbackEx CmSetCallbackObjectContext "
+        s &= "CmUnRegisterCallback DbgPrint DbgPrintEx EtwActivityIdControl EtwEventEnabled EtwProviderEnabled EtwRegister EtwSetInformation "
+        s &= "EtwUnregister EtwWrite EtwWriteEx EtwWriteString EtwWriteTransfer ExAcquireFastMutex ExAcquireResourceExclusiveLite ExAcquireResourceSharedLite "
+        s &= "ExAcquireSharedStarveExclusive ExAcquireSharedWaitForExclusive ExAllocatePool2 ExAllocatePool3 ExAllocatePoolWithTag ExAllocatePoolWithTagPriority ExDeleteResourceLite ExEnterCriticalRegionAndAcquireResourceExclusive "
+        s &= "ExEnterCriticalRegionAndAcquireResourceShared ExEnterCriticalRegionAndAcquireSharedWaitForExclusive ExFreePool2 ExFreePoolWithTag ExGetPreviousMode ExInitializeNPagedLookasideList ExInitializeResourceLite ExInterlockedAddLargeInteger "
+        s &= "ExInterlockedAddUlong ExIsResourceAcquiredExclusiveLite ExIsResourceAcquiredSharedLite ExRaiseHardError ExRaiseStatus ExReinitializeResourceLite ExReleaseFastMutex ExReleaseResourceAndLeaveCriticalRegion "
+        s &= "ExReleaseResourceForThreadLite ExReleaseResourceLite ExSetResourceOwnerPointer ExTryToAcquireFastMutex ExpInterlockedPopEntrySList FsRtlGetFileNameInformation FsRtlGetFileSize FsRtlIsNameInExpression "
+        s &= "FsRtlIsNameInUnUpcasedExpression FsRtlIsPagingFile FsRtlIsSystemPagingFile IoAcquireRemoveLockEx IoAllocateDriverObjectExtension IoAttachDeviceToDeviceStack IoAttachDeviceToDeviceStackSafe IoCompleteRequest "
+        s &= "IoCreateDevice IoCreateSymbolicLink IoDeleteDevice IoDeleteSymbolicLink IoDetachDevice IoGetCurrentProcess IoGetDriverObjectExtension IoGetRequestorProcess "
+        s &= "IoGetTopLevelIrp IoInitializeRemoveLockEx IoReleaseRemoveLockAndWaitEx IoReleaseRemoveLockEx IoSetDeviceInterfaceState IoThreadToProcess IofCallDriver KeAcquireSpinLockRaiseToDpc "
+        s &= "KeAttachProcess KeDelayExecutionThread KeDetachProcess KeGetCurrentIrql KeGetCurrentThread KeInitializeEvent KeInitializeSpinLock KeLowerIrql "
+        s &= "KeQuerySystemTime KeQuerySystemTimePrecise KeRaiseIrqlToDpcLevel KeReleaseSpinLock KeSetEvent KeSetPriorityThread KeStackAttachProcess KeUnstackDetachProcess "
+        s &= "KeWaitForSingleObject KfRaiseIrql MmCopyMemory MmGetSystemRoutineAddress MmIsAddressValid MmMapLockedPagesSpecifyCache ObCloseHandle ObDereferenceObjectDeferDelete "
+        s &= "ObDereferenceObjectDeferDeleteWithTag ObGetFilterVersion ObGetObjectSecurity ObIsKernelHandle ObMakeTemporaryObject ObOpenObjectByPointer ObQueryNameString ObReferenceObjectByHandle "
+        s &= "ObReferenceObjectByHandleWithTag ObReferenceObjectByPointer ObReferenceObjectByPointerWithTag ObReferenceObjectSafe ObReferenceObjectSafeWithTag ObRegisterCallbacks ObReleaseObjectSecurity ObUnRegisterCallbacks "
+        s &= "ObfDereferenceObject ObfDereferenceObjectWithTag ObfReferenceObject ObfReferenceObjectWithTag PoCallDriver PoStartNextPowerIrp ProbeForRead ProbeForWrite "
+        s &= "PsGetCurrentProcessId PsGetCurrentThreadId PsGetProcessId PsGetThreadProcessId PsLookupProcessByProcessId PsLookupThreadByThreadId PsRemoveCreateThreadNotifyRoutine PsRemoveLoadImageNotifyRoutine "
+        s &= "PsSetCreateProcessNotifyRoutine PsSetCreateProcessNotifyRoutineEx PsSetCreateThreadNotifyRoutine PsSetCreateThreadNotifyRoutineEx PsSetLoadImageNotifyRoutine RtlAcquirePebLock RtlAllocateAndInitializeSid RtlAllocateHeap "
+        s &= "RtlAppendUnicodeStringToString RtlAppendUnicodeToString RtlAreBitsClear RtlAreBitsSet RtlCheckBit RtlClearAllBits RtlClearAllBitsEx RtlClearBit "
+        s &= "RtlClearBitEx RtlClearBits RtlCompareMemory RtlCompareUnicodeString RtlCopyBitMap RtlCopyUnicodeString RtlCreateHeap RtlCreateSecurityDescriptor "
+        s &= "RtlCreateServiceSid RtlDefaultNpAcl RtlDeriveCapabilitySidsFromName RtlDestroyHeap RtlEqualPrefixSid RtlEqualSid RtlEqualUnicodeString RtlExtractBitMap "
+        s &= "RtlFindClearBits RtlFindClearBitsAndSet RtlFindClearRuns RtlFindExportedRoutineByName RtlFindFirstRunClear RtlFindLastBackwardRunClear RtlFindLeastSignificantBit RtlFindLongestRunClear "
+        s &= "RtlFindMostSignificantBit RtlFindNextForwardRunClear RtlFindSetBits RtlFindSetBitsAndClear RtlFindSetBitsAndClearEx RtlFindSetBitsEx RtlFreeHeap RtlFreeSid "
+        s &= "RtlFreeUnicodeString RtlGUIDFromString RtlGetControlSecurityDescriptor RtlGetCurrentPeb RtlGetDaclSecurityDescriptor RtlGetSaclSecurityDescriptor RtlGetVersion RtlImageDirectoryEntryToData "
+        s &= "RtlImageNtHeader RtlInitUnicodeString RtlInitializeBitMap RtlInitializeBitMapEx RtlInitializeSid RtlInitializeSidEx RtlInterlockedClearBitRun RtlInterlockedSetBitRun "
+        s &= "RtlIsElevatedRid RtlIsNameLegalDOS8Dot3 RtlLengthSecurityDescriptor RtlLocalTimeToSystemTime RtlMoveMemory RtlNtStatusToDosError RtlNumberOfClearBits RtlNumberOfClearBitsInRange "
+        s &= "RtlNumberOfSetBits RtlNumberOfSetBitsInRange RtlNumberOfSetBitsUlongPtr RtlQueryRegistryValues RtlReleasePebLock RtlSetAllBits RtlSetBit RtlSetBitEx "
+        s &= "RtlSetBits RtlSetControlSecurityDescriptor RtlSetDaclSecurityDescriptor RtlSetSaclSecurityDescriptor RtlSidHashInitialize RtlSidHashLookup RtlTestBit RtlTestBitEx "
+        s &= "RtlUniform RtlUpcaseUnicodeString RtlValidRelativeSecurityDescriptor RtlValidSecurityDescriptor RtlValidSid RtlZeroMemory SeAccessCheck SeAssignSecurity "
+        s &= "SeAssignSecurityEx SeComputeAutoInheritByObjectType SeEtwWriteKMCveEvent SeLocateProcessImageName SeLockSubjectContext SeQueryInformationToken SeUnlockSubjectContext ZwClose "
+        s &= "ZwCommitRegistryTransaction ZwCompactKeys ZwCompressKey ZwCreateDirectoryObject ZwCreateFile ZwCreateKey ZwCreateKeyTransacted ZwCreateRegistryTransaction "
+        s &= "ZwCreateSection ZwCreateUserProcess ZwDeleteFile ZwDeleteKey ZwDeleteValueKey ZwDuplicateObject ZwEnumerateKey ZwEnumerateValueKey "
+        s &= "ZwFlushKey ZwFreezeRegistry ZwFsControlFile ZwInitializeRegistry ZwLoadKey ZwLoadKey2 ZwLoadKey3 ZwLoadKeyEx "
+        s &= "ZwLockFile ZwLockProductActivationKeys ZwLockRegistryKey ZwMapViewOfSection ZwNotifyChangeKey ZwNotifyChangeMultipleKeys ZwOpenDirectoryObject ZwOpenKey "
+        s &= "ZwOpenKeyEx ZwOpenKeyTransacted ZwOpenKeyTransactedEx ZwOpenProcess ZwOpenRegistryTransaction ZwOpenSection ZwOpenSymbolicLinkObject ZwQueryDirectoryFile "
+        s &= "ZwQueryDirectoryFileEx ZwQueryDirectoryObject ZwQueryKey ZwQueryMultipleValueKey ZwQueryOpenSubKeys ZwQueryOpenSubKeysEx ZwQuerySymbolicLinkObject ZwQueryValueKey "
+        s &= "ZwReadFile ZwRenameKey ZwReplaceKey ZwRestoreKey ZwResumeProcess ZwRollbackRegistryTransaction ZwSaveKey ZwSaveKeyEx "
+        s &= "ZwSaveMergedKeys ZwSetInformationKey ZwSetValueKey ZwSuspendProcess ZwThawRegistry ZwUnloadKey ZwUnloadKey2 ZwUnloadKeyEx "
+        s &= "ZwUnlockFile ZwUnmapViewOfSection ZwWriteFile _wcslwr _wcsrev _wcsupr towlower towupper "
+        s &= "wcscat wcscat_s wcschr wcscmp wcscpy wcslen wcsnlen wcsstr"
+        Return s
+    End Function
+
+    Private Function ReadLong(ByVal p As LongPtr) As Long
+        GetMem ReadLong, p, 4
+    End Function
+
+    Private Function ReadInteger(ByVal p As LongPtr) As Integer
+        GetMem ReadInteger, p, 2
+    End Function
+
+    Private Function ReadAnsi(ByVal p As LongPtr) As String
+        Dim n As Long = lstrlenA(p)
+        If n = 0 Then Return ""
+        Dim b() As Byte
+        ReDim b(n - 1)
+        GetMem b(0), p, n
+        Return StrConv(b, vbUnicode)
+    End Function
+
+    ' The export names of the x64 kernel, each between spaces; "" when the file cannot be read.
+    Private Function KernelExports() As String
+        Dim folder As String = Environ$("SystemRoot") & If(LenB(Of LongPtr) = 8, "\System32\", "\Sysnative\")
+        Dim h As LongPtr = LoadLibraryExW(StrPtr(folder & "ntoskrnl.exe"), 0, LOAD_LIBRARY_AS_DATAFILE Or LOAD_LIBRARY_AS_IMAGE_RESOURCE)
+        If h = 0 Then Return ""
+        Dim base As LongPtr = h And (Not CLngPtr(3))
+        Dim nt As LongPtr = base + ReadLong(base + &H3C)
+        Dim opt As LongPtr = nt + 24
+        Dim result As String
+        If ReadLong(nt) = &H4550 And ReadInteger(opt) = &H20B And ReadLong(opt + 112) <> 0 Then
+            Dim dir As LongPtr = base + ReadLong(opt + 112)
+            Dim count As Long = ReadLong(dir + 24)
+            Dim names As LongPtr = base + ReadLong(dir + 32)
+            Dim parts() As String
+            ReDim parts(count - 1)
+            For i As Long = 0 To count - 1
+                parts(i) = ReadAnsi(base + ReadLong(names + 4 * i))
+            Next
+            result = " " & Join(parts, " ") & " "
+        End If
+        FreeLibrary h
+        Return result
+    End Function
+
+    ' Every Declare names a routine that the x64 kernel exports.
+    [TestCase]
+    Public Sub Declares_NameExportsOfTheKernel()
+        Expect.Begin
+        Dim exports As String = KernelExports()
+        Expect.IsTrue Len(exports) > 0, "the export table of the x64 ntoskrnl.exe is read"
+        If Len(exports) = 0 Then Expect.Done: Exit Sub
+        Dim e As Variant
+        For Each e In Split(EntryPoints(), " ")
+            Expect.IsTrue VBA.InStr(1, exports, " " & e & " ", vbBinaryCompare) > 0, "the x64 kernel exports " & e
+        Next
+        Expect.Done
+    End Sub
+
+End Module

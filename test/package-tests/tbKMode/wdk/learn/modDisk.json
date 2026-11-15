@@ -1,0 +1,56 @@
+[
+ {
+  "kind": "Type",
+  "name": "BOOT_SECTOR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DEVICE_EXTENSION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DIR_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DISK_GEOMETRY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntdddisk/ns-ntdddisk-_disk_geometry",
+  "syntax": "typedef struct _DISK_GEOMETRY {\n  LARGE_INTEGER Cylinders;\n  MEDIA_TYPE    MediaType;\n  ULONG         TracksPerCylinder;\n  ULONG         SectorsPerTrack;\n  ULONG         BytesPerSector;\n} DISK_GEOMETRY, *PDISK_GEOMETRY;"
+ },
+ {
+  "kind": "Type",
+  "name": "DISK_INFO",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "MOUNTDEV_NAME",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountdev_name",
+  "syntax": "typedef struct _MOUNTDEV_NAME {\n  USHORT NameLength;\n  WCHAR  Name[1];\n} MOUNTDEV_NAME, *PMOUNTDEV_NAME;"
+ },
+ {
+  "kind": "Type",
+  "name": "PARTITION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntdddisk/ns-ntdddisk-_partition_information",
+  "syntax": "typedef struct _PARTITION_INFORMATION {\n  LARGE_INTEGER StartingOffset;\n  LARGE_INTEGER PartitionLength;\n  ULONG         HiddenSectors;\n  ULONG         PartitionNumber;\n  UCHAR         PartitionType;\n  BOOLEAN       BootIndicator;\n  BOOLEAN       RecognizedPartition;\n  BOOLEAN       RewritePartition;\n} PARTITION_INFORMATION, *PPARTITION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "RAMDISK_DRIVER_EXTENSION",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DEVICE_STATE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MEDIA_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntdddisk/ne-ntdddisk-media_type",
+  "syntax": "typedef enum _MEDIA_TYPE {\n  Unknown,\n  F5_1Pt2_512,\n  F3_1Pt44_512,\n  F3_2Pt88_512,\n  F3_20Pt8_512,\n  F3_720_512,\n  F5_360_512,\n  F5_320_512,\n  F5_320_1024,\n  F5_180_512,\n  F5_160_512,\n  RemovableMedia,\n  FixedMedia,\n  F3_120M_512,\n  F3_640_512,\n  F5_640_512,\n  F5_720_512,\n  F3_1Pt2_512,\n  F3_1Pt23_1024,\n  F5_1Pt23_1024,\n  F3_128Mb_512,\n  F3_230Mb_512,\n  F8_256_128,\n  F3_200Mb_512,\n  F3_240M_512,\n  F3_32M_512\n} MEDIA_TYPE, *PMEDIA_TYPE;"
+ }
+]

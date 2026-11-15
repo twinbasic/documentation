@@ -23,7 +23,8 @@
 //     bracket groups it counts as attributes. A bracket group alone on its line
 //     in an Enum body is a member, not an attribute.
 //   - declareParts (twin-api.mjs), which reads a Declare's library, entry point,
-//     convention and parameters from the signature parseTwin records.
+//     convention and parameters from the signature parseTwin records; the tools
+//     that check a package's Declares against Windows read them through it.
 //   - parseTargets (scripts/lib/attributes-doc.mjs), which turns an
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
 //   - wrapProbe (scripts/lib/tb-probe.mjs), which moves a tbrun probe's
@@ -471,8 +472,8 @@ for (const [what, src, want, opts] of [
 }
 
 // declareParts reads a Declare's library, entry point, convention and parameters from the
-// signature parseTwin records, in each shape that a tool scanning tbKMode's source itself once
-// missed: an attribute on the same line, CDecl and a block
+// signature parseTwin records, in each shape that tbKMode's tools (test/package-tests/tbKMode/wdk/)
+// once missed by scanning the source themselves: an attribute on the same line, CDecl and a block
 // comment between the name and Lib, an Alias, no parameters, an attribute before a parameter with a
 // comma inside it, an escaped name, a branch of an #If, and FastCall with an Alias and DeclareWide
 // (tbKMode 0.3.0.5); and a Declared Property Get (VB's and VBA's packages), a name with a

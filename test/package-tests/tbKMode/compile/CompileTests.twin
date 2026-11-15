@@ -1,0 +1,9 @@
+' tbKMode: what the compiler should accept and does not. Each line ends in a comment ' CASE <Name>: <code>.
+Module CompileTests
+
+    Public Sub Disk_DefaultDiskSize_IsUsable()
+        Dim n As Long
+        n = DEFAULT_DISK_SIZE ' CASE DefaultDiskSizeIsUsable: none
+    End Sub
+
+End Module

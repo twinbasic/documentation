@@ -1,0 +1,72 @@
+{
+  "fixture": "WDM",
+  "headers": [
+    "fltKernel.h",
+    "mountmgr.h",
+    "ntdddisk.h"
+  ],
+  "ctypes": {
+    "GENERAL_LOOKASIDE_LAYOUT": "GENERAL_LOOKASIDE",
+    "_GENERAL_LOOKASIDE": "GENERAL_LOOKASIDE"
+  },
+  "noSize": [
+    "GENERAL_LOOKASIDE_LAYOUT",
+    "KEY_VALUE_FULL_INFORMATION"
+  ],
+  "fields": {
+    "IRP.SystemBuffer": "AssociatedIrp.SystemBuffer",
+    "IRP.DriverContext": "Tail.Overlay.DriverContext",
+    "IRP.Thread": "Tail.Overlay.Thread",
+    "IRP.AuxiliaryBuffer": "Tail.Overlay.AuxiliaryBuffer",
+    "IRP.ListEntry": "Tail.Overlay.ListEntry",
+    "IRP.CurrentStackLocation": "Tail.Overlay.CurrentStackLocation",
+    "IRP.OriginalFileObject": "Tail.Overlay.OriginalFileObject",
+    "IO_STACK_LOCATION.DeviceIoControl": "Parameters.DeviceIoControl",
+    "DEVICE_OBJECT.AlignRequirement": "AlignmentRequirement",
+    "DEVICE_OBJECT.DeviceObjExtension": "DeviceObjectExtension",
+    "ERESOURCE.Reserved2": "MiscFlags",
+    "ERESOURCE.AddressOrCreatorBTIdx": "Address",
+    "OWNER_ENTRY.TableSizeOrFlags": "TableSize",
+    "LUID.lowPart": "LowPart",
+    "LUID.highPart": "HighPart",
+    "LUID_AND_ATTRIBUTES.pLuid": "Luid",
+    "OB_POST_OPERATION_PARAMETERS.GrantedAccess": "CreateHandleInformation.GrantedAccess",
+    "OB_PRE_OPERATION_INFORMATION.KernelHandle": "Flags",
+    "OB_POST_OPERATION_INFORMATION.KernelHandle": "Flags",
+    "KUSER_SHARED_DATA.NXSupportPolicy": "MitigationPolicies",
+    "KUSER_SHARED_DATA.TraceLogging": "SharedDataFlags",
+    "GENERAL_LOOKASIDE_LAYOUT.AllocateMissesHits": "AllocateMisses",
+    "GENERAL_LOOKASIDE_LAYOUT.FreeMissesHits": "FreeMisses",
+    "GENERAL_LOOKASIDE_LAYOUT.LastAllocateMissesHits": "LastAllocateMisses"
+  },
+  "skipField": [
+    "IRP.Pad",
+    "KUSER_SHARED_DATA.Pad",
+    "NPAGED_LOOKASIDE_LIST.align",
+    "NPAGED_LOOKASIDE_LIST.Lock__ObsoleteButDoNotDelete",
+    "_GENERAL_LOOKASIDE.L",
+    "_GENERAL_LOOKASIDE.align",
+    "_SLIST_HEADER.Alignment",
+    "KEY_VALUE_LAYER_INFORMATION.IsTombstone",
+    "IO_DRIVER_CREATE_CONTEXT.SiloContext",
+    "KUSER_SHARED_DATA.SystemCallReturn"
+  ],
+  "skipName": [
+    "MDL_MAPPING_FLAGS",
+    "MaximumWaitReason"
+  ],
+  "values": {
+    "USHRT_MAX": 65535,
+    "_UI16_MAX": 65535,
+    "MAXWORD": 65535,
+    "SCHAR_MIN": -128,
+    "PS_ATTRIBUTE_NUMBER_MASK": 65535
+  },
+  "sizes": {
+    "SE_SID": {
+      "x64": 68,
+      "x86": 68
+    }
+  },
+  "comment": "The fields are the package's names for C fields of other names, or for a member of a C union or nested structure that it flattens (IRP's Tail.Overlay, IO_STACK_LOCATION's Parameters). The skipped fields are padding, a wrapper (_GENERAL_LOOKASIDE.L holds the layout C spells out in place) or a bitfield (IsTombstone), which offsetof cannot take; the KernelHandle bitfields are checked as the Flags they share with. GENERAL_LOOKASIDE_LAYOUT is a macro in wdm.h, the body of GENERAL_LOOKASIDE, whose size includes the cache-line alignment the package puts in _GENERAL_LOOKASIDE. MDL_MAPPING_FLAGS is an enum member named like the C enum type, which cannot be printed as a value. IO_DRIVER_CREATE_CONTEXT.SiloContext is declared under #If NTDDI_VERSION >= NTDDI_WIN10_RS1, and the package never defines NTDDI_VERSION, so the field is never there: its size case says so. KUSER_SHARED_DATA.SystemCallReturn has no counterpart in the current KUSER_SHARED_DATA (its place is inside QpcFrequency). MaximumWaitReason ends its enumeration and grows with each SDK. KEY_VALUE_FULL_INFORMATION has no Name field: the name follows its last field, where C's Name[1] starts, and C's size counts that one character and its padding. The values are those of headers the kernel's do not include: USHRT_MAX, _UI16_MAX and SCHAR_MIN of limits.h, MAXWORD of winnt.h (each 0xffff, or -128), and PS_ATTRIBUTE_NUMBER_MASK of the Native API's headers (0x0000ffff). SE_SID is a union of a SID and a buffer of SECURITY_MAX_SID_SIZE bytes, 68, which ends in an array but is no variable-length structure: its size is asserted."
+}
