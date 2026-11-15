@@ -1,0 +1,36 @@
+' An add-in with one toolbar button, "Print in colour", which prints four lines with
+' DebugConsole.PrintText: one with no colour, and three with a colour each. All four come out
+' in the same yellow.
+Module Startup
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ReproAddin(Host)
+    End Function
+End Module
+
+Private Class ReproAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents PrintButton As Button
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "PrintText colour repro"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Set PrintButton = Host.Toolbars(0).AddButton("ReproPrintButton", "Print in colour")
+    End Sub
+
+    Private Sub PrintButton_OnClick()
+        With Host.DebugConsole
+            .PrintText "no colour"
+            .PrintText "orange", RGB(255, 128, 0)
+            .PrintText "red", RGB(255, 0, 0)
+            .PrintText "blue", RGB(0, 0, 255)
+        End With
+    End Sub
+End Class

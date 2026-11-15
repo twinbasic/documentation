@@ -71,12 +71,32 @@ export function watchCompiles(c) {
     mark() {
       return { seq: cur?.seq ?? 0, done: complete(expected) };
     },
+    // The current compile, once every file of `uris` has published in it: the
+    // counts of those files alone, when the last of them published (`at`), and
+    // when the compile's latest publish of any file came (`last`).
+    //
+    // The counts are of `uris` only. A compile also publishes for a file the
+    // page does not list, an embedded package's (Generics' Tuple.twin, which
+    // its tests' errors reach), and waitForCompile counts such a file by its
+    // panel rows (unlistedRows): summed here as well, it was counted twice, and
+    // the wire never agreed with the page. `last` is for the quiet period, which
+    // a publish of such a file starts again.
     check(uris) {
       if (!Array.isArray(uris) || !complete(uris)) return null;
       const counts = [0, 0, 0, 0];
-      for (const { n } of cur.done.values()) for (let k = 0; k < 4; k++) counts[k] += n[k] || 0;
+      for (const u of uris) {
+        const { n } = cur.done.get(u);
+        for (let k = 0; k < 4; k++) counts[k] += n[k] || 0;
+      }
+      const ats = [...cur.done.values()].map((d) => d.at);
       // `started` is when the compile's compilationStarted arrived (tb-timings.mjs).
-      return { seq: cur.seq, counts, at: Math.max(...uris.map((u) => cur.done.get(u).at)), started: cur.started };
+      return {
+        seq: cur.seq,
+        counts,
+        at: Math.max(...uris.map((u) => cur.done.get(u).at)),
+        last: Math.max(...ats),
+        started: cur.started,
+      };
     },
     // The last few compiles as the wire saw them, oldest first, for
     // tb-timings.mjs: when each started, when its last file's diagnostics

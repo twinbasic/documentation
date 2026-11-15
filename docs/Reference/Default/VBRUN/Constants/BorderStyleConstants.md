@@ -18,3 +18,5 @@ Line-style values for the **BorderStyle** property of **Shape** and **Line** con
 | **vbBSDashDot**{: #vbBSDashDot } | 4 | A dash-dot border. |
 | **vbBSDashDotDot**{: #vbBSDashDotDot } | 5 | A dash-dot-dot border. |
 | **vbBSInsideSolid**{: #vbBSInsideSolid } | 6 | A solid border drawn entirely within the shape's bounds. |
+
+![Seven pale Shape controls, one in each BorderStyle value at BorderWidth 1, from vbTransparent, with no outline, to vbBSInsideSolid](../../VB/Shape/Images/Shape_BorderStyle.png){:width="581" height="249"}

@@ -1,0 +1,176 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": -3092272,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbGradientNorthToSouth",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "New order",
+		"FormDesignerId": "{E205FDC7-7AB9-4342-AB89-9A9BF3901D06}",
+		"Height": 400,
+		"Left": 0,
+		"Name": "frmOverview",
+		"Top": 0,
+		"Width": 600,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSingle",
+			"ControlBox": true,
+			"MaximizeButton": false,
+			"MinimizeButton": false,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Height": 48,
+				"Left": 0,
+				"Name": "fraHeader",
+				"Top": 0,
+				"Visible": true,
+				"Width": 600,
+				"BackgroundFill": {
+					"ColorPoints": {
+						"Granularity": 100,
+						"Values": [
+							{
+								"Color": -991032,
+								"PositionPercent": 0,
+								"_className": "FillColorPoint",
+								"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+							},
+							{
+								"Color": -3631536,
+								"PositionPercent": 100,
+								"_className": "FillColorPoint",
+								"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+							}
+						],
+						"_className": "FillColorPoints",
+						"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+					},
+					"Pattern": "tbGradientWestToEast",
+					"_className": "Fill",
+					"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+				},
+				"_className": "WaynesFrame",
+				"_clsid": "{E6E927FA-F6E6-4E8E-9540-DA8696F38429}"
+			},
+			{
+				"Height": 32,
+				"Left": 16,
+				"Name": "lblHeader",
+				"Top": 8,
+				"Visible": true,
+				"Width": 400,
+				"Caption": "New order",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 32,
+				"Left": 16,
+				"Name": "lblCustomer",
+				"Top": 64,
+				"Visible": true,
+				"Width": 100,
+				"Caption": "Customer",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 32,
+				"Left": 120,
+				"Name": "txtCustomer",
+				"Top": 64,
+				"Visible": true,
+				"Width": 220,
+				"Value": "Ada Lovelace",
+				"_className": "WaynesTextBox",
+				"_clsid": "{28BA97E5-B557-4639-B4B2-023F438959BD}"
+			},
+			{
+				"Height": 32,
+				"Left": 16,
+				"Name": "lblCopies",
+				"Top": 108,
+				"Visible": true,
+				"Width": 100,
+				"Caption": "Copies",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 32,
+				"Left": 120,
+				"Name": "sldCopies",
+				"Top": 108,
+				"Visible": true,
+				"Width": 220,
+				"_className": "WaynesSlider",
+				"_clsid": "{1E704CF9-0DED-4411-878F-95B7142AACAB}"
+			},
+			{
+				"Height": 140,
+				"Left": 16,
+				"Name": "grdItems",
+				"Top": 156,
+				"Visible": true,
+				"Width": 552,
+				"_className": "WaynesGrid",
+				"_clsid": "{E15BBCFB-5D1B-441D-A2B3-32997ED67EBA}"
+			},
+			{
+				"Height": 36,
+				"Left": 328,
+				"Name": "btnCancel",
+				"Top": 312,
+				"Visible": true,
+				"Width": 112,
+				"Caption": "Cancel",
+				"_className": "WaynesButton",
+				"_clsid": "{D15BBCFB-5D1B-441D-A2B3-32997ED67EBA}"
+			},
+			{
+				"Height": 36,
+				"Left": 456,
+				"Name": "btnOrder",
+				"Top": 312,
+				"Visible": true,
+				"Width": 112,
+				"Caption": "Order",
+				"_className": "WaynesButton",
+				"_clsid": "{D15BBCFB-5D1B-441D-A2B3-32997ED67EBA}"
+			},
+			{
+				"Enabled": true,
+				"Height": 32,
+				"Interval": 50,
+				"Left": 0,
+				"Name": "tmrScene",
+				"Top": 0,
+				"Visible": true,
+				"Width": 32,
+				"_className": "WaynesTimer",
+				"_clsid": "{19E29F0D-8062-40D5-962E-5BCD1F6C090E}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]

@@ -11,6 +11,8 @@ vba_attribution: true
 
 Displays a prompt in a dialog, waits for the user to type text or click a button, and returns a **String** containing the contents of the text box.
 
+![An input box: its title in the title bar, its prompt, OK and Cancel, and its default text selected in the text box](Images/InputBox.png){:width="398" height="161"}
+
 Syntax: **InputBox(** *prompt* [ **,** *title* ] [ **,** *default* ] [ **,** *xpos* ] [ **,** *ypos* ] [ **,** *helpfile* **,** *context* ] **)**
 
 *prompt*

@@ -23,10 +23,19 @@ import {
   harnessProblems,
   OVERRIDES,
   optionSeconds,
+  packageTimeoutArgs,
   readHarness,
   timeoutMs,
 } from "../scripts/lib/harness-settings.mjs";
-import { BUILD_FAILED, LLVM_REFUSAL, linkedLog } from "../scripts/lib/tb-ide.mjs";
+import {
+  BUILD_FAILED,
+  LLVM_REFUSAL,
+  linkedLog,
+  orderSameNamedFiles,
+  unlistedRows,
+  waitForCompile,
+} from "../scripts/lib/tb-ide.mjs";
+import { watchCompiles } from "../scripts/lib/tb-wire.mjs";
 import { buildTimeoutMessage, checkCapture } from "../scripts/lib/tb-run.mjs";
 import { reproAnswersBoxes, reproProblem, vb6Probes } from "../scripts/lib/vb6.mjs";
 
@@ -100,6 +109,125 @@ test("an LLVM refusal is a failed build wherever it is", () => {
 
 // buildProject follows a [RunAfterBuild] run's compile after the link (linkedLog): the
 // BETA 1010 tbRegExp log, where LLVM refuses only after Executing, fails the build.
+// orderSameNamedFiles (tb-ide.mjs): files of one base name in the order of their full names, every other row
+// as the panel had it. WinReg embeds WinDevLib twice, so two files are named wdAPIComCtl.twin.
+test("rows of files that share a base name are ordered by full name", () => {
+  const top = "twinbasic:/P/Packages/WinDevLib/Sources/wdAPIComCtl.twin";
+  const nested = "twinbasic:/P/Packages/WinReg/Packages/WinDevLib/Sources/wdAPIComCtl.twin";
+  const row = (file, line, text = "TB0003 x") => `{ERROR} ${file} [${line},1]: ${text}`;
+  const a = row("twinbasic:/P/Sources/a.twin", 1);
+  const z = row("twinbasic:/P/Sources/z.twin", 2);
+  const panel = [a, row(nested, 5), row(nested, 9), row(top, 5), row(top, 7), z];
+  assert.deepEqual(orderSameNamedFiles(panel), [a, row(top, 5), row(top, 7), row(nested, 5), row(nested, 9), z]);
+  // Either arrival order gives the same rows.
+  assert.deepEqual(
+    orderSameNamedFiles([a, row(top, 5), row(top, 7), row(nested, 5), row(nested, 9), z]),
+    orderSameNamedFiles(panel),
+  );
+  // Files of different names keep the panel's order, even out of name order; so does a name that comes back
+  // after another file, and a row of another shape.
+  const other = "Some row the IDE's copy helper wrote";
+  const kept = [z, a, row(nested, 1), z, row(top, 1), other, a];
+  assert.deepEqual(orderSameNamedFiles(kept), kept);
+  assert.deepEqual(orderSameNamedFiles([]), []);
+});
+
+// waitForCompile's early ending (tb-ide.mjs), on Generics' compile project as BETA 1042 compiles it: three listed
+// sources, a compile that also publishes the embedded package's Tuple.twin (4 errors), and WinDevLib's rows, which
+// it published at load and not again. The page shows 15 rows. A fake connection plays the page and its traffic.
+function genericsPage() {
+  const handlers = [];
+  const c = { on: (f) => handlers.push(f) };
+  const emit = (m) => {
+    for (const f of handlers) f(m);
+  };
+  const frame = (o) =>
+    emit({
+      method: "Network.webSocketFrameReceived",
+      params: { requestId: "lang", response: { opcode: 1, payloadData: JSON.stringify(o) } },
+    });
+  const publish = (uri, errors) =>
+    frame({
+      method: "textDocument/publishDiagnostics",
+      params: { uri, errorCount: errors, warningCount: 0, hintCount: 0, infoCount: 0 },
+    });
+  c.wire = watchCompiles(c);
+  emit({ method: "Network.webSocketCreated", params: { requestId: "lang", url: "ws://127.0.0.1/language" } });
+  const P = "/GenericsTests";
+  const src = ["CompileTests", "PackageTests", "TbRun"].map((n) => `twinbasic:${P}/Sources/${n}.twin`);
+  const tuple = `twinbasic:${P}/Packages/Generics/Sources/Tuple.twin`;
+  const wdl = `${P}/Packages/Generics/Packages/WinDevLibImpl/Packages/WinDevLib/Sources/wdGDIP.twin`;
+  const row = (file, n) => `{ERROR} ${file} [${n},1]: <span>TB0000</span>x`;
+  const rows = [
+    ...[1, 2, 3, 4, 5].map((n) => row(`${P}/Sources/CompileTests.twin`, n)),
+    ...[1, 2, 3, 4].map((n) => row(tuple.replace(/^twinbasic:/, ""), n)),
+    ...[1, 2, 3, 4, 5, 6].map((n) => row(wdl, n)),
+  ];
+  return { c, frame, publish, src, tuple, rows };
+}
+
+test("the wire counts only the files the page lists, and the package rows once", () => {
+  const { c, frame, publish, src, tuple, rows } = genericsPage();
+  frame({ event: "compilationStarted", body: { compileId: "1" } });
+  publish(src[1], 0);
+  publish(src[2], 0);
+  publish(src[0], 5);
+  publish(tuple, 4);
+  const w = c.wire.check(src);
+  // Summed over Tuple.twin as well, the wire said 9, and with the 10 unlisted rows 19 against the page's 15:
+  // the early ending never came, and every Generics compile waited out the five seconds of standing still.
+  assert.deepEqual(w.counts, [5, 0, 0, 0]);
+  const extra = unlistedRows(rows, src);
+  assert.deepEqual(extra, { n: 10, counts: [10, 0, 0, 0] });
+  assert.equal(w.counts[0] + extra.counts[0], 15);
+  assert.equal(w.counts[0] + extra.n, rows.length);
+  // `last` is the compile's latest publish of any file, Tuple.twin's here, which the quiet period runs from.
+  assert.ok(w.last >= w.at);
+});
+
+test("the early ending comes after the quiet period, timed from when the sample was read", async () => {
+  const { c, frame, publish, src, tuple, rows } = genericsPage();
+  const project = path.resolve("GenericsTests.twinproj");
+  const page = {
+    st: "tB Services: OPERATIONAL",
+    e: "15",
+    w: "0",
+    h: "0",
+    i: "0",
+    p: project,
+    safe: false,
+    src,
+    crash: null,
+    rows,
+  };
+  let lastPublish = 0;
+  let reads = 0;
+  // The first read takes 400 ms, as a busy page's did (480 ms measured), and the compile ends during it, its
+  // package file last. An agreement timed from before the read was already older than the quiet period.
+  c.evaluate = async () => {
+    if (reads++ === 0) {
+      frame({ event: "compilationStarted", body: { compileId: "1" } });
+      setTimeout(() => {
+        publish(src[1], 0);
+        publish(src[2], 0);
+        publish(src[0], 5);
+      }, 100);
+      setTimeout(() => {
+        publish(tuple, 4);
+        lastPublish = Date.now();
+      }, 200);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    return JSON.stringify(page);
+  };
+  const waited = await waitForCompile(c, { project, timeout: 10000 });
+  const end = Date.now();
+  assert.equal(waited.early, true, "the wait stood still for five seconds instead of agreeing with the wire");
+  assert.ok(lastPublish > 0);
+  assert.ok(end - lastPublish >= 300, `ended ${end - lastPublish} ms after the compile's last publish`);
+  assert.ok(end - lastPublish < 2000, `ended ${end - lastPublish} ms after the compile's last publish`);
+});
+
 test("a build that links reads on through the run's compile", () => {
   const start = "[BUILD] Starting...";
   const linked = "[LINKER] SUCCESS created output file 'C:\\x.exe'";
@@ -119,7 +247,7 @@ test("a build that links reads on through the run's compile", () => {
 // lib/harness-settings.mjs, the reader of test/harness.json (test/harness.md).
 test("test/harness.json is read as its contract says", () => {
   const good = readHarness();
-  assert.equal(good.version, 1);
+  assert.equal(good.version, 2);
   assert.deepEqual(harnessProblems(good), []);
   const copy = () => JSON.parse(JSON.stringify(good));
   const problems = (mutate) => {
@@ -129,7 +257,7 @@ test("test/harness.json is read as its contract says", () => {
   };
   // The version: missing, newer or not a whole number is refused.
   assert.equal(problems((d) => delete d.version).length, 1);
-  assert.match(problems((d) => (d.version = 2)).join(), /newer than this reader knows/);
+  assert.match(problems((d) => (d.version = 3)).join(), /newer than this reader knows/);
   assert.equal(problems((d) => (d.version = "1")).length, 1);
   // Unknown keys at every level, and a missing timeout.
   assert.match(problems((d) => (d.extra = 1)).join(), /extra: not a known key/);
@@ -155,6 +283,51 @@ test("test/harness.json is read as its contract says", () => {
   assert.equal(timeoutMs("compile", undefined, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness }), 2500);
   assert.equal(timeoutMs("compile", 0.25, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness }), 250);
   assert.equal(timeoutMs("projectOpen", undefined, { env: { TB_PROJECT_OPEN_TIMEOUT: "1" }, harness }), 15000);
+  // A package's entry in packageTimeouts (version 2) comes after the variable and before the
+  // file's timeouts, for that package only, and for the phases it sets only.
+  harness.packageTimeouts = { Big: { compile: 45, build: 20 } };
+  assert.equal(timeoutMs("compile", undefined, { env: {}, harness, pkg: "Big" }), 45000);
+  assert.equal(timeoutMs("compile", undefined, { env: {}, harness, pkg: "Small" }), 30000);
+  assert.equal(timeoutMs("compile", undefined, { env: {}, harness }), 30000);
+  assert.equal(timeoutMs("exeRun", undefined, { env: {}, harness, pkg: "Big" }), harness.timeouts.exeRun * 1000);
+  assert.equal(timeoutMs("compile", undefined, { env: { TB_COMPILE_TIMEOUT: "2.5" }, harness, pkg: "Big" }), 2500);
+  assert.equal(timeoutMs("compile", 0.25, { env: {}, harness, pkg: "Big" }), 250);
+  // As tool options for a tool that takes a tree: the phases the entry sets, a variable winning,
+  // the skipped ones left out, and nothing for a package with no entry.
+  assert.deepEqual(packageTimeoutArgs("Big", { env: {}, harness }), [
+    "--compile-timeout",
+    "45",
+    "--build-timeout",
+    "20",
+  ]);
+  assert.deepEqual(packageTimeoutArgs("Big", { env: { TB_BUILD_TIMEOUT: "3" }, harness, skip: ["compile"] }), [
+    "--build-timeout",
+    "3",
+  ]);
+  assert.deepEqual(packageTimeoutArgs("Small", { env: {}, harness }), []);
+  // Its shape: an object keyed by package, each a non-empty object of the phases a person can
+  // override, each a number of seconds; and none in a file of version 1.
+  assert.deepEqual(
+    problems((d) => (d.packageTimeouts = { Big: { compile: 60 } })),
+    [],
+  );
+  assert.match(
+    problems((d) => (d.packageTimeouts = [])).join(),
+    /packageTimeouts: it is not an object keyed by package/,
+  );
+  assert.match(problems((d) => (d.packageTimeouts = { Big: {} })).join(), /packageTimeouts: Big: not an object keyed/);
+  assert.match(
+    problems((d) => (d.packageTimeouts = { Big: { projectOpen: 20 } })).join(),
+    /Big\.projectOpen: not a phase a package may set/,
+  );
+  assert.match(problems((d) => (d.packageTimeouts = { Big: { compile: 0 } })).join(), /Big\.compile: not a number/);
+  assert.match(
+    problems((d) => {
+      d.version = 1;
+      d.packageTimeouts = { Big: { compile: 60 } };
+    }).join(),
+    /version 1 has no packageTimeouts/,
+  );
   for (const bad of ["0", "-3", "abc", " "]) {
     assert.throws(
       () => timeoutMs("build", undefined, { env: { TB_BUILD_TIMEOUT: bad }, harness }),

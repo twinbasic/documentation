@@ -1,0 +1,25 @@
+' A form of the CustomControls package (a WaynesForm) holding a grey WaynesFrame, Frame1, and a
+' green WaynesLabel, Label1. Once the form is shown, its timer gives both a red fill and reports
+' what is drawn, then has the whole window redrawn and reports again.
+[Description("")]
+[FormDesignerId("5C1E7A40-2B9D-4F63-8E15-A0D4C7B2E901")]
+Class Form1
+
+    Private Ticks As Long
+
+    Private Sub Timer1_Timer()
+        Ticks += 1
+        Select Case Ticks
+            Case 3
+                Frame1.BackgroundFill.ColorPoints.SetSolidColor vbRed
+                Label1.BackgroundFill.ColorPoints.SetSolidColor vbRed
+            Case 6
+                Startup.Report "fills set to red while shown"
+                Startup.Redraw
+            Case 9
+                Startup.Report "after RedrawWindow of the whole form"
+                Me.Close
+        End Select
+    End Sub
+
+End Class

@@ -27,3 +27,5 @@ GDI raster-operation values for the **DrawMode** property, controlling how the p
 | **vbMergePenNot**{: #vbMergePenNot } | 14 | Combination of the pen and the inverse of the screen. |
 | **vbMergePen**{: #vbMergePen } | 15 | Combination of the pen colour and the screen colour. |
 | **vbWhiteness**{: #vbWhiteness } | 16 | Output is white. |
+
+![Sixteen green bars, one in each DrawMode value, drawn across four bands of white, black, red and blue, showing what each mode makes of the pen's colour and the colour under it](Images/DrawModeConstants.png){:width="431" height="461"}

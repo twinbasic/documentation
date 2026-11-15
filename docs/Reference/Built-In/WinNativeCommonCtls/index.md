@@ -12,6 +12,8 @@ indexed_from: beta-x-1042
 
 The **WinNativeCommonCtls** built-in package is a VB6-compatible replacement for **Microsoft Common Controls 6.0** (the legacy `MSCOMCTL.OCX`), reimplemented on top of the Win32 ComCtl32 controls in `COMCTL32.DLL` and `MSFTEDIT.DLL`. It ships eight controls that mirror the MSCOMCTL member names where possible, with the same property / method / event spellings VB6 developers will recognise.
 
+![A form holding seven of the package's controls: a TreeView of folders, a ListView in report view, a MonthView with four days selected and two in bold, a DTPicker, an UpDown beside a text box, a Slider and a ProgressBar](Images/Overview.png){:width="541" height="432"}
+
 The package is a built-in package shipped with twinBASIC. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab.
 
 * TOC

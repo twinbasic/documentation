@@ -17,3 +17,5 @@ A reserved enumeration with the same three members as [**WindowState**](WindowSt
 | **tbNormal**{: #tbNormal } | 0 | Same value as [**WindowState.tbNormal**](WindowState#tbNormal). |
 | **tbMinimized**{: #tbMinimized } | 1 | Same value as [**WindowState.tbMinimized**](WindowState#tbMinimized). |
 | **tbMaximized**{: #tbMaximized } | 2 | Same value as [**WindowState.tbMaximized**](WindowState#tbMaximized). |
+
+Because the two enumerations share their member names, each name written alone is ambiguous (TB5073), even where a **WindowState** is expected: write [**WindowState**](WindowState)`.tbMaximized` and the like.

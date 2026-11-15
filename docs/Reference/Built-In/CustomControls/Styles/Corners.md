@@ -31,6 +31,8 @@ End With
 
 A circular control is just a square one with all four corners set to [**tbCurve**](../Enumerations/CornerShape#tbCurve) and a radius greater than or equal to half the control's smaller dimension --- that is what the `Circle` button in the package's sample forms uses.
 
+![Buttons in their default blue: tbCurve with rounded corners, tbNotched with each corner cut off diagonally, tbCutOut with a square cut out of each corner, Radius 0 with square corners, Mixed with a different corner on each side, and a round button whose radius is half its side](../Enumerations/Images/CornerShape.png){:width="601" height="265"}
+
 * TOC
 {:toc}
 
@@ -85,7 +87,7 @@ A single corner of a [**Corners**](#) object. Has a [**Shape**](#shape) (curve, 
 ### Radius
 {: .no_toc }
 
-The corner's radius in pixels. The interpretation depends on [**Shape**](#shape): for **tbCurve** it is the radius of the quarter-circle, for **tbNotched** the cut depth, and for **tbCutOut** the depth of the carved-out region. [**PixelCount**](../Enumerations/PixelCount). Default: 0 (a sharp 90° corner regardless of **Shape**).
+The corner's radius in pixels. The interpretation depends on [**Shape**](#shape): for **tbCurve** it is the radius of the quarter-circle, for **tbNotched** the cut depth, and for **tbCutOut** the side of the square cut out. [**PixelCount**](../Enumerations/PixelCount). Default: 0 (a sharp 90° corner regardless of **Shape**).
 
 ### Shape
 {: .no_toc }

@@ -29,6 +29,8 @@ The *color* argument has these settings:
 | 6 | Yellow | 14 | Light Yellow |
 | 7 | White | 15 | Bright White |
 
+![The sixteen QBColor colours, from 0 Black to 15 Bright White, each a swatch with its number and name](Images/QBColor.png){:width="753" height="205"}
+
 The *color* argument represents colour values used by earlier versions of Basic --- Microsoft Visual Basic for MS-DOS and the QuickBASIC compiler. Starting with the least-significant byte, the returned value specifies the red, green, and blue components used to set the corresponding colour in the RGB system, exactly as if [**RGB**](RGB) had been called with those components.
 
 <!-- errors: generated from errors/VBA.Information.yml by scripts/errors.mjs write; edit the data, not this section -->

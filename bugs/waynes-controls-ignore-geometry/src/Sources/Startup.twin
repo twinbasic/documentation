@@ -1,0 +1,63 @@
+' A control of the CustomControls package keeps the place, size and visibility its form designer
+' saved for most of what the code sets. Set in the form's constructor, before the form is first
+' drawn, Left, Height and Dock are drawn as set, and Top, Width and Visible are not; set while the
+' form is shown, none of the six is. Each property reads back the value the code set. The order of
+' the assignments makes no difference, and nor does redrawing the whole window. A control's
+' BackgroundFill, set in the same places, is drawn as set.
+' Sub Main shows Form1 twice: the first time it changes its labels in Sub New, the second time
+' once it is shown; each time it reports, for each label, where it is drawn.
+' Run it with: node scripts/bug_repro.mjs run waynes-controls-ignore-geometry
+Module Startup
+
+    Private Declare PtrSafe Function FindWindowExW Lib "user32" (ByVal hWndParent As LongPtr, ByVal hWndChildAfter As LongPtr, _
+        ByVal lpszClass As LongPtr, ByVal lpszWindow As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+
+    Public InNew As Boolean
+
+    Public Sub Main()
+        InNew = True
+        Dim f As New Form1
+        f.Show vbModal
+        InNew = False
+        Dim g As New Form1
+        g.Show vbModal
+    End Sub
+
+    ' The window of this process's form: a form of the package is a window of the class tbForm.
+    Private Function FormWindow() As LongPtr
+        Dim h As LongPtr
+        Do
+            h = FindWindowExW(0, h, StrPtr("tbForm"), 0)
+            If h = 0 Then Err.Raise 5, , "the form has no window"
+            Dim pid As Long
+            GetWindowThreadProcessId h, pid
+            If pid = GetCurrentProcessId() Then Return h
+        Loop
+    End Function
+
+    ' Whether a point of the form, in pixels at 96 DPI, is drawn green.
+    Private Function Green(ByVal x As Long, ByVal y As Long) As Boolean
+        Dim h As LongPtr = FormWindow()
+        Dim dpi As Long = GetDpiForWindow(h)
+        Dim dc As LongPtr = GetDC(h)
+        Green = GetPixel(dc, x * dpi \ 96, y * dpi \ 96) = vbGreen
+        ReleaseDC h, dc
+    End Function
+
+    Public Sub Report(ByVal f As Form1)
+        Dim p As String = IIf(InNew, "in Sub New, ", "while shown, ")
+        Debug.Print p & "L1.Left = " & f.L1.Left & " (designed 20): drawn at the old place " & Green(30, 70) & ", at the new place " & Green(120, 70)
+        Debug.Print p & "L2.Top = " & f.L2.Top & " (designed 40): drawn at the old place " & Green(170, 50) & ", at the new place " & Green(170, 170)
+        Debug.Print p & "L3.Width = " & f.L3.Width & " (designed 80): drawn past the old width " & Green(330, 70)
+        Debug.Print p & "L4.Height = " & f.L4.Height & " (designed 60): drawn past the old height " & Green(390, 140)
+        Debug.Print p & "L5.Visible = " & f.L5.Visible & ": drawn " & Green(500, 70)
+        Debug.Print p & "L6.Dock = tbDockRight: drawn at the right edge " & Green(595, 250) & ", at the old place " & Green(30, 250)
+    End Sub
+
+End Module

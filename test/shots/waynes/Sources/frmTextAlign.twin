@@ -1,0 +1,25 @@
+[Description("")]
+[FormDesignerId("2BFC73D4-057B-4119-AF25-467E6F505F52")]
+Class frmTextAlign
+
+    ' TextAlignment's picture: the nine values, each on a label of the same size and colour.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Dim names As Variant = Array("tbAlignTopLeft", "tbAlignTopCenter", "tbAlignTopRight", _
+            "tbAlignMiddleLeft", "tbAlignMiddleCenter", "tbAlignMiddleRight", _
+            "tbAlignBottomLeft", "tbAlignBottomCenter", "tbAlignBottomRight")
+        Dim v As Long
+        For v = 0 To 8
+            Dim l As WaynesLabel = Shots.Ctl(Me, "lblAlign" & v)
+            l.BackgroundFill.ColorPoints.SetSolidColor RGB(248, 244, 232)
+            l.Caption = names(v) & " (" & v & ")"
+            l.TextRendering.Font.Size = 10
+            l.TextRendering.Alignment = v
+        Next
+    End Sub
+
+End Class

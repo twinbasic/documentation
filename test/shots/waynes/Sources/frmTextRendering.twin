@@ -1,0 +1,35 @@
+[Description("")]
+[FormDesignerId("B2AD9431-0167-4540-A931-A79E5BDA4C24")]
+Class frmTextRendering
+
+    ' TextRendering's picture: the page's two samples, a title label (on a dark fill, for its
+    ' white text) and a button's text drawn in a gradient with an outline.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        lblTitle.BackgroundFill.ColorPoints.SetSolidColor RGB(40, 60, 90)
+        With lblTitle.TextRendering
+            .Font.Size = 18
+            .Font.Weight = tbBold
+            .Alignment = tbAlignMiddleCenter
+            .Fill.ColorPoints.SetSolidColor vbWhite
+        End With
+        Shots.Defaults btnGo
+        With btnGo.NormalState.TextRendering
+            .Font.Size = 32
+            .Font.Weight = tbBold
+            .Alignment = tbAlignMiddleCenter
+            .Fill.SetSimplePattern vbWhite, &HCCCCFF, _
+                    Pattern:=tbGradientNorthToSouth
+            Dim outline(0 To 0) As CustomControlsPackage.Border
+            Set outline(0) = New CustomControlsPackage.Border
+            outline(0).StrokeSize = 2
+            outline(0).Fill.ColorPoints.SetSolidColor vbBlack
+            .Outlines = outline
+        End With
+    End Sub
+
+End Class

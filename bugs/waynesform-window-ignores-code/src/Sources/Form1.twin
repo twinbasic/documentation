@@ -1,0 +1,36 @@
+' A form of the CustomControls package (a WaynesForm), designed with the caption "Designer
+' caption", 400 x 200 pixels, a sizable border and a maximize button. Its constructor sets other
+' values; once the form is shown, its timer prints each property beside what the window has.
+[Description("")]
+[FormDesignerId("5C1E7A40-2B9D-4F63-8E15-A0D4C7B2E901")]
+Class Form1
+
+    Sub New()
+        Me.Caption = "Set in code"
+        Me.Width = 300
+        Me.BackgroundFill.ColorPoints.SetSolidColor vbRed
+        Me.WindowsOptions.MaximizeButton = False
+        Me.WindowsOptions.BorderStyle = tbFixedSingle
+    End Sub
+
+    Private Ticks As Long
+
+    Private Sub Timer1_Timer()
+        Ticks += 1
+        If Ticks = 3 Then
+            Debug.Print "-- set in Sub New, before Show:"
+            Startup.Report Me
+            ' the same properties set again on the form as it is shown
+            Me.Caption = "Set when shown"
+            Me.Width = 250
+            Me.BackgroundFill.ColorPoints.SetSolidColor vbBlue
+            Me.WindowsOptions.MaximizeButton = False
+            Me.WindowsOptions.BorderStyle = tbFixedSingle
+        ElseIf Ticks = 6 Then
+            Debug.Print "-- set again while shown:"
+            Startup.Report Me
+            Me.Close
+        End If
+    End Sub
+
+End Class

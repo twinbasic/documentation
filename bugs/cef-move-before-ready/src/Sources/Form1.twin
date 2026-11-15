@@ -1,0 +1,37 @@
+' A form holding one CefBrowser, which records the events the control raises.
+
+[FormDesignerId("C3F1A8D2-6B4E-4F17-9A25-0E7D5B3C8F41")]
+[PredeclaredId]
+Class Form1
+
+    ' Set before the form is shown: whether Form_Load moves the control.
+    Public MoveInLoad As Boolean
+    Public IsReady As Boolean
+    Public Failure As String
+    ' The events the control has raised, in order.
+    Public Events As String
+
+    Private Sub Form_Load()
+        If MoveInLoad Then
+            CefBrowser1.Move CefBrowser1.Left, CefBrowser1.Top, CefBrowser1.Width - 150, CefBrowser1.Height
+        End If
+    End Sub
+
+    Private Sub CefBrowser1_Create()
+        Events &= " Create"
+        Dim ours As String = Environ$("TEMP") & "\tb-cef\145_win32\145_0_7632_160_Win32\"
+        If Len(Dir$(ours & "libcef.dll")) Then CefBrowser1.EnvironmentOptions.BrowserExecutableFolder = ours
+        CefBrowser1.EnvironmentOptions.UserDataFolder = Environ$("TEMP") & "\cef-move-before-ready"
+    End Sub
+
+    Private Sub CefBrowser1_Ready()
+        Events &= " Ready"
+        IsReady = True
+    End Sub
+
+    Private Sub CefBrowser1_Error(ByVal code As Long, ByVal msg As String)
+        Events &= " Error"
+        Failure = " (" & code & ": " & msg & ")"
+    End Sub
+
+End Class

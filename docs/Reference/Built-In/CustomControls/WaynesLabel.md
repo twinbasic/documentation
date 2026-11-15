@@ -10,8 +10,8 @@ has_toc: false
 
 A static text-display control. Paints a [**Caption**](#caption) string inside its rectangle using the configured [**TextRendering**](#textrendering), on top of a [**BackgroundFill**](#backgroundfill). The label has no interactive states --- appearance is the same whether the mouse is hovering over it or not.
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     lblHeader.Caption = "Hello, world"
     With lblHeader.TextRendering
         .Font.Size = 14

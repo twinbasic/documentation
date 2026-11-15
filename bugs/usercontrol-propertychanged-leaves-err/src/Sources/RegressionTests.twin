@@ -1,0 +1,67 @@
+' The issue's regression tests. One [TestCase] Sub per behaviour, named for it,
+' asserting the correct result; tbrun --tests runs each in the compiler's test
+' mode and prints PASS or FAIL.
+'
+' ProbeControl1 is a UserControl of this project on Form1. Its Property Let
+' WithChanged ends with UserControl.PropertyChanged "WithChanged", as every
+' property of a VB6-style control does; WithoutChanged does not call it.
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub PropertyLet_CallingPropertyChanged_LeavesErrZero()
+        Load Form1
+        On Error Resume Next
+        Err.Clear
+        Form1.ProbeControl1.WithChanged = 1
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Unload Form1
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub PropertyChangedWithNoName_LeavesErrZero()
+        Load Form1
+        On Error Resume Next
+        Err.Clear
+        Form1.ProbeControl1.CallsChangedNoName
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Unload Form1
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub PropertyLet_CallingPropertyChanged_LeavesErrZero_WithNoHandler()
+        ' No On Error at all: the assignment raises nothing, so Err should read 0 after it.
+        Load Form1
+        Err.Clear
+        Form1.ProbeControl1.WithChanged = 2
+        Dim n As Long = Err.Number
+        Unload Form1
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+    [TestCase]
+    Public Sub PropertyLet_CallingPropertyChanged_StoresTheValue()
+        Load Form1
+        Form1.ProbeControl1.WithChanged = 3
+        Dim v As Long = Form1.ProbeControl1.WithChanged
+        Unload Form1
+        Assert.Strict.AreEqual 3, v
+    End Sub
+
+    [TestCase]
+    Public Sub Control_PropertyLet_WithoutPropertyChanged_LeavesErrZero()
+        Load Form1
+        On Error Resume Next
+        Err.Clear
+        Form1.ProbeControl1.WithoutChanged = 1
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Unload Form1
+        Assert.Strict.AreEqual 0, n
+    End Sub
+
+End Module

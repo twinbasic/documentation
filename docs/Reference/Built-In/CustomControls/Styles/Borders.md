@@ -33,10 +33,10 @@ elems(0).StrokeSize = 4
 elems(0).Fill.ColorPoints.SetSolidColor vbBlack
 Set elems(1) = New CustomControlsPackage.Border
 elems(1).StrokeSize = 7
-elems(1).Fill.ColorPoints.SetSolidColor &H99CCFF       ' light blue band
+elems(1).Fill.ColorPoints.SetSolidColor &H99CCFF       ' light orange band
 Set elems(2) = New CustomControlsPackage.Border
 elems(2).StrokeSize = 4
-elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4       ' deeper blue
+elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4       ' brown
 btnGo.NormalState.Borders.Elements = elems
 ```
 
@@ -54,6 +54,10 @@ btnGo.NormalState.Borders.Elements = elems
 > an element already in [**Elements**](#elements) work in an ordinary project.
 
 A single [**Border**](#border-class) can also display a gradient instead of a solid colour --- assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
+
+A button in its default look, which has no border, and with each of the three samples above:
+
+![Four blue buttons: with no border; with a thin black border; with a thick black border; and with three borders inside each other, black outside, light orange in the middle and brown inside](Images/Borders.png){:width="733" height="197"}
 
 * TOC
 {:toc}

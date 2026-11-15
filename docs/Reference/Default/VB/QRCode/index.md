@@ -66,6 +66,8 @@ QR codes embed a Reed-Solomon parity stream that lets the decoder recover from d
 
 When [**EccBoost**](#eccboost) is **True** (default), the encoder raises the parity level beyond the configured minimum if doing so still fits the payload in the same QR version --- automatically achieving better resilience.
 
+![One payload, the documentation's address, encoded at the four EccMode levels from Low to High, the higher levels taking more modules, and once more with SquareModules False, its modules drawn as dots](Images/QRCode_EccMode.png){:width="821" height="201"}
+
 ## Version and mask
 
 The QR-code *version* (1 to 40) sets the matrix size: version 1 is 21 × 21 modules, version 40 is 177 × 177. [**MinVersion**](#minversion) and [**MaxVersion**](#maxversion) constrain the encoder's search; it picks the smallest version in the range that fits the payload at the chosen [**EccMode**](#eccmode). The defaults (`1` and `40`) span the full range. Values outside `1..40` are clamped, and if **MinVersion** ends up greater than **MaxVersion** it is reset to `1`.

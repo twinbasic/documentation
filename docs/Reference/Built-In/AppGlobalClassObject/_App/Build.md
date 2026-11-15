@@ -15,7 +15,7 @@ Syntax: *object*.**Build**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-**Build** returns the fourth component of the four-part version number (*Major*.*Minor*.*Revision*.*Build*) as set in the twinBASIC project settings. Together with [**Major**](Major), [**Minor**](Minor), and [**Revision**](Revision), it allows the running code to inspect its own version at runtime.
+**Build** returns the third component of the four-part version number (*Major*.*Minor*.*Build*.*Revision*), as set in [Project Settings](../../../IDE/Project-Settings#majorminorbuildrevision). Together with [**Major**](Major), [**Minor**](Minor), and [**Revision**](Revision), it allows the running code to inspect its own version at runtime.
 
 > [!NOTE]
 >
@@ -26,7 +26,7 @@ Syntax: *object*.**Build**
 This example prints the full version string to the debug console.
 
 ```tb check_build
-Debug.Print "Version: " & App.Major & "." & App.Minor & "." & App.Revision & "." & App.Build
+Debug.Print "Version: " & App.Major & "." & App.Minor & "." & App.Build & "." & App.Revision
 ```
 
 ### See Also

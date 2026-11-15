@@ -1,0 +1,58 @@
+' DebugConsole.PrintText against its ColorRGB argument, for a BETA 1042 defect in
+' BUGS-TO-REPORT.md (printtext-colorrgb-ignored): the IDE draws a line in a colour of its own
+' choosing, and only for five values of the argument; any other value, an RGB colour
+' included, gives the line the console's default colour.
+' console-colour.test.mjs builds it into its lane's copy of the install.
+'
+' Two toolbar buttons. "Colours" prints one line for each value but &HFD0000, each line
+' "[ConsoleColour] <name>", the name saying which value it was printed with. "Exception"
+' prints the line for &HFD0000, the value the compiler reports a native exception with,
+' which the IDE answers by turning its TRACE-MODE on. Every line starts "[ConsoleColour]".
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ConsoleColourAddin(Host)
+    End Function
+End Module
+
+Private Class ConsoleColourAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ColoursButton As Button
+    Private WithEvents ExceptionButton As Button
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "ConsoleColour Probe"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        With Host.Toolbars(0)
+            Set ColoursButton = .AddButton("ConsoleColourColours", "Console colour: colours")
+            Set ExceptionButton = .AddButton("ConsoleColourException", "Console colour: exception")
+        End With
+        Host.DebugConsole.PrintText "[ConsoleColour] loaded"
+    End Sub
+
+    Private Sub ColoursButton_OnClick()
+        With Host.DebugConsole
+            .PrintText "[ConsoleColour] none"
+            .PrintText "[ConsoleColour] zero", 0
+            .PrintText "[ConsoleColour] orange", RGB(255, 128, 0)
+            .PrintText "[ConsoleColour] red", RGB(255, 0, 0)
+            .PrintText "[ConsoleColour] green", RGB(0, 255, 0)
+            .PrintText "[ConsoleColour] blue", RGB(0, 0, 255)
+            .PrintText "[ConsoleColour] FE0000", &HFE0000
+            .PrintText "[ConsoleColour] FC0000", &HFC0000
+            .PrintText "[ConsoleColour] EAEAEA <b>bold</b>", &HEAEAEA
+            .PrintText "[ConsoleColour] done"
+        End With
+    End Sub
+
+    Private Sub ExceptionButton_OnClick()
+        Host.DebugConsole.PrintText "[ConsoleColour] FD0000", &HFD0000
+    End Sub
+End Class

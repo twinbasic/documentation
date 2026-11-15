@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^FAIL RegressionTests\\.PropertyLet_CallingPropertyChanged_LeavesErrZero: .*Actual: 438",
+      "^FAIL RegressionTests\\.PropertyChangedWithNoName_LeavesErrZero: .*Actual: 13",
+      "^FAIL RegressionTests\\.PropertyLet_CallingPropertyChanged_LeavesErrZero_WithNoHandler: .*Actual: 438",
+      "^PASS RegressionTests\\.PropertyLet_CallingPropertyChanged_StoresTheValue$",
+      "^PASS RegressionTests\\.Control_PropertyLet_WithoutPropertyChanged_LeavesErrZero$"
+    ]
+  }
+}

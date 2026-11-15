@@ -23,7 +23,7 @@ The gate on the publish allowlist. Everything under `docs/` that is not a page i
 
 A clean build shows only that nothing in `docs/` is refused, which an allowlist widened until it refuses nothing would show too. So this gate asserts the other half:
 
-- thirteen named probes must stay refused: a `.bak`, a `.pem`, a `.docx`, a `.twin`, a `secrets.json`, a `Thumbs.db`, a frontmatter-less `.md`, an extensionless `LICENSE`, a dotfile;
+- named probes must stay refused: a `.bak`, a `.pem`, a `.docx`, a `.twin`, a `secrets.json`, a `Thumbs.db`, a frontmatter-less `.md`, an extensionless `LICENSE`, a dotfile;
 - six must keep publishing: `.png`, `.PNG`, `.woff2`, `.txt`, `.html`, `CNAME`;
 - `bundle_extra` exemptions stay scoped to the exact declared path, not the extension everywhere;
 - the [help add-in's project file](Tools-Build#the-help-add-ins-project-file) publishes from the output trees at its declared path, and a `.twinproj` nowhere else;
@@ -75,7 +75,7 @@ Probes run in every pass, each a defect this repository shipped; a passing run p
 
 The admonition probes test the mirror fault, which the region comparison cannot see: **a rewrite that misreads what is code can also fail to fire on real prose**, and the regions still come back identical. `Reference/Attributes.md` shipped all six of its admonitions as the literal text `[!NOTE]` this way: a `[Description(...)]` sample held two fence markers in a twinBASIC string literal, the fence stasher closed the surrounding fence on them, and every later pairing was off by one.
 
-Four probes hold the rewrites over every page's rendered HTML, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. A `<pre>` or `<code>` written as raw HTML must come through as written, and a match outside it must still be rewritten.
+Probes hold the rewrites over every page's rendered HTML, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. A `<pre>` or `<code>` written as raw HTML must come through as written, and a match outside it must still be rewritten.
 
 The gate also covers `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules that tell the tools what in a page is code and where its frontmatter ends. On every page the sweep checks that `blockRegions`, which parses blocks only, finds exactly the fences, code blocks and HTML blocks of a full parse. More probes check that:
 
@@ -387,7 +387,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node scripts/check_page_baseline.mjs
 
-Verifies the [page-count drift guard](Building#the-page-count-drift-guard) still refuses what it exists to refuse, and still writes only where it may. Seventeen probes run against a scratch baseline file in the system temp directory, so `builder/page-baseline.json` is never touched. No browser, no built tree, well under a second.
+Verifies the [page-count drift guard](Building#the-page-count-drift-guard) still refuses what it exists to refuse, and still writes only where it may. Its probes run against a scratch baseline file in the system temp directory, so `builder/page-baseline.json` is never touched. No browser, no built tree, well under a second.
 
 The guard says nothing on a healthy tree, so a build whose guard has stopped working sounds the same. The first probe is a whole package lost to a blanket `exclude:` rule, which a fixed floor on the page count would not notice. Two probes look redundant and are not:
 
@@ -403,11 +403,11 @@ Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could
 
     node scripts/check_book_coverage.mjs
 
-Verifies the build still warns about a page [`docs/_book.yml`](Book-Configuration#pages-left-out-of-the-book) does not mention. Twelve probes run over a manifest and pages built in memory, so nothing here reads `docs/`. No browser, no built tree, well under a second.
+Verifies the build still warns about a page [`docs/_book.yml`](Book-Configuration#pages-left-out-of-the-book) does not mention. Its probes run over a manifest and pages built in memory, so nothing here reads `docs/`. No browser, no built tree, well under a second.
 
 The warnings say nothing when every page has an entry --- in a part, or in `left_out:` with a reason --- which is all a broken check would say too. Without these probes, a whole section can drop out of the PDF unreported.
 
-Eight probes give each of the five findings a fault to report: a page with no entry, a page in the book and in `left_out:`, an entry of each kind that selects no page, and a landing or foreword URL that names none. The other four hold the opposite: a consistent manifest reports nothing, and the three pages the book carries without a selector naming them --- a chaptered part's landing, a foreword, and the book page itself --- are never reported. Dropping any one emission site from `bookCoverage()` fails most of the twelve probes, and the probe named after that site says which.
+Some probes give each kind of finding a fault to report: a page with no entry, a page in the book and in `left_out:`, an entry of each kind that selects no page, and a landing or foreword URL that names none. The others hold the opposite: a consistent manifest reports nothing, and the three pages the book carries without a selector naming them --- a chaptered part's landing, a foreword, and the book page itself --- are never reported. Dropping any one emission site from `bookCoverage()` fails most of the probes, and the probe named after that site says which.
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
@@ -427,7 +427,7 @@ The same comment anywhere else opens a region, which `<!-- /test -->` closes: it
 
 Each item is a `Fixture.Sub` for a `[TestCase]`, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check; an item any page's marker may hold, such as a reproducer under `bugs/`, is [`check_callout_evidence.mjs`](#check-callout-evidence)'s to check. For a package with a test project, the gate fails when a callout has neither a marker nor a region around it, when a region is not closed or opens inside another, when an item names nothing that exists, when a case is named by no marker (a compile case of the package's `compile/` project included), when `compile/` holds a `[TestCase]`, when a `[TestCase]` does not start with `Expect.Begin` and end with `Expect.Done`, when `expect.json` is for another version than the section's `indexed_from` or names a case that does not exist, and when the generated `RunAll.twin` is out of date. A section with no test project yet is listed in the script's `PENDING` set; the gate fails on a name there with a project, and on a section neither there nor with one, so the list only shrinks.
 
-Thirteen probes run first, on pages, sources and an `expect.json` built in memory: how a marker, a region and their items are read, the RunAll module, how `expect.json` is read and written, and how a case's result is judged.
+Probes run first, on pages, sources and an `expect.json` built in memory: how a marker, a region and their items are read, the RunAll module, how `expect.json` is read and written, and how a case's result is judged.
 
 Exit codes: **0** every probe passed and every test project is in order, **1** a probe failed, or a section or test project is not in order, **2** the gate could not run: a refused command line, or a crash.
 
@@ -447,7 +447,7 @@ Besides a contributed package's own cases, an item is `bug <slug>` for a reprodu
 
 The gate fails when a callout labelled `BETA <n>` outside a generated section has neither a marker nor a region around it, when an item names nothing that exists, when a `sample` names a fence that is hidden context or an id two fences share, when a page outside a contributed package's section names a package's test case, when a region outside those sections is not closed or opens inside another, when a page still has the old `<!-- bug: <slug> -->` comment, and when a fence marked [`probe`](Tools-Samples#probes), which the reader never sees, is named by no marker.
 
-Fourteen probes run first, on pages, an index of what exists and tool reports built in memory: how a marker, a region, an errors section and their items are read, that a marker in a fence or in indented code is text, what an item that names nothing is, and, for `recheck_callouts.mjs`, how each tool's report is read, how a callout's verdict is taken from its items, and how its label is moved.
+Probes run first, on pages, an index of what exists and tool reports built in memory: how a marker, a region, an errors section and their items are read, that a marker in a fence or in indented code is text, what an item that names nothing is, and, for `recheck_callouts.mjs`, how each tool's report is read, how a callout's verdict is taken from its items, and how its label is moved.
 
 Exit codes: **0** every probe passed and every labelled callout and marker is in order, **1** a probe failed, or a callout or marker is not in order, **2** the gate could not run: a refused command line, or a crash.
 
@@ -458,7 +458,7 @@ Exit codes: **0** every probe passed and every labelled callout and marker is in
 
 Verifies that every reference page's Common Errors section is what [`errors.mjs write`](Tools-Defects#errors) makes of the run-time error data under `errors/`, and that the data is in order: every file reads, with no key it does not know; every error number it names has its message in `errors/messages.yml`; a row that differs from VB6 names its reproducer under `bugs/`, or says `pending`; every page it names exists, has a title and a permalink, and is named by one file only; no page under `docs/` has a section that no data file names; and the index of the numbers on the central page, [Run-time Errors](../../Reference/Run-time-Errors), is what `write` makes of the data and `errors/messages.yml`. It reads only the sources, so it needs no twinBASIC, no VB6 and no built tree. Measuring the data is `errors.mjs run`, and measuring the messages `errors.mjs messages`; neither is a gate.
 
-Twenty-eight probes run first, on data and pages built in memory: how the data and the messages are read and refused, the section with its numbers linked to the central page, its rows for one number merged into one, and its VB6 note, where a new section goes and that a marker inside a fence is not one, that writing twice changes nothing and removing a section gives the page back, the links between permalinks, the central page's index and its markers, how the probe modules and their output are read, and how the measured messages are compared with the list.
+Probes run first, on data and pages built in memory: how the data and the messages are read and refused, the section with its numbers linked to the central page, its rows for one number merged into one, and its VB6 note, where a new section goes and that a marker inside a fence is not one, that writing twice changes nothing and removing a section gives the page back, the links between permalinks, the central page's index and its markers, how the probe modules and their output are read, and how the measured messages are compared with the list.
 
 Exit codes: **0** every probe passed and every section matches its data, **1** a probe failed, or the data or a section is not in order, **2** the gate could not run: a refused command line, or a crash.
 

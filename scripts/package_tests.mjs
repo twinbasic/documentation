@@ -6,8 +6,9 @@
 //
 //       <Package>         a package with a test project, matched to its folder without regard
 //                         to case (tbregexp is tbRegExp)
-//       --all-packages    every package with a test project; a run of all of them takes several
-//                         minutes a package, so it is never the default
+//       --all-packages    every package with a test project but those in ALL_PACKAGES_SKIP
+//                         (lib/package-tests.mjs), which run only when named; a run of all of
+//                         them takes several minutes a package, so it is never the default
 //       --arch <a>        win32, win64 or both (default both)
 //       --timeout <secs>  how long one case may take (default 60)
 //       --hang-timeout <secs>  how long a case expect.json says never returns is given (default 20)
@@ -61,6 +62,7 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import {
+  ALL_PACKAGES_SKIP,
   COMPILE_DIR,
   compileOnlyNames,
   compileSources,
@@ -91,6 +93,7 @@ import {
   runAllText,
   runExeText,
 } from "./lib/package-test-cases.mjs";
+import { HarnessError, packageTimeoutArgs, readHarness } from "./lib/harness-settings.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
 
 const ROOT = path.join(REPO_ROOT, "test", "package-tests");
@@ -105,9 +108,9 @@ Runs package test projects under test/package-tests/ with tbrun --tests, each
 with its package embedded, and judges every case against the package's
 expect.json: documented (as it says), fixed (expected to fail or never return,
 and passes) or changed. Name one or more packages (in any case), or pass
---all-packages to run every project.
+--all-packages to run every project but GdiPlus, which runs only when named.
 
-  --all-packages          run every package's test project
+  --all-packages          run every package's test project but GdiPlus
   --arch <a>              win32, win64 or both (default both)
   --timeout <secs>        how long one case may take (default 60)
   --hang-timeout <secs>   how long a case that never returns is given (default 20)
@@ -156,6 +159,15 @@ const opts = withUsageError(
 
 exitOnCrash();
 
+// test/harness.json, whose per-package timeouts reach tbrun as options (packageTimeoutArgs): a
+// fault in it is exit 2, before anything starts.
+try {
+  readHarness();
+} catch (e) {
+  if (!(e instanceof HarnessError)) throw e;
+  die(2, e.message);
+}
+
 // The packages to run: those named, each matched to its folder without regard to case, or all
 // of them with --all-packages. Neither is refused, and so are both, before anything starts.
 const known = [...packageTestNames(ROOT), ...compileOnlyNames(ROOT)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -169,12 +181,16 @@ const missing = positionals.filter((p) => !byLower.has(p.toLowerCase()));
 if (missing.length) {
   die(2, `no test project for ${missing.join(", ")}; packages with a test project: ${knownList}\n${USAGE}`);
 }
-const packages = values.allPackages ? known : [...new Set(positionals.map((p) => byLower.get(p.toLowerCase())))];
+const packages = values.allPackages
+  ? known.filter((p) => !ALL_PACKAGES_SKIP.has(p))
+  : [...new Set(positionals.map((p) => byLower.get(p.toLowerCase())))];
 if (!packages.length) die(2, "test/package-tests/ holds no test project");
+const skipped = values.allPackages ? known.filter((p) => ALL_PACKAGES_SKIP.has(p)) : [];
 
 const say = (s) => {
   if (!values.json) console.log(s);
 };
+if (skipped.length) say(`left out of --all-packages: ${skipped.join(", ")} (name it to run it)`);
 
 for (const pkg of packages) await ensurePackage(templateSettings(TEMPLATES, pkg));
 
@@ -185,7 +201,7 @@ for (const pkg of packages) {
   report.push(r);
   if (r.cases.some((c) => c.verdict !== "documented")) failed = true;
 }
-if (values.json) console.log(JSON.stringify({ packages: report }, null, 2));
+if (values.json) console.log(JSON.stringify({ packages: report, skipped }, null, 2));
 process.exit(failed ? 1 : 0);
 
 // ---------------------------------------------------------------- one package
@@ -236,7 +252,7 @@ async function runPackage(pkg) {
     const compileHere = compileNames.filter((n) => runsOn(n, arch));
     if (compileHere.length) {
       const compileTree = stageTree(`${pkg}-${COMPILE_DIR}`, pkg, arch, template, compileFiles);
-      for (const r of tbrunCases(compileTree, arch, compileHere, opts.timeout))
+      for (const r of tbrunCases(compileTree, arch, compileHere, opts.timeout, pkg))
         outcomes.get(r.name)[arch] = outcomeOf(r);
     }
     if (exeNames.length && arches.includes(arch)) {
@@ -244,7 +260,7 @@ async function runPackage(pkg) {
       const exeTree = stageTree(`${pkg}-${EXE_DIR}`, pkg, arch, template, [...exeFiles, runner]);
       const server = await startServer(pkg);
       try {
-        for (const [name, o] of exeCases(exeTree, arch, exeNames, server?.port)) outcomes.get(name)[arch] = o;
+        for (const [name, o] of exeCases(exeTree, arch, exeNames, server?.port, pkg)) outcomes.get(name)[arch] = o;
       } finally {
         server?.child.kill();
       }
@@ -258,7 +274,7 @@ async function runPackage(pkg) {
     // send as "not run", and those are run again in a new IDE: by name, whatever order tbrun ran
     // the files in.
     while (rest.length) {
-      const results = tbrunCases(tree, arch, rest, opts.timeout);
+      const results = tbrunCases(tree, arch, rest, opts.timeout, pkg);
       const next = [];
       let stalled = null;
       for (const r of results) {
@@ -277,7 +293,7 @@ async function runPackage(pkg) {
       rest = next;
     }
     for (const name of hangs) {
-      const [r] = tbrunCases(tree, arch, [name], opts.hangTimeout);
+      const [r] = tbrunCases(tree, arch, [name], opts.hangTimeout, pkg);
       outcomes.get(name)[arch] = outcomeOf(r);
     }
   }
@@ -380,8 +396,8 @@ function startServer(pkg) {
 
 // tbrun --exe --json on the exe project; each case's outcome, by name. Exit 6 is an exe that ended
 // badly, which leaves the cases it did not reach with no line, and the reason in their detail.
-function exeCases(tree, arch, names, port) {
-  const args = [TBRUN, tree, "--exe", "--json", "--arch", arch];
+function exeCases(tree, arch, names, port, pkg) {
+  const args = [TBRUN, tree, "--exe", "--json", "--arch", arch, ...packageTimeoutArgs(pkg)];
   if (values.ide) args.push("--ide", values.ide);
   const env = port ? { ...process.env, PACKAGE_TEST_PORT: port } : process.env;
   const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env });
@@ -400,8 +416,10 @@ function exeCases(tree, arch, names, port) {
 }
 
 // tbrun --tests --json on some of the cases; its cases in the order asked.
-function tbrunCases(tree, arch, names, timeoutSecs) {
+function tbrunCases(tree, arch, names, timeoutSecs, pkg) {
+  // --timeout is the case's limit (compilerRun and exeRun); the package's entry gives the rest.
   const args = [TBRUN, tree, "--tests", "--json", "--arch", arch];
+  args.push(...packageTimeoutArgs(pkg, { skip: ["compilerRun", "exeRun"] }));
   args.push("--timeout", String(timeoutSecs), "--only", names.join(","));
   if (values.ide) args.push("--ide", values.ide);
   const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });

@@ -1,0 +1,10 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^fills set to red while shown: Frame1 drawn grey, Label1 drawn red$",
+      "^after RedrawWindow of the whole form: Frame1 drawn grey, Label1 drawn red$"
+    ]
+  }
+}

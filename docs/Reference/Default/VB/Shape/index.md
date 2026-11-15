@@ -55,6 +55,8 @@ For anything that needs those, use [**PictureBox**](../PictureBox/) or a custom 
 | **vbShapeArrowUp**            | 9     | Up-pointing arrow.                                                          |
 | **vbShapeArrowDown**          | 10    | Down-pointing arrow.                                                        |
 
+![The eleven Shape values drawn in the same bounds, wider than they are tall: rectangle, square, oval, circle, rounded rectangle, rounded square, star, and arrows pointing left, right, up and down](Images/Shape_Kinds.png){:width="725" height="353"}
+
 For **vbShapeCircle**, **vbShapeSquare**, and **vbShapeRoundedSquare**, the drawn primitive is square: the shorter of the control's width and height is used and the primitive is centred along the longer axis. The control's bounding rectangle is unchanged.
 
 ## Stars and arrows
@@ -97,6 +99,8 @@ A **Shape** is painted in three logical layers:
 | **vbGradientNS**          | 8     | Vertical gradient from [**FillColor**](#fillcolor) (top) to [**FillColorAlt**](#fillcoloralt) (bottom). |
 | **vbGradientWE**          | 9     | Horizontal gradient from [**FillColor**](#fillcolor) (left) to [**FillColorAlt**](#fillcoloralt) (right). |
 
+![Ten Shape controls, one in each FillStyle value: solid, transparent, six hatch patterns, and the gradients from top to bottom and from left to right between FillColor and FillColorAlt](Images/Shape_FillStyle.png){:width="671" height="249"}
+
 The gradient styles (**vbGradientNS**, **vbGradientWE**) use the Win32 `GradientFill` GDI primitive, which does not respect the world transform applied for rotation: when [**Angle**](#angle) is non-zero, the gradient styles fall back to a solid fill of [**FillColor**](#fillcolor). The hatch and gradient styles are clipped to the shape's outline using a GDI region matching the shape kind.
 
 ## Border
@@ -108,6 +112,8 @@ The outline is drawn with a Win32 GDI pen:
 - [**BorderStyle**](#borderstyle) -- the pen pattern, as a member of [**BorderStyleConstants**](../../VBRUN/Constants/BorderStyleConstants): **vbTransparent** (0 --- no outline), **vbBSSolid** (1, default), **vbBSDash** (2), **vbBSDot** (3), **vbBSDashDot** (4), **vbBSDashDotDot** (5), or **vbBSInsideSolid** (6).
 
 As with [**Line**](../Line/), GDI forces a solid pen whenever [**BorderWidth**](#borderwidth) is greater than `1` --- dashed and dotted patterns are only honoured at width `1`.
+
+![Seven pale Shape controls, one in each BorderStyle value at BorderWidth 1, from vbTransparent, with no outline, to vbBSInsideSolid](Images/Shape_BorderStyle.png){:width="581" height="249"}
 
 ## Rotation
 

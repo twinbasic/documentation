@@ -1,0 +1,130 @@
+Module Pictures
+
+    ' The pictures the scenes put in their image lists, made in code so that the fixture
+    ' carries no image file: Windows' stock icons, small or large (16 or 32 pixels at 96 DPI).
+
+    Private Type PICTDESC
+        cbSizeofstruct As Long
+        picType As Long
+        hImage As LongPtr
+        hPal As LongPtr
+    End Type
+
+    Private Type GUID
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PICTDESC, _
+        ByRef riid As GUID, ByVal fOwn As Long, ByRef Pic As IPicture) As Long
+    Private Type SHSTOCKICONINFO
+        cbSize As Long
+        hIcon As LongPtr
+        iSysImageIndex As Long
+        iIcon As Long
+        szPath(0 To 519) As Byte
+    End Type
+
+    Private Declare PtrSafe Function SHGetStockIconInfo Lib "shell32" (ByVal siid As Long, ByVal uFlags As Long, _
+        ByRef psii As SHSTOCKICONINFO) As Long
+
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal Width As Long, _
+        ByVal Height As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function FillRect Lib "user32" (ByVal hDC As LongPtr, ByRef Rect As RECT, ByVal hBrush As LongPtr) As Long
+    Private Declare PtrSafe Function DrawIconEx Lib "user32" (ByVal hDC As LongPtr, ByVal xLeft As Long, ByVal yTop As Long, _
+        ByVal hIcon As LongPtr, ByVal cxWidth As Long, ByVal cyWidth As Long, ByVal istepIfAniCur As Long, _
+        ByVal hbrFlickerFreeDraw As LongPtr, ByVal diFlags As Long) As Long
+
+    Private Declare PtrSafe Function GetSystemMetrics Lib "user32" (ByVal Index As Long) As Long
+
+    Private Const SM_CXICON As Long = 11
+    Private Const DI_NORMAL As Long = 3
+    Private Const PICTYPE_BITMAP As Long = 1
+    Private Const PICTYPE_ICON As Long = 3
+    Private Const SHGSI_ICON As Long = &H100&
+    Private Const SHGSI_SMALLICON As Long = &H1&
+
+    Public Const SIID_DOCNOASSOC As Long = 0
+    Public Const SIID_DOCASSOC As Long = 1
+    Public Const SIID_APPLICATION As Long = 2
+    Public Const SIID_FOLDER As Long = 3
+    Public Const SIID_FOLDEROPEN As Long = 4
+    Public Const SIID_DRIVEFIXED As Long = 8
+    Public Const SIID_AUDIOFILES As Long = 71
+    Public Const SIID_IMAGEFILES As Long = 72
+    Public Const SIID_INFO As Long = 79
+    Public Const SIID_DESKTOPPC As Long = 94
+    Public Const SIID_ZIPFILE As Long = 105
+
+    Private Function IID_IPicture() As GUID
+        Dim g As GUID
+        g.Data1 = &H7BF80980
+        g.Data2 = &HBF32
+        g.Data3 = &H101A
+        g.Data4(0) = &H8B: g.Data4(1) = &HBB: g.Data4(2) = &H0: g.Data4(3) = &HAA
+        g.Data4(4) = &H0: g.Data4(5) = &H30: g.Data4(6) = &HC: g.Data4(7) = &HAB
+        Return g
+    End Function
+
+    ' A Windows stock icon, the system's small icon size when Small, else its large one (16 and
+    ' 32 pixels at 96 DPI), owned by the picture.
+    Public Function StockIcon(ByVal Id As Long, Optional ByVal Small As Boolean = True) As StdPicture
+        Dim info As SHSTOCKICONINFO
+        info.cbSize = LenB(info)
+        If SHGetStockIconInfo(Id, SHGSI_ICON Or IIf(Small, SHGSI_SMALLICON, 0), info) <> 0 Then
+            Err.Raise 5, , "SHGetStockIconInfo failed for icon " & Id
+        End If
+        Dim d As PICTDESC
+        d.cbSizeofstruct = LenB(d)
+        d.picType = PICTYPE_ICON
+        d.hImage = info.hIcon
+        Dim p As IPicture
+        OleCreatePictureIndirect d, IID_IPicture(), 1, p
+        Return p
+    End Function
+
+    ' A Windows stock icon of the system's large icon size, drawn on the colour Back as a bitmap
+    ' owned by the picture: the kind of picture an ImageList's MaskColor makes transparent.
+    Public Function StockBitmap(ByVal Id As Long, ByVal Back As Long) As StdPicture
+        Dim icon As StdPicture = StockIcon(Id, False)
+        Dim screen As LongPtr = GetDC(0)
+        Dim dc As LongPtr = CreateCompatibleDC(screen)
+        Dim size As Long = GetSystemMetrics(SM_CXICON)
+        Dim bitmap As LongPtr = CreateCompatibleBitmap(screen, size, size)
+        ReleaseDC 0, screen
+        Dim old As LongPtr = SelectObject(dc, bitmap)
+        Dim r As RECT
+        r.Right = size
+        r.Bottom = size
+        Dim brush As LongPtr = CreateSolidBrush(Back)
+        FillRect dc, r, brush
+        DeleteObject brush
+        DrawIconEx dc, 0, 0, icon.Handle, size, size, 0, 0, DI_NORMAL
+        SelectObject dc, old
+        DeleteDC dc
+        Dim d As PICTDESC
+        d.cbSizeofstruct = LenB(d)
+        d.picType = PICTYPE_BITMAP
+        d.hImage = bitmap
+        Dim p As IPicture
+        OleCreatePictureIndirect d, IID_IPicture(), 1, p
+        Return p
+    End Function
+
+End Module

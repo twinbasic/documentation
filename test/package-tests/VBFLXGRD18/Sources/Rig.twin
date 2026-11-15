@@ -1,0 +1,49 @@
+' Rig: what the test cases of VBFLXGRD18 set up. A case works on the grid of a HostForm, which is
+' loaded and never shown.
+Module Rig
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+    Private Const MK_LBUTTON As Long = 1
+
+    ' The events the grid raised since the last call of ClearLog, one per line.
+    Public Log As String
+
+    Public Sub Ev(ByVal Text As String)
+        Log = Log & Text & vbLf
+    End Sub
+
+    Public Sub ClearLog()
+        Log = ""
+    End Sub
+
+    ' The events of the log as one line, each with its arguments, separated by " | ".
+    Public Function Events() As String
+        Dim lines() As String = Split(Log, vbLf)
+        Dim i As Long
+        For i = 0 To UBound(lines)
+            If Len(lines(i)) > 0 Then Events = Events & IIf(Len(Events) > 0, " | ", "") & lines(i)
+        Next
+    End Function
+
+    ' A loaded form, not shown, with the grid on its default properties.
+    Public Function NewForm() As HostForm
+        Dim f As New HostForm
+        Load f
+        Set NewForm = f
+        ClearLog
+    End Function
+
+    ' A press of the left button at the centre of a cell: the button down and the button up, sent
+    ' to the grid's window.
+    Public Sub ClickCell(ByVal f As HostForm, ByVal Row As Long, ByVal Col As Long)
+        Dim x As Long = CLng(f.ScaleX(f.Grid.ColPos(Col) + 100, vbTwips, vbPixels))
+        Dim y As Long = CLng(f.ScaleY(f.Grid.RowPos(Row) + 100, vbTwips, vbPixels))
+        Dim lp As LongPtr = CLngPtr(((y And &HFFFF&) * &H10000) Or (x And &HFFFF&))
+        SendMessageW f.Grid.hWnd, WM_LBUTTONDOWN, MK_LBUTTON, lp
+        SendMessageW f.Grid.hWnd, WM_LBUTTONUP, 0, lp
+    End Sub
+
+End Module

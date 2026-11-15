@@ -14,3 +14,5 @@ Style values for the **Style** property of a list-box control.
 | **vbListBoxStandard**{: #vbListBoxStandard } | 0 | Standard list box: each item is a string. |
 | **vbListBoxCheckbox**{: #vbListBoxCheckbox } | 1 | Each item shows a check box that the user can toggle independently of the selection. |
 | **vbListBoxColorSwatch**{: #vbListBoxColorSwatch } | 2 | Each item shows a colour swatch alongside its text. |
+
+![List boxes in the three styles, Standard, Checkbox with three items checked and ColorSwatch with a colour beside each item, and a list box whose Columns is 3, its fifteen items laid out in three columns](../../VB/ListBox/Images/ListBox_Styles.png){:width="471" height="305"}

@@ -15,7 +15,7 @@ Syntax: *object*.**FileDescription**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-**FileDescription** returns the value set in the project's **File Description** version-info field. This is the human-readable description of the executable that appears in Windows Explorer's file properties dialog. When no description has been set in the project settings, the property returns an empty string.
+**FileDescription** returns the value set in the project's **File Description** version-info field, in [Project Settings](../../../IDE/Project-Settings#file-description). This is the human-readable description of the executable that appears in Windows Explorer's file properties dialog. When no description has been set in the project settings, the property returns an empty string.
 
 ### Example
 

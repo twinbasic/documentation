@@ -1,0 +1,140 @@
+' ClipHolder: a second process that keeps the clipboard open, so that a case can see what the grid does
+' when the clipboard is not free. The process is PowerShell, started with no window at all
+' (CREATE_NO_WINDOW), and ended by the case. Its script is written under
+' %TEMP%\tbdocs-package-tests\VBFLXGRD18\.
+Module ClipHolder
+
+    Private Declare PtrSafe Function CreateProcessW Lib "kernel32" (ByVal lpApplicationName As LongPtr, ByVal lpCommandLine As LongPtr, ByVal lpProcessAttributes As LongPtr, ByVal lpThreadAttributes As LongPtr, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As LongPtr, ByVal lpCurrentDirectory As LongPtr, ByRef lpStartupInfo As STARTUPINFOW, ByRef lpProcessInformation As PROCESS_INFORMATION) As Long
+    Private Declare PtrSafe Function TerminateProcess Lib "kernel32" (ByVal hProcess As LongPtr, ByVal uExitCode As Long) As Long
+    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" (ByVal hHandle As LongPtr, ByVal dwMilliseconds As Long) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+    Private Declare PtrSafe Function OpenClipboard Lib "user32" (ByVal hWndNewOwner As LongPtr) As Long
+    Private Declare PtrSafe Function CloseClipboard Lib "user32" () As Long
+
+    Private Type STARTUPINFOW
+        cb As Long
+        lpReserved As LongPtr
+        lpDesktop As LongPtr
+        lpTitle As LongPtr
+        dwX As Long
+        dwY As Long
+        dwXSize As Long
+        dwYSize As Long
+        dwXCountChars As Long
+        dwYCountChars As Long
+        dwFillAttribute As Long
+        dwFlags As Long
+        wShowWindow As Integer
+        cbReserved2 As Integer
+        lpReserved2 As LongPtr
+        hStdInput As LongPtr
+        hStdOutput As LongPtr
+        hStdError As LongPtr
+    End Type
+
+    Private Type PROCESS_INFORMATION
+        hProcess As LongPtr
+        hThread As LongPtr
+        dwProcessId As Long
+        dwThreadId As Long
+    End Type
+
+    Private mProcess As LongPtr
+    Private mReady As String
+
+    ' The folder the cases keep their files in.
+    Public Function WorkFolder() As String
+        Dim p As String = Environ$("TEMP") & "\tbdocs-package-tests"
+        If Dir$(p, vbDirectory) = "" Then MkDir p
+        p = p & "\VBFLXGRD18"
+        If Dir$(p, vbDirectory) = "" Then MkDir p
+        WorkFolder = p
+    End Function
+
+    Private Sub Ln(ByVal FileNumber As Long, ByVal Text As String)
+        Print #FileNumber, Text
+    End Sub
+
+    Private Sub WriteScript(ByVal Path As String)
+        Dim n As Long = FreeFile
+        Open Path For Output As #n
+        Ln n, "Add-Type -TypeDefinition @'"
+        Ln n, "using System; using System.Runtime.InteropServices;"
+        Ln n, "public static class CB {"
+        Ln n, "  [DllImport(""user32.dll"")] static extern bool OpenClipboard(IntPtr h);"
+        Ln n, "  [DllImport(""user32.dll"")] static extern bool CloseClipboard();"
+        Ln n, "  [DllImport(""user32.dll"", CharSet = CharSet.Unicode)] static extern IntPtr CreateWindowEx(int ex, string cls, string name, int style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr inst, IntPtr param);"
+        Ln n, "  public static void Run(string mode, string ready) {"
+        Ln n, "    bool first = true;"
+        Ln n, "    IntPtr win = CreateWindowEx(0, ""STATIC"", """", 0, 0, 0, 0, 0, new IntPtr(-3), IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);"
+        Ln n, "    if (mode == ""hold"") {"
+        Ln n, "      while (!OpenClipboard(win)) { }"
+        Ln n, "      System.IO.File.WriteAllText(ready, ""r"");"
+        Ln n, "      System.Threading.Thread.Sleep(120000);"
+        Ln n, "    } else {"
+        Ln n, "      while (true) {"
+        Ln n, "        if (OpenClipboard(win)) {"
+        Ln n, "          if (first) { System.IO.File.WriteAllText(ready, ""r""); first = false; }"
+        Ln n, "          CloseClipboard();"
+        Ln n, "        }"
+        Ln n, "      }"
+        Ln n, "    }"
+        Ln n, "  }"
+        Ln n, "}"
+        Ln n, "'@"
+        Ln n, "[CB]::Run($args[0], $args[1])"
+        Close #n
+    End Sub
+
+    ' Starts the process. Mode is "hold" (it opens the clipboard and keeps it open) or "thrash" (it opens
+    ' and closes it again and again without a pause). Returns True once the process has done its first
+    ' open, which takes a few seconds (PowerShell compiles its code first).
+    Public Function Start(ByVal Mode As String) As Boolean
+        Dim folder As String = WorkFolder()
+        Dim script As String = folder & "\holder.ps1"
+        mReady = folder & "\ready.txt"
+        If Dir$(mReady) <> "" Then Kill mReady
+        WriteScript script
+        Dim ps As String = Environ$("SystemRoot") & "\System32\WindowsPowerShell\v1.0\powershell.exe"
+        Dim cmd As String = """" & ps & """ -NoProfile -NonInteractive -ExecutionPolicy Bypass -File """ & script & """ " & Mode & " """ & mReady & """"
+        Dim si As STARTUPINFOW
+        Dim pi As PROCESS_INFORMATION
+        si.cb = LenB(si)
+        If CreateProcessW(0, StrPtr(cmd), 0, 0, 0, &H8000000, 0, 0, si, pi) = 0 Then Exit Function
+        mProcess = pi.hProcess
+        CloseHandle pi.hThread
+        Dim i As Long
+        For i = 1 To 600
+            If Dir$(mReady) <> "" Then
+                If Mode = "hold" Then
+                    ' the clipboard must now be closed to every other program
+                    If OpenClipboard(0) <> 0 Then
+                        CloseClipboard
+                        Exit Function
+                    End If
+                End If
+                Start = True
+                Exit Function
+            End If
+            Sleep 50
+        Next
+    End Function
+
+    ' Ends the process, which frees the clipboard, and removes the files.
+    Public Sub Finish()
+        If mProcess <> 0 Then
+            TerminateProcess mProcess, 0
+            WaitForSingleObject mProcess, 5000
+            CloseHandle mProcess
+            mProcess = 0
+        End If
+        On Error Resume Next
+        Kill WorkFolder() & "\holder.ps1"
+        Kill WorkFolder() & "\ready.txt"
+        RmDir WorkFolder()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        On Error GoTo 0
+    End Sub
+
+End Module

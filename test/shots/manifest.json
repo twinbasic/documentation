@@ -390,6 +390,12 @@
     "IDE/Images/New_Project_Samples.png": {
       "build": 1042
     },
+    "IDE/Images/ProjectSettings_VersionInfo.light.png": {
+      "build": 1042
+    },
+    "IDE/Images/ProjectSettings_VersionInfo.png": {
+      "build": 1042
+    },
     "IDE/Images/Splash_Screen.light.png": {
       "build": 1042
     },
@@ -665,6 +671,333 @@
     "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png": {
       "build": 1042
     },
+    "Reference/Built-In/CEF/CefBrowser/Images/CefBrowser_Page.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Enumerations/Images/BorderStyle.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Enumerations/Images/CornerShape.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Enumerations/Images/FillPattern.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Enumerations/Images/TextAlignment.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Enumerations/Images/TextOverflowMode.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Images/Overview.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Styles/Images/Borders.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Styles/Images/Fill.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/Styles/Images/TextRendering.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/WaynesButton/Images/WaynesButton_States.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/WaynesGrid/Images/WaynesGrid.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/WaynesSlider/Images/WaynesSlider.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/CustomControls/WaynesTextBox/Images/WaynesTextBox.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WebView2/WebView2/Images/WebView2_Page.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Enumerations/Images/ImlDrawConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Enumerations/Images/TreeBorderStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Enumerations/Images/TreeLineStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Images/DTPicker.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Images/MonthView.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Images/Overview.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Images/ProgressBar.png": {
+      "build": 1042,
+      "scale": 1.5,
+      "png": {
+        "ignore": [
+          [374, 239, 738, 271]
+        ]
+      }
+    },
+    "Reference/Built-In/WinNativeCommonCtls/Images/Slider.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/ListView/Images/ListView_Views.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/WinNativeCommonCtls/TreeView/Images/TreeView_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Built-In/tbIDE/Images/DebugConsole_PrintText.light.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/DebugConsole_PrintText.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/Sample10.light.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/Sample10.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/ToolWindow.light.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/ToolWindow.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/ToolWindow_Docked.light.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/ToolWindow_Docked.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/Toolbar.light.png": {
+      "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/Toolbar.png": {
+      "build": 1042
+    },
+    "Reference/Contributed/AutoCompleteLib/Images/Options.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowColor.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowFind.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowFolderBrowser.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBComDlg/Images/ShowFont.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Appearance_GridLines.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Appearance_TextStyles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Appearance_WallPaper.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/CellFormatting_Cells.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/CheckBoxes_States.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/ComboEditing_Calendar.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/ComboEditing_Cues.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/ComboEditing_DropDown.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Editing_EditBox.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Merging_Free.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/MouseAndKeyboard_InsertMarks.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Overview.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Selection_Modes.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Sorting_Arrows.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Structure_Zones.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/Text_Wrapping.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/xCalendar/Images/Areas.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/xCalendar/Images/Enabled.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/xCalendar/Images/GridCellEffect.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/xCalendar/Images/Sample.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/CheckBox/Images/CheckBox_States.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/ComboBox/Images/ComboBox_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/CommandButton/Images/CommandButton_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/Form/Images/Form_BorderStyle.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/ListBox/Images/ListBox_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/MDIForm/Images/MDIForm_Cascade.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/MDIForm/Images/MDIForm_TileHorizontal.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/MDIForm/Images/MDIForm_TileVertical.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/Menu/Images/Menu_File.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/OptionButton/Images/OptionButton_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/QRCode/Images/QRCode_EccMode.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/Shape/Images/Shape_BorderStyle.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/Shape/Images/Shape_FillStyle.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VB/Shape/Images/Shape_Kinds.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBA/Constants/Images/VbMsgBoxStyle_Buttons.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBA/Constants/Images/VbMsgBoxStyle_Icons.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBA/Information/Images/QBColor.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBA/Interaction/Images/InputBox.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBRUN/Constants/Images/DrawModeConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBRUN/Constants/Images/DrawStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBRUN/Constants/Images/FillStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBRUN/Constants/Images/MousePointerConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Default/VBRUN/Constants/Images/SystemColorConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Tutorials/CustomControls/Images/ccEvents.light.png": {
       "build": 1042
     },
@@ -705,6 +1038,12 @@
       "build": 1042
     },
     "Tutorials/CustomControls/Images/ccSampleProject.png": {
+      "build": 1042
+    },
+    "Tutorials/Images/Assert_Failed.light.png": {
+      "build": 1042
+    },
+    "Tutorials/Images/Assert_Failed.png": {
       "build": 1042
     },
     "Tutorials/WebView2/Images/tbWebView2Properties.light.png": {

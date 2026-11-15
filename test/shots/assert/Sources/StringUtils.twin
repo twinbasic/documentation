@@ -1,0 +1,18 @@
+Module StringUtils
+
+    ' The function under test of docs/Tutorials/Testing-with-Assert.md, with a bug put in for the
+    ' picture of a failed assertion (scripts/shoot_docs.mjs, setup assert): it pads on the right.
+
+    ' Pads s on the left with padChar until it reaches totalWidth characters.
+    ' If s is already at or beyond totalWidth, it is returned unchanged.
+    Public Function PadLeft(ByVal s As String, _
+                            ByVal totalWidth As Long, _
+                            Optional ByVal padChar As String = " ") As String
+        If Len(s) >= totalWidth Then
+            PadLeft = s
+        Else
+            PadLeft = s & String(totalWidth - Len(s), Left$(padChar, 1))
+        End If
+    End Function
+
+End Module

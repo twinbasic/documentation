@@ -54,6 +54,8 @@ Check1.Caption = "Use && in folder names"   ' renders as: Use & in folder names
 
 When [**Style**](#style) is **vbButtonGraphical**, the check box is owner-drawn and displays the bitmaps assigned to [**Picture**](#picture), [**DownPicture**](#downpicture), and [**DisabledPicture**](#disabledpicture) instead of the standard square. [**PictureAlignment**](#picturealignment), [**Padding**](#padding), and [**PictureDpiScaling**](#picturedpiscaling) control how the picture is positioned relative to the caption.
 
+![Check boxes unchecked, checked, grayed and disabled, one with its caption on the left (tbRightJustify), and two in the graphical style, the one up showing its Picture and the one down showing its DownPicture](Images/CheckBox_States.png){:width="541" height="151"}
+
 ## Data binding
 
 Setting [**DataSource**](#datasource) and [**DataField**](#datafield) connects the control's [**Value**](#value) to a field of a **Data** control's recordset. The bound field is read as a **Boolean**: a non-zero/`True` value sets [**Value**](#value) to **vbChecked**, zero/`False` sets it to **vbUnchecked**. Assigning a non-Boolean field value raises run-time error 13 (*Type mismatch*).

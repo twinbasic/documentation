@@ -1,0 +1,7 @@
+Module Startup
+
+    ' The project's startup object; the tests are run one procedure at a time (F6).
+    Public Sub Main()
+    End Sub
+
+End Module

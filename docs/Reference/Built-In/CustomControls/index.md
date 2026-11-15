@@ -12,12 +12,14 @@ indexed_from: beta-x-1042
 
 The **CustomControls** built-in package supplies a set of fully owner-drawn controls --- buttons, a form, a frame, a grid, a label, a slider, a textbox, and a timer --- together with the framework on which they are built. Every visible pixel is rendered by the package itself rather than by Windows, so the look and feel is identical across systems and is configured entirely through a small vocabulary of style objects ([**Fill**](Styles/Fill), [**Borders**](Styles/Borders), [**Corners**](Styles/Corners), [**TextRendering**](Styles/TextRendering), …) rather than by toggling theme flags.
 
+![A form of the package holding one of each visible control in its default look: a frame with a gradient as a header with a label on it, labels, a text box, a slider, a grid of three rows with row headers, and two buttons with rounded corners](Images/Overview.png){:width="601" height="425"}
+
 The package ships as two paired components: a **CustomControls DESIGNER** library --- the framework half, source-side project `CustomControls` --- that defines the rendering surface and the interface every custom control implements; and the **Custom Controls** package --- source-side project `CustomControlsPackage` --- that supplies the eight concrete `Waynes…` controls. The two are co-versioned with twinBASIC and always ship together; both are MIT-licensed.
 
 Beyond providing ready-to-use controls, the package doubles as a worked example for authoring new custom controls. The `Waynes…` classes implement the same [**ICustomControl**](Framework/ICustomControl) interface that a hand-written control would, against the same [**CustomControlContext**](Framework/CustomControlContext) callback object and [**Canvas**](Framework/Canvas) drawing surface --- see the [Framework](Framework/) page for the host-side contract.
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     btnGo.Caption = "Continue"
     btnGo.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue
     btnGo.NormalState.Corners.SetAll tbCurve, 12
@@ -28,6 +30,8 @@ Private Sub btnGo_Click()
     MsgBox "Hello, " & txtName.Value
 End Sub
 ```
+
+The controls are drawn on a [**WaynesForm**](WaynesForm/), the package's own form, and nowhere else: on a form of the [**VB**](../VB/) package they are created and their properties can be set, but nothing of them is drawn. A **WaynesForm** raises no **Load** event, so the code that sets up its controls goes in the form's constructor, `Sub New`, as above (see [Setting up a form](WaynesForm/#setting-up-a-form)). The samples on the controls' pages are written as a **WaynesForm**'s code in the same way.
 
 ## Controls
 
@@ -48,6 +52,10 @@ Every concrete control implements [**ICustomControl**](Framework/ICustomControl)
 
 These members are listed on each control's own page; their definitions are identical and are not repeated separately.
 
+<!-- test: bug waynes-controls-ignore-geometry -->
+> [!WARNING] BETA 1042
+> A control is drawn where and as the form designer placed it for most of what code sets. Set in the form's `Sub New`, **Left**, **Height** and **Dock** take effect, and **Top**, **Width** and **Visible** do not; set while the form is shown, none of them does --- the control is not moved, resized or hidden, and no error is raised. Each property reads back the value code gave it. Place and size the controls in the form designer. A control's style objects, such as its **BackgroundFill**, are drawn as code sets them.
+
 ## Style objects
 
 The visual style of every control is controlled by a few small helper classes, instantiated automatically through `Public WithEvents …` properties. They are nested arbitrarily --- a [**TextRendering**](Styles/TextRendering) contains a [**Fill**](Styles/Fill) for the text colour, which contains a `Granularity` and an array of `FillColorPoint` gradient stops; an array of [**Border**](Styles/Borders#border-class) objects describes how the outline of a control is stroked; and so on.
@@ -60,7 +68,7 @@ The visual style of every control is controlled by a few small helper classes, i
 - [Padding](Styles/Padding) -- per-side padding around text inside a [**TextRendering**](Styles/TextRendering)
 - [TextRendering](Styles/TextRendering) -- font, padding, fill, outlines, alignment, and overflow for the text drawn inside a control (including the `FontStyle` sub-object)
 
-Every style object raises an **OnChanged** event whenever one of its fields is set, and the control that hosts it requests a repaint on each change --- assigning style values at runtime triggers an immediate redraw.
+Every style object raises an **OnChanged** event whenever one of its fields is set, and the control that hosts it requests a repaint on each change --- assigning style values at runtime triggers an immediate redraw. A [**WaynesFrame**](WaynesFrame) is the exception: see the WARNING on its page.
 
 ## Framework
 

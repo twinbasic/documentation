@@ -1,0 +1,19 @@
+[Description("")]
+[FormDesignerId("6A1D3E52-8C47-4F0B-9E25-1B7D4C6A2E11")]
+[PredeclaredId]
+Class frmScene
+
+    Sub New()
+    End Sub
+
+    ' The days the MonthView shows in bold: three public holidays of December 2024 and January 2025.
+    Private Sub mv0_GetDayBold(ByVal StartDate As Date, ByVal Count As Integer, State() As Boolean)
+        Dim i As Long
+        For i = 1 To Count
+            Select Case DateAdd("d", i - 1, StartDate)
+                Case #12/25/2024#, #1/1/2025#, #1/20/2025#: State(i) = True
+            End Select
+        Next
+    End Sub
+
+End Class

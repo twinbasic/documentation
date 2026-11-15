@@ -18,3 +18,5 @@ Line-style values for the **DrawStyle** property, controlling the appearance of 
 | **vbDashDotDot**{: #vbDashDotDot } | 4 | Dash-dot-dot pattern. |
 | **vbInvisible**{: #vbInvisible } | 5 | The line is not drawn. |
 | **vbInsideSolid**{: #vbInsideSolid } | 6 | A solid line drawn entirely within the bounds of any closed shape. |
+
+![A form with a line one pixel wide in each DrawStyle value, from vbSolid to vbInsideSolid, vbInvisible drawing nothing, and two boxes drawn with DrawWidth 8, the vbSolid one straddling the box's coordinates and the vbInsideSolid one inside them, the coordinates marked in red](Images/DrawStyleConstants.png){:width="471" height="361"}

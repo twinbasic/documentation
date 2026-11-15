@@ -1,0 +1,39 @@
+' HostForm: a form that is loaded and never shown. It holds one VBFlexGrid control, Grid, and writes
+' the events a case looks at, with their arguments, into Rig.Log.
+
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F50")]
+[PredeclaredId]
+Class HostForm
+
+    ' The values a handler of BeforeRowColChange and of BeforeSelChange puts in Cancel.
+    Public CancelRowCol As Boolean
+    Public CancelSel As Boolean
+
+    Private Sub Grid_BeforeRowColChange(ByVal NewRow As Long, ByVal NewCol As Long, Cancel As Boolean) Handles Grid.BeforeRowColChange
+        Rig.Ev "BeforeRowColChange " & NewRow & "," & NewCol
+        Cancel = CancelRowCol
+    End Sub
+
+    Private Sub Grid_BeforeSelChange(ByVal NewRowSel As Long, ByVal NewColSel As Long, Cancel As Boolean) Handles Grid.BeforeSelChange
+        Rig.Ev "BeforeSelChange " & NewRowSel & "," & NewColSel
+        Cancel = CancelSel
+    End Sub
+
+    Private Sub Grid_SelChange() Handles Grid.SelChange
+        Rig.Ev "SelChange"
+    End Sub
+
+    Private Sub Grid_RowColChange() Handles Grid.RowColChange
+        Rig.Ev "RowColChange"
+    End Sub
+
+    Private Sub Grid_BeforeClipboardAction(ByVal Action As FlexClipboardActionConstants, Text As String, Cancel As Boolean) Handles Grid.BeforeClipboardAction
+        Rig.Ev "BeforeClipboardAction " & Action
+    End Sub
+
+    Private Sub Grid_AfterClipboardAction(ByVal Action As FlexClipboardActionConstants) Handles Grid.AfterClipboardAction
+        Rig.Ev "AfterClipboardAction " & Action
+    End Sub
+
+End Class

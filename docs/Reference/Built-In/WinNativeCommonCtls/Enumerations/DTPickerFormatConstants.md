@@ -19,6 +19,8 @@ When set to **dtpCustom**, the picker also reads [**DTPicker.CustomFormat**](../
 | **dtpTime**{: #dtpTime }           | 2 | Time format, e.g. *"3:45:00 PM"*.                       |
 | **dtpCustom**{: #dtpCustom }       | 3 | Custom picture string from [**CustomFormat**](../DTPicker#customformat). |
 
+![Date pickers set to January 14, 2025, 3:45 PM: in the long date, time and custom formats, with spin buttons in place of the drop-down button, with a check box, and in the short date format with its calendar dropped down below it](../Images/DTPicker.png){:width="561" height="409"}
+
 ## See Also
 
 - [DTPicker](../DTPicker) -- the consuming control

@@ -41,6 +41,8 @@ End Sub
 | **vbListBoxCheckbox**     | 1     | Each item shows an independent check box that the user can toggle without changing the selection. |
 | **vbListBoxColorSwatch**  | 2     | Each item shows a colour swatch in front of its text, drawn in the colour stored in [**ItemData**](#itemdata). |
 
+![List boxes in the three styles, Standard, Checkbox with three items checked and ColorSwatch with a colour beside each item, and a list box whose Columns is 3, its fifteen items laid out in three columns](Images/ListBox_Styles.png){:width="471" height="305"}
+
 Changing **Style** at run time recreates the underlying window, preserving the items, [**ItemData**](#itemdata) values, current selection, scroll position, and (in checkbox mode) check states. [**Sorted**](#sorted), [**MultiSelect**](#multiselect), [**IntegralHeight**](#integralheight), and [**UseTabStops**](#usetabstops) recreate the window the same way.
 
 [**MultiSelect**](#multiselect) is meaningful only with **vbListBoxStandard**. The other styles always behave as if **MultiSelect** were **vbMultiSelectNone** --- the per-item toggle of **vbListBoxCheckbox** replaces the multi-selection feature, and the colour swatch is purely a display variant.

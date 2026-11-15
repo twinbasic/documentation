@@ -14,3 +14,5 @@ Style values for the **Style** property of a combo-box control.
 | **vbComboDropdown**{: #vbComboDropdown } | 0 | A drop-down combo box: the user can type a value or select one from the list. |
 | **vbComboSimple**{: #vbComboSimple } | 1 | A simple combo box: the list is always visible and the user can also type a value. |
 | **vbComboDropdownList**{: #vbComboDropdownList } | 2 | A drop-down list: the user must pick a value from the list. |
+
+![The three combo box styles: a drop-down combo, a simple combo with its list always shown below its text box, and a drop-down list with its list dropped down](../../VB/ComboBox/Images/ComboBox_Styles.png){:width="501" height="211"}

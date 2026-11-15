@@ -1,0 +1,75 @@
+' SelectionTests: what a cancelled BeforeRowColChange leaves of the selection.
+[TestFixture]
+Module SelectionTests
+
+    [TestCase]
+    Public Sub BeforeRowColChange_Cancel_RowAndColStay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Rows = 6: f.Grid.Cols = 4
+        f.CancelRowCol = True
+        f.Grid.Row = 4
+        Expect.AreEqual 1, f.Grid.Row, "Row after Row = 4 with BeforeRowColChange cancelled"
+        Expect.AreEqual 1, f.Grid.Col, "Col after Row = 4 with BeforeRowColChange cancelled"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeRowColChange_Cancel_RowSelAndColSelStay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Rows = 6: f.Grid.Cols = 4
+        f.CancelRowCol = True
+        f.Grid.Row = 4
+        Expect.AreEqual 1, f.Grid.RowSel, "RowSel after Row = 4 with BeforeRowColChange cancelled"
+        Expect.AreEqual 1, f.Grid.ColSel, "ColSel after Row = 4 with BeforeRowColChange cancelled"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeRowColChange_Cancel_RaisesNoSelChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Rows = 6: f.Grid.Cols = 4
+        f.CancelRowCol = True
+        Rig.ClearLog
+        f.Grid.Row = 4
+        Expect.AreEqual "BeforeRowColChange 4,1", Rig.Events(), "the events raised by Row = 4 with BeforeRowColChange cancelled"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeRowColChange_CancelBoth_NothingMoves()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Rows = 6: f.Grid.Cols = 4
+        f.CancelRowCol = True
+        f.CancelSel = True
+        f.Grid.Row = 4
+        Expect.AreEqual "1,1,1,1", f.Grid.Row & "," & f.Grid.Col & "," & f.Grid.RowSel & "," & f.Grid.ColSel, "Row, Col, RowSel and ColSel after Row = 4 with both events cancelled"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeRowColChange_Cancel_ClickKeepsTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Rows = 6: f.Grid.Cols = 4
+        f.CancelRowCol = True
+        Rig.ClickCell f, 4, 1
+        Expect.AreEqual 1, f.Grid.Row, "Row after a click on row 4 with BeforeRowColChange cancelled"
+        Expect.AreEqual 1, f.Grid.RowSel, "RowSel after a click on row 4 with BeforeRowColChange cancelled"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

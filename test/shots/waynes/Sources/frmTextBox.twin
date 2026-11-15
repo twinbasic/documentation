@@ -1,0 +1,39 @@
+[Description("")]
+[FormDesignerId("D6FCB577-7E06-493A-A9D3-9A3618B07A2C")]
+Class frmTextBox
+
+    ' WaynesTextBox's picture: the inline decorators of ERROR, WARNING and INFO in a box in its
+    ' default look; and a box styled as on the WaynesTextBox page, given the focus, its caret at
+    ' the end of its text.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Shots.Defaults txtDecorators
+        Shots.Defaults txtFocused
+        With txtFocused.NormalState
+            .BackgroundFill.ColorPoints.SetSolidColor vbWhite
+            .Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=&HC0C0C0
+            .Corners.SetAll tbCurve, 4
+            .TextRendering.Padding.Left = 6
+            .TextRendering.Padding.Right = 6
+        End With
+        With txtFocused.FocusedState
+            .BackgroundFill.ColorPoints.SetSolidColor vbWhite
+            .Borders.SetSimpleBorder StrokeSize:=2, ColorRGB:=&HC07014
+            .Corners.SetAll tbCurve, 4
+            .TextRendering.Padding.Left = 6
+            .TextRendering.Padding.Right = 6
+        End With
+        lblDecorators.TextRendering.Alignment = tbAlignMiddleLeft
+        lblFocused.TextRendering.Alignment = tbAlignMiddleLeft
+        ' a click on its text gives it the focus, and Right moves the caret to the end (a selection
+        ' cannot be shown: the box reads Shift, and a mouse button held, from the keyboard and mouse
+        ' themselves, which no message changes)
+        Shots.Click 200, 68 + 18
+        Shots.Key vbKeyRight, Len(txtFocused.Value)
+    End Sub
+
+End Class

@@ -1,0 +1,26 @@
+' A form of the CustomControls package (a WaynesForm) has a Controls property, documented as the
+' collection of every control on the form, and it is Nothing whenever the program can read it:
+' in the form's constructor, before Show, and while the form is shown. Reading Controls.Count
+' raises error 91. The form's controls themselves exist: Label1 is a WaynesLabel.
+' Sub Main creates Form1, reports, and shows it; Form1 reports in Sub New and once shown.
+' Run it with: node scripts/bug_repro.mjs run waynesform-controls-nothing
+Module Startup
+
+    Public Sub Main()
+        Dim f As New Form1
+        Report "before Show", f
+        f.Show vbModal
+    End Sub
+
+    Public Sub Report(ByVal stage As String, ByVal f As Form1)
+        Debug.Print stage & ": Label1 is a " & TypeName(f.Label1) & ", Controls Is Nothing = " & (f.Controls Is Nothing)
+        On Error Resume Next
+        Dim n As Long = f.Controls.Count
+        If Err.Number <> 0 Then
+            Debug.Print stage & ": Controls.Count raises " & Err.Number & ", " & Err.Description
+        Else
+            Debug.Print stage & ": Controls.Count = " & n
+        End If
+    End Sub
+
+End Module

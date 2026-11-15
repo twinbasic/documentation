@@ -22,3 +22,5 @@ Horizontal and vertical alignment of text drawn inside a control's bounding rect
 | **tbAlignBottomRight**{: #tbAlignBottomRight } | 8 | Bottom edge, right-aligned. |
 
 The padding added around the text by [**TextRendering.Padding**](../Styles/TextRendering#padding) is applied first; the alignment then positions the text inside the padded region.
+
+![Nine labels of the same size, each with its TextAlignment value's name set at the place that value gives: along the top edge, through the middle and along the bottom edge, at the left, in the centre and at the right](Images/TextAlignment.png){:width="677" height="373"}

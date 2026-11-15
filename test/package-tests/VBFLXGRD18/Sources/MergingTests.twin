@@ -1,0 +1,170 @@
+' MergingTests: the range GetMergedRange gives for a cell, in the modes that restrict merging.
+[TestFixture]
+Module MergingTests
+
+    ' A grid with two fixed header rows. Row 0 holds p, q, r; row 1 holds a, a, b, and only
+    ' row 1 merges. In a mode that restricts by column, the cells (1,0) and (1,1) are kept apart,
+    ' since the cells above them differ.
+    Private Sub HeaderGrid(ByVal f As HostForm, ByVal Mode As FlexMergeCellsConstants)
+        With f.Grid
+            .Rows = 4: .Cols = 3
+            .FixedRows = 2: .FixedCols = 0
+            .TextMatrix(0, 0) = "p": .TextMatrix(0, 1) = "q": .TextMatrix(0, 2) = "r"
+            .TextMatrix(1, 0) = "a": .TextMatrix(1, 1) = "a": .TextMatrix(1, 2) = "b"
+            .MergeRow(1) = True
+            .MergeCells = Mode
+        End With
+    End Sub
+
+    [TestCase]
+    Public Sub GetMergedRange_RestrictColumns_FixedRow_CurrentRowInTheBody()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        HeaderGrid f, FlexMergeCellsRestrictColumns
+        f.Grid.Row = 2
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        f.Grid.GetMergedRange 1, 0, r1, c1, r2, c2
+        Expect.AreEqual 0, c1, "first column of the range of cell (1,0), FlexMergeCellsRestrictColumns, current row 2"
+        Expect.AreEqual 0, c2, "last column of the range of cell (1,0), FlexMergeCellsRestrictColumns, current row 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetMergedRange_RestrictColumns_FixedRow_CurrentRowZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        HeaderGrid f, FlexMergeCellsRestrictColumns
+        f.Grid.Row = 0
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        f.Grid.GetMergedRange 1, 0, r1, c1, r2, c2
+        Expect.AreEqual 0, c1, "first column of the range of cell (1,0), FlexMergeCellsRestrictColumns, current row 0"
+        Expect.AreEqual 0, c2, "last column of the range of cell (1,0), FlexMergeCellsRestrictColumns, current row 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetMergedRange_RestrictAll_FixedRow_CurrentRowZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        HeaderGrid f, FlexMergeCellsRestrictAll
+        f.Grid.Row = 0
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        f.Grid.GetMergedRange 1, 0, r1, c1, r2, c2
+        Expect.AreEqual 0, c1, "first column of the range of cell (1,0), FlexMergeCellsRestrictAll, current row 0"
+        Expect.AreEqual 0, c2, "last column of the range of cell (1,0), FlexMergeCellsRestrictAll, current row 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetMergedRange_RestrictColumns_RowZero_CurrentRowInTheBody()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .FixedRows = 1: .FixedCols = 0
+            .Rows = 3: .Cols = 3
+            .TextMatrix(0, 0) = "k": .TextMatrix(0, 1) = "k": .TextMatrix(0, 2) = "m"
+            .MergeRow(0) = True
+            .MergeCells = FlexMergeCellsRestrictColumns
+            .Row = 1
+        End With
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        On Error Resume Next
+        Err.Clear
+        f.Grid.GetMergedRange 0, 0, r1, c1, r2, c2
+        Expect.AreEqual 0, Err.Number, "GetMergedRange of cell (0,0), FlexMergeCellsRestrictColumns, current row 1: error number"
+        On Error GoTo 0
+        Expect.AreEqual 1, c2, "last column of the range of cell (0,0), whose neighbour holds the same text, FlexMergeCellsRestrictColumns, current row 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' One fixed row above the body: in the first row of the body, a and a merge although the
+    ' header cells above them differ, while in the second row x and x do not, since the cells
+    ' above them (a and b) differ.
+    [TestCase]
+    Public Sub GetMergedRange_RestrictColumns_FirstBodyRow_NotComparedWithTheFixedRow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 3: .Cols = 2
+            .FixedRows = 1: .FixedCols = 0
+            .TextMatrix(0, 0) = "p": .TextMatrix(0, 1) = "q"
+            .TextMatrix(1, 0) = "a": .TextMatrix(1, 1) = "a"
+            .TextMatrix(2, 0) = "x": .TextMatrix(2, 1) = "x"
+            .MergeRow(1) = True
+            .MergeRow(2) = True
+            .MergeCells = FlexMergeCellsRestrictColumns
+        End With
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        f.Grid.GetMergedRange 1, 0, r1, c1, r2, c2
+        Expect.AreEqual 1, c2, "last column of the range of cell (1,0), the first row of the body, FlexMergeCellsRestrictColumns"
+        f.Grid.TextMatrix(1, 1) = "b"
+        f.Grid.GetMergedRange 2, 0, r1, c1, r2, c2
+        Expect.AreEqual 0, c2, "last column of the range of cell (2,0), whose cells above differ, FlexMergeCellsRestrictColumns"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' One fixed column beside the body: in the first column of the body, a and a merge although
+    ' the fixed cells beside them differ, while in the second column x and x do not, since the
+    ' cells beside them (a and b) differ.
+    [TestCase]
+    Public Sub GetMergedRange_RestrictRows_FirstBodyColumn_NotComparedWithTheFixedColumn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 2: .Cols = 3
+            .FixedRows = 0: .FixedCols = 1
+            .TextMatrix(0, 0) = "p": .TextMatrix(1, 0) = "q"
+            .TextMatrix(0, 1) = "a": .TextMatrix(1, 1) = "a"
+            .TextMatrix(0, 2) = "x": .TextMatrix(1, 2) = "x"
+            .MergeCol(1) = True
+            .MergeCol(2) = True
+            .MergeCells = FlexMergeCellsRestrictRows
+        End With
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        f.Grid.GetMergedRange 0, 1, r1, c1, r2, c2
+        Expect.AreEqual 1, r2, "last row of the range of cell (0,1), the first column of the body, FlexMergeCellsRestrictRows"
+        f.Grid.TextMatrix(1, 1) = "b"
+        f.Grid.GetMergedRange 0, 2, r1, c1, r2, c2
+        Expect.AreEqual 0, r2, "last row of the range of cell (0,2), whose cells beside differ, FlexMergeCellsRestrictRows"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetMergedRange_MixedMergeRow_RangeContainsTheCell()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .FixedRows = 0: .FixedCols = 0
+            .Rows = 3: .Cols = 3
+            .TextMatrix(0, 0) = "z": .TextMatrix(0, 1) = "z"
+            .TextMatrix(1, 0) = "z": .TextMatrix(1, 1) = "z"
+            .MergeCells = FlexMergeCellsFree
+            .MergeRow(0) = True    ' row 1 has no MergeRow
+            .MergeCol(0) = True
+            .MergeCol(1) = True
+        End With
+        Dim r1 As Long, c1 As Long, r2 As Long, c2 As Long
+        f.Grid.GetMergedRange 0, 1, r1, c1, r2, c2
+        Expect.IsTrue r1 <= 0 And 0 <= r2, "the range of cell (0,1) contains its row: " & r1 & " to " & r2
+        Expect.IsTrue c1 <= 1 And 1 <= c2, "the range of cell (0,1) contains its column: " & c1 & " to " & c2
+        f.Grid.GetMergedRange 1, 1, r1, c1, r2, c2
+        Expect.IsTrue r1 <= 1 And 1 <= r2, "the range of cell (1,1) contains its row: " & r1 & " to " & r2
+        Expect.IsTrue c1 <= 1 And 1 <= c2, "the range of cell (1,1) contains its column: " & c1 & " to " & c2
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

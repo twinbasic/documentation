@@ -17,7 +17,7 @@ Syntax: *object*.**Title**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-Returns the current application title as a **String**. The initial value is taken from the project settings at startup.
+Returns the current application title as a **String**. The initial value is the project's [Application Title](../../../IDE/Project-Settings#application-title) setting.
 
 ## Let
 

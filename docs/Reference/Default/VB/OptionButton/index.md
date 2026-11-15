@@ -57,6 +57,8 @@ optTerms.Caption = "Use && in folder names"   ' renders as: Use & in folder name
 
 When [**Style**](#style) is **vbButtonGraphical**, the option button is owner-drawn and displays the bitmaps assigned to [**Picture**](#picture), [**DownPicture**](#downpicture), and [**DisabledPicture**](#disabledpicture) instead of the standard round selector. [**PictureAlignment**](#picturealignment), [**Padding**](#padding), and [**PictureDpiScaling**](#picturedpiscaling) control how the picture is positioned relative to the caption.
 
+![Option buttons in the standard style, selected, not selected and disabled, and in the graphical style, the selected one drawn pressed](Images/OptionButton_Styles.png){:width="541" height="127"}
+
 ## Properties
 
 ### Alignment

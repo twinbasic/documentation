@@ -1,0 +1,33 @@
+[Description("")]
+[FormDesignerId("209B2A36-B4E3-462B-A659-CFCA3409A292")]
+Class frmFillPatterns
+
+    ' FillPattern's picture: each of the 21 patterns painting the same two colours, a dark blue
+    ' and a pale yellow, with the constant's name under it.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Dim names As Variant = Array("tbPatternNone", "tbGradientNorthToSouth", "tbGradientSouthToNorth", _
+            "tbGradientWestToEast", "tbGradientEastToWest", "tbGradientNorthWestToSouthEast", _
+            "tbGradientNorthWestToSouthEastAlt", "tbGradientNorthEastToSouthWest", "tbGradientNorthEastToSouthWestAlt", _
+            "tbGradientSouthWestToNorthEast", "tbGradientSouthWestToNorthEastAlt", "tbGradientSouthEastToNorthWest", _
+            "tbGradientSouthEastToNorthWestAlt", "tbGradientCornerTopLeft", "tbGradientCornerTopRight", _
+            "tbGradientCornerBottomLeft", "tbGradientCornerBottomRight", "tbGradientCornerTopLeftAlt", _
+            "tbGradientCornerTopRightAlt", "tbGradientCornerBottomLeftAlt", "tbGradientCornerBottomRightAlt")
+        Dim i As Long
+        For i = 0 To 20
+            Dim panel As WaynesLabel = Shots.Ctl(Me, "lblFill" & i)
+            panel.BackgroundFill.SetSimplePattern RGB(30, 70, 150), RGB(255, 240, 170), Pattern:=i
+            Dim caption As WaynesLabel = Shots.Ctl(Me, "lblName" & i)
+            caption.Caption = names(i) & " (" & i & ")"
+            With caption.TextRendering
+                .Font.Size = 8
+                .Alignment = tbAlignTopCenter
+            End With
+        Next
+    End Sub
+
+End Class

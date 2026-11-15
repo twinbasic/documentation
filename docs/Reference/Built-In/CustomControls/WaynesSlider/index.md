@@ -14,8 +14,8 @@ The control paints three visual states ([**NormalState**](#normalstate), [**Hove
 
 If the control's [**Height**](#height) is greater than its [**Width**](#width) on first display, the slider defaults to [**Direction**](#direction) = **Vertical**; otherwise it defaults to **Horizontal**.
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     sldVolume.MinValue = 0
     sldVolume.MaxValue = 100
     sldVolume.StepValue = 5
@@ -26,8 +26,8 @@ End Sub
 
 [**Value**](#value) is just a **Long** property --- assigning to it from outside the control moves the block and triggers a repaint. Combined with a [**WaynesTimer**](../WaynesTimer), the slider can animate itself across its range:
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     sldProgress.MinValue = 0
     sldProgress.MaxValue = 100
     sldProgress.Value = 0
@@ -43,6 +43,10 @@ Private Sub Timer1_Timer()
     End If
 End Sub
 ```
+
+Sliders in their default look, from 0 to 100 with a **Value** of 40, with each [**DisplayFormat**](#displayformat), and one whose [**Direction**](#direction) is **Vertical**:
+
+![Three horizontal sliders with a black outline and a blue block at 40 per cent of the track: the block shows 40, 40.0% and nothing; and a vertical slider whose block shows 40](Images/WaynesSlider.png){:width="641" height="245"}
 
 * TOC
 {:toc}

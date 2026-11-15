@@ -1,0 +1,37 @@
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F51")]
+[ClassId("7B247400-0000-4000-9000-7B2474000F55")]
+[InterfaceId("7B247400-0000-4000-9000-7B2474000F56")]
+[EventInterfaceId("7B247400-0000-4000-9000-7B2474000F57")]
+[COMControl]
+Class ProbeControl
+
+    Private m_A As Long
+    Private m_B As Long
+
+    Public Property Get WithChanged() As Long
+        WithChanged = m_A
+    End Property
+
+    Public Property Let WithChanged(ByVal Value As Long)
+        m_A = Value
+        UserControl.PropertyChanged "WithChanged"
+    End Property
+
+    Public Property Get WithoutChanged() As Long
+        WithoutChanged = m_B
+    End Property
+
+    Public Property Let WithoutChanged(ByVal Value As Long)
+        m_B = Value
+    End Property
+
+    Public Sub CallsChanged()
+        UserControl.PropertyChanged "WithChanged"
+    End Sub
+
+    Public Sub CallsChangedNoName()
+        UserControl.PropertyChanged
+    End Sub
+
+End Class

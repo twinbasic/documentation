@@ -1,0 +1,799 @@
+Module MainModule
+
+    ' The program behind the VB, VBRUN and VBA sections' pictures of a running program
+    ' (scripts/shoot_docs.mjs, setup vb). Its command line names the scene: which controls the
+    ' form shows and what it draws. TB_SHOT_SIGNALS, when it is set, names a folder through which
+    ' the tool and the program take turns: the program writes "shown" once its form is drawn and
+    ' in the state the picture shows, and ends when "end" appears or the form is closed. The
+    ' texts are the fixture's own: nothing is read from the machine.
+    '
+    ' Every scene lays its form out in pixels at 96 DPI (FitClient), so that it looks the same
+    ' at any DPI; widths of pens and borders, which Windows takes in device pixels, are scaled
+    ' by Dpi() the same way, except for the patterned pens, which GDI draws only one device
+    ' pixel wide.
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_NCACTIVATE As Long = &H86
+    Private Const CB_SHOWDROPDOWN As Long = &H14F
+    Private Const CB_GETDROPPEDSTATE As Long = &H157
+    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, _
+        ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function FindWindowW Lib "user32" (ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function RedrawWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal lprcUpdate As LongPtr, _
+        ByVal hrgnUpdate As LongPtr, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function GetCursor Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SetCursor Lib "user32" (ByVal hCursor As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DrawIconEx Lib "user32" (ByVal hDC As LongPtr, ByVal xLeft As Long, ByVal yTop As Long, _
+        ByVal hIcon As LongPtr, ByVal cxWidth As Long, ByVal cyWidth As Long, ByVal istepIfAniCur As Long, _
+        ByVal hbrFlickerFreeDraw As LongPtr, ByVal diFlags As Long) As Long
+    Private Const WM_SETCURSOR As Long = &H20
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const HTCLIENT As Long = 1
+    Private Const DI_NORMAL As Long = 3
+    Private Const WM_CHANGEUISTATE As Long = &H127
+    Private Const UIS_SET As Long = 1
+    Private Const UISF_HIDEFOCUS As Long = 1
+    Private Const UISF_HIDEACCEL As Long = 2
+    Private Const RDW_INVALIDATE As Long = &H1
+    Private Const RDW_ERASE As Long = &H4
+    Private Const RDW_FRAME As Long = &H400
+    Private Const RDW_ALLCHILDREN As Long = &H80
+    Private Const RDW_UPDATENOW As Long = &H100
+
+    ' The title of the scene's dialog, and whether KeepDialog has set it up.
+    Private DialogTitle As String
+    Private DialogKept As Boolean
+
+    ' The scene's combo box whose list is shown dropped down, or Nothing.
+    Private Dropped As ComboBox
+    ' The forms of the formborders scene, by BorderStyle.
+    Private Bordered(0 To 7) As Form
+    Private NextName As Long
+    Private Doing As String
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        ' A dialog's scene shows only the dialog; the tool ends the program once it has it.
+        If Dialog(scene) Then Exit Sub
+        Dim f As Object
+        Select Case True
+            Case scene = "menu": Set f = frmMenu
+            Case scene = "formborders": Set f = frmBorder0
+            Case scene Like "mdi-*": Set f = frmMDI
+            Case Else: Set f = frmScene
+        End Select
+        Load f
+        On Error GoTo Failed
+        ' an MDI form has no drawing of its own (TypeOf ... Is Form is True for an MDI form)
+        If Not TypeOf f Is MDIForm Then
+            f.AutoRedraw = True
+            f.ForeColor = vbBlack
+        End If
+        SetUp scene, f
+        f.Show
+        Activate f
+        f.Refresh
+        DoEvents
+        AfterShow scene, f
+        f.Refresh
+        DoEvents
+        Sleep 200
+        DoEvents
+    Shown:
+        On Error GoTo 0
+        Signal "shown"
+        If WaitFor("end", f) Then Unload f
+        Exit Sub
+    Failed:
+        ' The tool fails the picture with this text, rather than wait for a form that never shows.
+        Signal "error", "error " & Err.Number & " in " & scene & " (" & Doing & "): " & Err.Description
+        f.Show
+        Resume Shown
+    End Sub
+
+    Private Sub SetUp(ByVal scene As String, ByVal f As Object)
+        Select Case scene
+            Case "formborders": FormBorders f
+            Case "qbcolor": QBColors f
+            Case "syscolors": SystemColors f
+            Case "mousepointers": MousePointers f
+            Case "menu": Menus f
+            Case "mdi-cascade": MDIChildren f, vbCascade
+            Case "mdi-tilehorizontal": MDIChildren f, vbTileHorizontal
+            Case "mdi-tilevertical": MDIChildren f, vbTileVertical
+            Case "drawstyle": DrawStyles f
+            Case "fillstyle": FillStyles f
+            Case "drawmode": DrawModes f
+            Case "shapes": Shapes f
+            Case "shapefill": ShapeFills f
+            Case "shapeborder": ShapeBorders f
+            Case "checkbox": CheckBoxes f
+            Case "optionbutton": OptionButtons f
+            Case "commandbutton": CommandButtons f
+            Case "listbox": ListBoxes f
+            Case "combobox": ComboBoxes f
+            Case "qrcode": QRCodes f
+            Case Else: Err.Raise 5, , "no scene named " & scene
+        End Select
+    End Sub
+
+    ' What needs the window on screen: a combo box's list dropped down, MDI children arranged.
+    Private Sub AfterShow(ByVal scene As String, ByVal f As Object)
+        Select Case scene
+            Case "formborders": PlaceBordered
+            Case "mdi-cascade": f.Arrange vbCascade
+            Case "mdi-tilehorizontal": f.Arrange vbTileHorizontal
+            Case "mdi-tilevertical": f.Arrange vbTileVertical
+        End Select
+        KeepDropped
+    End Sub
+
+    ' ---------------------------------------------------------------- drawing on the form
+
+    ' The seven DrawStyle values as lines one pixel wide, and two boxes drawn with a wide pen,
+    ' vbSolid and vbInsideSolid, each with its outline's coordinates drawn over it in red.
+    Private Sub DrawStyles(ByVal f As Form)
+        f.Caption = "DrawStyle"
+        f.BackColor = vbWhite
+        FitClient f, 470, 330
+        Dim names As Variant = Array("vbSolid", "vbDash", "vbDot", "vbDashDot", "vbDashDotDot", "vbInvisible", "vbInsideSolid")
+        Dim i As Long
+        For i = 0 To 6
+            Dim y As Single = 14 + i * 26
+            Text f, names(i) & " (" & i & ")", 16, y
+            f.DrawWidth = 1
+            f.DrawStyle = i
+            f.Line (190, y + 9)-(450, y + 9), vbBlack
+        Next
+        WideBox f, 50, 222, vbSolid, "vbSolid, DrawWidth 8"
+        WideBox f, 280, 222, vbInsideSolid, "vbInsideSolid, DrawWidth 8"
+        f.DrawStyle = vbSolid
+        f.DrawWidth = 1
+    End Sub
+
+    Private Sub WideBox(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal style As Long, ByVal label As String)
+        f.DrawStyle = style
+        f.DrawWidth = 8 * Dpi()
+        f.Line (x, y)-(x + 140, y + 60), RGB(120, 170, 230), B
+        f.DrawStyle = vbSolid
+        f.DrawWidth = 1
+        f.Line (x, y)-(x + 140, y + 60), vbRed, B
+        Text f, label, x - 30, y + 74, 200
+    End Sub
+
+    ' The eight FillStyle values, each a box drawn with Line ... B.
+    Private Sub FillStyles(ByVal f As Form)
+        f.Caption = "FillStyle"
+        f.BackColor = vbWhite
+        FitClient f, 4 * 136 + 20, 230
+        Dim names As Variant = Array("vbFSSolid", "vbFSTransparent", "vbHorizontalLine", "vbVerticalLine", _
+            "vbUpwardDiagonal", "vbDownwardDiagonal", "vbCross", "vbDiagonalCross")
+        Dim i As Long
+        For i = 0 To 7
+            Dim x As Single = 10 + (i Mod 4) * 136
+            Dim y As Single = 12 + (i \ 4) * 108
+            f.FillColor = RGB(30, 80, 160)
+            f.FillStyle = i
+            f.Line (x + 22, y)-(x + 114, y + 64), vbBlack, B
+            f.FillStyle = vbFSTransparent
+            Text f, names(i) & " (" & i & ")", x, y + 72, 136
+        Next
+    End Sub
+
+    ' The sixteen DrawMode values, each a bar drawn with Line ... BF in green across four bands
+    ' of white, black, red and blue drawn first; the bands show between the bars.
+    Private Sub DrawModes(ByVal f As Form)
+        f.Caption = "DrawMode"
+        f.BackColor = vbWhite
+        FitClient f, 430, 16 * 24 + 46
+        Dim names As Variant = Array("vbBlackness", "vbNotMergePen", "vbMaskNotPen", "vbNotCopyPen", "vbMaskPenNot", _
+            "vbInvert", "vbXorPen", "vbNotMaskPen", "vbMaskPen", "vbNotXorPen", "vbNop", "vbMergeNotPen", _
+            "vbCopyPen", "vbMergePenNot", "vbMergePen", "vbWhiteness")
+        Dim bands As Variant = Array(vbWhite, vbBlack, RGB(220, 40, 40), RGB(40, 90, 210))
+        Dim bandNames As Variant = Array("white", "black", "red", "blue")
+        Const LEFT_ As Single = 170
+        Const BAND As Single = 60
+        Const TOP_ As Single = 30
+        Dim b As Long
+        f.DrawMode = vbCopyPen
+        For b = 0 To 3
+            f.Line (LEFT_ + b * BAND, TOP_)-(LEFT_ + (b + 1) * BAND - 1, TOP_ + 16 * 24 + 4), bands(b), BF
+            Text f, bandNames(b), LEFT_ + b * BAND, 8, BAND
+        Next
+        f.Line (LEFT_, TOP_)-(LEFT_ + 4 * BAND - 1, TOP_ + 16 * 24 + 4), RGB(160, 160, 160), B
+        Dim i As Long
+        For i = 1 To 16
+            Dim y As Single = TOP_ + 4 + (i - 1) * 24
+            f.DrawMode = vbCopyPen
+            Text f, names(i - 1) & " (" & i & ")", 14, y + 1
+            f.DrawMode = i
+            f.Line (LEFT_ + 10, y)-(LEFT_ + 4 * BAND - 10, y + 16), RGB(60, 180, 75), BF
+        Next
+        f.DrawMode = vbCopyPen
+    End Sub
+
+    ' ---------------------------------------------------------------- the Shape control
+
+    ' The eleven Shape values, each in the same bounds, wider than they are tall.
+    Private Sub Shapes(ByVal f As Form)
+        f.Caption = "Shape"
+        f.BackColor = vbWhite
+        FitClient f, 4 * 176 + 20, 3 * 104 + 10
+        Dim names As Variant = Array("vbShapeRectangle", "vbShapeSquare", "vbShapeOval", "vbShapeCircle", _
+            "vbShapeRoundedRectangle", "vbShapeRoundedSquare", "vbShapeStar", "vbShapeArrowLeft", _
+            "vbShapeArrowRight", "vbShapeArrowUp", "vbShapeArrowDown")
+        Dim i As Long
+        For i = 0 To 10
+            Dim x As Single = 10 + (i Mod 4) * 176
+            Dim y As Single = 10 + (i \ 4) * 104
+            Dim s As Shape = AddShape(f, x + 43, y, 90, 60)
+            s.Shape = i
+            s.FillStyle = vbFSSolid
+            s.FillColor = RGB(150, 190, 240)
+            s.BorderColor = RGB(20, 50, 110)
+            Text f, names(i) & " (" & i & ")", x, y + 66, 176
+        Next
+    End Sub
+
+    ' The ten FillStyle values of a Shape, FillColorAlt being the gradients' second colour.
+    Private Sub ShapeFills(ByVal f As Form)
+        f.Caption = "Shape FillStyle"
+        f.BackColor = vbWhite
+        FitClient f, 5 * 130 + 20, 2 * 104 + 10
+        Dim names As Variant = Array("vbFSSolid", "vbFSTransparent", "vbHorizontalLine", "vbVerticalLine", _
+            "vbUpwardDiagonal", "vbDownwardDiagonal", "vbCross", "vbDiagonalCross", "vbGradientNS", "vbGradientWE")
+        Dim i As Long
+        For i = 0 To 9
+            Dim x As Single = 10 + (i Mod 5) * 130
+            Dim y As Single = 10 + (i \ 5) * 104
+            Dim s As Shape = AddShape(f, x + 20, y, 90, 60)
+            s.FillStyle = i
+            s.FillColor = RGB(30, 80, 160)
+            s.FillColorAlt = RGB(200, 225, 255)
+            Text f, names(i) & " (" & i & ")", x, y + 66, 130
+        Next
+    End Sub
+
+    ' The seven BorderStyle values of a Shape, at BorderWidth 1, each filled in a pale colour so
+    ' that the one with no border shows too.
+    Private Sub ShapeBorders(ByVal f As Form)
+        f.Caption = "Shape BorderStyle"
+        f.BackColor = vbWhite
+        FitClient f, 4 * 140 + 20, 2 * 104 + 10
+        Dim names As Variant = Array("vbTransparent", "vbBSSolid", "vbBSDash", "vbBSDot", "vbBSDashDot", _
+            "vbBSDashDotDot", "vbBSInsideSolid")
+        Dim i As Long
+        For i = 0 To 6
+            Dim x As Single = 10 + (i Mod 4) * 140
+            Dim y As Single = 10 + (i \ 4) * 104
+            Dim s As Shape = AddShape(f, x + 25, y, 90, 60)
+            s.BorderStyle = i
+            s.BorderColor = vbBlack
+            s.FillStyle = vbFSSolid
+            s.FillColor = RGB(214, 228, 248)
+            Text f, names(i) & " (" & i & ")", x, y + 66, 140
+        Next
+    End Sub
+
+    Private Function AddShape(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single) As Shape
+        Doing = "Controls.Add " & "VB.Shape"
+        Dim s As Shape = f.Controls.Add("VB.Shape", NewName("shp"))
+        Doing = "after Add " & "VB.Shape"
+        s.Move x, y, w, h
+        s.Visible = True
+        Return s
+    End Function
+
+    ' ---------------------------------------------------------------- buttons
+
+    ' A CheckBox in each of its three values and disabled, its caption on either side, and the
+    ' graphical style up and down, each with the same Picture (information) and DownPicture
+    ' (warning).
+    Private Sub CheckBoxes(ByVal f As Form)
+        f.Caption = "CheckBox"
+        FitClient f, 4 * 130 + 20, 120
+        Dim c As CheckBox
+        Set c = AddCheck(f, "vbUnchecked", 10, 12): c.Value = vbUnchecked
+        Set c = AddCheck(f, "vbChecked", 140, 12): c.Value = vbChecked
+        Set c = AddCheck(f, "vbGrayed", 270, 12): c.Value = vbGrayed
+        Set c = AddCheck(f, "Disabled", 400, 12): c.Value = vbChecked: c.Enabled = False
+        Set c = AddCheck(f, "tbRightJustify", 10, 44, 112): c.Value = vbChecked: c.Alignment = 1
+        Set c = AddCheck(f, "Graphical, up", 140, 44, 120, 64): c.Style = vbButtonGraphical: c.Value = vbUnchecked
+        Set c.Picture = StockIcon(SIID_INFO, False)
+        Set c.DownPicture = StockIcon(SIID_WARNING, False)
+        Set c = AddCheck(f, "Graphical, down", 270, 44, 120, 64): c.Style = vbButtonGraphical: c.Value = vbChecked
+        Set c.Picture = StockIcon(SIID_INFO, False)
+        Set c.DownPicture = StockIcon(SIID_WARNING, False)
+    End Sub
+
+    Private Function AddCheck(ByVal f As Object, ByVal caption As String, ByVal x As Single, ByVal y As Single, _
+            Optional ByVal w As Single = 120, Optional ByVal h As Single = 22) As CheckBox
+        Doing = "Controls.Add " & "VB.CheckBox"
+        Dim c As CheckBox = f.Controls.Add("VB.CheckBox", NewName("chk"))
+        Doing = "after Add " & "VB.CheckBox"
+        c.Caption = caption
+        c.TabStop = False
+        c.Move x, y, w, h
+        c.Visible = True
+        Return c
+    End Function
+
+    ' OptionButtons in the standard and the graphical style, one group of each, selected and not.
+    Private Sub OptionButtons(ByVal f As Form)
+        f.Caption = "OptionButton"
+        FitClient f, 4 * 130 + 20, 96
+        Dim standard As Frame = AddGroup(f, 10, 8, 250, 80)
+        Dim graphical As Frame = AddGroup(f, 270, 8, 250, 80)
+        Dim o As OptionButton
+        Set o = AddOption(f, standard, "Selected", 0, 4): o.Value = True
+        Set o = AddOption(f, standard, "Not selected", 130, 4)
+        Set o = AddOption(f, standard, "Disabled", 0, 34): o.Enabled = False
+        Set o = AddOption(f, graphical, "Selected", 0, 4, 120, 64): o.Style = vbButtonGraphical
+        Set o.Picture = StockIcon(SIID_INFO, False)
+        o.Value = True
+        Set o = AddOption(f, graphical, "Not selected", 130, 4, 120, 64): o.Style = vbButtonGraphical
+        Set o.Picture = StockIcon(SIID_HELP, False)
+    End Sub
+
+    ' A borderless Frame: a group of option buttons of its own.
+    Private Function AddGroup(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single) As Frame
+        Doing = "Controls.Add " & "VB.Frame"
+        Dim g As Frame = f.Controls.Add("VB.Frame", NewName("fra"))
+        Doing = "after Add " & "VB.Frame"
+        g.Caption = ""
+        g.BorderStyle = 0
+        g.Move x, y, w, h
+        g.Visible = True
+        Return g
+    End Function
+
+    Private Function AddOption(ByVal f As Form, ByVal container As Frame, ByVal caption As String, ByVal x As Single, ByVal y As Single, _
+            Optional ByVal w As Single = 120, Optional ByVal h As Single = 22) As OptionButton
+        Doing = "Controls.Add " & "VB.OptionButton"
+        Dim o As OptionButton = f.Controls.Add("VB.OptionButton", NewName("opt"), container)
+        Doing = "after Add " & "VB.OptionButton"
+        o.Caption = caption
+        o.TabStop = False
+        ' a Frame has no scale of its own: the controls in it are placed in twips
+        o.Move x * 15, y * 15, w * 15, h * 15
+        o.Visible = True
+        Return o
+    End Function
+
+    ' CommandButtons: standard, the Default one, disabled, and the graphical style with its
+    ' picture at each PictureAlignment.
+    Private Sub CommandButtons(ByVal f As Form)
+        f.Caption = "CommandButton"
+        FitClient f, 4 * 120 + 20, 140
+        Dim b As CommandButton
+        Set b = AddButton(f, "Standard", 10, 10)
+        Set b = AddButton(f, "Default", 130, 10): b.Default = True
+        Set b = AddButton(f, "Disabled", 250, 10): b.Enabled = False
+        Dim names As Variant = Array("vbAlignTop", "vbAlignBottom", "vbAlignLeft", "vbAlignRight")
+        Dim aligns As Variant = Array(vbAlignTop, vbAlignBottom, vbAlignLeft, vbAlignRight)
+        Dim i As Long
+        For i = 0 To 3
+            Set b = AddButton(f, names(i), 10 + i * 120, 52, 110, 76)
+            b.Style = vbButtonGraphical
+            Set b.Picture = StockIcon(SIID_INFO, False)
+            b.PictureAlignment = aligns(i)
+        Next
+    End Sub
+
+    Private Function AddButton(ByVal f As Form, ByVal caption As String, ByVal x As Single, ByVal y As Single, _
+            Optional ByVal w As Single = 110, Optional ByVal h As Single = 30) As CommandButton
+        Doing = "Controls.Add " & "VB.CommandButton"
+        Dim b As CommandButton = f.Controls.Add("VB.CommandButton", NewName("cmd"))
+        Doing = "after Add " & "VB.CommandButton"
+        b.Caption = caption
+        b.TabStop = False
+        b.Move x, y, w, h
+        b.Visible = True
+        Return b
+    End Function
+
+    ' ---------------------------------------------------------------- lists
+
+    Private Function Fruit() As Variant
+        Return Array("Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Grape", "Kiwi", "Lemon", _
+            "Mango", "Nectarine", "Orange", "Peach", "Quince", "Raspberry")
+    End Function
+
+    ' The three ListBox styles, and a list in three columns (Columns can only be set at design
+    ' time: the form's lstColumns).
+    Private Sub ListBoxes(ByVal f As Form)
+        f.Caption = "ListBox"
+        FitClient f, 3 * 150 + 20, 274
+        Dim names As Variant = Array("vbListBoxStandard", "vbListBoxCheckbox", "vbListBoxColorSwatch")
+        Dim colours As Variant = Array(vbRed, RGB(255, 140, 0), vbYellow, RGB(0, 160, 0), vbBlue, RGB(128, 0, 160))
+        Dim colourNames As Variant = Array("Red", "Orange", "Yellow", "Green", "Blue", "Purple")
+        Dim i As Long, k As Long
+        For i = 0 To 2
+            Text f, names(i) & " (" & i & ")", 10 + i * 150, 6, 140
+            Doing = "Controls.Add " & "VB.ListBox"
+            Dim l As ListBox = f.Controls.Add("VB.ListBox", NewName("lst"))
+            Doing = "after Add " & "VB.ListBox"
+            l.Move 10 + i * 150, 26, 140, 110
+            l.TabStop = False
+            l.Style = i
+            For k = 0 To 5
+                If i = 2 Then
+                    l.AddItem colourNames(k)
+                    l.ItemData(k) = colours(k)
+                Else
+                    l.AddItem Fruit()(k)
+                End If
+            Next
+            If i = 1 Then l.Selected(0) = True: l.Selected(2) = True: l.Selected(3) = True
+            l.ListIndex = 2
+            l.Visible = True
+        Next
+        Text f, "Columns = 3", 10, 146
+        Dim c As ListBox = f.Controls("lstColumns")
+        c.Move 10, 166, 440, 98
+        c.TabStop = False
+        For k = 0 To 14
+            c.AddItem Fruit()(k)
+        Next
+        c.ListIndex = 4
+        c.Visible = True
+    End Sub
+
+    ' The three ComboBox styles, the drop-down list one with its list dropped down.
+    Private Sub ComboBoxes(ByVal f As Form)
+        f.Caption = "ComboBox"
+        FitClient f, 3 * 160 + 20, 180
+        Dim names As Variant = Array("vbComboDropdown", "vbComboSimple", "vbComboDropdownList")
+        Dim i As Long, k As Long
+        For i = 0 To 2
+            Text f, names(i) & " (" & i & ")", 10 + i * 160, 6, 150
+            Doing = "Controls.Add " & "VB.ComboBox"
+            Dim c As ComboBox = f.Controls.Add("VB.ComboBox", NewName("cbo"))
+            Doing = "after Add " & "VB.ComboBox"
+            c.TabStop = False
+            c.Style = i
+            c.Move 10 + i * 160, 26, 150, IIf(i = 1, 140, 24)
+            For k = 0 To 7
+                c.AddItem Fruit()(k)
+            Next
+            If i = 0 Then c.Text = "Cherry" Else c.ListIndex = 2
+            c.Visible = True
+            If i = 2 Then Set Dropped = c
+        Next
+    End Sub
+
+    ' The scene's combo box list dropped down, again whenever it has closed (it closes when the
+    ' form is made the active window).
+    Private Sub KeepDropped()
+        If Dropped Is Nothing Then Exit Sub
+        If SendMessageW(Dropped.hWnd, CB_GETDROPPEDSTATE, 0, 0) = 0 Then
+            SendMessageW Dropped.hWnd, CB_SHOWDROPDOWN, 1, 0
+            DoEvents
+        End If
+    End Sub
+
+    ' ---------------------------------------------------------------- QRCode
+
+    ' One payload at the four error-correction levels, and with round modules.
+    Private Sub QRCodes(ByVal f As Form)
+        f.Caption = "QRCode"
+        f.BackColor = vbWhite
+        FitClient f, 5 * 160 + 20, 170
+        Dim names As Variant = Array("vbQRCodegenEccLow", "vbQRCodegenEccMedium", "vbQRCodegenEccQuartile", _
+            "vbQRCodegenEccHigh", "SquareModules = False")
+        Dim i As Long
+        For i = 0 To 4
+            ' Controls.Add makes no QRCode: the form has five, qr0 to qr4
+            Dim q As VB.QRCode = f.Controls("qr" & i)
+            q.Move 10 + i * 160 + 25, 10, 110, 110
+            q.EccBoost = False
+            q.Payload = "https://docs.twinbasic.com/"
+            If i < 4 Then
+                q.EccMode = i
+            Else
+                q.EccMode = VB.vbQRCodegenEccMedium
+                q.SquareModules = False
+            End If
+            q.Visible = True
+            Text f, names(i), 10 + i * 160, 128, 160
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- colours and pointers
+
+    ' The sixteen QBColor colours, each a swatch with its number and name.
+    Private Sub QBColors(ByVal f As Form)
+        f.Caption = "QBColor"
+        f.BackColor = vbWhite
+        FitClient f, 8 * 92 + 16, 2 * 84 + 6
+        Dim names As Variant = Array("Black", "Blue", "Green", "Cyan", "Red", "Magenta", "Yellow", "White", _
+            "Gray", "Light Blue", "Light Green", "Light Cyan", "Light Red", "Light Magenta", "Light Yellow", "Bright White")
+        Dim i As Long
+        For i = 0 To 15
+            Dim x As Single = 8 + (i Mod 8) * 92
+            Dim y As Single = 10 + (i \ 8) * 84
+            f.Line (x + 14, y)-(x + 78, y + 40), QBColor(i), BF
+            f.Line (x + 14, y)-(x + 78, y + 40), RGB(128, 128, 128), B
+            Text f, i & " " & names(i), x, y + 46, 92
+        Next
+    End Sub
+
+    ' The system colours, each a swatch with its constant's name: a Label whose BackColor is the
+    ' constant, so that each is the colour twinBASIC paints for it. The aliases (vb3DFace,
+    ' vbActiveTitleBarText, ...) are left out.
+    Private Sub SystemColors(ByVal f As Form)
+        f.Caption = "SystemColorConstants"
+        f.BackColor = vbWhite
+        Dim names As Variant = Array("vbScrollBars", "vbDesktop", "vbActiveTitleBar", "vbInactiveTitleBar", _
+            "vbMenuBar", "vbWindowBackground", "vbWindowFrame", "vbMenuText", "vbWindowText", "vbTitleBarText", _
+            "vbActiveBorder", "vbInactiveBorder", "vbApplicationWorkspace", "vbHighlight", "vbHighlightText", _
+            "vbButtonFace", "vbButtonShadow", "vbGrayText", "vbButtonText", "vbInactiveCaptionText", _
+            "vb3DHighlight", "vb3DDKShadow", "vb3DLight", "vbInfoText", "vbInfoBackground", "vbHotTrackText", _
+            "vbActiveTitleBarGradient", "vbInactiveTitleBarGradient", "vbMenuHighlight", "vbMenuBarFlat")
+        Dim indexes As Variant = Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, _
+            21, 22, 23, 24, 26, 27, 28, 29, 30)
+        Const ROWS As Long = 10
+        FitClient f, 3 * 236 + 10, ROWS * 28 + 14
+        Dim i As Long
+        For i = 0 To UBound(names)
+            Dim x As Single = 10 + (i \ ROWS) * 236
+            Dim y As Single = 10 + (i Mod ROWS) * 28
+            Dim swatch As Label = f.Controls.Add("VB.Label", NewName("lbl"))
+            swatch.Caption = ""
+            swatch.BackStyle = 1
+            swatch.BackColor = &H80000000 Or indexes(i)
+            swatch.Move x + 1, y + 1, 35, 19
+            swatch.Visible = True
+            f.Line (x, y)-(x + 36, y + 20), RGB(128, 128, 128), B
+            Text f, names(i), x + 44, y + 1
+        Next
+    End Sub
+
+    ' The MousePointer values, each the cursor the form shows for it: the form asked to set its
+    ' cursor (WM_SETCURSOR, as when the mouse moves over it) with each value in turn, and the
+    ' cursor it set drawn on it. A picture of the window holds no mouse pointer. vbIconPointer (4)
+    ' and vbSizePointer (5) are left out: for them the form sets no cursor (BETA 1042), and the
+    ' pointer disappears over it.
+    Private Sub MousePointers(ByVal f As Form)
+        f.Caption = "MousePointer"
+        f.BackColor = vbWhite
+        Dim names As Variant = Array("vbDefault", "vbArrow", "vbCrosshair", "vbIbeam", "vbIconPointer", _
+            "vbSizePointer", "vbSizeNESW", "vbSizeNS", "vbSizeNWSE", "vbSizeWE", "vbUpArrow", "vbHourglass", _
+            "vbNoDrop", "vbArrowHourglass", "vbArrowQuestion", "vbSizeAll", "vbHand", "vbPin", "vbPerson", _
+            "vbArrowCD", "vbScrollN", "vbScrollS", "vbScrollE", "vbScrollW", "vbScrollNS", "vbScrollWE", _
+            "vbScrollNW", "vbScrollNE", "vbScrollSW", "vbScrollSE", "vbScrollAll", "vbPen")
+        Const PER_ROW As Long = 6
+        FitClient f, PER_ROW * 140 + 10, 5 * 74 + 6
+        Dim i As Long, k As Long
+        For i = 0 To 31
+            If i = vbIconPointer Or i = vbSizePointer Then GoTo NextPointer
+            Dim x As Single = 10 + (k Mod PER_ROW) * 140
+            Dim y As Single = 8 + (k \ PER_ROW) * 74
+            f.MousePointer = i
+            SetCursor 0
+            SendMessageW f.hWnd, WM_SETCURSOR, f.hWnd, HTCLIENT Or WM_MOUSEMOVE * &H10000
+            Dim cursor As LongPtr = GetCursor()
+            If cursor = 0 Then Err.Raise 5, , "no cursor for MousePointer " & i
+            DrawIconEx f.hDC, (x + 54) * Dpi(), y * Dpi(), cursor, 0, 0, 0, 0, DI_NORMAL
+            Text f, names(i) & " (" & i & ")", x, y + 50, 140
+            k += 1
+    NextPointer:
+        Next
+        f.MousePointer = vbDefault
+    End Sub
+
+    ' ---------------------------------------------------------------- forms
+
+    ' The eight BorderStyle values of a form, each a form of its own (frmBorder0 to frmBorder7,
+    ' whose BorderStyle is set at design time, with a pale client area, so that the form with no
+    ' border shows where it is), laid out four to a row on the desktop; f is the first.
+    Private Sub FormBorders(ByVal f As Form)
+        Dim names As Variant = Array("vbBSNone", "vbFixedSingle", "vbSizable", "vbFixedDialog", _
+            "vbFixedToolWindow", "vbSizableToolWindow", "vbSizableNoTitleBar", "vbSizableToolWindowNoTitleBar")
+        Dim forms As Variant = Array(frmBorder0, frmBorder1, frmBorder2, frmBorder3, frmBorder4, frmBorder5, _
+            frmBorder6, frmBorder7)
+        Dim i As Long
+        For i = 0 To 7
+            Dim g As Form = forms(i)
+            Load g
+            g.AutoRedraw = True
+            g.ForeColor = vbBlack
+            FitClient g, 200, 64
+            Text g, names(i) & " (" & i & ")", 0, 22, 200
+            Set Bordered(i) = g
+            If i > 0 Then g.Show
+        Next
+    End Sub
+
+    ' The forms of FormBorders laid out four to a row, once shown: Show puts each in the middle
+    ' of the screen (StartUpPosition), whatever Move said before.
+    Private Sub PlaceBordered()
+        Dim i As Long
+        For i = 0 To 7
+            ' screen twips: 15 to a pixel at 96 DPI
+            Bordered(i).Move (40 + (i Mod 4) * 250) * 15, (40 + (i \ 4) * 140) * 15
+        Next
+    End Sub
+
+    ' A menu bar with the File menu holding every kind of item: shortcut keys, pictures, a
+    ' separator, a submenu, a checked item and a disabled one. The tool opens the menu.
+    Private Sub Menus(ByVal f As Form)
+        f.BackColor = vbWhite
+        FitClient f, 380, 250
+        ' the shortcut keys are the form's (ShortcutId set at run time shows no shortcut text)
+        Set frmMenu.mnuFileNew.Picture = StockIcon(SIID_DOCNOASSOC)
+        Set frmMenu.mnuFileOpen.Picture = StockIcon(SIID_FOLDEROPEN)
+    End Sub
+
+    ' Three MDI children in an MDI form; AfterShow arranges them.
+    Private Sub MDIChildren(ByVal f As MDIForm, ByVal how As Long)
+        Doing = "MDI size"
+        f.Width = 600 * 15
+        f.Height = 380 * 15
+        Doing = "MDI caption"
+        f.Caption = Choose(how + 1, "vbCascade", "vbTileHorizontal", "vbTileVertical")
+        Dim i As Long
+        For i = 1 To 3
+            Doing = "New frmChild"
+            Dim c As Form = New frmChild
+            Load c
+            Doing = "child caption"
+            c.Caption = "Child " & i
+            c.BackColor = vbWhite
+            Doing = "child size"
+            c.Width = 240 * 15
+            c.Height = 150 * 15
+            Doing = "child show"
+            c.Show
+        Next
+        Doing = "MDI done"
+    End Sub
+
+    ' ---------------------------------------------------------------- dialogs
+
+    ' A scene that is a dialog: "msgbox:<buttons and icon>" shows MsgBox, "inputbox" InputBox.
+    ' False for any other scene. While the dialog waits, a timer keeps it as a forms' scene keeps
+    ' its form (KeepDialog); the tool ends the program once it has the picture.
+    Private Function Dialog(ByVal scene As String) As Boolean
+        If scene Like "msgbox:*" Then
+            Dim style As Long = CLng(Mid$(scene, 8))
+            DialogTitle = "MsgBox"
+            SetTimer 0, 0, 100, AddressOf KeepDialog
+            MsgBox StyleName(style) & " (" & style & ")", style, DialogTitle
+            Return True
+        End If
+        If scene = "inputbox" Then
+            DialogTitle = "InputBox"
+            SetTimer 0, 0, 100, AddressOf KeepDialog
+            InputBox "Type the name of the new folder.", DialogTitle, "New folder"
+            Return True
+        End If
+        Return False
+    End Function
+
+    ' The dialog drawn as the active window whenever it is not the foreground window, and, once,
+    ' put in the state a dialog opened by a mouse user has: no focus rectangle and no underlined
+    ' access keys. A dialog shows them, or not, by the input it has seen, which on the tool's
+    ' desktop, with none, differs from one dialog to the next.
+    Private Sub KeepDialog(ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal Id As LongPtr, ByVal Time As Long)
+        Dim box As LongPtr = FindWindowW(StrPtr("#32770"), StrPtr(DialogTitle))
+        If box = 0 Then Exit Sub
+        If Not DialogKept Then
+            SendMessageW box, WM_CHANGEUISTATE, UIS_SET Or (UISF_HIDEFOCUS Or UISF_HIDEACCEL) * &H10000, 0
+            RedrawWindow box, 0, 0, RDW_INVALIDATE Or RDW_ERASE Or RDW_FRAME Or RDW_ALLCHILDREN Or RDW_UPDATENOW
+            DialogKept = True
+            Signal "shown"
+        End If
+        If GetForegroundWindow() <> box Then SendMessageW box, WM_NCACTIVATE, 1, 0
+    End Sub
+
+    Private Function StyleName(ByVal style As Long) As String
+        Select Case style
+            Case 0: Return "vbOKOnly"
+            Case 1: Return "vbOKCancel"
+            Case 2: Return "vbAbortRetryIgnore"
+            Case 3: Return "vbYesNoCancel"
+            Case 4: Return "vbYesNo"
+            Case 5: Return "vbRetryCancel"
+            Case 6: Return "vbCancelTryAgainContinue"
+            Case 16: Return "vbCritical"
+            Case 32: Return "vbQuestion"
+            Case 48: Return "vbExclamation"
+            Case 64: Return "vbInformation"
+            Case Else: Return "style"
+        End Select
+    End Function
+
+    ' ---------------------------------------------------------------- helpers
+
+    ' The form's client area made Width by Height pixels at 96 DPI, and its scale those pixels.
+    Private Sub FitClient(ByVal f As Form, ByVal Width As Single, ByVal Height As Single)
+        f.ScaleMode = vbTwips
+        f.Width = f.Width + (Width * 15 - f.ScaleWidth)
+        f.Height = f.Height + (Height * 15 - f.ScaleHeight)
+        f.Scale (0, 0)-(Width, Height)
+    End Sub
+
+    ' Device pixels to a pixel at 96 DPI.
+    Private Function Dpi() As Single
+        Return 15 / Screen.TwipsPerPixelX
+    End Function
+
+    ' Text printed on the form at (x, y), centred in a column Width wide when Width is given.
+    Private Sub Text(ByVal f As Form, ByVal s As String, ByVal x As Single, ByVal y As Single, Optional ByVal Width As Single = 0)
+        f.CurrentX = IIf(Width > 0, x + (Width - f.TextWidth(s)) / 2, x)
+        f.CurrentY = y
+        f.Print s
+    End Sub
+
+    Private Function NewName(ByVal prefix As String) As String
+        NextName += 1
+        Return prefix & NextName
+    End Function
+
+    ' Makes the form the active window, as it is when a person starts the program. On the
+    ' tool's private desktop, which has no input, the foreground is not dependable, so while
+    ' the form waits it draws its frame as the active window's whenever it is not the
+    ' foreground window.
+    Private Sub Activate(ByVal f As Object)
+        SetForegroundWindow f.hWnd
+        DoEvents
+        KeepActive
+    End Sub
+
+    ' Every top-level form of the program drawn as the active window (a scene of several
+    ' forms shows them alike); an MDI child draws its frame as its MDI form decides.
+    Private Sub KeepActive()
+        Dim g As Object
+        For Each g In Forms
+            If TypeOf g Is MDIForm Then
+                ' the MDI form itself
+            ElseIf g.MDIChild Then
+                GoTo NextForm
+            End If
+            If g.Visible And GetForegroundWindow() <> g.hWnd Then SendMessageW g.hWnd, WM_NCACTIVATE, 1, 0
+    NextForm:
+        Next
+    End Sub
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Private Sub Signal(ByVal Name As String, Optional ByVal Text As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        If Len(Text) Then Print #n, Text
+        Close #n
+    End Sub
+
+    ' Waits until the signal is there (True), or until the form is closed (False).
+    Private Function WaitFor(ByVal Name As String, ByVal f As Object) As Boolean
+        Do
+            If Len(Signals()) Then
+                If Len(Dir$(Signals() & "\" & Name)) Then Return True
+            End If
+            If Not IsLoaded(f) Then Return False
+            KeepActive
+            KeepDropped
+            DoEvents
+            Sleep 50
+        Loop
+    End Function
+
+    Private Function IsLoaded(ByVal f As Object) As Boolean
+        Dim g As Object
+        For Each g In Forms
+            If g Is f Then Return True
+        Next
+        Return False
+    End Function
+
+End Module

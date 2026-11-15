@@ -15,7 +15,7 @@ Syntax: *object*.**Comments**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-**Comments** returns the text entered in the **Comments** field of the project's version information. This field is embedded in the compiled executable's `VS_VERSION_INFO` resource and is typically used to record build notes or other free-form text about the release. When running inside the twinBASIC IDE, the value is read from the current project settings.
+**Comments** returns the text entered in the **Comments** field of the project's version information, in [Project Settings](../../../IDE/Project-Settings#comments). This field is embedded in the compiled executable's `VS_VERSION_INFO` resource and is typically used to record build notes or other free-form text about the release. When running inside the twinBASIC IDE, the value is read from the current project settings.
 
 ### Example
 

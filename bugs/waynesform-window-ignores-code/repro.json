@@ -1,0 +1,14 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Caption: \"Set in code\", title bar: \"Designer caption\"$",
+      "^Width: 300, client width: 400$",
+      "^BorderStyle: tbFixedSingle, sizing border: True$",
+      "^MaximizeButton: False, maximize box: True$",
+      "^Caption: \"Set when shown\", title bar: \"Designer caption\"$",
+      "^Width: 250, client width: 400$"
+    ]
+  }
+}

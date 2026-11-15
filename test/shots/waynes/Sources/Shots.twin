@@ -1,0 +1,197 @@
+Module Shots
+
+    ' The program behind the CustomControls section's pictures of a running program
+    ' (scripts/shoot_docs.mjs, setup waynes). Its command line names the scene: the form that
+    ' Main shows, and for some forms a variant after a colon ("button:hover"). TB_SHOT_SIGNALS,
+    ' when it is set, names a folder through which the tool and the program take turns: the
+    ' program writes "shown" once its form is drawn and in the state the picture shows, and closes
+    ' the form when "end" appears. The texts are the fixture's own: nothing is read from the
+    ' machine.
+    '
+    ' A form of the CustomControls package is shown modally only, so each scene's form does its
+    ' own work, on the ticks of its WaynesTimer, tmrScene: the first runs the form's SetUp, which
+    ' styles its controls, and later ones wait for "end". Every control's place and size is in the
+    ' form's .tbform (a control moved at run time is not drawn where it moves to); its styles start
+    ' from the control's own defaults, which SetUp puts back with Defaults, since a control read
+    ' from a .tbform takes no defaults of its own.
+
+    Private Declare PtrSafe Function FindWindowExW Lib "user32" (ByVal hWndParent As LongPtr, ByVal hWndChildAfter As LongPtr, _
+        ByVal lpszClass As LongPtr, ByVal lpszWindow As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetKeyboardState Lib "user32" (ByRef lpKeyState As Byte) As Long
+    Private Declare PtrSafe Function SetKeyboardState Lib "user32" (ByRef lpKeyState As Byte) As Long
+    Private Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    ' The ticks of 50 ms between SetUp and "shown", for the form to draw what SetUp set.
+    Private Const SETTLE As Long = 6
+
+    Public Const WM_MOUSEMOVE As Long = &H200
+    Public Const WM_LBUTTONDOWN As Long = &H201
+    Public Const WM_LBUTTONUP As Long = &H202
+    Public Const MK_LBUTTON As Long = &H1
+    Public Const WM_KEYDOWN As Long = &H100
+    Public Const WM_KEYUP As Long = &H101
+
+    ' The scene's variant: what follows the colon on the command line, or "".
+    Public SceneVariant As String
+    Private Ticks As Long
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        Dim colon As Long = InStr(scene, ":")
+        If colon Then
+            SceneVariant = Mid$(scene, colon + 1)
+            scene = Left$(scene, colon - 1)
+        End If
+        Select Case scene
+            Case "overview": Show New frmOverview
+            Case "fillpatterns": Show New frmFillPatterns
+            Case "corners": Show New frmCorners
+            Case "textalign": Show New frmTextAlign
+            Case "overflow": Show New frmOverflow
+            Case "textrendering": Show New frmTextRendering
+            Case "borders": Show New frmBorders
+            Case "fills": Show New frmFills
+            Case "slider": Show New frmSlider
+            Case "textbox": Show New frmTextBox
+            Case "grid": Show New frmGrid
+            Case "button": Show New frmButton
+            Case "borderstyle"
+                Select Case SceneVariant
+                    Case "0": Show New frmBorderStyle0
+                    Case "1": Show New frmBorderStyle1
+                    Case "2": Show New frmBorderStyle2
+                    Case "3": Show New frmBorderStyle3
+                    Case "4": Show New frmBorderStyle4
+                    Case "5": Show New frmBorderStyle5
+                    Case Else: Signal "error", "no border style " & SceneVariant
+                End Select
+            Case Else: Signal "error", "no scene named " & scene
+        End Select
+    End Sub
+
+    ' A form of the package has no default instance, and is shown modally only.
+    Private Sub Show(ByVal f As Object)
+        f.Show vbModal
+    End Sub
+
+    ' Run by each form's timer: True once the form is to close. The first tick runs the form's
+    ' SetUp; an error it raises is written to the signal "error", which the tool reads once the form is shown.
+    Public Function Tick(ByVal f As Object) As Boolean
+        Ticks += 1
+        If Ticks = 1 Then
+            On Error GoTo Failed
+            CallByName f, "SetUp", VbMethod
+            Exit Function
+        Failed:
+            Signal "error", "error " & Err.Number & ": " & Err.Description
+            Exit Function
+        ElseIf Ticks = 1 + SETTLE Then
+            Signal "shown"
+        ElseIf Ticks > 1 + SETTLE Then
+            If Len(Signals()) Then Return Len(Dir$(Signals() & "\end")) > 0
+        End If
+    End Function
+
+    ' ---------------------------------------------------------------- defaults
+
+    ' A button's, text box's or slider's look as it is when the control is put on a form in the
+    ' designer: the defaults its own code sets for each of its states.
+    Public Sub Defaults(ByVal c As Object)
+        If TypeOf c Is WaynesButton Then
+            Dim b As WaynesButton = c
+            b.NormalState.InitializeDefaults
+            b.HoverState.InitializeDefaults
+            b.FocusedState.InitializeDefaults
+            b.PressedState.InitializeDefaults
+        ElseIf TypeOf c Is WaynesTextBox Then
+            Dim t As WaynesTextBox = c
+            t.NormalState.InitializeDefaultValues
+            t.HoverState.InitializeDefaultValues
+            t.FocusedState.InitializeDefaultValues_Focused
+        ElseIf TypeOf c Is WaynesSlider Then
+            Dim s As WaynesSlider = c
+            s.NormalState.InitializeDefaultValues
+            s.HoverState.InitializeDefaultValues
+            s.FocusedState.InitializeDefaultValues
+        ElseIf TypeOf c Is WaynesGrid Then
+            Dim g As WaynesGrid = c
+            g.CellOptions.Fill.ColorPoints.SetSolidColor vbWhite
+        End If
+    End Sub
+
+    ' A control of the form by its name.
+    Public Function Ctl(ByVal f As Object, ByVal Name As String) As Object
+        Return CallByName(f, Name, VbGet)
+    End Function
+
+    ' ---------------------------------------------------------------- the mouse
+
+    ' The window of the program's form: a form of the package is a window of the class tbForm.
+    Public Function FormWindow() As LongPtr
+        Dim h As LongPtr
+        Do
+            h = FindWindowExW(0, h, StrPtr("tbForm"), 0)
+            If h = 0 Then Err.Raise 5, , "the form has no window"
+            Dim pid As Long
+            GetWindowThreadProcessId h, pid
+            If pid = GetCurrentProcessId() Then Return h
+        Loop
+    End Function
+
+    ' A mouse message sent to the form's window at (x, y), pixels at 96 DPI in its client area.
+    Public Sub Mouse(ByVal Message As Long, ByVal x As Long, ByVal y As Long, Optional ByVal Keys As Long)
+        Dim h As LongPtr = FormWindow()
+        Dim dpi As Long = GetDpiForWindow(h)
+        Dim px As Long = x * dpi \ 96
+        Dim py As Long = y * dpi \ 96
+        ' the thread's state of the left button as the message says it is: a message the
+        ' program sends itself changes no key state, which a control may read
+        Dim state(0 To 255) As Byte
+        GetKeyboardState state(0)
+        state(vbKeyLButton) = IIf(Keys And MK_LBUTTON, &H80, 0)
+        SetKeyboardState state(0)
+        SendMessageW h, Message, Keys, (py * &H10000) Or (px And &HFFFF&)
+        DoEvents
+    End Sub
+
+    ' A click at (x, y): what puts the focus, and a text box's caret, there.
+    Public Sub Click(ByVal x As Long, ByVal y As Long)
+        Mouse WM_MOUSEMOVE, x, y
+        Mouse WM_LBUTTONDOWN, x, y, MK_LBUTTON
+        Mouse WM_LBUTTONUP, x, y
+    End Sub
+
+    ' A key pressed Times times, sent to the form's window. (No key or mouse button can be held
+    ' down: a control reads Shift and the mouse buttons from the keyboard and the mouse themselves,
+    ' which no message changes, so neither a selection nor a pressed button can be shown.)
+    Public Sub Key(ByVal KeyCode As Long, ByVal Times As Long)
+        Dim h As LongPtr = FormWindow()
+        Dim i As Long
+        For i = 1 To Times
+            SendMessageW h, WM_KEYDOWN, KeyCode, 1
+            SendMessageW h, WM_KEYUP, KeyCode, &HC0000001
+            DoEvents
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- signals
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Public Sub Signal(ByVal Name As String, Optional ByVal Text As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        If Len(Text) Then Print #n, Text
+        Close #n
+    End Sub
+
+End Module

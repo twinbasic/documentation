@@ -257,6 +257,8 @@ When set to **Yes**, twinBASIC container windows --- forms, UserControls, Pictur
 
 The version number of the build, and the text that the build writes into the file's version resource (`VERSIONINFO`).
 
+![The Project Settings dialog on its Version Info group, for a project whose version resource is filled in: Major 2, Minor 4, Build 17 and Revision 0, each in a box with up and down buttons; Product Name Stock Counter; Company Name Example Software; File Description Counts the stock of a small shop; Legal Copyright Copyright 2026 Example Software; Legal Trademarks unset, its box reading (unset) in grey; Comments Built with twinBASIC; and Auto-Increment at Default: None. Each setting's description is under its name.](Images/ProjectSettings_VersionInfo.png){:width="1202" height="738"}
+
 #### Major/Minor/Build/Revision
 
 The four parts of the version number: *Major*, *Minor*, *Build* and *Revision*. The build writes them into the file's version resource, and [**App.Major**](../Packages/AppGlobalClassObject/_App/Major), [**App.Minor**](../Packages/AppGlobalClassObject/_App/Minor), [**App.Build**](../Packages/AppGlobalClassObject/_App/Build) and [**App.Revision**](../Packages/AppGlobalClassObject/_App/Revision) return them. When they are not set, the version is 1.0.0.0. In the `Settings` file they are `project.versionMajor`, `project.versionMinor`, `project.versionBuild` and `project.versionRevision`.

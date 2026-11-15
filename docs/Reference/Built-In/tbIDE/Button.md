@@ -15,13 +15,17 @@ Private WithEvents RefreshButton As Button
 
 Private Sub Host_OnProjectLoaded()
     Set RefreshButton = Host.Toolbars(0).AddButton("MyAddIn.Refresh", "Refresh project", _
-                                                    LoadResData("refresh.png", "ICONS"))
+                                                            LoadResDataInternal("refresh.png", "ICONS"))
 End Sub
 
 Private Sub RefreshButton_OnClick()
     Host.CurrentProject.Save
 End Sub
 ```
+
+A button with [**IconData**](#icondata) is drawn as its icon, and one without is drawn as its [**Caption**](#caption). The two buttons of the [**Toolbar**](Toolbar) page's sample, Action 1 with an icon and Action 2 without:
+
+![The right end of the IDE's toolbar: the Preview and theme buttons, then an add-in's splitter, its Action 1 button drawn as its icon, and its Action 2 button drawn as its caption.](Images/Toolbar.png){:width="196" height="35"}
 
 * TOC
 {:toc}

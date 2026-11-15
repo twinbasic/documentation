@@ -22,6 +22,10 @@ End With
 
 The element's *properties* --- every CSS-style property, every DOM attribute, every custom-widget extension --- live inside the [**Properties**](#properties) bag, accessed through a dynamic resolution mechanism. See [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview for the underlying mechanism that makes `.style.textAlign = "center"` work without a statically-declared `style` member.
 
+Sample 10 builds its tool window this way: `h1` headings, an `input` box and a column of `div` elements that each set `style.backgroundImage` to a gradient, `style.border`, `style.borderRadius` and `style.padding`, and listen for `"click"` with [**AddEventListener**](#addeventlistener), so that each one works as a button.
+
+![Sample 10's tool window: the headings CURRENT PROJECT, DEBUG CONSOLE and GENERAL, each over a column of rounded blue-gradient div elements, one for each Host member the sample calls, and a text box holding 10.5 * 4.](Images/Sample10.png){:width="350" height="600"}
+
 * TOC
 {:toc}
 

@@ -9,6 +9,8 @@ permalink: /tB/Packages/VBRUN/Constants/MousePointerConstants
 
 Cursor-shape values for the **MousePointer** property of forms and controls.
 
+![The mouse pointer of each MousePointer value from vbDefault to vbPen, as a form shows them on Windows 10, all but vbIconPointer and vbSizePointer](Images/MousePointerConstants.png){:width="851" height="407"}
+
 ## Standard cursors
 
 | Constant | Value | Description |

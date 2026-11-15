@@ -21,3 +21,5 @@ Extended fill-pattern values for controls that support twinBASIC's gradient fill
 | **vbDiagonalCross**{: #vbDiagonalCross } | 7 | Crossed diagonal lines. |
 | **vbGradientNS**{: #vbGradientNS } | 8 | Vertical (north--south) linear gradient. *(twinBASIC addition.)* |
 | **vbGradientWE**{: #vbGradientWE } | 9 | Horizontal (west--east) linear gradient. *(twinBASIC addition.)* |
+
+![Ten Shape controls, one in each FillStyle value: solid, transparent, six hatch patterns, and the gradients from top to bottom and from left to right between FillColor and FillColorAlt](../../VB/Shape/Images/Shape_FillStyle.png){:width="671" height="249"}

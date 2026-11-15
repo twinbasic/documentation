@@ -1,0 +1,188 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": -3092272,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbGradientNorthToSouth",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "Fill",
+		"FormDesignerId": "{3804077D-2B0B-4855-AB72-7607F5F4B52A}",
+		"Height": 324,
+		"Left": 0,
+		"Name": "frmFills",
+		"Top": 0,
+		"Width": 616,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSingle",
+			"ControlBox": true,
+			"MaximizeButton": false,
+			"MinimizeButton": false,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Height": 80,
+				"Left": 16,
+				"Name": "lblFill0",
+				"Top": 16,
+				"Visible": true,
+				"Width": 180,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 40,
+				"Left": 12,
+				"Name": "lblCaption0",
+				"Top": 100,
+				"Visible": true,
+				"Width": 188,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 80,
+				"Left": 212,
+				"Name": "lblFill1",
+				"Top": 16,
+				"Visible": true,
+				"Width": 180,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 40,
+				"Left": 208,
+				"Name": "lblCaption1",
+				"Top": 100,
+				"Visible": true,
+				"Width": 188,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 80,
+				"Left": 408,
+				"Name": "lblFill2",
+				"Top": 16,
+				"Visible": true,
+				"Width": 180,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 40,
+				"Left": 404,
+				"Name": "lblCaption2",
+				"Top": 100,
+				"Visible": true,
+				"Width": 188,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 80,
+				"Left": 16,
+				"Name": "lblFill3",
+				"Top": 148,
+				"Visible": true,
+				"Width": 180,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 40,
+				"Left": 12,
+				"Name": "lblCaption3",
+				"Top": 232,
+				"Visible": true,
+				"Width": 188,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 80,
+				"Left": 212,
+				"Name": "lblFill4",
+				"Top": 148,
+				"Visible": true,
+				"Width": 180,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 40,
+				"Left": 208,
+				"Name": "lblCaption4",
+				"Top": 232,
+				"Visible": true,
+				"Width": 188,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 80,
+				"Left": 408,
+				"Name": "lblFill5",
+				"Top": 148,
+				"Visible": true,
+				"Width": 180,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 40,
+				"Left": 404,
+				"Name": "lblCaption5",
+				"Top": 232,
+				"Visible": true,
+				"Width": 188,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Enabled": true,
+				"Height": 32,
+				"Interval": 50,
+				"Left": 0,
+				"Name": "tmrScene",
+				"Top": 0,
+				"Visible": true,
+				"Width": 32,
+				"_className": "WaynesTimer",
+				"_clsid": "{19E29F0D-8062-40D5-962E-5BCD1F6C090E}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]

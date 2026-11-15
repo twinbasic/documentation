@@ -554,6 +554,10 @@ Syntax: *object*.**ShowColor** ( ) **As Boolean**
 
 The dialog starts with the current [**Color**](#color) value when **CdlCCRGBInit** is set in [**Flags**](#flags). On **OK**, [**Color**](#color) is updated with the chosen color and [**Flags**](#flags) is updated to reflect the dialog's returned flags. On cancel with [**CancelError**](#cancelerror) **True**, error `CdlCancel` is raised.
 
+The dialog with **Color** set to `RGB(64, 128, 192)` and **Flags** set to `CdlCCRGBInit Or CdlCCPreventFullOpen` (left) and to `CdlCCRGBInit Or CdlCCFullOpen` (right):
+
+![Two Color dialogs. The left one shows the 48 basic colors and 16 custom colors, with the Define Custom Colors button disabled, and OK and Cancel. The right one shows the same, and beside them the part for defining custom colors: a spectrum with a cross at the chosen color, a luminosity bar, a swatch of the color, its Hue 140, Sat 120 and Lum 120, its Red 64, Green 128 and Blue 192, and an Add to Custom Colors button.](Images/ShowColor.png){:width="688" height="332"}
+
 ### ShowFind
 {: .no_toc }
 
@@ -567,12 +571,20 @@ The dialog is non-modal: it remains open while the user interacts with the appli
 
 If the dialog cannot be created, the method raises **CdlBufferLengthZero** (36848) when the *Find what* buffer is invalid.
 
+The Find dialog (left) and the Replace dialog that [**ShowReplace**](#showreplace) opens (right), with [**FindWhat**](#findwhat) `total`, [**ReplaceWith**](#replacewith) `sum` and **Flags** set to `CdlFRDown Or CdlFRMatchCase`:
+
+![A Find dialog with total in its Find what box, the Match whole word only box clear, the Match case box checked, Down chosen in its Direction group, and the Find Next and Cancel buttons. Beside it a Replace dialog with total in Find what, sum in Replace with, the same two check boxes, and the Find Next, Replace, Replace All and Cancel buttons.](Images/ShowFind.png){:width="718" height="182"}
+
 ### ShowFont
 {: .no_toc }
 
 Displays the Font dialog and returns **True** if the user clicked **OK**.
 
 Syntax: *object*.**ShowFont** ( ) **As Boolean**
+
+The dialog with [**FontName**](#fontname) `Microsoft Sans Serif`, [**FontSize**](#fontsize) 10, [**FontBold**](#fontbold) **True**, [**Color**](#color) `RGB(0, 0, 160)` and **Flags** set to `CdlCFScreenFonts Or CdlCFEffects`:
+
+![The Font dialog with Microsoft Sans Serif selected in its list of fonts, Bold in its list of styles and 10 in its list of sizes. Below them, an Effects group with Strikeout and Underline check boxes and a Color list showing a dark blue swatch named Custom, a Sample box showing AaBbYyZz in that blue, a Script list showing Western, a Show more fonts link and the OK and Cancel buttons.](Images/ShowFont.png){:width="407" height="513"}
 
 <!-- test: PropertyTests.ShowFont_NoFontFlags_ShowsTheDialog -->
 The dialog is pre-loaded with the current font properties. The Windows documentation asks for **CdlCFScreenFonts**, **CdlCFPrinterFonts**, or both in [**Flags**](#flags); the dialog opens with neither.
@@ -594,6 +606,10 @@ Syntax: *object*.**ShowFolderBrowser** ( ) **As Boolean**
 On success, [**FileName**](#filename) is set to the selected path (with a trailing backslash for directories). [**FileTitle**](#filetitle) is set to the file name part when a file is selected rather than a directory; [**FileOffset**](#fileoffset) is the character offset of that name within [**FileName**](#filename). For a directory, **FileTitle** is empty and **FileOffset** is 0. On cancel with [**CancelError**](#cancelerror) **True**, error `CdlCancel` is raised.
 
 [**Flags**](#flags) is passed to the dialog as its [**CdlBIFConstants**](Enumerations/CdlBIFConstants) options and is not updated afterwards. The [**FolderBrowserValidateFailed**](#folderbrowservalidatefailed) event fires when the user types an invalid path into the dialog's edit box.
+
+The dialog with [**RootFolder**](#rootfolder) set to the path of a folder named Projects, [**InitDir**](#initdir) to its folder Reports and [**DialogTitle**](#dialogtitle) to `Choose the folder for the reports.`, with **Flags** set to **CdlBIFReturnOnlyFSDirs** (left) and to **CdlBIFUseNewUI** (right):
+
+![Two Browse For Folder dialogs, each showing the text Choose the folder for the reports. above a tree whose root is the folder Projects, holding the folders Invoices, Reports and Templates, with Reports selected. The left one is small and has only OK and Cancel. The right one, in the new style, is larger and has a Folder box showing Reports, a Make New Folder button, OK and Cancel.](Images/ShowFolderBrowser.png){:width="892" height="635"}
 
 <!-- test: FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned -->
 > [!WARNING] 1.0.13.0

@@ -1,0 +1,29 @@
+[Description("")]
+[FormDesignerId("CE65C555-53D8-4DD4-A0E7-5C1F12E6514D")]
+Class frmOverflow
+
+    ' TextOverflowMode's picture: the four values, each on a label too narrow for its text, with
+    ' the value's name beside it.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Dim names As Variant = Array("tbAllowPartialChars (0)", "tbDisallowPartialChars (1)", _
+            "tbAppendEllipsis (2)", "tbShrinkToFit (3)")
+        Dim v As Long
+        For v = 0 To 3
+            Dim n As WaynesLabel = Shots.Ctl(Me, "lblMode" & v)
+            n.Caption = names(v)
+            n.TextRendering.Font.Size = 10
+            n.TextRendering.Alignment = tbAlignMiddleLeft
+            Dim t As WaynesLabel = Shots.Ctl(Me, "lblText" & v)
+            t.BackgroundFill.ColorPoints.SetSolidColor vbWhite
+            t.Caption = "A caption that is much too long for the width of its label"
+            t.TextRendering.Alignment = tbAlignMiddleLeft
+            t.TextRendering.OverflowMode = v
+        Next
+    End Sub
+
+End Class

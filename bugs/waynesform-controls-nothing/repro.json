@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^before Show: Label1 is a WaynesLabel, Controls Is Nothing = True$",
+      "^before Show: Controls.Count raises 91, Object variable or With block variable not set$",
+      "^in Sub New: Label1 is a WaynesLabel, Controls Is Nothing = True$",
+      "^while shown: Label1 is a WaynesLabel, Controls Is Nothing = True$",
+      "^while shown: Controls.Count raises 91, Object variable or With block variable not set$"
+    ]
+  }
+}

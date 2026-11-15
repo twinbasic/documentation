@@ -22,3 +22,5 @@ Geometric-shape values for the **Shape** property of the **Shape** control.
 | **vbShapeArrowRight**{: #vbShapeArrowRight } | 8 | Arrow pointing right. |
 | **vbShapeArrowUp**{: #vbShapeArrowUp } | 9 | Arrow pointing up. |
 | **vbShapeArrowDown**{: #vbShapeArrowDown } | 10 | Arrow pointing down. |
+
+![The eleven Shape values drawn in the same bounds, wider than they are tall: rectangle, square, oval, circle, rounded rectangle, rounded square, star, and arrows pointing left, right, up and down](../../VB/Shape/Images/Shape_Kinds.png){:width="725" height="353"}

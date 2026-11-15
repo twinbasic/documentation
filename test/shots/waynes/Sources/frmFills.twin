@@ -1,0 +1,40 @@
+[Description("")]
+[FormDesignerId("3804077D-2B0B-4855-AB72-7607F5F4B52A")]
+Class frmFills
+
+    ' Fill's picture: one colour; two stops; the two stops moved to 20 and 80 per cent; three
+    ' stops (the Fill page's samples); and two stops with a Granularity of 6 and of 2.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        lblFill0.BackgroundFill.ColorPoints.SetSolidColor vbBlue
+        lblFill1.BackgroundFill.SetSimplePattern vbBlue, vbWhite, Pattern:=tbGradientNorthToSouth
+        With lblFill2.BackgroundFill
+            .SetSimplePattern &HF3E58F, &H014C99, Pattern:=tbGradientNorthToSouth
+            .ColorPoints.Values(0).PositionPercent = 20
+            .ColorPoints.Values(1).PositionPercent = 80
+        End With
+        With lblFill3.BackgroundFill
+            .Pattern = tbGradientNorthToSouth
+            .ColorPoints.SetColorPoints _
+                New CustomControlsPackage.FillColorPoint(&HFFF3E58F, 0), _
+                New CustomControlsPackage.FillColorPoint(&HFF99CCFF, 50), _
+                New CustomControlsPackage.FillColorPoint(&HFF014C99, 100)
+        End With
+        lblFill4.BackgroundFill.SetSimplePattern &HF3E58F, &H014C99, Granularity:=6, Pattern:=tbGradientNorthToSouth
+        lblFill5.BackgroundFill.SetSimplePattern &HF3E58F, &H014C99, Granularity:=2, Pattern:=tbGradientNorthToSouth
+        Dim texts As Variant = Array("SetSolidColor vbBlue", "vbBlue to vbWhite", _
+            "Stops at 20% and 80%", "Three stops", "Granularity 6", "Granularity 2")
+        Dim i As Long
+        For i = 0 To 5
+            Dim l As WaynesLabel = Shots.Ctl(Me, "lblCaption" & i)
+            l.Caption = texts(i)
+            l.TextRendering.Font.Size = 10
+            l.TextRendering.Alignment = tbAlignTopCenter
+        Next
+    End Sub
+
+End Class

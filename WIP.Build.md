@@ -555,7 +555,7 @@ markdown file under `docs/` (`markdownFiles`), applies the real
 `code_block` / `code_inline` contents in order. Any difference fails. It also
 checks on every page that `blockRegions`, which parses blocks only, finds exactly
 the fences, code blocks and HTML blocks of the full parse. It is the gate on
-`lib/markdown.mjs` and `lib/frontmatter.mjs` too (twelve module probes), and
+`lib/markdown.mjs` and `lib/frontmatter.mjs` too (the module probes), and
 holds the tools that ask them what is code: `builder/counts.mjs`'s count
 validator, `builder/discover.mjs`'s warning about an unquoted frontmatter value
 that ends in `#`, and `scripts/convert_em_dash_separators.mjs`'s dash normaliser.
@@ -575,7 +575,7 @@ it**, so removing the mask from one rewrite changes what the gate runs and is
 caught --- a gate that exercised `maskCode` alone would pass. And **its probes
 ride along in the normal run**, because the corpus is clean: a sweep that finds
 nothing is otherwise indistinguishable from a gate that has stopped detecting. A
-rewrite moved outside the mask is caught by the seven region probes (one or two
+rewrite moved outside the mask is caught by the region probes (one or two
 per damage in the table above, and a doubled-backtick span) while the sweep still
 reports zero. After changing the chain or `maskCode`, move one rewrite outside the
 mask and confirm a probe fails.
@@ -600,7 +600,7 @@ definition list's `: ` makes, and leaves an admonition alone when its `[!TYPE]`
 line is in a region. A fence *inside* an admonition is a region too, and the
 rewrite still strips its `>` markers.
 
-The six admonition probes and two "chain leaves alone" probes assert this. An
+The admonition probes and the "chain leaves alone" probes assert this. An
 admonition must still be converted between two ordinary fences, beside a fence
 whose body holds a fence marker, after a tilde fence, after a fence closed by a
 longer run, after a line whose backtick info string keeps it from opening a fence,
@@ -673,8 +673,8 @@ exit code (1), so no later step can clear it; a refused command line or a crash
 exits 2 instead.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
-both CI workflows: seventeen probes against a scratch baseline, no browser, no
-built tree, six of them on who may write. **It is not optional bookkeeping** --- the guard is silent on a
+both CI workflows: probes against a scratch baseline, no browser, no
+built tree, some of them on who may write. **It is not optional bookkeeping** --- the guard is silent on a
 healthy tree, so a green build is exactly what a guard that has stopped working
 produces. One probe replays the loss of 37 pages; the two that look redundant
 (foreign source root, missing baseline under CI) each guard one of the rules
@@ -712,7 +712,7 @@ foreword on every build. The emission sites are listed once, in `bookCoverage()`
 two probes pin them.
 
 `scripts/check_book_coverage.mjs` is the gate on it, in `test.bat` and both CI
-workflows: twelve probes over pages and a manifest built in memory, so it reads nothing
+workflows: probes over pages and a manifest built in memory, so it reads nothing
 under `docs/`. Dropping the chaptered-landing site fails ten of the twelve; ignoring
 `left_out:` fails nine.
 
@@ -975,8 +975,7 @@ A change to the sweep is checked on real pages, not only on the probes: put a wr
 count back into a page, in each of the five shapes, and confirm the gate names every
 site.
 
-Thirteen of its twenty-four probes cover the sweep, eight positive and five
-negative. One puts a fenced `## ` line, the shape of Wisdom.md's `staging.md`
+Most of its probes cover the sweep, positive and negative. One puts a fenced `## ` line, the shape of Wisdom.md's `staging.md`
 example, inside a wrapper's section, since sections are split through
 `lib/markdown.mjs`'s `splitOnMarker` and a heading-shaped line in a region starts
 none.
@@ -1046,15 +1045,15 @@ unbounded hang.
 **Never quote a `degN` from a census.** The two backends disagree on it ---
 the native agent says polynomial degree 2 where the pure-JavaScript fallback says
 degree 3 on the same pattern --- while agreeing on exponential-or-not, which is
-what the gate rests on, and on all eight classification probes. A degree is a
+what the gate rests on, and on every classification probe. A degree is a
 ranking aid for reading a census, not a number to write into prose.
 
 Three implementation details are essential:
 
 - **The self-test probes ride along inside the normal run**, not behind a
-  `--self-test` nobody remembers. Eight classification probes, both directions:
-  the three regexes this repo has shipped (including the incomplete fix),
-  `^(a+)+$`, and four that must *not* be flagged --- plus nineteen fold probes,
+  `--self-test` nobody remembers. Classification probes, both directions:
+  the regexes this repo has shipped (including the incomplete fix),
+  `^(a+)+$`, and some that must *not* be flagged --- plus the fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
 - **Parallelism comes from separate processes.** Importing `recheck` spawns one
@@ -1071,7 +1070,7 @@ Three implementation details are essential:
   a silent fall back to the pure-JS implementation --- correct, but roughly a
   hundred times slower. The script resolves the binary properly and sets
   `RECHECK_BIN` itself. If no native backend is found it says so in its summary
-  line rather than just being slow. Both backends classify all eight probes
+  line rather than just being slow. Both backends classify every probe
   identically, so the fallback is slower, not weaker.
 
 Limitation: a regex recheck cannot decide comes back `unknown`, and an unknown is
@@ -1112,8 +1111,8 @@ modelled calls does (`--census` lists them).
 glob compiler building a pattern character by character. That is the difference
 between a blind spot someone can close and one they can only watch.
 
-Nineteen fold probes ride along in the normal run, eleven that must resolve to an
-exact pattern and eight that must be refused with a reason. **The negative eight
+Fold probes ride along in the normal run, some that must resolve to an
+exact pattern and some that must be refused with a reason. **The negative ones
 are the ones that matter**: a folder that resolves less than it claims does not fail,
 it moves constructions into the unresolved list, where nothing checks them and
 the run goes green. A folder that resolves *more* than it can know is worse, and the negatives

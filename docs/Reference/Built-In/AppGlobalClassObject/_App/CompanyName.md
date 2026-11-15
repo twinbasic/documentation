@@ -15,7 +15,7 @@ Syntax: *object*.**CompanyName**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-The value is taken from the Company Name field in the project's version information, as set in the twinBASIC project settings. When the field has not been filled in, **CompanyName** returns an empty string.
+The value is taken from the **Company Name** field of the project's version information, set in [Project Settings](../../../IDE/Project-Settings#company-name). When the field has not been filled in, **CompanyName** returns an empty string.
 
 ### Example
 

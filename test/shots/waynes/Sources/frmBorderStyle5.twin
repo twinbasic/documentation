@@ -1,0 +1,16 @@
+[Description("")]
+[FormDesignerId("9BCA0682-6E79-404A-A158-B96CD00DADB0")]
+Class frmBorderStyle5
+
+    ' BorderStyle's picture, one run per value: a form of this border style with MinimizeButton
+    ' and MaximizeButton both True, and a label naming the style.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        lblStyle.TextRendering.Font.Size = 10
+    End Sub
+
+End Class

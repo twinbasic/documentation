@@ -45,6 +45,8 @@ Buttons, icons, default-button, modality, and other behaviour flags for the **Ms
 | **vbRetryCancel**{: #vbRetryCancel } | 5 | **Retry** and **Cancel** buttons. |
 | **vbCancelTryAgainContinue**{: #vbCancelTryAgainContinue } | 6 | **Cancel**, **Try Again**, and **Continue** buttons. |
 
+![A message box for each set of buttons, from vbOKOnly to vbCancelTryAgainContinue, the first button the default](Images/VbMsgBoxStyle_Buttons.png){:width="722" height="464"}
+
 ### Icon
 
 | Constant | Value | Description |
@@ -53,6 +55,8 @@ Buttons, icons, default-button, modality, and other behaviour flags for the **Ms
 | **vbQuestion**{: #vbQuestion } | 32 | Warning query icon. |
 | **vbExclamation**{: #vbExclamation } | 48 | Warning message icon. |
 | **vbInformation**{: #vbInformation } | 64 | Information message icon. |
+
+![Four message boxes with the icons of vbCritical, vbQuestion, vbExclamation and vbInformation](Images/VbMsgBoxStyle_Icons.png){:width="392" height="339"}
 
 ### Default button
 

@@ -19,3 +19,5 @@ Pattern values for the **FillStyle** property of forms, picture boxes, and shape
 | **vbDownwardDiagonal**{: #vbDownwardDiagonal } | 5 | Downward-sloping diagonal lines. |
 | **vbCross**{: #vbCross } | 6 | Crossed horizontal and vertical lines. |
 | **vbDiagonalCross**{: #vbDiagonalCross } | 7 | Crossed diagonal lines. |
+
+![Eight boxes drawn on a form with Line ... B, one in each FillStyle value from vbFSSolid to vbDiagonalCross, in a dark blue FillColor](Images/FillStyleConstants.png){:width="565" height="261"}

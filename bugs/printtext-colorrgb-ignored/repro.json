@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "addin:console-colour",
+  "tests": [
+    "a line PrintText prints with no colour is one of the IDE's yellow message lines",
+    "a line printed with an RGB colour, with 0 or with one of the IDE's own codes is drawn as one with no colour",
+    "a line printed with &HFD0000, the IDE's code for a native exception, is drawn as one with no colour and turns no TRACE-MODE on"
+  ],
+  "steps": "This is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.\n1. Open printtext-colorrgb-ignored.twinproj and build it for Win32. Copy Build\\PrintTextColorRgbIgnored_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\ and restart the IDE. Open any project: the toolbar has a button, Print in colour.\n2. Click Print in colour. The DEBUG CONSOLE prints no colour, orange, red and blue, all four in the same yellow.\n3. Close the IDE and delete PrintTextColorRgbIgnored_win32.dll from %APPDATA%\\twinBASIC\\addins\\win32\\.\nAsserted on BETA 1042 by `addin-test.bat --only console-colour` (the ConsoleColourProbe add-in in test/addin/probes/consolecolour, of which this project is a cut-down copy)."
+}

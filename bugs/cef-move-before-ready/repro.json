@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 6,
+    "output": [
+      "^--- exe: exit 10$",
+      "^--- exe: exception 0xc0000005 in CefMoveBeforeReady_win32\\.exe at offset 0x[0-9a-f]+$"
+    ]
+  }
+}

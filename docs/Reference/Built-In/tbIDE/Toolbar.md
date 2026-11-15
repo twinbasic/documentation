@@ -14,11 +14,15 @@ One IDE toolbar --- the strip of buttons that runs along the top of the IDE wind
 Private Sub Host_OnProjectLoaded()
     With Host.Toolbars(0)
         .AddSplitter
-        Set Button1 = .AddButton("MyAddInButton1", "Action 1", LoadResData("icon.png", "ICONS"))
+        Set Button1 = .AddButton("MyAddInButton1", "Action 1", LoadResDataInternal("icon.png", "ICONS"))
         Set Button2 = .AddButton("MyAddInButton2", "Action 2")
     End With
 End Sub
 ```
+
+The splitter and the two buttons follow the IDE's own buttons at the right of the toolbar: Action 1 shows its icon, and Action 2, which has none, shows its caption.
+
+![The right end of the IDE's toolbar: the Preview and theme buttons, then the add-in's splitter, the Action 1 button drawn as its icon, and the Action 2 button drawn as its caption.](Images/Toolbar.png){:width="196" height="35"}
 
 The toolbar is shared with the IDE's own commands and with every other loaded addin --- pick button IDs that uniquely identify the addin so multiple addins do not collide.
 
@@ -41,11 +45,11 @@ Syntax: *toolbar*.**AddButton**( *Id*, *Caption* [, *IconData* ] ) **As** [**But
 : *required* The button's label. **String**. When *IconData* is supplied, the caption appears as a tooltip only; when *IconData* is omitted, the caption is displayed inline as the button's text.
 
 *IconData*
-: *optional* The button's icon as a **Byte()** array --- typically the bytes of an embedded PNG / ICO resource loaded with `LoadResData`. **Variant**. Pass an empty / **Empty** value to omit the icon and show the caption inline.
+: *optional* The button's icon as a **Byte()** array --- typically the bytes of an embedded PNG / ICO resource loaded with `LoadResDataInternal`, as the addin samples load theirs: `LoadResData` belongs to the VB package, which an addin project does not reference. **Variant**. Pass an empty / **Empty** value to omit the icon and show the caption inline.
 
 ```tb check_build
 Dim icon() As Byte
-icon = LoadResData("button1.png", "ICONS")
+icon = LoadResDataInternal("button1.png", "ICONS")
 Set Button1 = Host.Toolbars(0).AddButton("MyAddIn.Button1", "Refresh Project", icon)
 ```
 

@@ -13,6 +13,8 @@ indexed_from: beta-x-1042
 
 The **cefPackage** wraps the [Chromium Embedded Framework](https://chromiumembedded.github.io/cef/) and exposes it as an ordinary twinBASIC control. Drop a [**CefBrowser**](CefBrowser/) onto a form and a Chromium browser renders web content inside it --- navigate to URLs, run JavaScript, print pages to PDF, and exchange messages with the loaded page.
 
+![A window titled CefBrowser Demo, with a CefBrowser control filling most of the form. The control shows a web page that the form passed to NavigateToString: a blue heading, Hello from a CefBrowser, a paragraph, three bullet points, and a pale blue box holding a line that the form's code set by calling a JavaScript function of the page with JsRun.](CefBrowser/Images/CefBrowser_Page.png){:width="601" height="381"}
+
 The package is a built-in package shipped with twinBASIC, but the CEF runtime itself is distributed *separately* --- applications must ship the matching runtime ZIP alongside the executable. See [Runtime files](#runtime-files) below.
 
 > [!IMPORTANT]

@@ -11,7 +11,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/ImlDrawConstants
 Flag combinations passed to the *Style* parameter of [**ListImage.Draw**](../ImageList/ListImage#draw). Multiple flags can be **Or**-combined to compose render styles.
 
 ```tb check_build project=packages
-' Draw a small icon with the focus rectangle overlaid:
+' Draw a small icon blended a quarter with the highlight colour:
 ImageList1.ListImages("doc").Draw _
     PictureBox1.hDC, 0, 0, _
     WinNativeCommonCtls.ImlDrawTransparent Or WinNativeCommonCtls.ImlDrawFocus
@@ -36,11 +36,13 @@ End Sub
 
 | Member                    | Value | Description                                                              |
 |---------------------------|-------|--------------------------------------------------------------------------|
-| **ImlDrawNormal**{: #ImlDrawNormal }           | 1  | Render in the normal state (no overlays).                |
-| **ImlDrawTransparent**{: #ImlDrawTransparent } | 2  | Honour the image's mask / alpha --- transparent pixels stay transparent. |
-| **ImlDrawSelected**{: #ImlDrawSelected }       | 4  | Render with the selection-color overlay (typically a blue tint).        |
-| **ImlDrawFocus**{: #ImlDrawFocus }             | 8  | Render with the focus-rectangle overlay (dotted border).                |
-| **ImlDrawNoMask**{: #ImlDrawNoMask }           | 16 | Bypass the mask --- draw the entire bitmap including pixels that would normally be transparent. |
+| **ImlDrawNormal**{: #ImlDrawNormal }           | 1  | Draws the picture. Where it is transparent, the image list's [**BackColor**](../ImageList/#backcolor) shows when [**UseBackColor**](../ImageList/#usebackcolor) is **True**, and what is under it otherwise. |
+| **ImlDrawTransparent**{: #ImlDrawTransparent } | 2  | Draws the picture with its transparent pixels left out, whatever [**UseBackColor**](../ImageList/#usebackcolor) says. |
+| **ImlDrawSelected**{: #ImlDrawSelected }       | 4  | Draws the picture blended half and half with the system's highlight colour, as a selected item's picture is drawn. |
+| **ImlDrawFocus**{: #ImlDrawFocus }             | 8  | Draws the picture blended with the system's highlight colour, a quarter of it. |
+| **ImlDrawNoMask**{: #ImlDrawNoMask }           | 16 | Draws the picture without its mask: in an image list of a [**ColorDepth**](../ImageList/#colordepth) below **ColorDepth32Bit**, the pixels its mask makes transparent draw black. A **ColorDepth32Bit** picture keeps its transparency. |
+
+![A picture of an image list drawn with ListImage.Draw in each Style over a chequered ground, from a list of ColorDepth32Bit and one of ColorDepth24Bit: Normal and Transparent draw the picture alone, Selected blends it with the highlight colour and Focus a quarter as much, NoMask draws the 24-bit picture's masked pixels black, and with UseBackColor Normal fills the transparent pixels with the list's BackColor](Images/ImlDrawConstants.png){:width="885" height="213"}
 
 ## See Also
 

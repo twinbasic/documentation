@@ -732,6 +732,10 @@ Syntax: *object*.**PropertyChanged** [ *PropertyName* ]
 *PropertyName*
 : *optional* The name of the property that changed, as a **String**. When supplied, the framework also fires the COM **IPropertyNotifySink::OnChanged** event with the matching **DispId** so that data-bound containers can refresh themselves. Omit for a generic "something changed" notification.
 
+<!-- test: bug usercontrol-propertychanged-leaves-err -->
+> [!WARNING] BETA 1042
+> **PropertyChanged** raises no error, but it leaves **Err.Number** set in the code that called the control's member: 438 after `PropertyChanged "Name"` and 13 after **PropertyChanged** with no name. So after an assignment such as `MyControl1.Caption = "x"`, whose **Property Let** ends with **PropertyChanged**, **Err.Number** reads 438 although the assignment worked, with or without an **On Error** statement in the caller; an **On Error GoTo** handler is not entered. Code that tests **Err.Number** after such a call sees an error that did not happen; clear **Err** before the statement whose error matters. VB6 leaves **Err.Number** at 0.
+
 ### PSet
 {: .no_toc }
 

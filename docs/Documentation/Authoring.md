@@ -185,9 +185,9 @@ as `[CefBrowser](.)`, and a section of it as `[Create](.#create)`.
 **Set `has_toc: false` on every page in the group.** It suppresses the automatic
 "Table of contents" heading and list of child pages that the template otherwise
 appends to a parent page. On a reference index that list repeats the members the
-page already introduces, so every one of the 238 pages that sets the key sets it
+page already introduces, so every page that sets the key sets it
 to `false`. The `AppGlobalClassObject` package is the example to copy --- its
-`index.md` and all 37 pages under `_App/` carry it.
+`index.md` and every page under `_App/` carry it.
 
 `has_toc` is unrelated to the in-page table of contents, which is the
 `* TOC goes here` / `{:toc}` marker, and to `{: .no_toc }` on the page title,
@@ -235,9 +235,9 @@ The repair re-levels the whole page. The plugin raises **every** heading of leve
 
 ### Editing a page that still uses the old style
 
-**The plugin runs only on a page that uses `#` and `###` and no `##` anywhere.** More than four hundred pages are in that state. Adding one `##` section to such a page disarms the normalizer: every `###` already there stops being repaired and becomes a heading-order defect, in the same edit that added a correctly-levelled section.
+**The plugin runs only on a page that uses `#` and `###` and no `##` anywhere.** Hundreds of pages are in that state. Adding one `##` section to such a page disarms the normalizer: every `###` already there stops being repaired and becomes a heading-order defect, in the same edit that added a correctly-levelled section.
 
-Nothing warns you. The build succeeds, because it does not check heading order, and `check.bat`'s accessibility scan audits sixteen sample pages out of roughly 1,160.
+Nothing warns you. The build succeeds, because it does not check heading order, and `check.bat`'s accessibility scan audits a sample of pages out of {{tbdocs:pages}}.
 
 When you add a section to a page whose headings start at `###`, pick one of these and finish it:
 
@@ -259,7 +259,7 @@ Two details of the slug surprise people. Runs of hyphens are not collapsed and t
 
 `headerIdPlugin` skips a heading that already carries an `id`, so the heading can then be reworded freely. Two details of the syntax matter. The delimiters are `{:` and `}`, not bare braces. And a blank line changes the direction: an attribute list on the line *immediately* after a block attaches to that block, while one after a blank line attaches to the next block. Leave a blank line in and the id lands on the following paragraph.
 
-The same attribute works inline, attached to a span --- `| **vbPRCMColor**{: #vbPRCMColor } | 2 | ...` gives one enumeration member in a table its own anchor. Across `docs/`, 1,342 attribute lists set an id, in 179 files. Only 159 stand alone on a line of their own, 146 of them pinning a heading; the other 1,183 are inline.
+The same attribute works inline, attached to a span --- `| **vbPRCMColor**{: #vbPRCMColor } | 2 | ...` gives one enumeration member in a table its own anchor. Across `docs/`, over a thousand attribute lists set an id. Only a small share stand alone on a line of their own, most of those pinning a heading; the rest are inline.
 
 **`redirect_from` cannot rescue a renamed anchor.** It emits a whole-page stub (one destination URL written four times, as the canonical link, a `location=` assignment, a meta refresh and a visible fallback link) and nothing maps one fragment to another. It moves a page, not a section.
 
@@ -285,7 +285,7 @@ symbols: [_HiddenModule]
 ---
 ```
 
-On a statement page the first name is the statement and the rest are its keywords; on an operator page each is an operator of its own --- the comparison operators page lists `["=", "<>", "<", "<=", ">", ">="]`, quoted, because a bare `>` is YAML syntax. Quote `True`, `False` and `Null` as well: YAML reads them bare as a boolean and as no value, and the build refuses an entry that is not a name. Only two pages need it today. A page in a package folder that gives the index no entry at all is named after the build's summary.
+On a statement page the first name is the statement and the rest are its keywords; on an operator page each is an operator of its own --- the comparison operators page lists `["=", "<>", "<", "<=", ">", ">="]`, quoted, because a bare `>` is YAML syntax. Quote `True`, `False` and `Null` as well: YAML reads them bare as a boolean and as no value, and the build refuses an entry that is not a name. Few pages need it. A page in a package folder that gives the index no entry at all is named after the build's summary.
 
 Two summary pages outside the package folders are read too, and their `symbols:` list names the page's `##` sections: each intrinsic type of [Data Types](../../Reference/Data-Types), and each keyword of [Literal Keywords](../../Reference/Literal-Keywords) (`["Nothing", "Null", "Empty", "True", "False"]`). A name with no `##` heading of its own fails the build.
 
@@ -807,7 +807,7 @@ Images live in an `Images/` folder beside the page that uses them, and are refer
 
 **The text in the square brackets is the image's alt text, and every image needs one.** Write what a reader who cannot see the picture would otherwise miss --- what the screenshot shows and which part of it the surrounding prose is pointing at. A caption-length phrase is usually right; the file name, the word *screenshot*, and the name of the button you happened to be looking for are not.
 
-No gate checks the alt text. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt marks an image as decorative, which is right for a spacer and wrong for a screenshot. The scan also samples only sixteen pages. Whether the text describes the picture is for you and your reviewer to judge.
+No gate checks the alt text. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt marks an image as decorative, which is right for a spacer and wrong for a screenshot. The scan also samples only a few pages. Whether the text describes the picture is for you and your reviewer to judge.
 
 Copy the *shape* of a neighbouring page's image markdown, never its alt text. The example above used to read `![Create Package]`, and that string spread onto ten further images --- a references dialog, a toolbox, a properties window, an animated GIF --- describing none of them.
 

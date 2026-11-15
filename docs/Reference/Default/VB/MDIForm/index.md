@@ -44,7 +44,7 @@ End Sub
 
 ## Lifecycle
 
-The MDIForm goes through the same six events as a regular [**Form**](../Form/) from creation to destruction:
+The MDIForm goes through the same events as a regular [**Form**](../Form/) from creation to destruction:
 
 | Event                            | When                                                                                |
 |----------------------------------|-------------------------------------------------------------------------------------|
@@ -84,6 +84,12 @@ Private Sub mnuWindowArrangeIcons_Click()
     Me.Arrange vbArrangeIcons
 End Sub
 ```
+
+![An MDI form whose three child forms are cascaded, each one's title bar showing below the one before it](Images/MDIForm_Cascade.png){:width="587" height="373"}
+
+![An MDI form whose three child forms are tiled horizontally, one above the other](Images/MDIForm_TileHorizontal.png){:width="587" height="373"}
+
+![An MDI form whose three child forms are tiled vertically, side by side](Images/MDIForm_TileVertical.png){:width="587" height="373"}
 
 ## Window appearance
 

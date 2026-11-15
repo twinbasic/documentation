@@ -15,6 +15,8 @@ Controls whether the [**TreeView**](../TreeView/) draws tree lines from root nod
 | **tvwTreeLines**{: #tvwTreeLines } | 0 | Tree lines connect children to their parents but not root-level peers. |
 | **tvwRootLines**{: #tvwRootLines } | 1 | Tree lines connect root-level nodes to each other as well as child connections. |
 
+![Two TreeViews with lines, buttons and pictures: with tvwTreeLines the root nodes Documents and Music have no lines or buttons to their left, with tvwRootLines the lines join them and Music, collapsed, has a plus button](Images/TreeLineStyleConstants.png){:width="411" height="197"}
+
 ## See Also
 
 - [TreeView](../TreeView/) -- consumer

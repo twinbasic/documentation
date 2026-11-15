@@ -1,0 +1,295 @@
+Module MainModule
+
+    ' The program behind the xCalendar section's pictures of an xCalendar (scripts/shoot_docs.mjs,
+    ' setup xcalendar). Its command line names the scene: which form it shows and how its
+    ' calendars are set up. TB_SHOT_SIGNALS, when it is set, names a folder through which the tool
+    ' and the program take turns: the program writes "shown" once its form is drawn and in the
+    ' state the picture shows, and ends when "end" appears or the form is closed. Every calendar
+    ' shows March 2026 with the 15th selected, whatever the day the picture is taken; the texts are
+    ' the fixture's own, and nothing is read from the machine.
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_NCACTIVATE As Long = &H86
+
+    ' The labels of the areas picture: white on the dark red of the IDE pictures' labels.
+    Private Const LABEL_BACK As Long = &H1A168E
+    Private Const LABEL_FORE As Long = &HFFFFFF
+    ' Twips at 96 DPI, in which the layout is written: 15 to a pixel.
+    Private Const PX As Long = 15
+    Private Const GAP As Long = 10 * PX
+
+    Private Const SelectedDate As Date = #3/15/2026#
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        Dim f As Form
+        Select Case scene
+            Case "enabled": Set f = frmTwo
+            Case "effects": Set f = frmThree
+            Case Else: Set f = frmOne
+        End Select
+        Load f
+        On Error GoTo Failed
+        SetUp scene, f
+        f.Show
+        Activate f
+        f.Refresh
+        DoEvents
+        If scene = "areas" Then Annotate f
+        f.Refresh
+        DoEvents
+        Sleep 200
+        DoEvents
+    Shown:
+        On Error GoTo 0
+        Signal "shown"
+        If WaitFor("end", f) Then Unload f
+        Exit Sub
+    Failed:
+        ' The tool fails the picture with this text, rather than wait for a form that never shows.
+        Signal "error", "error " & Err.Number & " in " & scene & ": " & Err.Description
+        f.Show
+        Resume Shown
+    End Sub
+
+    ' ---------------------------------------------------------------- the scenes
+
+    Private Sub SetUp(ByVal scene As String, ByVal f As Form)
+        Select Case scene
+            Case "areas": Areas f
+            Case "enabled": EnabledScene f
+            Case "effects": Effects f
+            Case "sample": Sample f
+            Case Else: Areas f
+        End Select
+    End Sub
+
+    ' The control as the form holds it: its extender, which has Move, Left and the like, and passes
+    ' the members of the control on (the type xCalendar.xCalendar has only the control's own).
+    Private Function Cal(ByVal f As Form, ByVal i As Long) As Object
+        Return f.Controls("xCalendar" & i)
+    End Function
+
+    ' Selects SelectedDate and places the dates of the grid for its month. Setting Value to a date
+    ' in a month other than the shown one leaves the grid with the old month's dates, and setting
+    ' FirstDay leaves them in the old order, until the selection next moves (the page's Known
+    ' problems): so Value is set to the day after, and PreviousDay moves the selection back.
+    Private Sub SelectDate(ByVal c As Object)
+        c.Value = SelectedDate + 1
+        c.PreviousDay
+    End Sub
+
+    ' The calendars `first` to `last` of the form, each `w` by `h` pixels at 96 DPI, side by side,
+    ' GAP apart and from the form's edges, each with its label under it as its caption, or none
+    ' when `captions` is empty; and the form made as large as they are.
+    Private Sub LayOut(ByVal f As Form, ByVal count As Long, ByVal w As Long, ByVal h As Long, _
+            ParamArray captions() As Variant)
+        Dim i As Long, bottom As Long
+        For i = 1 To count
+            Dim c As Object = Cal(f, i)
+            c.Move GAP + (i - 1) * (w * PX + 2 * GAP), GAP, w * PX, h * PX
+            bottom = c.Top + c.Height
+            If UBound(captions) >= i - 1 Then
+                Dim l As Label = f.Controls("Label" & i)
+                l.FontName = "Segoe UI"
+                l.FontSize = 9
+                l.Alignment = vbCenter
+                l.BackStyle = 0
+                l.Caption = captions(i - 1)
+                l.Move c.Left, bottom + 6 * PX, c.Width, 20 * PX
+                l.Visible = True
+                bottom = l.Top + l.Height
+            End If
+        Next
+        f.Width = count * (w * PX + 2 * GAP) + (f.Width - f.ScaleWidth)
+        f.Height = bottom + GAP + (f.Height - f.ScaleHeight)
+    End Sub
+
+    ' One calendar at its defaults, 320 by 240 pixels, its areas named by labels beside it.
+    Private Sub Areas(ByVal f As Form)
+        SelectDate Cal(f, 1)
+        LayOut f, 1, 320, 240
+    End Sub
+
+    ' The same calendar enabled and, set from code, disabled.
+    Private Sub EnabledScene(ByVal f As Form)
+        SelectDate Cal(f, 1)
+        SelectDate Cal(f, 2)
+        Cal(f, 2).Enabled = False
+        LayOut f, 2, 300, 225, "Enabled = True", "Enabled = False"
+    End Sub
+
+    ' The three GridCellEffect values. With Flat, the default GridLinesColor is drawn near-black
+    ' (Known problems), so the flat calendar has a grey of its own.
+    Private Sub Effects(ByVal f As Form)
+        Dim i As Long
+        For i = 1 To 3
+            SelectDate Cal(f, i)
+        Next
+        Cal(f, 2).GridCellEffect = GridCellEffectEnum.Sunken
+        With Cal(f, 3)
+            .GridCellEffect = GridCellEffectEnum.Flat
+            .GridLinesColor = RGB(160, 160, 160)
+        End With
+        LayOut f, 3, 300, 225, "Raised (the default)", "Sunken", "Flat, GridLinesColor = RGB(160, 160, 160)"
+    End Sub
+
+    ' The Enumerations section's sample, as its page has it, then the date selected.
+    Private Sub Sample(ByVal f As Form)
+        With Cal(f, 1)
+            .FirstDay = WeekDaysEnum.Sunday
+            .DayLength = DayLengthEnum.LongLength
+            .MonthLength = MonthLengthEnum.ShortLength
+            .GridCellEffect = GridCellEffectEnum.Flat
+            .GridLinesColor = RGB(200, 200, 200)
+            .DayBackColor = RGB(220, 230, 241)
+            .ShowHorizontalGrid = False
+        End With
+        SelectDate Cal(f, 1)
+        LayOut f, 1, 440, 240
+    End Sub
+
+    ' ---------------------------------------------------------------- the labels of the areas picture
+
+    ' Labels on both sides of the calendar, each with a line to the edge of the control at the
+    ' middle of what it names: on the left the three areas, on the right the two lists and the
+    ' selected date (in the last column, since March 15, 2026 is a Sunday and the week starts on
+    ' Monday). The heights are worked out as the control works them out: one line of the font,
+    ' and the margin, in device pixels, above and below. A line ends at the control's edge, since
+    ' the form draws nothing over its child window.
+    Private Sub Annotate(ByVal f As Form)
+        Dim c As Object = Cal(f, 1)
+        Dim tpy As Single = Screen.TwipsPerPixelY
+        Dim titleH As Single = LineHeight(f, c.TitleFont) + 2 * c.TitleMargin * tpy
+        Dim daysH As Single = LineHeight(f, c.DayFont) + 2 * c.DaysMargin * tpy
+        Dim gridTop As Single = titleH + daysH
+        Dim rowH As Single = (c.Height - gridTop) / 6
+        ' the row of the selected date: the grid starts on the Monday on or before March 1
+        Dim first As Date = DateSerial(2026, 3, 1)
+        first = first - (Weekday(first, vbMonday) - 1)
+        Dim row As Long = (SelectedDate - first) \ 7
+
+        Dim names() As Variant = Array("Title area", "Row of day names", "Grid of days", "Month and year lists", "Selected date")
+        Dim ys() As Variant = Array(titleH / 2, titleH + daysH / 2, gridTop + 3 * rowH, titleH / 2, gridTop + (row + 0.5) * rowH)
+        Dim i As Long, leftW As Long, rightW As Long
+        For i = 1 To 5
+            Dim l As Label = f.Controls("Label" & i)
+            l.FontName = "Segoe UI"
+            l.FontSize = 9
+            l.FontBold = True
+            l.BackStyle = 1
+            l.BackColor = LABEL_BACK
+            l.ForeColor = LABEL_FORE
+            l.Alignment = vbCenter
+            l.AutoSize = True
+            l.Caption = "  " & names(i - 1) & "  "
+            l.AutoSize = False
+            l.Height = l.Height + 4 * PX
+            If i <= 3 Then
+                If l.Width > leftW Then leftW = l.Width
+            Else
+                If l.Width > rightW Then rightW = l.Width
+            End If
+        Next
+
+        Const LEAD As Long = 30 * PX
+        c.Move GAP + leftW + LEAD, GAP
+        f.Width = c.Left + c.Width + LEAD + rightW + GAP + (f.Width - f.ScaleWidth)
+        f.Height = c.Top + c.Height + GAP + (f.Height - f.ScaleHeight)
+
+        f.AutoRedraw = True
+        f.Cls
+        f.DrawWidth = 2
+        f.FillStyle = vbFSSolid
+        f.FillColor = LABEL_BACK
+        ' each side's labels at the height of what they name, moved down where one would touch
+        ' the one above it
+        Dim below As Single
+        For i = 1 To 5
+            If i = 1 Or i = 4 Then below = c.Top
+            Set l = f.Controls("Label" & i)
+            Dim y As Single = c.Top + ys(i - 1)
+            Dim top As Single = y - l.Height / 2
+            If top < below + 4 * PX Then top = below + 4 * PX
+            If i <= 3 Then
+                l.Move c.Left - LEAD - l.Width, top
+                f.Line (l.Left + l.Width, top + l.Height / 2)-(c.Left, y), LABEL_BACK
+                f.Circle (c.Left, y), 3 * PX, LABEL_BACK
+            Else
+                l.Move c.Left + c.Width + LEAD, top
+                f.Line (l.Left, top + l.Height / 2)-(c.Left + c.Width, y), LABEL_BACK
+                f.Circle (c.Left + c.Width, y), 3 * PX, LABEL_BACK
+            End If
+            l.Visible = True
+            below = top + l.Height
+        Next
+    End Sub
+
+    ' The height of one line of the font, in twips, as the form measures it.
+    Private Function LineHeight(ByVal f As Form, ByVal source As StdFont) As Single
+        Dim m As New StdFont
+        m.Name = source.Name
+        m.Size = source.Size
+        m.Bold = source.Bold
+        m.Italic = source.Italic
+        Set f.Font = m
+        Return f.TextHeight("M")
+    End Function
+
+    ' ---------------------------------------------------------------- taking turns with the tool
+
+    ' Makes the form the active window, as it is when a person starts the program. On the
+    ' tool's private desktop, which has no input, the foreground is not dependable, so while
+    ' the form waits it draws its frame as the active window's whenever it is not the
+    ' foreground window (test/shots/programs does the same).
+    Private Sub Activate(ByVal f As Form)
+        SetForegroundWindow f.hWnd
+        DoEvents
+        KeepActive f
+    End Sub
+
+    Private Sub KeepActive(ByVal f As Form)
+        If GetForegroundWindow() <> f.hWnd Then SendMessageW f.hWnd, WM_NCACTIVATE, 1, 0
+    End Sub
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Private Sub Signal(ByVal Name As String, Optional ByVal Text As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        If Len(Text) Then Print #n, Text
+        Close #n
+    End Sub
+
+    ' Waits until the signal is there (True), or until the form is closed (False), keeping the
+    ' form active.
+    Private Function WaitFor(ByVal Name As String, ByVal f As Form) As Boolean
+        Do
+            If Len(Signals()) Then
+                If Len(Dir$(Signals() & "\" & Name)) Then Return True
+            End If
+            If Not IsLoaded(f) Then Return False
+            KeepActive f
+            DoEvents
+            Sleep 50
+        Loop
+    End Function
+
+    Private Function IsLoaded(ByVal f As Form) As Boolean
+        Dim g As Form
+        For Each g In Forms
+            If g Is f Then Return True
+        Next
+        Return False
+    End Function
+
+End Module

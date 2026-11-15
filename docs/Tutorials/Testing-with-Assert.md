@@ -126,6 +126,10 @@ All PadLeft tests passed.
 
 If an assertion fails, the run stops on that line with the run-time error **Assertion FAILED** (-353703420, `&HEAEAEA04`), before the final `Debug.Print`. The IDE shows the failing line, and the call stack names the test it is in. The error panel under the line has four buttons: **Try Again (Resume)**, **Ignore (Resume Next)**, **Stop** and **Search Online**. [When a run-time error stops the program](../tB/IDE/Debugging/Breakpoints-and-Stepping#when-a-run-time-error-stops-the-program) describes them, and how to look at the test's variables. Nothing about the failure is written to the Debug Console, and the expected and actual values are not shown.
 
+Here `PadLeft` has a bug --- it pads on the right, returning `"hi   "` --- so `RunAllTests` stops at its first test:
+
+![The editor stopped in TestStringUtils.twin at line 5 of TestPadLeft_Normal, Assert.Exact.AreEqual "   hi", PadLeft("hi", 5), which is highlighted with the yellow arrow in its margin. Under the line, the error panel shows Run-time error -353703420 (EAEAEA04), the description Assertion FAILED, and the buttons Try Again (Resume), Ignore (Resume Next), Stop and Search Online. Under the editor, CALL STACK lists TestPadLeft_Normal at 5:1, marked with the arrow, above RunAllTests at 34:1, and VARIABLES shows Locals with no members.](Images/Assert_Failed.png){:width="1100" height="610"}
+
 > [!IMPORTANT]
 > **Stop** and **Ignore (Resume Next)** do not end the run at a failed assertion. Both let the test go on past the failed check as if it had passed, so `RunAllTests` runs the remaining tests and then prints `All PadLeft tests passed.` To end the run, click the failing test's `End Sub` line, press **Ctrl+F9** (**Debug → Set Next Statement**), then choose **Run → End**.
 

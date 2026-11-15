@@ -620,6 +620,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: VBFLXGRD18 Package
+        subtitle: The VBFlexGrid control, a grid with editing in cells, in place of MSFLXGRD.OCX
+        landing_page: /tB/Packages/Contributed/VBFLXGRD18/
+        page: /tB/Packages/Contributed/VBFLXGRD18/
+        landing_is_target: true
+        outline_closed: true
+
       - title: xCalendar Package
         subtitle: A calendar control, in place of the Calendar control of MSCAL.OCX
         landing_page: /tB/Packages/Contributed/xCalendar/

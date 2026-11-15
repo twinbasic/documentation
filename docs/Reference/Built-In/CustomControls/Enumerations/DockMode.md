@@ -20,8 +20,8 @@ How a control is positioned relative to its container --- attached to one edge, 
 
 Order matters when more than one sibling is docked inside the same container: each docked control claims its edge from whatever client area remains *after* its earlier-added siblings have claimed theirs. The control with **Dock = tbDockFill** is therefore added last so that it inherits the residual space:
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     lblHeader.Dock = tbDockTop      ' attached to the top, full width
     lblStatus.Dock = tbDockBottom   ' attached to the bottom, full width
     pnlTree.Dock   = tbDockLeft     ' attached to the left, between header and status

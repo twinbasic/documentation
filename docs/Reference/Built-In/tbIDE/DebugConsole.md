@@ -43,12 +43,18 @@ Syntax: *debugConsole*.**PrintText** *Prompt* [, *ColorRGB* ]
 : *required* The text to print. **String**.
 
 *ColorRGB*
-: *optional* The text colour as an RGB **Long** (use the `RGB(r, g, b)` function to construct one). Default 0 --- the IDE's default DEBUG CONSOLE foreground colour.
+: *optional* The text colour as an RGB **Long** (use the `RGB(r, g, b)` function to construct one). Default 0.
 
 ```tb check_build
 Host.DebugConsole.PrintText "Operation completed"                           ' default colour
 Host.DebugConsole.PrintText "Warning: something looks off", RGB(255, 128, 0) ' orange
 ```
+
+![The DEBUG CONSOLE with the two lines Operation completed and Warning: something looks off, both drawn in the same yellow.](Images/DebugConsole_PrintText.png){:width="420" height="96"}
+
+<!-- test: bug printtext-colorrgb-ignored -->
+> [!NOTE] BETA 1042
+> *ColorRGB* has no effect: every line an addin prints is drawn in the yellow of the IDE's own message lines, whatever the value, as the picture shows for the sample's orange line.
 
 <!-- test: bug console-cleared-at-open -->
 > [!WARNING] BETA 1042

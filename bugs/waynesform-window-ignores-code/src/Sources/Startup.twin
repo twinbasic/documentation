@@ -1,0 +1,71 @@
+' A form of the CustomControls package (a WaynesForm) makes its window from the values its
+' designer saved, whatever its code has set: Caption, the size and position, and each of
+' WindowsOptions (BorderStyle, MaximizeButton, StartUpPosition, WindowState and the rest) set
+' in code, before the form is shown or after, change the property and nothing on the screen.
+' The form's BackgroundFill, and its controls' style properties, set in the same place, are drawn.
+' Sub Main shows Form1, whose constructor sets Caption, Width, BackgroundFill and two of
+' WindowsOptions; once it is shown, Form1 calls Report, which prints each property beside what
+' the window has (its title, its client width at 96 DPI, its styles, the colour it is painted).
+' Run it with: node scripts/bug_repro.mjs run waynesform-window-ignores-code
+Module Startup
+
+    Private Declare PtrSafe Function FindWindowExW Lib "user32" (ByVal hWndParent As LongPtr, ByVal hWndChildAfter As LongPtr, _
+        ByVal lpszClass As LongPtr, ByVal lpszWindow As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetWindowTextW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpString As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Const GWL_STYLE As Long = -16
+    Private Const WS_THICKFRAME As Long = &H40000
+    Private Const WS_MAXIMIZEBOX As Long = &H10000
+
+    Public Sub Main()
+        Dim f As New Form1
+        f.Show vbModal
+    End Sub
+
+    ' The window of this process's form: a form of the package is a window of the class tbForm.
+    Private Function FormWindow() As LongPtr
+        Dim h As LongPtr
+        Do
+            h = FindWindowExW(0, h, StrPtr("tbForm"), 0)
+            If h = 0 Then Err.Raise 5, , "the form has no window"
+            Dim pid As Long
+            GetWindowThreadProcessId h, pid
+            If pid = GetCurrentProcessId() Then Return h
+        Loop
+    End Function
+
+    Public Sub Report(ByVal f As Form1)
+        Dim h As LongPtr = FormWindow()
+        Dim title As String = String$(256, 0)
+        title = Left$(title, GetWindowTextW(h, StrPtr(title), 256))
+        Dim r As RECT
+        GetClientRect h, r
+        Dim dpi As Long = GetDpiForWindow(h)
+        Dim style As Long = GetWindowLongW(h, GWL_STYLE)
+        Dim dc As LongPtr = GetDC(h)
+        Dim colour As Long = GetPixel(dc, r.Right \ 2, r.Bottom \ 2)
+        ReleaseDC h, dc
+        Debug.Print "Caption: """ & f.Caption & """, title bar: """ & title & """"
+        Debug.Print "Width: " & f.Width & ", client width: " & (r.Right * 96 \ dpi)
+        Debug.Print "BorderStyle: " & IIf(f.WindowsOptions.BorderStyle = tbFixedSingle, "tbFixedSingle", "other") & _
+            ", sizing border: " & CBool(style And WS_THICKFRAME)
+        Debug.Print "MaximizeButton: " & f.WindowsOptions.MaximizeButton & ", maximize box: " & CBool(style And WS_MAXIMIZEBOX)
+        Debug.Print "BackgroundFill painted: " & Choose(1 - (colour = vbRed) - 2 * (colour = vbBlue), "&H" & Hex$(colour), "red", "blue")
+    End Sub
+
+End Module

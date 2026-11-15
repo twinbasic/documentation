@@ -1,0 +1,65 @@
+' The add-in of the tbIDE package's pictures (docs/Reference/Built-In/tbIDE/): each part of it
+' is the sample of the page its picture is on, so that the picture shows what that code does.
+' shoot_docs.mjs (setup tbide) builds it into its lane's copy of the install, with the icon
+' Resources/ICONS/icon.png taken from the install's Sample 10, and opens test/shots/sample.
+'
+' - Toolbar.md: as the project loads, a splitter and two buttons, "Action 1" with an icon and
+'   "Action 2" with none. The icon is read with LoadResDataInternal, as the install's add-in
+'   samples read theirs: LoadResData is the VB package's, which an add-in does not reference.
+' - ToolWindow.md: Action 1 adds the tool window and shows it. When the window closes, the
+'   add-in lets it go, so that Action 1 adds it again.
+' - DebugConsole.md: Action 2 prints the two lines of the PrintText sample.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New MyAddIn(Host)
+    End Function
+End Module
+
+Private Class MyAddIn
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents Button1 As Button
+    Private WithEvents Button2 As Button
+    Private WithEvents myWindow As ToolWindow
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "My AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        With Host.Toolbars(0)
+            .AddSplitter
+            Set Button1 = .AddButton("MyAddInButton1", "Action 1", LoadResDataInternal("icon.png", "ICONS"))
+            Set Button2 = .AddButton("MyAddInButton2", "Action 2")
+        End With
+    End Sub
+
+    Private Sub Button1_OnClick()
+        Set myWindow = Host.ToolWindows.Add("MyAddIn.MyWindow", "MyAddIn.MyWindowPosition")
+        With myWindow
+            .Title = "Hello from My AddIn"
+            With .RootDomElement
+                .Properties.suggestedWidth  = "400px"
+                .Properties.suggestedHeight = "300px"
+                With .ChildDomElements.Add("greeting", "h1")
+                    .Properties.innerText = "Hello, world!"
+                End With
+            End With
+            .Visible = True
+        End With
+    End Sub
+
+    Private Sub myWindow_OnClose()
+        Set myWindow = Nothing
+    End Sub
+
+    Private Sub Button2_OnClick()
+        Host.DebugConsole.PrintText "Operation completed"                           ' default colour
+        Host.DebugConsole.PrintText "Warning: something looks off", RGB(255, 128, 0) ' orange
+    End Sub
+End Class

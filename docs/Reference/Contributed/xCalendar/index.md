@@ -84,6 +84,8 @@ The start values of the properties are set when the control is placed on a form.
 
 The control is drawn in up to three areas, one above the other: the title area, the row of day names and the grid of days. It draws into a hidden picture box and copies the result to its own surface. The control can have any size: the seven columns share the width equally, and the six rows share the height that the other areas leave.
 
+![An xCalendar on a form, showing March 2026 with the 15th selected, in its default colours and fonts. Labels name its parts: the title area, holding March 2026 in orange; the month and year lists at its right; the row of day names, Mon to Sun on light blue; the grid of days, six rows of seven cells from February 23 to April 5, the days of February and April in grey; and the selected date, the cell of the 15th, filled with a darker grey.](Images/Areas.png){:width="648" height="291"}
+
 The two lists are scaled with the DPI of the display, by the [**DpiScale**](../../VB/UserControl#dpiscale) of the control: the sizes given for them below are those at 96 DPI. The other sizes inside the control, the margins, the frame and the lines, are in device pixels and are not scaled. At 144 DPI a control that is 256 pixels wide at design time is 384 pixels wide, and its margins keep their pixel sizes.
 
 ### Title area
@@ -115,6 +117,8 @@ A cell is selected only when its date is equal to **Value**. A **Value** with a 
 
 <!-- test: EnabledTests.Enabled_False_DisablesTheControlAndTheTwoLists, EnabledTests.Enabled_False_CodeCanStillChangeTheDate, EnabledTests.Enabled_False_DrawsTheRowOfDayNamesOnALightGrey, EnabledTests.Enabled_False_DrawsFlatGridLinesInDarkGrey, EnabledTests.Enabled_False_LeavesBackColorAsItIs, EnabledTests.Enabled_False_DrawsTheTitleInGrey, EnabledTests.Enabled_False_DrawsTheDayNamesAndNumbersInGrey, probe 1 -->
 When **Enabled** is set to **False** by the program, the two lists are disabled and drawn in grey, and the row of day names has the background `&HEEEEEE` in place of **DayBackColor**. A control that loads from a form with **Enabled** already **False** draws its lists as an enabled control does: see [Known problems](#known-problems-in-version-10170). With **Flat** lines, the grid lines are `&H5B5B5B` in place of **GridLinesColor**. The title is drawn in a light grey (`&HBCBCBC`) in place of **TitleFontColor**, and the day names and the days of the shown month in grey (`&H999999`) in place of **DayFontColor** and **GridFontColor**. **BackColor** is the same as for an enabled control.
+
+![Two xCalendar controls side by side, both showing March 2026 with the 15th selected. The left one, labelled Enabled = True, has its orange title, light blue row of day names and blue day numbers. The right one, labelled Enabled = False and disabled in code, has the title, the two lists, the day names and the day numbers in grey, and the row of day names on a light grey.](Images/Enabled.png){:width="641" height="301"}
 
 A disabled control does not receive the mouse or the keyboard from the user, and the focus cannot be given to it. Code can still change its date, for example with **NextDay** or **Value**.
 <!-- /test -->
@@ -276,6 +280,10 @@ How the lines between the cells look. A [**GridCellEffectEnum**](#gridcelleffect
 <!-- test: ColourTests.GridCellEffect_Raised_DrawsABlackLineWithAWhiteOneAfterIt, ColourTests.GridCellEffect_Sunken_DrawsAWhiteLineWithABlackOneAfterIt, ColourTests.GridLinesColor_RaisedAndSunkenIgnoreIt -->
 With **Flat** the lines are drawn in **GridLinesColor**, one line between two cells. **Raised** and **Sunken** draw each line in black or white, and a second line of the other colour one pixel to the right of a vertical line and one pixel below a horizontal one: for **Raised** the line is black and the second white, for **Sunken** the reverse. **GridLinesColor** has no effect with **Raised** and **Sunken**.
 <!-- /test -->
+
+In the picture the flat calendar has **GridLinesColor** set to a grey, since the default is drawn near-black: see [Known problems](#known-problems-in-version-10170).
+
+![Three xCalendar controls side by side showing March 2026, labelled Raised (the default), Sunken, and Flat, GridLinesColor = RGB(160, 160, 160). The raised and sunken grids have dark lines with a white line beside each, the white one after the dark one for Raised and before it for Sunken; the flat grid has single grey lines.](Images/GridCellEffect.png){:width="961" height="301"}
 
 ### GridFont
 {: .no_toc }
@@ -684,6 +692,10 @@ Private Sub Form_Load()
     End With
 End Sub
 ```
+
+The calendar that the sample sets up, with March 15, 2026 selected:
+
+![An xCalendar showing Mar 2026, the month name cut to three letters. Its row of day names, on a pale blue, runs from Sunday to Saturday with the names in full. The grid has no horizontal lines and thin light grey vertical lines, March 1 in the first cell, and the 15th, a Sunday, selected in the first column.](Images/Sample.png){:width="461" height="291"}
 
 ## See Also
 

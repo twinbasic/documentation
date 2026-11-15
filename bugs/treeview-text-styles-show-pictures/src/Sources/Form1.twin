@@ -1,0 +1,6 @@
+' A form holding two TreeViews, TreeView1 and TreeView2, and an ImageList, ImageList1.
+[FormDesignerId("7B247401-0000-4000-9000-7B2474010F01")]
+[PredeclaredId]
+Class Form1
+
+End Class

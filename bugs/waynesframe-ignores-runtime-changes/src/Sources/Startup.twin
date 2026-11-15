@@ -1,0 +1,63 @@
+' A WaynesFrame of the CustomControls package never redraws for a property set while its form is
+' shown: Frame1's BackgroundFill set to red keeps the frame grey on the screen, even after the
+' whole window is redrawn, while Label1's, set in the same place, is drawn red at once. The
+' package's WaynesFrame never stores the ControlContext its Initialize is given, which WaynesLabel,
+' WaynesButton and the others do, so its handler for a changed property (If Me.ControlContext IsNot
+' Nothing Then Me.ControlContext.Repaint) never asks for a repaint. A fill set in the form's
+' constructor, before the frame is first drawn, is drawn.
+' Run it with: node scripts/bug_repro.mjs run waynesframe-ignores-runtime-changes
+Module Startup
+
+    Private Declare PtrSafe Function FindWindowExW Lib "user32" (ByVal hWndParent As LongPtr, ByVal hWndChildAfter As LongPtr, _
+        ByVal lpszClass As LongPtr, ByVal lpszWindow As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+    Private Declare PtrSafe Function RedrawWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal lprcUpdate As LongPtr, _
+        ByVal hrgnUpdate As LongPtr, ByVal flags As Long) As Long
+
+    Public Sub Main()
+        Dim f As New Form1
+        f.Show vbModal
+    End Sub
+
+    ' The window of this process's form: a form of the package is a window of the class tbForm.
+    Private Function FormWindow() As LongPtr
+        Dim h As LongPtr
+        Do
+            h = FindWindowExW(0, h, StrPtr("tbForm"), 0)
+            If h = 0 Then Err.Raise 5, , "the form has no window"
+            Dim pid As Long
+            GetWindowThreadProcessId h, pid
+            If pid = GetCurrentProcessId() Then Return h
+        Loop
+    End Function
+
+    ' The colour drawn at a point of the form, the point in pixels at 96 DPI.
+    Private Function Colour(ByVal x As Long, ByVal y As Long) As String
+        Dim h As LongPtr = FormWindow()
+        Dim dpi As Long = GetDpiForWindow(h)
+        Dim dc As LongPtr = GetDC(h)
+        Dim c As Long = GetPixel(dc, x * dpi \ 96, y * dpi \ 96)
+        ReleaseDC h, dc
+        Select Case c
+            Case vbRed: Return "red"
+            Case vbGreen: Return "green"
+            Case &H808080: Return "grey"
+            Case Else: Return "&H" & Hex$(c)
+        End Select
+    End Function
+
+    Public Sub Report(ByVal stage As String)
+        Debug.Print stage & ": Frame1 drawn " & Colour(95, 100) & ", Label1 drawn " & Colour(275, 100)
+    End Sub
+
+    Public Sub Redraw()
+        Const RDW_INVALIDATE = &H1, RDW_ERASE = &H4, RDW_ALLCHILDREN = &H80, RDW_UPDATENOW = &H100
+        RedrawWindow FormWindow(), 0, 0, RDW_INVALIDATE Or RDW_ERASE Or RDW_ALLCHILDREN Or RDW_UPDATENOW
+    End Sub
+
+End Module

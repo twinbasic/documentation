@@ -8,7 +8,7 @@ has_toc: false
 # ProgressBar class
 {: .no_toc }
 
-A **ProgressBar** is a horizontal or vertical bar that visually represents progress through a range. Three configurable axes shape the visual: [**Scrolling**](#scrolling) (segmented / smooth / marquee), [**State**](#state) (Normal / Error / Paused, which tints the bar to match the OS theme), and [**Orientation**](#orientation) (horizontal or vertical).
+A **ProgressBar** is a horizontal or vertical bar that visually represents progress through a range. Three configurable axes shape the visual: [**Scrolling**](#scrolling) (standard / smooth / marquee), [**State**](#state) (Normal / Error / Paused, which tints the bar to match the OS theme), and [**Orientation**](#orientation) (horizontal or vertical).
 
 ```tb hidden
 Public ItemCount As Long
@@ -48,9 +48,11 @@ The control inherits the non-focusable rect-dockable members from `BaseControlNo
 
 The visual is the cartesian product of three properties:
 
-- **[Scrolling](#scrolling)** --- *Standard* (the default, animated segmented bar), *Smooth* (a continuous block --- combine with [**SmoothReverse**](#smoothreverse) to allow the bar to decrease), or *Marquee* (an indeterminate animated stripe; control with [**MarqueeAnimation**](#marqueeanimation) + [**MarqueeSpeed**](#marqueespeed)).
+- **[Scrolling](#scrolling)** --- *Standard* (the default; on Windows 10 it draws a continuous bar, as *Smooth* does, with or without visual styles), *Smooth* (a continuous block --- combine with [**SmoothReverse**](#smoothreverse) to allow the bar to decrease), or *Marquee* (an indeterminate animated stripe; control with [**MarqueeAnimation**](#marqueeanimation) + [**MarqueeSpeed**](#marqueespeed)).
 - **[State](#state)** --- *Normal* (theme-default color, typically green), *Error* (typically red), or *Paused* (typically yellow). The OS chooses the actual colors based on its current theme.
 - **[Orientation](#orientation)** --- *Horizontal* or *Vertical*.
+
+![Progress bars at 60 per cent: green for PrbStateNormal, red for PrbStateError and yellow for PrbStatePaused, PrbScrollingSmooth drawn as the normal bar is, a marquee's moving block, two bars drawn without visual styles, one of them in a ForeColor and BackColor of its own, and one with a border; and three vertical bars in the three states](Images/ProgressBar.png){:width="641" height="283"}
 
 All three can be changed at run time; the underlying Win32 styles are re-applied without recreating the window.
 
@@ -211,7 +213,7 @@ Determines how the progress bar animates as the value changes. Declared on the *
 
 | Member                       | Value | Description                                                            |
 |------------------------------|-------|------------------------------------------------------------------------|
-| **PrbScrollingStandard**{: #PrbScrolling_PrbScrollingStandard } | 0 | Segmented bar with the classic discrete blocks animation. |
+| **PrbScrollingStandard**{: #PrbScrolling_PrbScrollingStandard } | 0 | The default. On Windows 10 it draws a continuous bar, as **PrbScrollingSmooth** does, with or without visual styles. |
 | **PrbScrollingSmooth**{: #PrbScrolling_PrbScrollingSmooth } | 1 | Continuous block with no inter-segment gaps. Pair with [**SmoothReverse**](#smoothreverse) to allow the value to decrease visibly. |
 | **PrbScrollingMarquee**{: #PrbScrolling_PrbScrollingMarquee } | 2 | Indeterminate animated stripe. Control with [**MarqueeAnimation**](#marqueeanimation) and [**MarqueeSpeed**](#marqueespeed); the actual [**Value**](#value) is irrelevant. |
 

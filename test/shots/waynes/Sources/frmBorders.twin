@@ -1,0 +1,41 @@
+[Description("")]
+[FormDesignerId("CE391A83-EB54-46B0-AE6E-67D657CF5CF3")]
+Class frmBorders
+
+    ' Borders' picture: a button in its default look, which has no border, and with each of the
+    ' Borders page's three samples.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Dim i As Long
+        For i = 0 To 3
+            Shots.Defaults Shots.Ctl(Me, "btnBorder" & i)
+        Next
+        btnBorder1.NormalState.Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=vbBlack
+        btnBorder2.NormalState.Borders.SetSimpleBorder StrokeSize:=4, ColorRGB:=vbBlack
+        btnBorder2.NormalState.Borders.Elements(0).BlendWithBackgroundFill = True
+        Dim elems(0 To 2) As CustomControlsPackage.Border
+        Set elems(0) = New CustomControlsPackage.Border
+        elems(0).StrokeSize = 4
+        elems(0).Fill.ColorPoints.SetSolidColor vbBlack
+        Set elems(1) = New CustomControlsPackage.Border
+        elems(1).StrokeSize = 7
+        elems(1).Fill.ColorPoints.SetSolidColor &H99CCFF
+        Set elems(2) = New CustomControlsPackage.Border
+        elems(2).StrokeSize = 4
+        elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4
+        btnBorder3.NormalState.Borders.Elements = elems
+        Dim texts As Variant = Array("No border (the default)", "SetSimpleBorder 1, vbBlack", _
+            "SetSimpleBorder 4, vbBlack" & vbCrLf & "BlendWithBackgroundFill", "Three Border elements")
+        For i = 0 To 3
+            Dim l As WaynesLabel = Shots.Ctl(Me, "lblBorder" & i)
+            l.Caption = texts(i)
+            l.TextRendering.Font.Size = 9
+            l.TextRendering.Alignment = tbAlignTopCenter
+        Next
+    End Sub
+
+End Class

@@ -39,6 +39,8 @@ End Sub
 * TOC
 {:toc}
 
+![A form's File menu open: New and Open with pictures, shortcut keys beside New, Open, Save and Print, separators, a Recent Files submenu, Word Wrap checked and Print disabled](Images/Menu_File.png){:width="381" height="301"}
+
 ## Caption and separators
 
 [**Caption**](#caption) supplies the text drawn for the menu item. Two Caption values have special meaning:

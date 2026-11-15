@@ -53,6 +53,8 @@ cmdSave.Caption = "&Save && Close"   ' renders as: Save & Close
 
 When [**Style**](#style) is **vbButtonGraphical**, the button is owner-drawn and displays the bitmaps assigned to [**Picture**](#picture), [**DownPicture**](#downpicture), and [**DisabledPicture**](#disabledpicture) alongside the caption. [**PictureAlignment**](#picturealignment), [**Padding**](#padding), and [**PictureDpiScaling**](#picturedpiscaling) control how the picture is positioned. Changing **Style** at run time recreates the underlying window.
 
+![Command buttons: a standard one, the Default one with its blue border, a disabled one, and four in the graphical style with the picture above, below, left of and right of the caption](Images/CommandButton_Styles.png){:width="501" height="171"}
+
 ## Properties
 
 ### Anchors

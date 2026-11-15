@@ -9,7 +9,7 @@ has_toc: false
 # Fill class
 {: .no_toc }
 
-The colour or gradient that paints a region --- background of a control, body of a border, fill of a grid line, foreground of text. A **Fill** has two parts: a [**Pattern**](#pattern) that picks the gradient direction (or `tbPatternNone` for transparent), and a [**ColorPoints**](#colorpoints) collection of one or more colour stops that supply the actual colours.
+The colour or gradient that paints a region --- background of a control, body of a border, fill of a grid line, foreground of text. A **Fill** has two parts: a [**Pattern**](#pattern) that picks the gradient direction (or `tbPatternNone` for the first colour alone), and a [**ColorPoints**](#colorpoints) collection of one or more colour stops that supply the actual colours.
 
 A single solid colour is just a one-stop fill: call [**ColorPoints.SetSolidColor**](#setsolidcolor) with a `Long` colour, or [**SetSimplePattern**](#setsimplepattern) on the parent **Fill** for a two-colour gradient.
 
@@ -54,6 +54,10 @@ End With
 > so a call passing anything other than a [**FillColorPoint**](#fillcolorpoint-class)
 > compiles and then fails at run time.
 
+The three samples above, and a two-stop fill with a [**Granularity**](#granularity) of 6 and of 2:
+
+![Six panels: solid blue from SetSolidColor; blue fading to white; light blue fading to brown between 20 and 80 per cent, solid above and below; three stops, light blue to light orange to brown; the same two-stop fill in six bands with Granularity 6, and in two halves with Granularity 2](Images/Fill.png){:width="617" height="349"}
+
 * TOC
 {:toc}
 
@@ -67,7 +71,7 @@ The [**FillColorPoints**](#fillcolorpoints-class) collection holding the gradien
 ### Pattern
 {: .no_toc }
 
-How the colours in [**ColorPoints**](#colorpoints) are mapped across the region. A member of [**FillPattern**](../Enumerations/FillPattern). Default: **tbGradientNorthToSouth**. Use **tbPatternNone** to make the **Fill** transparent.
+How the colours in [**ColorPoints**](#colorpoints) are mapped across the region. A member of [**FillPattern**](../Enumerations/FillPattern). Default: **tbGradientNorthToSouth**. **tbPatternNone** fills the region with the first colour alone. A **Fill** with no colour stops --- a new one, such as a [**WaynesLabel**](../WaynesLabel)'s **BackgroundFill** until it is given a colour --- paints nothing, and what is behind the region shows through.
 
 ## Methods
 

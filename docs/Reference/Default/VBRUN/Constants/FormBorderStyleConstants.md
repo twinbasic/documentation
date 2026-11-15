@@ -19,3 +19,5 @@ Border-and-frame style values for the **BorderStyle** property of forms, choosin
 | **vbSizableToolWindow**{: #vbSizableToolWindow } | 5 | A resizable tool-window border with a small title bar. |
 | **vbSizableNoTitleBar**{: #vbSizableNoTitleBar } | 6 | A resizable border without a title bar. *(twinBASIC addition.)* |
 | **vbSizableToolWindowNoTitleBar**{: #vbSizableToolWindowNoTitleBar } | 7 | A resizable tool-window border without a title bar. *(twinBASIC addition.)* |
+
+![Eight forms, one in each BorderStyle value: no border, fixed single, sizable, fixed dialog, the fixed and sizable tool windows with a Close button only, and the sizable border and the sizable tool window with no title bar](../../VB/Form/Images/Form_BorderStyle.png){:width="957" height="234"}

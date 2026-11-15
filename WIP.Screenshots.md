@@ -289,9 +289,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
-  alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
+  alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `cef`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
+  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `projects`, `projects-refs`,
   `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
   before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
@@ -384,7 +384,7 @@ now on First Launch.
 
 Setup `code-chapter` (three parts): FeatureTour, the feature map's Inventory project, with
 `test/shots/codechapter/` staged onto it (`Helpers`, `Ev`/`Ev2`, `Watcher`) and the project's
-warnings set so that TB0016 is a hint and TB0012 information. Its 21 pictures are under
+warnings set so that TB0016 is a hint and TB0012 information. Its pictures are under
 `docs/IDE/Code/Images/`, plus `Menu_Edit` and `Menu_View`, taken with the code focused.
 
 - **Each picture starts from the default layout and its own tabs** (`chapterTabs`), and closes
@@ -407,7 +407,7 @@ Setup `debugging` (three parts): the code-chapter project with `test/shots/debug
 staged onto it as well, a module `Checks` with the chapter's `FillTable` (a Subscript error on
 its fourth pass), `PingLater` (`Shell "ping -n 20 127.0.0.1", vbHide`) and `WaitAWhile` (a
 `DoEvents` loop of a minute at most). It is a setup of its own because the code chapter's
-combo boxes list the project's modules. Its 16 pictures are under `docs/IDE/Debugging/Images/`,
+combo boxes list the project's modules. Its pictures are under `docs/IDE/Debugging/Images/`,
 plus `Menu_Debug` (paused, the code focused) and `Menu_Run` (WaitAWhile running).
 
 - **Each picture starts from nothing** (`debugReset`: the program stopped, no breakpoint, no
@@ -428,6 +428,12 @@ plus `Menu_Debug` (paused, the code focused) and `Menu_Run` (WaitAWhile running)
   is opened inside the panel instead.
 - A line for the console is put in its input row whole and entered (`consoleRun`): a space typed
   while the row's completion list is open accepts the list's first entry.
+- **`Tutorials/Images/Assert_Failed`** (setup `assert`, `test/shots/assert`, AssertDemo): the
+  Testing with Assert tutorial's StringUtils and TestStringUtils, with Assert referenced and
+  `PadLeft` given a bug (it pads on the right), taken as Error_Panel is: `RunAllTests` run with
+  F6 and stopped at `TestPadLeft_Normal`'s assertion. The caret goes at the start of the
+  `Debug.Print` line's code: four characters in, it is past the column where `End Sub` ends, and
+  F6 finds no procedure (the defect Running.md states).
 
 ## The "Designing forms and reports" chapter
 
@@ -507,7 +513,7 @@ project file the lane opens is `project.twinproj`, the name the title shows. `pr
 the same project with Microsoft Scripting Runtime's symbol overridden as `SR` and a type library
 that is not on the machine (`MISSING_LIBRARY`) put in the staged `Settings`; the IDE opens
 Project Settings by itself a second after loading it, and the setup's prepare closes it.
-`projects-start` is the IDE with no project. Its 16 pictures are under `docs/IDE/Projects/Images/`;
+`projects-start` is the IDE with no project. Its pictures are under `docs/IDE/Projects/Images/`;
 `Menu_File_Project` is the File menu with the project open (the Menu pages keep `Menu_File`, with
 none, which `New Project.md` also shows).
 
@@ -551,14 +557,14 @@ none, which `New Project.md` also shows).
 
 ## The "Building" chapter
 
-Six setups, their fixtures under `test/shots/building/`, copied from the Building lanes'
+Several setups, their fixtures under `test/shots/building/`, copied from the Building lanes'
 `test/ide/probes/building-{exe,ax,pkg}`: `exe` is Program, a Standard EXE whose Sub Main waits a
 minute (so that a second build finds its file in use), `ax` is ShotActiveX, an ActiveX DLL whose
 class has GUIDs of its own (`B01D...B001` to `B003`, not the lanes', so that a lane and a shot run
 at once never share a registration), and `pkg` is MyPackage, a PRIVATE package. Each project is
 staged in a folder of the tool's own on `PACKAGE_ROOT` named for its setup (shown as
 `C:\tbshots\Building` and so on), with the templates' build path, so that a console line names no user; the setup's
-`end` removes the folder once its IDE has ended. Its 14 pictures
+`end` removes the folder once its IDE has ended. Its pictures
 are under `docs/IDE/Building/Images/`.
 
 - **`building`** (exe): the console after a build, a failed build and a build refused by the
@@ -608,11 +614,11 @@ are under `docs/IDE/Building/Images/`.
 
 ## The "Starting a project" chapter
 
-Four setups, their fixtures under `test/shots/starting/`: `Throwaway` is the Starting lanes'
+Several setups, their fixtures under `test/shots/starting/`: `Throwaway` is the Starting lanes'
 `test/ide/probes/starting`, `Ledger` (a form, a module and a class, no manifest) and `Missing` (a
 `.vbp` naming `Gone.bas`) come from the trial's cases C, G and K. The `.vbp` fixtures are staged
 with CRLF, and every project is in a folder of the tool's own on `PACKAGE_ROOT`, named for its
-setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Starting/Images/`.
+setup, which the setup's `end` removes. Its pictures are under `docs/IDE/Starting/Images/`.
 
 - **`starting-first-run`**: the licence agreement, the reporting question and the first-run IDE
   Options. The IDE reads `--no-save-ide-settings` in `parseCommandLine`, after those dialogs, so
@@ -658,9 +664,9 @@ setup, which the setup's `end` removes. Its 14 pictures are under `docs/IDE/Star
 
 ## The "When something goes wrong" chapter
 
-Two setups, the fixture `test/shots/troubleshooting/Trouble`, the lanes' `test/ide/probes/troubleshooting`
+The setups `troubleshooting` and `troubleshooting-box`, the fixture `test/shots/troubleshooting/Trouble`, the lanes' `test/ide/probes/troubleshooting`
 under another name: `Sub Crash` calls `RtlMoveMemory` with two bad addresses at line 10 of `MainMod`, the
-line the page quotes. Its 8 pictures are under `docs/IDE/Troubleshooting/Images/`.
+line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
 
 - **`troubleshooting`**: one IDE, the project in a folder of the tool's own on `PACKAGE_ROOT`, its
   compiler restarted on `licenceKey = ""` as in `community` (`communityCompiler`), and
@@ -810,6 +816,138 @@ line the page quotes. Its 8 pictures are under `docs/IDE/Troubleshooting/Images/
   rectangle. Even so a form drew its caption inactive now and then (4829696d and 599a66ad, one
   run each), so `programShot` makes the form the active window (`activateWindow`) before its
   captures and again whenever a capture finds the caption inactive (owner).
+- **Setup `vbflexgrid`**: `test/shots/vbflexgrid`, FlexGridShots, the pictures of the
+  VBFLXGRD18 section, taken as the `programs` setup's are (`flexShot`), one scene per command
+  line. The fixture commits none of the package: `startWithPackages` stages a copy with VBFLXGRD18 at
+  the version its Settings names, from TWINSERV through the `%TEMP%\tb-twinserv` cache. The grid's
+  drop-down list and calendar are top-level windows of the program, laid over the form where they
+  are (`overlaid`). **An edit closes when its box loses the focus** (the package destroys it on
+  `WM_KILLFOCUS`, with no event to cancel), and the form, when `activateWindow` makes it active,
+  gives the focus back to the grid: the fixture opens the edit again whenever it finds it closed
+  (`KeepEditing`). The calendar's "Today:" line is set to a fixed date (`MCM_SETTODAY`), or the
+  picture would change every day.
+- **Setup `xcalendar`**: `test/shots/xcalendar`, XCalendarShots, the pictures of the xCalendar
+  section, one scene per command line, taken by `sceneShot`, the package embedded by
+  `startWithPackages` as `vbflexgrid`'s is. Its forms (`frmOne`, `frmTwo`, `frmThree`: one, two
+  and three calendars, with hidden Labels) are written by a kit script. The
+  calendars are reached through the form's extender (`As Object`): the type `xCalendar.xCalendar`
+  has no `Move`, `Left` or `Width` (TB5027). Every calendar shows March 15, 2026, set as `Value`
+  to the 16th and then `PreviousDay`, since `Value` in another month and `FirstDay` leave the
+  grid's dates as they were until the selection moves (the page's Known problems). The areas
+  picture's labels are Labels of the form, in the IDE labels' dark red, with lines drawn by the
+  form (`AutoRedraw`): the annotation layer draws on the IDE's page only, and a line ends at the
+  control's edge, since the form draws nothing over a child window. The heights it labels are
+  worked out as the control does (a line of the font plus the margins).
+- **Setup `dialogs`**: `test/shots/dialogs`, DialogShots, the pictures of the VBComDlg and
+  AutoCompleteLib sections, both packages embedded by `startWithPackages`. A CommonDialog's dialog
+  is taken as the `vb` setup's MsgBox is (`programDialogShot`, which `vbDialogShot` now calls): a
+  timer in the program finds it by its title, keeps it active and in a mouse user's state, and the
+  tool ends the program. The Find and Replace dialogs are modeless and kept by the program's own
+  loop. The Folder Browser's root is a folder Projects that the program makes in the folder of the
+  signals, so the tree shows nothing of the machine; the new-style tree fades its expand buttons
+  with the focus, so the fading is switched off (`TVS_EX_FADEINOUTEXPANDOS`). **The Font dialog
+  lists the machine's fonts**: its list is scrolled to start at Microsoft Himalaya
+  (`CB_SETTOPINDEX`), so that the rows around Microsoft Sans Serif hold only fonts that come with
+  Windows or Office, and none of the novelty fonts this machine has. File Open and File Save are
+  not taken: their navigation pane shows the user's own folders. The AutoComplete scenes type
+  `Ap` into a text box (`WM_CHAR`, as the package's test cases do) and lay the suggestion list
+  (`Auto-Suggest Dropdown`) over the form, three runs in a row (`sceneRuns`); the caret is hidden,
+  since it blinks.
+- **Setup `vb`**: `test/shots/vb`, VBShots, the pictures of the VB, VBRUN and VBA sections
+  (the VB package's controls, a form's drawing, its menus and MDI forms, MsgBox and InputBox),
+  one scene per command line, taken by `sceneShot` as `vbflexgrid`'s are; the VB reference's
+  library symbol is `*VB`, for the QRCode's members. Each scene lays its form out in pixels at 96
+  DPI (`FitClient`: the form's client made the size in twips, then `Scale`d to those pixels).
+  Most controls are made in code (`Controls.Add`), which in BETA 1042 makes only a class that
+  some form already holds (else error -2147467259): `frmScene` holds one hidden control of each
+  class, the ListBox whose `Columns` needs design time, and the five QRCodes, which `Controls.Add`
+  does not make at all. A control inside a Frame is placed in twips (a Frame has no scale). The
+  forms of `formborders` are `frmBorder0` to `frmBorder7`, each with its `BorderStyle` at design
+  time: set at run time, it gives the tool windows and the fixed dialog no extended style
+  (`WS_EX_TOOLWINDOW`, `WS_EX_DLGMODALFRAME`), so they draw as ordinary windows; `Show` puts a form
+  with `vbStartUpScreen` in the middle of the screen whatever `Move` said, so the forms are moved
+  after. A `.tbform` lists a menu's items last first, and `ShortcutId` shows its text only when
+  set in the `.tbform`. The menu is opened by the tool (`vbMenuShot`, SC_KEYMENU 'f', as
+  `Preview_Window`). A dialog's scene shows no form: `vbDialogShot` starts the program once per
+  dialog, takes its one window and ends it, laying several out in rows (`inRows`); a timer in the
+  program, which runs inside MsgBox's modal loop, keeps the box's caption active and puts it in a
+  mouse user's state (`WM_CHANGEUISTATE`: no focus rectangle, no access-key underlines), which
+  differs from box to box otherwise, then writes `shown`. The MousePointer picture draws the
+  cursor each value makes the form set (`WM_SETCURSOR` sent, `GetCursor` read): vbIconPointer and
+  vbSizePointer are left out, since for them the form sets a null cursor (BETA 1042). The system
+  colours are Labels' `BackColor`, as twinBASIC paints them: `OleTranslateColor` refuses the
+  indexes from 26 on. Not taken: the Report preview, whose first `DoEvents` after `Show` never
+  returns on the tool's desktop, with or without a recordset, with the forms fixture's MyReport
+  unchanged too (not narrowed).
+- **Setup `commonctls`**: `test/shots/commonctls`, CommonCtlsShots, the pictures of the
+  WinNativeCommonCtls section, one scene per command line, taken by `sceneShot` as `vb`'s are.
+  `frmScene` holds hidden controls of each class (`lv0`--`lv3`, `tv0`--`tv7`, `pb0`--`pb11`,
+  `sl0`--`sl7`, `mv0`, `dt0`--`dt5`, `ud0`, three ImageLists), which a scene places and shows;
+  its `GetDayBold` handler bolds the MonthView's days (`DayBold` raises 380 for a month just
+  scrolled into view, the visible range being cached at the last `MCN_GETDAYSTATE`). Every date is
+  January 14, 2025, 3:45 PM, the calendars' "Today:" included (`MCM_SETTODAY`, `&H100C`; the
+  DTPicker's calendar is dropped by `WM_KEYDOWN` F4 and dropped again whenever it has closed, its
+  `DropDown` window laid over the form). A ListView is filled once visible: filled while hidden,
+  `lvwIcon` shows none of its items and `lvwSmallIcon` places them oddly (BETA 1042, not
+  narrowed). **A progress bar drawn with visual styles animates** (its growth to a value, the
+  marquee, a light running along a normal bar) with timers of its own window: the fixture waits
+  0.6 s for the bars to grow, starts the marquee, stops every timer (`KillTimer` on ids 0 to
+  1000), gives the marquee's 30 ticks, and stops the timers again while it waits, since a bar
+  moved again once the tool had the window. The marquee's block still lands a few pixels apart
+  from run to run (its step is timed), so its track is left out of the picture's comparison
+  (`png.ignore` in the manifest, owner). The ImageList picture draws one list of the default
+  ColorDepth32Bit (icons) and one of ColorDepth24Bit (bitmaps on silver, the default
+  MaskColor): an icon added to a 24-bit list draws on black (not narrowed: the stock icon's own
+  mask, or the package's `RuntimeCreateScaledPicture`).
+- **Setup `webview2`**: `test/shots/webview2`, WebView2Shots, the WebView2 section's one
+  picture, taken by `sceneShot`: frmWeb's control `Web1` shows the page `Page` returns, passed to
+  `NavigateToString` on Ready, and once NavigationComplete reports success, `Main` calls the
+  page's `setNote` with `JsRun` and waits a second before "shown"; a control's Error or a failed
+  navigation is written to "error". The control's user data folder is set on Create to
+  `wv2data` in the run's signals folder (under `%TEMP%`), not beside the exe. The WebView2
+  runtime starts on a private desktop, and `PW_RENDERFULLCONTENT` captures its content, byte for
+  byte alike from run to run (BETA 1042). The control is 300 px high: at 280 the page shows a
+  scrollbar.
+- **Setup `cef`**: `test/shots/cef`, CefShots, the CEF section's one picture, taken by
+  `sceneShot` as webview2's is, with the same page and the same `JsRun` line. The CEF runtime is
+  not part of twinBASIC: the setup downloads the release the CEF page links
+  (`cefRuntime145_win32.zip`, the exe's architecture) into `%TEMP%\tb-cef` once, and names its
+  folder to the program in `TB_SHOT_CEF_RUNTIME`, which the form passes to
+  `BrowserExecutableFolder` with a trailing backslash (the package joins it and `libcef.dll`
+  with nothing between); `UserDataFolder` is in the run's signals folder, never
+  `%LocalAppData%`, the package's default for both. `TB_SHOT_CEF_LOG` names a file for CEF's
+  verbose log. **The control's place and size are in the `.tbform`, never set in code**: a
+  CefBrowser moved before it raises Ready crashes its browser process, and raises neither
+  Ready nor Error (BUGS-TO-REPORT, `bugs/cef-move-before-ready`, BETA 1042). The private
+  desktop is no obstacle: CEF logs "No displays detected" and uses a fake display, and draws;
+  two runs give the same bytes (BETA 1042). A browser process that
+  crashes is the exe itself, so its dump has no names: run the exe under `cdb -o` on a leased
+  desktop (`launchOnDesktop`) and dump with `/ma`, then match the faulting procedure's calls
+  (imports, constants) against the package's source, exported with `impexp`.
+- **Setup `waynes`**: `test/shots/waynes`, WaynesShots, the pictures of the CustomControls
+  section, taken by `sceneShot`, or by `waynesRuns` for a picture of several runs in rows (the
+  button's states, the six border styles). A form of the package is a window of class `tbForm`
+  (in `FORM_CLASS`), has no default instance and is shown modally only, so `Sub Main` makes the
+  scene's form with `New` and each form does its work on the ticks of its WaynesTimer
+  `tmrScene` (`Shots.Tick`: SetUp on the first, "shown" after six more, then "end"). **A
+  control's place and size must be in the `.tbform`**: one moved at run time is not drawn where
+  it moves to, and the form's size and BorderStyle are fixed there too, so there is one form per
+  scene. The forms are written by a kit script (geometry, names and texts only), and each form's
+  code sets the styles. **A control read from a `.tbform` takes no defaults of its own**
+  (`InitializeDefaultValues` runs only when there is nothing to read), so `Shots.Defaults` calls
+  the public default routines of each state (`InitializeDefaults`, `InitializeDefaultValues`,
+  `InitializeDefaultValues_Focused`) to give the look a control has when it is put on a form; a
+  colour in a `.tbform` is ABGR, its alpha in the top byte (`&HFFD0D0D0`, the form's grey;
+  without the alpha the form is black). `Controls` is Nothing at run time, so a control is
+  reached by name with `CallByName`. A WaynesFrame keeps no ControlContext, so a fill set at run
+  time is never drawn: the overview's frame has its fill in the `.tbform`. A form's Caption set
+  at run time does not retitle its window, and nothing else of the window set in code reaches it
+  (BUGS-TO-REPORT, `bugs/waynesform-window-ignores-code`): give a scene's form its caption, size
+  and frame in its `.tbform`. Hover and focus are shown by mouse messages the
+  program sends itself (with the thread's key state set to match); **PressedState and a text
+  selection cannot be shown**: the controls read the mouse button and Shift from the hardware,
+  so a button is told the button is up as soon as it is down. FontWeight was left out: with the
+  renderer's one font, 100 to 500 draw alike and 600 to 900 alike (no FontStyle names a font).
 - **85f25aa2** (Opacity 75, TransparencyKey red): `PW_RENDERFULLCONTENT` draws the key colour
   black and every pixel opaque, so the tool reads the key's pixels from a client-only capture
   (flags 1) and gives the picture the window's own alpha (191) and alpha 0 there: the page is
@@ -845,6 +983,31 @@ line the page quotes. Its 8 pictures are under `docs/IDE/Troubleshooting/Images/
   win64: `test/shots/fusion` uses it, so the shot needs MSCOMCTL.OCX registered. Not queued:
   Fusion is documented for controls; a failure message that names no cause may be worth an
   issue.
+
+## The tbIDE package's pictures
+
+- **Setup `tbide`**: `test/shots/tbide`, MyAddInDemo, an add-in built into the lane's copy as
+  `global-search` builds Sample 15, with `test/shots/sample` open: the tbIDE section's pictures
+  of what an add-in makes. Each part of it is the sample of the page its picture goes on, so the
+  picture shows that code at work: Toolbar.md's splitter and two buttons (`Toolbar`, also on
+  Button.md), ToolWindow.md's window, which Action 1 adds (`ToolWindow`, and
+  `ToolWindow_Docked`), and DebugConsole.md's two PrintText lines, which Action 2 prints into
+  the floated console (`DebugConsole_PrintText`). Its icon is the install's Sample 10's
+  `button1.png`, copied into the staged tree, not committed. **An add-in reads its resources
+  with `LoadResDataInternal`**, as the install's add-in samples do: `LoadResData` is the VB
+  package's, which neither an add-in sample nor the Standard DLL template references (TB5079
+  without it); the class and the project must not share a name (TB5139).
+- **Docking is a real drag** (`dockAboveProperties`): the grip at the left of a floating
+  panel's title bar starts the IDE's own drag on the press (a `dragstart` it makes itself), and
+  the docked panels take HTML drag events, so the mouse is pressed on the grip and moved with
+  `Input.setInterceptDrags` on, and the drag Chromium begins is delivered with
+  `Input.dispatchDragEvent` (enter, over, drop) near the top edge of PROPERTIES. The shot closes
+  the window with its close button, and `defaultLayout` puts the layout back.
+- **Setup `tbide-sample10`**: Sample 10 built and loaded, for its window of styled `div`
+  elements on HtmlElement.md (`Sample10`). Sample 10 prints the project's path, under the
+  user's profile, as it loads, so the setup empties the console first.
+- The console picture shows the sample's "orange" line in yellow: PrintText ignores its
+  colour (BUGS-TO-REPORT, `printtext-colorrgb-ignored`, a NOTE on DebugConsole.md).
 
 ## Package server
 

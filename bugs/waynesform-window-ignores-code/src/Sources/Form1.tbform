@@ -1,0 +1,56 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": 13684944,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbPatternNone",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "Designer caption",
+		"FormDesignerId": "{5C1E7A40-2B9D-4F63-8E15-A0D4C7B2E901}",
+		"Height": 200,
+		"Left": 0,
+		"Name": "Form1",
+		"Top": 0,
+		"Width": 400,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSizable",
+			"ControlBox": true,
+			"MaximizeButton": true,
+			"MinimizeButton": true,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Name": "Timer1",
+				"Left": 20,
+				"Top": 20,
+				"Width": 32,
+				"Height": 32,
+				"Interval": 100,
+				"Enabled": true,
+				"Visible": true,
+				"_className": "WaynesTimer",
+				"_clsid": "{19E29F0D-8062-40D5-962E-5BCD1F6C090E}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]

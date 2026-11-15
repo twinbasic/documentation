@@ -1,0 +1,9 @@
+Type=Exe
+Object={831FDD16-0C5C-11D2-A9FC-0000F8754DA1}#2.1#0; MSCOMCTL.OCX
+Form=Form1.frm
+Module=Module1; Module1.bas
+Startup="Sub Main"
+ExeName32="Probe.exe"
+Name="Probe"
+CompilationType=0
+OptimizationType=0

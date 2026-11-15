@@ -1,0 +1,21 @@
+' The stage set for the VBFLXGRD18 section: the control instance its samples assume.
+'
+' A sample on a VBFlexGrid page says `VBFlexGrid1.Rows = 10`, which is form code-behind: the
+' reader has a form with a VBFlexGrid on it, named VBFlexGrid1 by the designer. This
+' template's Form1 is such a form (Form1.tbform), and this property gives every sample the
+' grid on it, so that a sample that is run works on a real grid. Reading it loads Form1.
+'
+' The Load is explicit: on BETA 1042 a grid reached through the form's implicit
+' instance, `Form1.VBFlexGrid1` with Form1 not loaded, raises -2147467262 (No such
+' interface supported) at its first property.
+'
+' The type is written `VBFLXGRD18.VBFlexGrid`, the project's name and then the class's.
+
+Module tbxStageVBFlexGrid
+
+    Public Property Get VBFlexGrid1() As VBFLXGRD18.VBFlexGrid
+        Load Form1
+        Return Form1.VBFlexGrid1
+    End Property
+
+End Module

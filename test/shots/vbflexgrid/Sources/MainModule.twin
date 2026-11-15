@@ -1,0 +1,512 @@
+Module MainModule
+
+    ' The program behind the VBFLXGRD18 section's pictures of a VBFlexGrid
+    ' (scripts/shoot_docs.mjs, setup vbflexgrid). Its command line names the scene: which
+    ' form it shows and how its grids are set up. TB_SHOT_SIGNALS, when it is set, names a
+    ' folder through which the tool and the program take turns: the program writes "shown"
+    ' once its form is drawn and in the state the picture shows, and ends when "end" appears
+    ' or the form is closed. The texts are the fixture's own: nothing is read from the machine.
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function HideCaret Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_NCACTIVATE As Long = &H86
+    Private Const MCM_SETTODAY As Long = &H100C
+    Private Declare PtrSafe Function InvalidateRect Lib "user32" (ByVal hWnd As LongPtr, ByVal lpRect As LongPtr, ByVal bErase As Long) As Long
+
+    Private Type SYSTEMTIME
+        wYear As Integer
+        wMonth As Integer
+        wDayOfWeek As Integer
+        wDay As Integer
+        wHour As Integer
+        wMinute As Integer
+        wSecond As Integer
+        wMilliseconds As Integer
+    End Type
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        Dim f As Form
+        Select Case scene
+            Case "selection", "insertmark": Set f = frmThree
+            Case "gridlines": Set f = frmSix
+            Case Else: Set f = frmOne
+        End Select
+        Load f
+        On Error GoTo Failed
+        SetUp scene, f
+        FitForm scene, f
+        f.Show
+        Activate f
+        f.Refresh
+        DoEvents
+        AfterShow scene, f
+        f.Refresh
+        DoEvents
+        Sleep 200
+        DoEvents
+    Shown:
+        On Error GoTo 0
+        Signal "shown"
+        If WaitFor("end", scene, f) Then Unload f
+        Exit Sub
+    Failed:
+        ' The tool fails the picture with this text, rather than wait for a form that never shows.
+        Signal "error", "error " & Err.Number & " in " & scene & ": " & Err.Description
+        f.Show
+        Resume Shown
+    End Sub
+
+    ' ---------------------------------------------------------------- the scenes
+
+    Private Sub SetUp(ByVal scene As String, ByVal f As Form)
+        Select Case scene
+            Case "overview": Overview f
+            Case "zones": Zones f
+            Case "merging": Merging f
+            Case "formatting": Formatting f
+            Case "wrapping": Wrapping f
+            Case "selection": Selection f
+            Case "editing", "dropdown", "calendar", "cues": Staff f, scene
+            Case "checkboxes": CheckBoxes f
+            Case "sortarrows": SortArrows f
+            Case "insertmark": InsertMarks f
+            Case "gridlines": GridLines f
+            Case "textstyles": TextStyles f
+            Case "wallpaper": WallPaper f
+            Case Else: Overview f
+        End Select
+    End Sub
+
+    ' What needs the window on screen: an edit box, a drop-down list or a calendar opened.
+    Private Sub AfterShow(ByVal scene As String, ByVal f As Form)
+        Select Case scene
+            Case "editing", "dropdown", "calendar": OpenEdit scene, f
+        End Select
+    End Sub
+
+    ' The edit of the scene, on the cell of the second row in the scene's column, with its text
+    ' selected, or its list or calendar dropped down.
+    Private Sub OpenEdit(ByVal scene As String, ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.SetFocus
+        DoEvents
+        g.Row = 2
+        g.Col = Switch(scene = "editing", 0, scene = "dropdown", 2, True, 3)
+        If Not g.StartEdit() Then Err.Raise 5, , "StartEdit started no edit in column " & g.Col
+        DoEvents
+        If scene = "editing" Then
+            g.EditSelStart = 0
+            g.EditSelLength = Len(g.EditText)
+            HideCaret g.hWndEdit
+        Else
+            g.ComboButtonValue = FlexComboButtonValuePressed
+            ' the calendar's line "Today:" shows a fixed date, not the day the picture is taken
+            If g.hWndComboCalendar <> 0 Then
+                Dim today As SYSTEMTIME
+                today.wYear = 2025: today.wMonth = 6: today.wDay = 2
+                SendMessageW g.hWndComboCalendar, MCM_SETTODAY, 0, VarPtr(today)
+                InvalidateRect g.hWndComboCalendar, 0, 1
+            End If
+        End If
+        DoEvents
+    End Sub
+
+    ' The grid closes its edit when the edit loses the focus, and the form, when the tool makes it
+    ' the active window, gives the focus back to the grid: the edit is opened again.
+    Private Sub KeepEditing(ByVal scene As String, ByVal f As Form)
+        Select Case scene
+            Case "editing", "dropdown", "calendar"
+                Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+                If g.hWndEdit = 0 Then OpenEdit scene, f
+        End Select
+    End Sub
+
+    ' Each grid made as large as its rows and columns, so no empty ground shows beside them; the
+    ' grids Grid1, Grid2, ... laid out three to a row, 10 pixels apart and from the form's edges;
+    ' and the form made as large as its grids. The scrolled scene's grid shows whole rows and
+    ' columns: the fixed and frozen ones and those from its TopRow and LeftCol.
+    Private Sub FitForm(ByVal scene As String, ByVal f As Form)
+        Const GAP As Long = 150   ' twips, 10 pixels
+        Dim right As Long, maxRight As Long, rowTop As Long = GAP, rowBottom As Long
+        Dim i As Long
+        For i = 1 To f.Controls.Count
+            Dim g As VBFLXGRD18.VBFlexGrid
+            On Error Resume Next
+            Set g = Nothing
+            Set g = f.Controls("Grid" & i)
+            On Error GoTo 0
+            If g Is Nothing Then Exit For
+            ' Twice, since a scrollbar the first sizing takes away changes the frame the other
+            ' dimension is measured with.
+            Dim pass As Long
+            For pass = 1 To 2
+                If scene = "zones" Then
+                    g.Width = Span(g, g.ColWidth(0), g.ColWidth(1), g.LeftCol, 3, True) + (g.Width - g.ClientWidth)
+                    g.Height = Span(g, g.RowHeight(0), g.RowHeight(1), g.TopRow, 9, False) + (g.Height - g.ClientHeight)
+                Else
+                    g.Width = g.ColPos(g.Cols - 1) + g.ColWidth(g.Cols - 1) + (g.Width - g.ClientWidth)
+                    g.Height = g.RowPos(g.Rows - 1) + g.RowHeight(g.Rows - 1) + (g.Height - g.ClientHeight)
+                End If
+            Next
+            If (i - 1) Mod 3 = 0 Then
+                If i > 1 Then rowTop = rowBottom + GAP
+                g.Left = GAP
+            Else
+                g.Left = right + GAP
+            End If
+            g.Top = rowTop
+            right = g.Left + g.Width
+            If g.Top + g.Height > rowBottom Then rowBottom = g.Top + g.Height
+            If right > maxRight Then maxRight = right
+        Next
+        f.Width = maxRight + GAP + (f.Width - f.ScaleWidth)
+        f.Height = rowBottom + GAP + (f.Height - f.ScaleHeight)
+    End Sub
+
+    ' The width (or height) of the first two columns (rows) and of Count more from First.
+    Private Function Span(ByVal g As VBFLXGRD18.VBFlexGrid, ByVal Fixed As Long, ByVal Frozen As Long, _
+            ByVal First As Long, ByVal Count As Long, ByVal Cols As Boolean) As Long
+        Dim n As Long = Fixed + Frozen
+        Dim k As Long
+        For k = First To First + Count - 1
+            If Cols Then n += g.ColWidth(k) Else n += g.RowHeight(k)
+        Next
+        Return n
+    End Function
+
+    ' Rows of text, one string per row from row 0, the cells separated by "|".
+    Private Sub Fill(ByVal g As VBFLXGRD18.VBFlexGrid, ParamArray rowsText() As Variant)
+        g.Rows = UBound(rowsText) + 1
+        Dim r As Long, c As Long
+        For r = 0 To UBound(rowsText)
+            Dim cells() As String = Split(rowsText(r), "|")
+            If UBound(cells) + 1 > g.Cols Then g.Cols = UBound(cells) + 1
+            For c = 0 To UBound(cells)
+                g.TextMatrix(r, c) = cells(c)
+            Next
+        Next
+    End Sub
+
+    Private Sub Produce(ByVal g As VBFLXGRD18.VBFlexGrid)
+        g.FixedCols = 0
+        Fill g, "Product|Stock|Price|Active", _
+            "Apples|120|0.95|", "Bananas|85|0.25|", "Cherries|40|4.50|", _
+            "Dates|0|6.20|", "Elderberries|15|8.00|", "Figs|60|3.10|"
+        g.ColAlignment(1) = FlexAlignmentRightCenter
+        g.ColAlignment(2) = FlexAlignmentRightCenter
+        g.ColWidth(0) = 1500
+        g.ColWidth(1) = 1000
+        g.ColWidth(2) = 1000
+        g.ColWidth(3) = 900
+    End Sub
+
+    Private Sub Overview(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        Produce g
+        g.ColCheckBoxes(3) = True
+        Dim r As Long
+        For r = 1 To 6
+            g.Cell(FlexCellChecked, r, 3) = IIf(r = 4, FlexUnchecked, FlexChecked)
+        Next
+        g.ColSortArrow(0) = FlexSortArrowAscending
+        g.BackColorAlt = RGB(240, 244, 250)
+        g.SelectionMode = FlexSelectionModeByRow
+        g.HighLight = FlexHighLightAlways
+        g.Row = 3
+        g.Col = 0
+    End Sub
+
+    Private Sub Zones(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.Rows = 20
+        g.Cols = 8
+        g.FixedRows = 1
+        g.FixedCols = 1
+        g.FrozenRows = 1
+        g.FrozenCols = 1
+        Dim r As Long, c As Long
+        For c = 1 To 7
+            g.TextMatrix(0, c) = "Col " & c
+        Next
+        For r = 1 To 19
+            g.TextMatrix(r, 0) = "Row " & r
+            For c = 1 To 7
+                g.TextMatrix(r, c) = r & "," & c
+            Next
+        Next
+        ' the frozen row and column tinted, so that they stand apart from the scrolled cells
+        g.Cell(FlexCellBackColor, 1, 1, 1, 7) = RGB(255, 244, 214)
+        g.Cell(FlexCellBackColor, 1, 1, 19, 1) = RGB(255, 244, 214)
+        g.TopRow = 9
+        g.LeftCol = 4
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub Merging(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.FixedCols = 0
+        Fill g, "Region|Sales|Sales|Costs", "Region|Q1|Q2|Q1", _
+            "East|120|135|80", "East|98|110|75", "West|143|150|90", "West|87|92|60", "North|66|70|41"
+        g.FixedRows = 2
+        g.MergeCells = FlexMergeCellsFree
+        g.MergeRow(0) = True
+        g.MergeRow(1) = True
+        g.MergeCol(0) = True
+        g.ColWidth(0) = 1200
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub Formatting(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.FixedCols = 0
+        Fill g, "Task|Owner|Done", "Design|Ann|30 %", "Build|Bob|60 %", "Test|Eve|90 %", "Ship|Ann|Late"
+        g.ColWidth(0) = 1500
+        g.ColWidth(1) = 1200
+        g.ColWidth(2) = 2400
+        g.Cell(FlexCellFloodPercent, 1, 2) = 30
+        g.Cell(FlexCellFloodPercent, 2, 2) = 60
+        g.Cell(FlexCellFloodPercent, 3, 2) = 90
+        g.Cell(FlexCellFloodColor, 3, 2) = RGB(120, 200, 120)
+        g.Cell(FlexCellBackColor, 4, 2) = vbYellow
+        g.Cell(FlexCellFontBold, 4, 2) = True
+        g.Cell(FlexCellAlignment, 4, 2) = FlexAlignmentCenterCenter
+        g.Row = 1
+        g.Col = 1
+        Set g.CellPicture = Pictures.InfoIcon()
+        g.CellPictureAlignment = FlexPictureAlignmentLeftCenterNoOverlap
+        g.Row = 2
+        g.Col = 0
+        g.CellFontItalic = True
+        g.Row = 3
+        g.CellForeColor = vbBlue
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub Wrapping(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.FixedCols = 0
+        Fill g, "Wrapped|Ellipsis|Contract", _
+            "The quick brown fox jumps over the lazy dog|The quick brown fox jumps over the lazy dog|1", _
+            "Short text|Short text|3"
+        g.ColWidth(0) = 1800
+        g.ColWidth(1) = 1800
+        g.ColWidth(2) = 1500
+        g.ColWordWrapOption(0) = FlexWordBreak
+        g.ColWordWrapOption(1) = FlexSingleLineEndEllipsis
+        g.ColLookup(2) = "1;Full time|2;Part time|3;Contractor"
+        g.AutoSize 1, , FlexAutoSizeModeRowHeight
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub Selection(ByVal f As Form)
+        Dim i As Long
+        For i = 1 To 3
+            Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid" & i)
+            g.Rows = 7
+            g.Cols = 4
+            g.ColWidth(-1) = 700
+            Dim r As Long, c As Long
+            For c = 1 To 3
+                g.TextMatrix(0, c) = Chr$(64 + c)
+            Next
+            For r = 1 To 6
+                g.TextMatrix(r, 0) = CStr(r)
+            Next
+            g.HighLight = FlexHighLightAlways
+        Next
+        Dim g1 As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g1.SelectRange 2, 1, 4, 2
+        Dim g2 As VBFLXGRD18.VBFlexGrid = f.Controls("Grid2")
+        g2.SelectionMode = FlexSelectionModeByRow
+        g2.SelectRange 3, 1
+        Dim g3 As VBFLXGRD18.VBFlexGrid = f.Controls("Grid3")
+        g3.SelectionMode = FlexSelectionModeByRow
+        g3.AllowMultiSelection = True
+        g3.RowSelected(2) = True
+        g3.RowSelected(3) = True
+        g3.RowSelected(5) = True
+    End Sub
+
+    ' The editing scenes share one grid: names, a list, a button and a date.
+    Private Sub Staff(ByVal f As Form, ByVal scene As String)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.FixedCols = 0
+        Fill g, "Name|Notes|Contract|Started", "Ann Lee|...|Full time|2024-03-15", _
+            "Bob Smith|...|Part time|2023-11-02", "Eve Moss|...|Contractor|2025-01-20"
+        g.ColWidth(0) = 1500
+        g.ColWidth(1) = 900
+        g.ColWidth(2) = 1500
+        g.ColWidth(3) = 1500
+        g.Rows = 6
+        g.AllowUserEditing = True
+        g.ColComboMode(1) = FlexComboModeButton
+        g.ColComboMode(2) = FlexComboModeDropDown
+        g.ColComboItems(2) = "Full time|Part time|Contractor"
+        g.ColComboMode(3) = FlexComboModeCalendar
+        g.HighLight = FlexHighLightNever
+        If scene = "cues" Then
+            g.ColComboCue(1) = FlexComboCueButton
+            g.ColComboCue(2) = FlexComboCueDropDown
+            g.ColComboCue(3) = FlexComboCueDropDown
+            g.Cell(FlexCellComboCue, 3, 2) = FlexComboCueDisabledDropDown
+        End If
+    End Sub
+
+    Private Sub CheckBoxes(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.FixedCols = 0
+        Fill g, "State|Box", "FlexUnchecked|", "FlexChecked|", "FlexGrayed|", _
+            "FlexDisabledUnchecked|", "FlexDisabledChecked|", "FlexDisabledGrayed|", "FlexTextAsCheckBox|1"
+        g.ColWidth(0) = 2600
+        g.ColWidth(1) = 900
+        g.ColCheckBoxes(1) = True
+        g.Cell(FlexCellChecked, 1, 1) = FlexUnchecked
+        g.Cell(FlexCellChecked, 2, 1) = FlexChecked
+        g.Cell(FlexCellChecked, 3, 1) = FlexGrayed
+        g.Cell(FlexCellChecked, 4, 1) = FlexDisabledUnchecked
+        g.Cell(FlexCellChecked, 5, 1) = FlexDisabledChecked
+        g.Cell(FlexCellChecked, 6, 1) = FlexDisabledGrayed
+        g.Cell(FlexCellChecked, 7, 1) = FlexTextAsCheckBox
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub SortArrows(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        Produce g
+        g.Col = 1
+        g.Sort = FlexSortNumericDescending
+        g.ColSortArrow(1) = FlexSortArrowDescending
+        g.ColSortArrow(2) = FlexSortArrowAscending
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub InsertMarks(ByVal f As Form)
+        Dim i As Long
+        For i = 1 To 3
+            Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid" & i)
+            g.Rows = 7
+            g.Cols = 4
+            g.ColWidth(-1) = 700
+            Dim r As Long, c As Long
+            For c = 1 To 3
+                g.TextMatrix(0, c) = Chr$(64 + c)
+            Next
+            For r = 1 To 6
+                g.TextMatrix(r, 0) = CStr(r)
+            Next
+            g.HighLight = FlexHighLightNever
+        Next
+        Dim g1 As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g1.InsertMark(True) = 3
+        Dim g2 As VBFLXGRD18.VBFlexGrid = f.Controls("Grid2")
+        g2.InsertMarkMode = FlexDropTargetModeByColumn
+        g2.DropHighlightMode = FlexDropTargetModeByColumn
+        g2.InsertMark = 2
+        Dim g3 As VBFLXGRD18.VBFlexGrid = f.Controls("Grid3")
+        g3.DropHighlight = 4
+    End Sub
+
+    Private Sub GridLines(ByVal f As Form)
+        Dim styles() As Variant = Array(FlexGridLineFlat, FlexGridLineInset, FlexGridLineRaised, _
+            FlexGridLineDashes, FlexGridLineDots, FlexGridLineFlatHorz)
+        Dim names() As Variant = Array("Flat", "Inset", "Raised", "Dashes", "Dots", "FlatHorz")
+        Dim i As Long
+        For i = 1 To 6
+            Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid" & i)
+            g.Rows = 5
+            g.Cols = 3
+            g.ColWidth(-1) = 1100
+            g.FixedRows = 1
+            g.FixedCols = 0
+            g.TextMatrix(0, 0) = names(i - 1)
+            g.GridLines = styles(i - 1)
+            g.HighLight = FlexHighLightNever
+        Next
+    End Sub
+
+    ' The five text styles, one to a column, on the colour of a button face: on white the raised
+    ' styles' light edge does not show.
+    Private Sub TextStyles(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        g.FixedCols = 0
+        Fill g, "Flat|Raised|Inset|RaisedLight|InsetLight", "Sample|Sample|Sample|Sample|Sample", _
+            "Sample|Sample|Sample|Sample|Sample"
+        g.BackColor = vbButtonFace
+        Dim styles() As Variant = Array(FlexTextStyleFlat, FlexTextStyleRaised, FlexTextStyleInset, _
+            FlexTextStyleRaisedLight, FlexTextStyleInsetLight)
+        Dim c As Long
+        For c = 0 To 4
+            g.Cell(FlexCellTextStyle, 1, c, 2, c) = styles(c)
+            g.Cell(FlexCellFontBold, 2, c) = True
+            g.ColWidth(c) = 1300
+        Next
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    Private Sub WallPaper(ByVal f As Form)
+        Dim g As VBFLXGRD18.VBFlexGrid = f.Controls("Grid1")
+        Produce g
+        Set g.WallPaper = Pictures.Gradient(64, 240, RGB(255, 255, 255), RGB(180, 205, 235))
+        g.WallPaperAlignment = FlexWallPaperAlignmentStretch
+        g.HighLight = FlexHighLightNever
+    End Sub
+
+    ' ---------------------------------------------------------------- taking turns with the tool
+
+    ' Makes the form the active window, as it is when a person starts the program. On the
+    ' tool's private desktop, which has no input, the foreground is not dependable, so while
+    ' the form waits it draws its frame as the active window's whenever it is not the
+    ' foreground window (test/shots/programs does the same).
+    Private Sub Activate(ByVal f As Form)
+        SetForegroundWindow f.hWnd
+        DoEvents
+        KeepActive f
+    End Sub
+
+    Private Sub KeepActive(ByVal f As Form)
+        If GetForegroundWindow() <> f.hWnd Then SendMessageW f.hWnd, WM_NCACTIVATE, 1, 0
+    End Sub
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Private Sub Signal(ByVal Name As String, Optional ByVal Text As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        If Len(Text) Then Print #n, Text
+        Close #n
+    End Sub
+
+    ' Waits until the signal is there (True), or until the form is closed (False), keeping the
+    ' form in the state of its scene.
+    Private Function WaitFor(ByVal Name As String, ByVal scene As String, ByVal f As Form) As Boolean
+        Do
+            If Len(Signals()) Then
+                If Len(Dir$(Signals() & "\" & Name)) Then Return True
+            End If
+            If Not IsLoaded(f) Then Return False
+            KeepActive f
+            KeepEditing scene, f
+            DoEvents
+            Sleep 50
+        Loop
+    End Function
+
+    Private Function IsLoaded(ByVal f As Form) As Boolean
+        Dim g As Form
+        For Each g In Forms
+            If g Is f Then Return True
+        Next
+        Return False
+    End Function
+
+End Module

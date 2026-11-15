@@ -475,6 +475,15 @@ Seven rules about the harness, each a comment in the file:
   they race: the compile can finish between them and give two diagnostics beside a zero error
   count. The harness refuses a sample where the two disagree rather than reporting either
   number.
+- **Files of one base name are listed in the order of their full names** (`orderSameNamedFiles`
+  in `scripts/lib/tb-ide.mjs`, in `compileOutcome`, so `tbrun` and `tbbuild` alike). The panel
+  lists files by base name and puts a file whose name it already holds before the other, so two
+  files of one name (WinReg embeds WinDevLib twice: `wdAPIComCtl.twin` under
+  `/Packages/WinDevLib/` and under `/Packages/WinReg/Packages/WinDevLib/`) come in the order
+  their diagnostics reached the IDE: on BETA 1042, the nested copy first. tblaunch, a client of
+  the compiler's own sockets, receives them the other way round and cannot see the IDE's order,
+  so both tools break that tie by the full name (the owner, 2026-11-14; tblaunch's contract 20).
+  Every other row keeps the panel's order.
 - **Watch for the compiler going down, in the DEBUG CONSOLE and not in the status bar.**
   twinBASIC runs the compiler in the same process as user code, so a probe can crash it, and
   the IDE then restarts it three times before giving up. Untreated that is a silent
@@ -952,6 +961,37 @@ panel's rows of files the wire does not report on, `unlistedRows`); a build, Bui
 most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them
 printing for 15 s and finishing). None reached a timeout.
 
+**On BETA 1042, Generics' compile wait never took the early ending**, and it was two flaws of
+`waitForCompile` (fixed 2026-11-14), not the compile. Nine runs of `package_tests Generics --arch
+both` all ended `still`, with `waitMs` 8.0 to 9.1 s: the compile was done 2 to 3 s after the project
+opened, and the other 5 s was the stand-still fallback. tblaunch ends the same compile once every
+source has published, plus 150 ms. The `compile` line's `check` field (the wire's counts, the
+unlisted rows' counts, the page's counts, its rows and their expected total, from the last sample
+compared) shows why:
+
+- **The wire counted an embedded package's file twice.** `src` leaves out Packages because a package
+  loaded from the compiler's cache publishes once, at load (WinDevLib's TB0003 rows). But a compile
+  that reaches a package's code publishes for that package file again: Generics' `Tuple.twin`, 4
+  errors, in every compile of its tests. `c.wire.check` summed every file the compile published,
+  `unlistedRows` added the panel's rows of every file outside `src`, and `Tuple.twin` was counted by
+  both: 9 + 10 = 19 against the page's 15, every time. The wire's counts are now those of `src`
+  alone, and the rows count everything else. ArrayListLib and WinReg's early ending was never
+  affected, since their compiles publish nothing for their packages.
+- **The quiet period was timed from before the sample was read.** Once the counts agreed, the
+  wait ended 10 ms after the compile's last publish, not 300 ms after it. The loop took `now`
+  before `readBuildState`, the evaluate took 480 ms while the page compiled, and the wire heard the
+  compile end during that time. The agreement was then dated before the compile it agreed with, and
+  was already older than `EARLY_QUIET_MS` when it was seen. The quiet period now runs from when the
+  sample comes back (the deadline still runs from when it was asked for). A later publish in the same
+  compile, of any file, restarts the quiet, as tblaunch's settle does (`check`'s `last`).
+
+tblaunch has neither flaw. Its rows come from each file's latest publish and are compared with
+nothing, and its done and late-publish times are taken when the event is read (`CompileDone.twin`).
+After the fix, 12 Generics compile waits (6 runs, both arches) all ended `early`, with `waitMs` 3.2 to
+8.9 s, each about 320 ms after the compile's last publish. The spread is in when the compile started
+(2.9 to 8.5 s into the wait, with another session's corpus runs loading the machine), not in the
+wait. Both flaws are pinned in `test/example-batches.test.mjs`, with a fake page and its traffic.
+
 ### Building for win64
 
 **`tbrun` and `tbbuild` take `--arch win32|win64`, and set it on every run, win32
@@ -1212,7 +1252,10 @@ The script has to run before `main.js` reads the keys, and `main.htm` commits 0.
 IDE's browser process writes `DevToolsActivePort`. So `installDefaultsHook` starts before the IDE does,
 polls that file every 5 ms (`launchIde`'s own poll is at 100 ms and answers too late), connects to the
 browser target, auto-attaches to every target with `waitForDebuggerOnStart`, adds the script to each page
-with `Page.addScriptToEvaluateOnNewDocument` and resumes it. The page is `about:blank` when attached, and
+with `Page.addScriptToEvaluateOnNewDocument` and resumes it. For a port the caller chose (`tbbuild
+--port N`, `tbrun --port N`) WebView2 writes no `DevToolsActivePort`, so the hook asks
+`http://127.0.0.1:<port>/json/version` every 20 ms for the browser's address instead; until 2026-11-15
+such a run waited a minute and failed. The page is `about:blank` when attached, and
 never navigates twice. The script puts a setter on `window.hostAppObject`, which `main2.js` assigns, and
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
 `GENERAL2`, `SaveIDESetting` of those keys does nothing, and every other call goes through with `this`
@@ -1817,9 +1860,16 @@ probe lanes:
   window with mouse events on its resize bars, and reads `toolWindowsById`. A floating window
   the IDE loses stays lost through a compiler restart, so the docked case opens a second IDE.
   About 35 s.
+- [test/addin/console-colour.test.mjs](test/addin/console-colour.test.mjs): the IDE defect
+  `printtext-colorrgb-ignored` of BUGS-TO-REPORT.md. Its ConsoleColourProbe add-in
+  ([test/addin/probes/consolecolour](test/addin/probes/consolecolour)) has two buttons: one
+  prints a line with `DebugConsole.PrintText` for no colour, 0, four RGB colours and four of the
+  five codes `event_output` reads from the compiler's own output, the other for `&HFD0000`, the
+  native-exception code. The scenario reads each line's HTML from
+  `debugConsoleContent.dataNodes` and the colour its class gives, and `g_TraceMode`. About 15 s.
 
-**Timing:** the thirteen lanes other than widgets (24 s alone) take about two minutes at the default two at a time
-(the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
+**Timing:** the lanes other than widgets (24 s alone) take about two minutes at the default two at a time
+(the env lane is 16 s alone, the help lane 15 to 18 s, of which its cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
 about 9 s, a scenario 2 s; the slowest lanes are arch (56 s: two builds and two switches of
 target) and reload (47 s: two builds and two restarts).
 

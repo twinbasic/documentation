@@ -67,6 +67,8 @@
 //               View menus with the code focused
 //   debugging   the same with test/shots/debugging staged as well: the "Running and
 //               debugging" chapter's pictures of a paused program, run from the IDE
+//   assert      test/shots/assert, AssertDemo: the Testing with Assert tutorial's tests,
+//               stopped at a failed assertion
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -80,7 +82,34 @@
 //               window of the exe, started on a private desktop with a command line naming
 //               its form, taken with PrintWindow (lib/tb-ide.mjs's captureWindow), once,
 //               in no theme; the ListView's is of the project run from the IDE (F5)
-//   codelens    test/shots/codelens: a procedure run by its CodeLens bar, the editor above
+//   vbflexgrid  test/shots/vbflexgrid, FlexGridShots, with the TWINSERV package VBFLXGRD18
+//               embedded in a staged copy: the VBFLXGRD18 section's pictures of a VBFlexGrid,
+//               taken as the programs setup's are, its drop-down list or calendar laid over
+//               the form
+//   vb          test/shots/vb, VBShots: the VB, VBRUN and VBA sections' pictures of the VB
+//               package's controls and a form's drawing, taken as the programs setup's are
+//   commonctls  test/shots/commonctls, CommonCtlsShots: the WinNativeCommonCtls section's
+//               pictures of its controls, taken as the programs setup's are, the DTPicker's
+//               calendar laid over the form
+//   webview2    test/shots/webview2, WebView2Shots: the WebView2 section's picture of the
+//               control showing a page, taken as the programs setup's are
+//   cef         test/shots/cef, CefShots: the CEF section's picture of the CefBrowser control
+//               showing a page, taken as webview2's is, with the CEF runtime downloaded once
+//               into %TEMP%\tb-cef
+//   waynes     test/shots/waynes, WaynesShots: the CustomControls section's pictures of its
+//               controls on a form of the package, taken as the programs setup's are; a
+//               picture of several states or frames is several runs of the program in rows
+//   xcalendar   test/shots/xcalendar, XCalendarShots, with the TWINSERV package xCalendar
+//               embedded as vbflexgrid's is: the xCalendar section's pictures of its control,
+//               taken as the programs setup's are
+//   dialogs     test/shots/dialogs, DialogShots, with the TWINSERV packages VBComDlg and
+//               AutoCompleteLib embedded: the dialogs of a CommonDialog, taken as the vb setup's
+//               MsgBox is, and an AutoComplete's suggestion list laid over its form
+//   tbide       test/shots/tbide, MyAddInDemo, an add-in built into the copy, the sample open:
+//               the tbIDE section's pictures of its toolbar buttons, its tool window floating
+//               and docked by a drag, and its DEBUG CONSOLE lines; tbide-sample10 Sample 10
+//               built and loaded, for its window of styled div elements
+//   codelens   test/shots/codelens: a procedure run by its CodeLens bar, the editor above
 //               the DEBUG CONSOLE
 //   memory      test/shots/memory: Sub Main run to its Stop, and the MEMORY 1 pane showing
 //               a String's characters
@@ -161,6 +190,7 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer";
@@ -249,6 +279,8 @@ import { QUIET_CSS } from "./svgshot/capture.mjs";
 import { useSubsetCache } from "./svgshot/fonts.mjs";
 import { holdsUserName, judgeSvg, sameSvgAs, sameWhy } from "./svgshot/keep.mjs";
 import { stageProject, unpackProject } from "./lib/tb-project.mjs";
+import { embeddedPackages } from "./lib/example-batches.mjs";
+import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
 import { holdLlvmCache } from "./lib/tb-llvm-cache.mjs";
 import { guard, presentKeys, press, serverRequests } from "../test/ide/building-kit.mjs";
 import { layout } from "../test/ide/starting-kit.mjs";
@@ -1953,12 +1985,14 @@ const SETUPS = {
   featuremap: { start: startFeatureMap, prepare: prepareSample },
   "code-chapter": { start: startCodeChapter, prepare: prepareSample },
   debugging: { start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
+  assert: { start: startAssert, prepare: prepareSample },
   project: { start: startProject, prepare: prepareProject },
   community: { start: startProject, prepare: prepareCommunity },
   splash: { start: startProject, prepare: prepareProject },
   sample: { start: startSample, prepare: prepareSample },
   settings: { start: startSettings("base"), prepare: prepareSample },
   "settings-symbols": { start: startSettings("symbols"), prepare: prepareSample },
+  "settings-version": { start: startSettings("versioninfo"), prepare: prepareSample },
   "settings-webview2": {
     start: startSettings("webview2", { keepForm: true, stage: DESIGNER_WEBVIEW2 }),
     prepare: prepareWithDesigners,
@@ -1967,6 +2001,34 @@ const SETUPS = {
   glyphs: { start: startSample, prepare: prepareSample },
   "no-project": { start: startNoProject, prepare: prepareNoProject },
   programs: { start: startPrograms, prepare: preparePrograms },
+  vbflexgrid: {
+    start: (run) => startWithPackages(run, FLEXGRID),
+    prepare: (run) => preparePrograms(run, "FlexGridShots"),
+  },
+  xcalendar: {
+    start: (run) => startWithPackages(run, XCALENDAR_SHOTS),
+    prepare: (run) => preparePrograms(run, "XCalendarShots"),
+  },
+  dialogs: {
+    start: (run) => startWithPackages(run, DIALOG_SHOTS),
+    prepare: (run) => preparePrograms(run, "DialogShots"),
+  },
+  vb: { start: (run) => startPrograms(run, VB_SHOTS), prepare: (run) => preparePrograms(run, "VBShots") },
+  commonctls: {
+    start: (run) => startPrograms(run, COMMONCTLS_SHOTS),
+    prepare: (run) => preparePrograms(run, "CommonCtlsShots"),
+  },
+  webview2: {
+    start: (run) => startPrograms(run, WEBVIEW2_SHOTS),
+    prepare: (run) => preparePrograms(run, "WebView2Shots"),
+  },
+  cef: { start: (run) => startPrograms(run, CEF_SHOTS), prepare: prepareCef },
+  waynes: {
+    start: (run) => startPrograms(run, WAYNES_SHOTS),
+    prepare: (run) => preparePrograms(run, "WaynesShots"),
+  },
+  tbide: { start: startTbIde, prepare: prepareTbIde },
+  "tbide-sample10": { start: startTbIdeSample10, prepare: prepareTbIdeSample10 },
   codelens: { start: startCodeLens, prepare: prepareSample },
   memory: { start: startMemory, prepare: prepareSample },
   package: { start: startPackage, prepare: prepareSample },
@@ -4086,6 +4148,20 @@ const settingsShots = [
         `[...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0).innerText.split("\\n").filter(Boolean).slice(0, 12).join(" | ")`,
       );
       say(c.shot.name, `  Available COM References starts: ${names}`);
+    },
+  }),
+  // the group Version Info of a project whose version resource is filled in (the fixture
+  // test/shots/settings/versioninfo.json), the whole dialog: what App.Major, App.ProductName,
+  // App.FileDescription and the others return; from the title bar to the version resource's
+  // Auto-Increment row, so neither the footer (whose count of changes comes and goes) nor the
+  // type library's rows, cut by the pane's edge
+  settingsShot("IDE/Images/ProjectSettings_VersionInfo.png", {
+    setup: "settings-version",
+    prepare: (c) => settingsGroup(c, "Version Info"),
+    clipOf: async (m, c) => {
+      const r = await settingRow(c, "project.versionAutoIncrement");
+      if (!r) throw new Error("Project Settings shows no Auto-Increment row");
+      return { x: m.x, y: m.y, width: m.width, height: r.y + r.height + 1 - m.y };
     },
   }),
   settingsShot("Features/Packages/Images/LibrarySymbols.png", {
@@ -10993,6 +11069,69 @@ const debuggingShots = [
   debugConsoleMenuShot,
 ];
 
+// ---- assert: test/shots/assert, AssertDemo, the Testing with Assert tutorial's two modules,
+// its PadLeft given a bug (it pads on the right), for the picture of a failed assertion: the
+// tutorial's RunAllTests run with F6 and stopped by its first test's Assert.Exact.AreEqual, the
+// editor with the error panel, and CALL STACK (the test over RunAllTests) and VARIABLES under it,
+// as Error_Panel is taken.
+const ASSERT_SHOTS = path.join(REPO_ROOT, "test", "shots", "assert");
+
+async function startAssert(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, ASSERT_SHOTS)}`);
+  const src = path.join(run.work, "assert-src");
+  cpSync(ASSERT_SHOTS, src, { recursive: true });
+  return run.lane.open(src);
+}
+
+const assertFailedShot = {
+  out: "Tutorials/Images/Assert_Failed.png",
+  setup: "assert",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      return await atSize(c, 1100, 700, async () => {
+        await useLayout(c, STOP_LAYOUT);
+        await openFile(c, "/AssertDemo/Sources/TestStringUtils.twin");
+        // the caret at the start of the line's code: F6 finds the procedure only left of the
+        // column where its End Sub line ends (BUGS-TO-REPORT, docs/IDE/Debugging/Running.md)
+        await caretOn(c, 'Debug.Print "All PadLeft tests passed."');
+        await command(c, "tbDebug_RunOrPreview");
+        // the error panel's buttons, its text and the call stack's frames, as the page has them
+        const state = () =>
+          c.evaluate(`({
+  buttons: document.querySelectorAll(".errorWidgetButton").length,
+  panel: [...document.querySelectorAll("[class*=errorWidget]")].map((e) => e.textContent).sort((a, b) => b.length - a.length)[0] ?? "",
+  frames: Math.max(0, ...Object.values(liveStackTraceInfo).map((t) => Object.values(t || {}).filter((f) => f && f.name).length)),
+})`);
+        const stopped = await waitFor(
+          c,
+          async () => {
+            const s = await state();
+            return (await isPaused(c)) && s.buttons === 4 && /Assertion FAILED/.test(s.panel) && s.frames >= 2;
+          },
+          { timeout: 60000, interval: 150 },
+        );
+        if (!stopped) {
+          throw new Error(
+            `the program did not stop at the failed assertion: paused ${await isPaused(c)}, running ${await codeExecuting(c)}, ${JSON.stringify(await state())}, console ${JSON.stringify(await c.evaluate(`(debugConsoleContent.dataNodes ?? []).map((l) => l.replace(/<[^>]*>/g, " ").slice(0, 200))`))}`,
+          );
+        }
+        await frames(c);
+        await c.evaluate(`editor.setScrollTop(0)`);
+        await frames(c);
+        const ed = await panelBox(c, "EDITOR 1");
+        const vars = await panelBox(c, "VARIABLES");
+        if (!ed || !vars) throw new Error("the editor or VARIABLES is not in the layout");
+        const area = { x: 0, y: ed.y, width: 1100, height: vars.y + vars.height - ed.y };
+        return capture(c, "Assert_Failed", snapOut(area, 1100, 700), { away: () => parkMouse(c) });
+      });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -11366,25 +11505,26 @@ const splashShot = {
 
 const PROGRAMS = path.join(REPO_ROOT, "test", "shots", "programs");
 // The class of a twinBASIC form's window: ThunderRT6FormDC in an exe, ThunderFormDC run from
-// the IDE (whose own window is a ThunderForm).
-const FORM_CLASS = /^Thunder(RT6)?Form(DC)?$/;
+// the IDE (whose own window is a ThunderForm); an MDI form's is ThunderRT6MDIForm; a form of
+// the CustomControls package's is tbForm.
+const FORM_CLASS = /^(Thunder(RT6)?(MDI)?Form(DC)?|tbForm)$/;
 // The gap between two windows of one picture, in pixels at 96 DPI.
 const WINDOW_GAP = 16;
 
-async function startPrograms(run) {
+async function startPrograms(run, root = PROGRAMS) {
   run.step = "open";
   run.signals = path.join(run.work, "signals");
   mkdirSync(run.signals, { recursive: true });
-  say(run.name, `opening ${path.relative(REPO_ROOT, PROGRAMS)}`);
-  return run.lane.open(PROGRAMS, { env: { TB_SHOT_SIGNALS: path.join(run.signals, "ide") } });
+  say(run.name, `opening ${path.relative(REPO_ROOT, root)}`);
+  return run.lane.open(root, { env: { TB_SHOT_SIGNALS: path.join(run.signals, "ide") } });
 }
 
-async function preparePrograms(run) {
+async function preparePrograms(run, project = "ShotPrograms") {
   const { c } = run;
   run.step = "shoot";
   const built = await buildProject(c);
   if (!built.ok || !/\.exe$/i.test(built.file ?? "")) {
-    throw new Error(`ShotPrograms did not build: ${built.message ?? built.file}`);
+    throw new Error(`${project} did not build: ${built.message ?? built.file}`);
   }
   say(run.name, `built ${path.basename(built.file)}`);
   // The programs' own desktop, a second slot of the job's (endRun gives it back), and the
@@ -11547,12 +11687,38 @@ function besideEachOther(windows) {
   return { png: encodePng({ width, height, rgba }), scale: dpi / 96, window: true };
 }
 
+// The pictures of windows in rows of `perRow`, as besideEachOther lays out one row: each row's
+// tops level, the windows and the rows WINDOW_GAP apart, on a transparent ground.
+function inRows(windows, perRow) {
+  const { dpi } = windows[0];
+  const gap = Math.round((WINDOW_GAP * dpi) / 96);
+  const rows = [];
+  for (let i = 0; i < windows.length; i += perRow) rows.push(windows.slice(i, i + perRow));
+  const rowWidth = (row) => row.reduce((n, w) => n + w.picture.width, 0) + gap * (row.length - 1);
+  const rowHeight = (row) => Math.max(...row.map((w) => w.picture.height));
+  const width = Math.max(...rows.map(rowWidth));
+  const height = rows.reduce((n, row) => n + rowHeight(row), 0) + gap * (rows.length - 1);
+  const rgba = Buffer.alloc(width * height * 4);
+  let y0 = 0;
+  for (const row of rows) {
+    let x0 = 0;
+    for (const { picture: p } of row) {
+      for (let y = 0; y < p.height; y++)
+        rgba.set(p.rgba.subarray(y * p.width * 4, (y + 1) * p.width * 4), ((y0 + y) * width + x0) * 4);
+      x0 += p.width + gap;
+    }
+    y0 += rowHeight(row) + gap;
+  }
+  return { png: encodePng({ width, height, rgba }), scale: dpi / 96, window: true };
+}
+
 // Starts the program with `scene` on the setup's desktop, waits for its form, runs `fn` with
 // its folder of signals and its window, and ends it: by "end", or by its process id when it
 // has not ended ten seconds later. A box it opened (an unhandled error opens one) fails the
 // picture.
 async function withProgram(ctx, scene, fn) {
-  const dir = path.join(ctx.signals, scene);
+  // a scene's variant follows a colon ("button:hover"), which a folder's name cannot hold
+  const dir = path.join(ctx.signals, scene.replace(/[^\w.-]/g, "-"));
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const run = await launchOnDesktop({
@@ -11641,6 +11807,425 @@ const programShots = [
   programShot(ANCHORS("5fc60b7b-4f54-445c-8504-451019b7ec55"), "checkmark"),
   programShot(ANCHORS("85f25aa2-abc8-4d42-8510-078f8ee4a324"), "translucent"),
   listViewShot,
+];
+
+// ---- vbflexgrid: test/shots/vbflexgrid, FlexGridShots, the pictures of the VBFLXGRD18 section:
+// a VBFlexGrid in each of its looks and states, one scene per picture, named on the exe's command
+// line as the programs setup's forms are. The fixture references the TWINSERV package VBFLXGRD18
+// embedded at /Packages/VBFLXGRD18, as a contributed section's sample template does, and commits
+// none of its code: the package is downloaded from TWINSERV at the version the reference names
+// into %TEMP%\tb-twinserv (the cache check_examples and package_tests keep), and copied into a
+// staged copy of the fixture, which the setup's IDE opens and builds. Each picture is the exe's
+// window, as programShot takes it, with the program's other top-level windows (the grid's
+// drop-down list or calendar) laid over it where they are on the desktop.
+
+const FLEXGRID = path.join(REPO_ROOT, "test", "shots", "vbflexgrid");
+// The window classes of the grid's popups: its drop-down list and its calendar.
+const FLEXGRID_POPUPS = /ComboL|ListBox|SysMonthCal32|DropDown|VBFlexGrid/i;
+const TWINSERV_CACHE = path.join(tmpdir(), "tb-twinserv");
+
+// Opens a fixture that references TWINSERV packages embedded at /Packages/<folder>: a staged
+// copy of `root` with each package copied in from the cache (downloaded into it when missing).
+async function startWithPackages(run, root) {
+  run.step = "open";
+  run.signals = path.join(run.work, "signals");
+  mkdirSync(run.signals, { recursive: true });
+  const src = path.join(run.work, `${path.basename(root)}-src`);
+  rmSync(src, { recursive: true, force: true });
+  cpSync(root, src, { recursive: true });
+  for (const p of embeddedPackages(JSON.parse(readFileSync(path.join(src, "Settings"), "utf8")))) {
+    const tree = path.join(TWINSERV_CACHE, p.key);
+    if (!existsSync(path.join(tree, "Settings"))) {
+      const file = `${tree}.twinpack`;
+      if (!existsSync(file)) {
+        say(run.name, `downloading ${p.folder} (${p.key}) from TWINSERV`);
+        mkdirSync(TWINSERV_CACHE, { recursive: true });
+        writeFileSync(file, await downloadPackage(p.id, p.version));
+      }
+      unpackProject(file, tree);
+    }
+    cpSync(tree, path.join(src, "Packages", p.folder), { recursive: true });
+  }
+  say(run.name, `opening ${path.relative(REPO_ROOT, root)} with its packages embedded`);
+  return run.lane.open(src, { env: { TB_SHOT_SIGNALS: path.join(run.signals, "ide") } });
+}
+
+// Windows laid over each other where they are on the desktop, the first at the bottom: each a
+// window `w` as desktopWindows lists it and its picture `p` as windowPicture returns it. The
+// ground beyond the first window, where another reaches past it, is transparent (withMenu, for
+// any number of windows).
+function overlaid(layers) {
+  const at = ({ w, p }) => [w.rect[0] + p.frame[0], w.rect[1] + p.frame[1]];
+  const corners = layers.map(at);
+  const x0 = Math.min(...corners.map(([x]) => x));
+  const y0 = Math.min(...corners.map(([, y]) => y));
+  const width = Math.max(...layers.map((l, i) => corners[i][0] + l.p.picture.width)) - x0;
+  const height = Math.max(...layers.map((l, i) => corners[i][1] + l.p.picture.height)) - y0;
+  const rgba = Buffer.alloc(width * height * 4);
+  layers.forEach(({ p }, i) => {
+    const [x, y] = [corners[i][0] - x0, corners[i][1] - y0];
+    for (let r = 0; r < p.picture.height; r++)
+      rgba.set(
+        p.picture.rgba.subarray(r * p.picture.width * 4, (r + 1) * p.picture.width * 4),
+        ((y + r) * width + x) * 4,
+      );
+  });
+  return { picture: { width, height, rgba }, dpi: layers[0].p.dpi };
+}
+
+// A scene of a program run as the programs setup's are, its command line `scene`: the form, active, and the visible top-level windows of the program whose class `popups` matches
+// (a drop-down list, a calendar, a menu, a suggestion list) laid over it where they are on the
+// desktop.
+const scenePicture = (ctx, setup, scene, popups) =>
+  withProgram(ctx, scene, async (dir, w) => {
+    // the program writes "error" with the error a scene's code raised, and shows its form all the same
+    const error = path.join(dir, "error");
+    if (existsSync(error)) throw new Error(`scene ${scene}: ${readFileSync(error, "utf8").trim()}`);
+    const layers = [
+      { w, p: await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true }) },
+    ];
+    // the grid's drop-down list and calendar, top-level windows of the program; not its other
+    // visible ones, such as the input-language indicator Windows gives a process
+    const mine = (await desktopWindows(ctx.desktop)).filter(
+      (x) => x.depth === 0 && x.visible && x.pid === w.pid && x.hwnd !== w.hwnd,
+    );
+    if (mine.length) say(setup, `${scene}: windows besides the form: ${mine.map((x) => x.class).join(", ")}`);
+    const shown = mine.filter((x) => popups.test(x.class) && x.rect[2] > x.rect[0] && x.rect[3] > x.rect[1]);
+    for (const [i, x] of shown.entries())
+      layers.push({ w: x, p: await windowPicture(ctx.desktop, x.hwnd, scene, path.join(dir, `popup${i}.png`)) });
+    return layers.length === 1 ? layers[0].p : overlaid(layers);
+  });
+// One scene as `out`.
+const sceneShot = (out, setup, scene, popups) => ({
+  out,
+  setup,
+  once: true,
+  window: true,
+  take: async (ctx) => besideEachOther([await scenePicture(ctx, setup, scene, popups)]),
+});
+
+// Several scenes, each taken as sceneShot takes one, in rows of `perRow`.
+const sceneRuns = (out, setup, scenes, popups, perRow = scenes.length) => ({
+  out,
+  setup,
+  once: true,
+  window: true,
+  async take(ctx) {
+    const shown = [];
+    for (const scene of scenes) shown.push(await scenePicture(ctx, setup, scene, popups));
+    return inRows(shown, perRow);
+  },
+});
+
+// A scene of FlexGridShots, as `<Name>.png` beside the VBFlexGrid's topic pages.
+const flexShot = (name, scene) =>
+  sceneShot(`Reference/Contributed/VBFLXGRD18/VBFlexGrid/Images/${name}.png`, "vbflexgrid", scene, FLEXGRID_POPUPS);
+
+const flexGridShots = [
+  flexShot("Overview", "overview"),
+  flexShot("Structure_Zones", "zones"),
+  flexShot("Merging_Free", "merging"),
+  flexShot("CellFormatting_Cells", "formatting"),
+  flexShot("Text_Wrapping", "wrapping"),
+  flexShot("Selection_Modes", "selection"),
+  flexShot("Editing_EditBox", "editing"),
+  flexShot("ComboEditing_DropDown", "dropdown"),
+  flexShot("ComboEditing_Calendar", "calendar"),
+  flexShot("ComboEditing_Cues", "cues"),
+  flexShot("CheckBoxes_States", "checkboxes"),
+  flexShot("Sorting_Arrows", "sortarrows"),
+  flexShot("MouseAndKeyboard_InsertMarks", "insertmark"),
+  flexShot("Appearance_GridLines", "gridlines"),
+  flexShot("Appearance_TextStyles", "textstyles"),
+  flexShot("Appearance_WallPaper", "wallpaper"),
+];
+
+// ---- vb: test/shots/vb, VBShots, the VB, VBRUN and VBA sections' pictures of a running
+// program: the VB package's controls and the form's drawing, one scene per picture, named on the
+// exe's command line as the programs setup's forms are, and taken as sceneShot takes them. The
+// VB package's library symbol is *VB, for the QRCode's Private members.
+
+const VB_SHOTS = path.join(REPO_ROOT, "test", "shots", "vb");
+// The windows the program shows besides its form: a combo box's dropped-down list.
+const VB_POPUPS = /^ComboLBox$/;
+const vbShot = (out, scene) => sceneShot(`Reference/Default/${out}.png`, "vb", scene, VB_POPUPS);
+// A scene of several forms: the program's other forms laid over the first where they are.
+const vbForms = (out, scene) => sceneShot(`Reference/Default/${out}.png`, "vb", scene, FORM_CLASS);
+
+// The scene's form with its File menu open, as Alt+F opens it (WM_SYSCOMMAND SC_KEYMENU 'f'
+// posted to the form), the menu's window laid over the form's, as Preview_Window takes it.
+const vbMenuShot = (out, scene) => ({
+  out: `Reference/Default/${out}.png`,
+  setup: "vb",
+  once: true,
+  window: true,
+  take: (ctx) =>
+    withProgram(ctx, scene, async (dir, w) => {
+      await activated(ctx.desktop, w.hwnd, scene);
+      await postWindowMessage(ctx.desktop, w.hwnd, WM_SYSCOMMAND, SC_KEYMENU, "f".charCodeAt(0));
+      const menu = await waitFor(null, () => openMenuWindow(ctx.desktop, w.pid), { timeout: 5000, interval: 100 });
+      if (!menu) throw new Error(`the File menu of ${scene} did not open`);
+      // the form is not made active again: that would close the menu
+      const form = await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"));
+      const drop = await windowPicture(ctx.desktop, menu.hwnd, "its File menu", path.join(dir, "menu.png"));
+      const now = (await desktopWindows(ctx.desktop)).find((x) => x.hwnd === w.hwnd) ?? w;
+      return besideEachOther([withMenu(now, form, menu, drop)]);
+    }),
+});
+
+// The windows the system gives a process besides its own: never part of a picture.
+const SYSTEM_WINDOWS = /^(UAC_InputIndicatorOverlayWnd|UAC Input Indicator|ThunderRT6Main|IME|MSCTFIME UI|SysShadow)$/;
+
+// The dialog a scene's program opens (MsgBox, InputBox, a common dialog) and nothing else: the
+// program, started on the setup's desktop with the scene as its command line, waits in the
+// dialog until the tool has it, and is then ended. Several scenes are laid out in rows of
+// `perRow`. A program that writes "error" fails the picture with its text.
+const programDialogShot = (out, setup, scenes, perRow = scenes.length) => ({
+  out,
+  setup,
+  once: true,
+  window: true,
+  async take(ctx) {
+    const shown = [];
+    for (const scene of scenes) {
+      const dir = path.join(ctx.signals, scene.replace(/\W/g, "-"));
+      rmSync(dir, { recursive: true, force: true });
+      mkdirSync(dir, { recursive: true });
+      const run = await launchOnDesktop({
+        exe: ctx.exe.split("/").join("\\"),
+        arg: scene,
+        desktop: ctx.desktop,
+        env: { ...process.env, TB_SHOT_SIGNALS: dir },
+      });
+      const error = path.join(dir, "error");
+      const failed = () => {
+        if (existsSync(error)) throw new Error(`scene ${scene}: ${readFileSync(error, "utf8").trim()}`);
+      };
+      try {
+        const box = await waitFor(
+          null,
+          async () =>
+            existsSync(error) ||
+            (await desktopWindows(ctx.desktop)).find(
+              (x) =>
+                x.depth === 0 &&
+                x.visible &&
+                x.pid === run.pid &&
+                !SYSTEM_WINDOWS.test(x.class) &&
+                x.rect[2] > x.rect[0] &&
+                x.rect[3] > x.rect[1],
+            ),
+          { timeout: 15000, interval: 200 },
+        );
+        failed();
+        if (!box) throw new Error(`scene ${scene} opened no window`);
+        say(setup, `${scene}: ${box.class} ${JSON.stringify(box.title)}`);
+        // the program writes "shown" once it has put its box in the state the picture shows
+        await signalled(dir, "shown");
+        failed();
+        shown.push(await windowPicture(ctx.desktop, box.hwnd, scene, path.join(dir, "dialog.png"), { active: true }));
+      } finally {
+        killTree(run.pid);
+        run.launcher.kill();
+        await Promise.race([run.exited, sleep(10000)]);
+      }
+    }
+    return inRows(shown, perRow);
+  },
+});
+const vbDialogShot = (out, scenes, perRow) => programDialogShot(`Reference/Default/${out}.png`, "vb", scenes, perRow);
+
+const vbShots = [
+  vbShot("VBRUN/Constants/Images/DrawStyleConstants", "drawstyle"),
+  vbShot("VBRUN/Constants/Images/FillStyleConstants", "fillstyle"),
+  vbShot("VBRUN/Constants/Images/DrawModeConstants", "drawmode"),
+  vbShot("VB/Shape/Images/Shape_Kinds", "shapes"),
+  vbShot("VB/Shape/Images/Shape_FillStyle", "shapefill"),
+  vbShot("VB/Shape/Images/Shape_BorderStyle", "shapeborder"),
+  vbShot("VB/CheckBox/Images/CheckBox_States", "checkbox"),
+  vbShot("VB/OptionButton/Images/OptionButton_Styles", "optionbutton"),
+  vbShot("VB/CommandButton/Images/CommandButton_Styles", "commandbutton"),
+  vbShot("VB/ListBox/Images/ListBox_Styles", "listbox"),
+  vbShot("VB/ComboBox/Images/ComboBox_Styles", "combobox"),
+  vbShot("VB/QRCode/Images/QRCode_EccMode", "qrcode"),
+  vbForms("VB/Form/Images/Form_BorderStyle", "formborders"),
+  vbShot("VBA/Information/Images/QBColor", "qbcolor"),
+  vbShot("VBRUN/Constants/Images/SystemColorConstants", "syscolors"),
+  vbShot("VBRUN/Constants/Images/MousePointerConstants", "mousepointers"),
+  vbMenuShot("VB/Menu/Images/Menu_File", "menu"),
+  vbShot("VB/MDIForm/Images/MDIForm_Cascade", "mdi-cascade"),
+  vbShot("VB/MDIForm/Images/MDIForm_TileHorizontal", "mdi-tilehorizontal"),
+  vbShot("VB/MDIForm/Images/MDIForm_TileVertical", "mdi-tilevertical"),
+  vbDialogShot("VBA/Constants/Images/VbMsgBoxStyle_Icons", ["msgbox:16", "msgbox:32", "msgbox:48", "msgbox:64"], 2),
+  vbDialogShot(
+    "VBA/Constants/Images/VbMsgBoxStyle_Buttons",
+    ["msgbox:0", "msgbox:1", "msgbox:2", "msgbox:3", "msgbox:4", "msgbox:5", "msgbox:6"],
+    3,
+  ),
+  vbDialogShot("VBA/Interaction/Images/InputBox", ["inputbox"]),
+];
+
+// ---- commonctls: test/shots/commonctls, CommonCtlsShots, the WinNativeCommonCtls section's
+// pictures of its controls, one scene per picture, named on the exe's command line as the
+// programs setup's forms are, and taken as sceneShot takes them. The scene form holds hidden
+// controls of each class, which a scene places and shows.
+
+const COMMONCTLS_SHOTS = path.join(REPO_ROOT, "test", "shots", "commonctls");
+// The window the program shows besides its form: the DTPicker's dropped-down calendar.
+const COMMONCTLS_POPUPS = /^DropDown$/;
+const wnccShot = (out, scene) =>
+  sceneShot(`Reference/Built-In/WinNativeCommonCtls/${out}.png`, "commonctls", scene, COMMONCTLS_POPUPS);
+
+const commonCtlsShots = [
+  wnccShot("Images/Overview", "overview"),
+  wnccShot("ListView/Images/ListView_Views", "listview"),
+  wnccShot("TreeView/Images/TreeView_Styles", "treeview"),
+  wnccShot("Enumerations/Images/TreeLineStyleConstants", "treelines"),
+  wnccShot("Enumerations/Images/TreeBorderStyleConstants", "treeborders"),
+  wnccShot("Images/ProgressBar", "progressbar"),
+  wnccShot("Images/Slider", "slider"),
+  wnccShot("Images/MonthView", "monthview"),
+  wnccShot("Images/DTPicker", "dtpicker"),
+  wnccShot("Enumerations/Images/ImlDrawConstants", "imagelist"),
+];
+
+// ---- webview2: test/shots/webview2, WebView2Shots, the WebView2 section's picture of the
+// control on a form, showing a page the form passed to NavigateToString, one line of it set by
+// JsRun; taken as sceneShot takes a scene. The control's user data goes in the run's folder of
+// signals. The program writes "shown" only once the page has loaded.
+
+const WEBVIEW2_SHOTS = path.join(REPO_ROOT, "test", "shots", "webview2");
+const webView2Shots = [
+  sceneShot("Reference/Built-In/WebView2/WebView2/Images/WebView2_Page.png", "webview2", "page", /^$/),
+];
+
+// ---- cef: test/shots/cef, CefShots, the CEF section's picture of a CefBrowser showing the same
+// kind of page as the WebView2 one, taken as sceneShot takes a scene. The CEF runtime is not part
+// of twinBASIC: the setup downloads the release the CEF page links (v145, win32, the exe's
+// architecture) into %TEMP%\tb-cef, once, and names its folder to the program in
+// TB_SHOT_CEF_RUNTIME, which the form passes to BrowserExecutableFolder; the control's cache
+// goes in the run's folder of signals. Neither goes under %LocalAppData%, the package's
+// defaults.
+
+const CEF_SHOTS = path.join(REPO_ROOT, "test", "shots", "cef");
+const CEF_RUNTIME_ZIP = "https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime145_win32.zip";
+const CEF_CACHE = path.join(tmpdir(), "tb-cef", "145_win32");
+const CEF_RUNTIME = path.join(CEF_CACHE, "145_0_7632_160_Win32");
+
+// The runtime's folder, downloaded and extracted (by Windows' own tar) when it is not there.
+async function cefRuntime(name) {
+  if (existsSync(path.join(CEF_RUNTIME, "libcef.dll"))) return CEF_RUNTIME;
+  say(name, `downloading the CEF runtime into ${CEF_CACHE}`);
+  mkdirSync(CEF_CACHE, { recursive: true });
+  const res = await fetch(CEF_RUNTIME_ZIP, { signal: AbortSignal.timeout(600000) });
+  if (!res.ok) throw new Error(`the CEF runtime's download failed: HTTP ${res.status}`);
+  const zip = path.join(CEF_CACHE, path.basename(CEF_RUNTIME_ZIP));
+  writeFileSync(zip, Buffer.from(await res.arrayBuffer()));
+  const tar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+  const r = spawnSync(tar, ["-xf", zip, "-C", CEF_CACHE], { encoding: "utf8", windowsHide: true });
+  rmSync(zip, { force: true });
+  if (r.status !== 0 || !existsSync(path.join(CEF_RUNTIME, "libcef.dll"))) {
+    throw new Error(`the CEF runtime did not extract to ${CEF_RUNTIME}: ${r.stderr || r.error?.message || r.status}`);
+  }
+  return CEF_RUNTIME;
+}
+
+async function prepareCef(run) {
+  // the package joins the folder and a file name with nothing between them
+  process.env.TB_SHOT_CEF_RUNTIME = `${await cefRuntime(run.name)}\\`;
+  return preparePrograms(run, "CefShots");
+}
+
+const cefShots = [sceneShot("Reference/Built-In/CEF/CefBrowser/Images/CefBrowser_Page.png", "cef", "page", /^$/)];
+
+// ---- waynes: test/shots/waynes, WaynesShots, the CustomControls section's pictures of its
+// controls, one form of the package per scene, named on the exe's command line as the programs
+// setup's forms are, and taken as sceneShot takes them. A form of the package shows nothing
+// besides itself.
+
+const WAYNES_SHOTS = path.join(REPO_ROOT, "test", "shots", "waynes");
+const NO_POPUPS = /^$/;
+const waynesShot = (out, scene) =>
+  sceneShot(`Reference/Built-In/CustomControls/${out}.png`, "waynes", scene, NO_POPUPS);
+
+// Several scenes of WaynesShots in rows of `perRow`, each the program's form, active, as
+// `out`: a control in each of its states, a form in each of its border styles.
+const waynesRuns = (out, scenes, perRow = scenes.length) => ({
+  out: `Reference/Built-In/CustomControls/${out}.png`,
+  setup: "waynes",
+  once: true,
+  window: true,
+  async take(ctx) {
+    const shown = [];
+    for (const scene of scenes)
+      shown.push(
+        await withProgram(ctx, scene, async (dir, w) => {
+          const error = path.join(dir, "error");
+          if (existsSync(error)) throw new Error(`scene ${scene}: ${readFileSync(error, "utf8").trim()}`);
+          return windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true });
+        }),
+      );
+    return inRows(shown, perRow);
+  },
+});
+
+const waynesShots = [
+  waynesShot("Images/Overview", "overview"),
+  waynesShot("Enumerations/Images/FillPattern", "fillpatterns"),
+  waynesShot("Enumerations/Images/CornerShape", "corners"),
+  waynesShot("Enumerations/Images/TextAlignment", "textalign"),
+  waynesShot("Enumerations/Images/TextOverflowMode", "overflow"),
+  waynesShot("Styles/Images/TextRendering", "textrendering"),
+  waynesShot("Styles/Images/Borders", "borders"),
+  waynesShot("Styles/Images/Fill", "fills"),
+  waynesShot("WaynesSlider/Images/WaynesSlider", "slider"),
+  waynesShot("WaynesTextBox/Images/WaynesTextBox", "textbox"),
+  waynesShot("WaynesGrid/Images/WaynesGrid", "grid"),
+  // PressedState cannot be shown: the program is told the mouse button is up as soon as it is
+  // down, since no mouse button is down on a private desktop
+  waynesRuns("WaynesButton/Images/WaynesButton_States", ["button:normal", "button:hover", "button:focused"]),
+  waynesRuns(
+    "Enumerations/Images/BorderStyle",
+    [0, 1, 2, 3, 4, 5].map((v) => `borderstyle:${v}`),
+    3,
+  ),
+];
+
+// ---- xcalendar: test/shots/xcalendar, XCalendarShots, the xCalendar section's pictures of an
+// xCalendar on a form, one scene per picture, taken as sceneShot takes them. The fixture embeds
+// the TWINSERV package xCalendar as vbflexgrid embeds VBFLXGRD18. The control's two lists are
+// child windows of the form, so no popup is laid over it.
+
+const XCALENDAR_SHOTS = path.join(REPO_ROOT, "test", "shots", "xcalendar");
+const xCalendarShot = (name, scene) =>
+  sceneShot(`Reference/Contributed/xCalendar/Images/${name}.png`, "xcalendar", scene, NO_POPUPS);
+const xCalendarShots = [
+  xCalendarShot("Areas", "areas"),
+  xCalendarShot("Enabled", "enabled"),
+  xCalendarShot("GridCellEffect", "effects"),
+  xCalendarShot("Sample", "sample"),
+];
+
+// ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
+// pictures, with both TWINSERV packages embedded as vbflexgrid embeds VBFLXGRD18: the dialogs of a
+// CommonDialog, each taken as the vb setup's MsgBox is (programDialogShot), and a text box served by an
+// AutoComplete with "Ap" typed into it, its suggestion list laid over the form (sceneRuns).
+
+const DIALOG_SHOTS = path.join(REPO_ROOT, "test", "shots", "dialogs");
+const AUTOCOMPLETE_POPUPS = /^Auto-Suggest Dropdown$/;
+const comDlgShot = (name, scenes) =>
+  programDialogShot(`Reference/Contributed/VBComDlg/Images/${name}.png`, "dialogs", scenes);
+const comDlgShots = [
+  comDlgShot("ShowColor", ["color-basic", "color-full"]),
+  comDlgShot("ShowFont", ["font"]),
+  comDlgShot("ShowFolderBrowser", ["folder-old", "folder-new"]),
+  comDlgShot("ShowFind", ["find", "replace"]),
+  sceneRuns(
+    "Reference/Contributed/AutoCompleteLib/Images/Options.png",
+    "dialogs",
+    ["suggest", "append", "suggestappend"],
+    AUTOCOMPLETE_POPUPS,
+  ),
 ];
 
 // ---- codelens: test/shots/codelens, CodeLensDemo, two modules whose procedures the editor's
@@ -14915,6 +15500,298 @@ async function endMissingDll(run) {
   if (run.process && !run.exited) killTree(run.process.pid);
 }
 
+// ---- tbide: test/shots/tbide, MyAddIn, the add-in of the tbIDE package's pictures, built into
+// the copy as global-search builds Sample 15 (never into the install, nor into %APPDATA%), with
+// the sample open. Each part of it is the sample of the page its picture goes on: Toolbar.md's
+// two buttons, ToolWindow.md's window (Action 1) and DebugConsole.md's two PrintText lines
+// (Action 2). Its icon, Resources/ICONS/icon.png, is the install's Sample 10's button1.png,
+// copied into the staged tree, as stageSample takes the template's icon. tbide-sample10 is
+// Sample 10 itself built and loaded, for its tool window of styled DOM elements.
+
+const TBIDE = path.join(REPO_ROOT, "test", "shots", "tbide");
+const TBIDE_IMAGE = (name) => `Reference/Built-In/tbIDE/Images/${name}.png`;
+const TBIDE_BUTTON = (n) => `addinButton-MyAddInButton${n}`;
+const TBIDE_WINDOW = "MyAddIn.MyWindowPosition";
+const S10_WINDOW = "WaynesWindowData";
+
+async function startTbIde(run) {
+  const { lane, work } = run;
+  run.step = "build";
+  const src = path.join(work, "tbide-src");
+  cpSync(TBIDE, src, { recursive: true });
+  const s10 = lane.exportSample("Sample 10");
+  mkdirSync(path.join(src, "Resources", "ICONS"), { recursive: true });
+  cpSync(path.join(s10, "Resources", "ICONS", "button1.png"), path.join(src, "Resources", "ICONS", "icon.png"));
+  say(run.name, `building ${path.relative(REPO_ROOT, TBIDE)} into a copy of ${ide}`);
+  await lane.addAddin(src);
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)}`);
+  return lane.open(stageSample(run));
+}
+
+async function startTbIdeSample10(run) {
+  run.step = "build";
+  say(run.name, `building Sample 10 into a copy of ${ide}`);
+  await run.lane.addSample("Sample 10");
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)}`);
+  return run.lane.open(stageSample(run));
+}
+
+// Waits for an add-in's button on the toolbar, which says it has loaded.
+async function addinButtonShown(c, id, what) {
+  if (!(await waitFor(c, () => rectOf(c, `#${id}`), { timeout: 30000, interval: 100 }))) {
+    throw new Error(`${what} put no button ${id} on the toolbar`);
+  }
+}
+
+async function prepareTbIde(run) {
+  await addinButtonShown(run.c, TBIDE_BUTTON(2), "MyAddIn");
+  return prepareSample(run);
+}
+
+// Sample 10 prints the project's path to the DEBUG CONSOLE as it loads, which is under the
+// user's profile: the console is emptied with its own button once the last of its lines shows.
+async function prepareTbIdeSample10(run) {
+  const { c } = run;
+  await addinButtonShown(c, "addinButton-ShowToolWindow", "Sample 10");
+  if (
+    !(await waitFor(c, async () => (await consoleText(c)).includes("[WaynesWorldAddin] ProjectName"), {
+      timeout: 10000,
+      interval: 100,
+    }))
+  ) {
+    throw new Error(`Sample 10 printed no ProjectName line: ${JSON.stringify(await consoleText(c))}`);
+  }
+  await clearConsole(c);
+  return prepareSample(run);
+}
+
+// The floating panel that holds an add-in's tool window, by the window's id.
+const addinPanelRect = (c, id) =>
+  c.evaluate(`(() => {
+  const p = toolWindowsById[${JSON.stringify(id)}]?.shadowDom.host.closest(".floatingPanel");
+  if (!p) return null;
+  const r = p.getBoundingClientRect();
+  return r.width && r.height ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The add-in's window, shown with a real click on Action 1 when it is not showing, once it has
+// stopped flashing: floating, where the IDE puts it (centred, at its suggested size).
+async function tbIdeWindow(c) {
+  if (!(await c.evaluate(`!!toolWindowsById[${JSON.stringify(TBIDE_WINDOW)}]?.isConnected`))) {
+    await click(c, TBIDE_BUTTON(1));
+  }
+  if (!(await waitFor(c, () => addinPanelRect(c, TBIDE_WINDOW), { timeout: 5000, interval: 50 }))) {
+    throw new Error("Action 1 showed no tool window");
+  }
+  await notFlashing(c, TBIDE_WINDOW);
+}
+
+// Waits until the floating or docked container of an add-in's window has stopped flashing.
+async function notFlashing(c, id) {
+  const flashing = () =>
+    c.evaluate(`(() => {
+  const h = toolWindowsById[${JSON.stringify(id)}]?.shadowDom.host;
+  const p = h?.closest(".floatingPanel") ?? h?.closest(".toolWindowContainer");
+  return !!p && !!p.matches(".flashElement, :has(.flashElement)");
+})()`);
+  if (!(await waitFor(c, async () => !(await flashing()), { timeout: 5000, interval: 50 }))) {
+    throw new Error(`the tool window ${id} never stopped flashing`);
+  }
+  await frames(c);
+}
+
+// Closes an add-in's window, floating or docked, with a real click on its own close button.
+async function closeAddinWindow(c, id) {
+  const x = await c.evaluate(`(() => {
+  const w = toolWindowsById[${JSON.stringify(id)}];
+  if (!w?.isConnected) return null;
+  const e = w.shadowDom.host.closest(".toolWindowContainer")?.querySelector(".sectionHeader .codicon-close");
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  if (x) {
+    await clickAt(c, x.x, x.y);
+    await waitFor(c, () => c.evaluate(`!toolWindowsById[${JSON.stringify(id)}]?.isConnected`), {
+      timeout: 3000,
+      interval: 50,
+    });
+  }
+  await parkMouse(c);
+}
+
+// The docked panel headed `title`'s container (whose top edge takes a drop above it), as a box.
+const dockedContainer = (c, title) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent.trim() === ${JSON.stringify(title)});
+  const t = h?.closest(".toolWindowContainer");
+  if (!t) return null;
+  const r = t.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// The floating window docked above PROPERTIES as a person docks it: its grip pressed and the
+// mouse moved to near the top edge of PROPERTIES. The IDE starts the drag itself on the press
+// (a dragstart of its own); Chromium's drag that the moves begin is intercepted
+// (Input.setInterceptDrags) and delivered where the mouse is, as the browser would.
+async function dockAboveProperties(c) {
+  const grip = await c.evaluate(`(() => {
+  const g = toolWindowsById[${JSON.stringify(TBIDE_WINDOW)}]?.shadowDom.host.closest(".floatingPanel")?.querySelector(".gripIcon");
+  if (!g) return null;
+  const r = g.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  const props = await dockedContainer(c, "PROPERTIES");
+  if (!grip || !props) throw new Error("no floating window to dock, or no docked PROPERTIES");
+  const to = { x: props.x + props.width / 2, y: props.y + 12 };
+  let data = null;
+  c.on((m) => {
+    if (m.method === "Input.dragIntercepted" && !data) data = m.params.data;
+  });
+  const mouse = (type, x, y, buttons) =>
+    c.send("Input.dispatchMouseEvent", {
+      type,
+      x,
+      y,
+      button: "left",
+      buttons,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+    });
+  await c.send("Input.setInterceptDrags", { enabled: true });
+  try {
+    await mouse("mouseMoved", grip.x, grip.y, 0);
+    await mouse("mousePressed", grip.x, grip.y, 1);
+    for (let i = 1; i <= 10; i++) {
+      await mouse("mouseMoved", grip.x + ((to.x - grip.x) * i) / 10, grip.y + ((to.y - grip.y) * i) / 10, 1);
+      await sleep(30);
+    }
+    if (!(await waitFor(c, async () => !!data, { timeout: 3000, interval: 50 }))) {
+      throw new Error("the mouse's moves from the grip began no drag");
+    }
+    for (const type of ["dragEnter", "dragOver", "dragOver"]) {
+      await c.send("Input.dispatchDragEvent", { type, x: to.x, y: to.y, data });
+      await sleep(100);
+    }
+    await c.send("Input.dispatchDragEvent", { type: "drop", x: to.x, y: to.y, data });
+    await mouse("mouseReleased", to.x, to.y, 0);
+  } finally {
+    await c.send("Input.setInterceptDrags", { enabled: false });
+  }
+  const docked = () =>
+    c.evaluate(`(() => {
+  const w = toolWindowsById[${JSON.stringify(TBIDE_WINDOW)}];
+  return !!w?.isConnected && !w.shadowDom.host.closest(".floatingPanel");
+})()`);
+  if (!(await waitFor(c, docked, { timeout: 3000, interval: 50 }))) throw new Error("the drop did not dock the window");
+  await notFlashing(c, TBIDE_WINDOW);
+  await parkMouse(c);
+}
+
+const tbIdeShots = [
+  {
+    // Toolbar.md's sample: the add-in's splitter and two buttons after the IDE's own, from Preview
+    out: TBIDE_IMAGE("Toolbar"),
+    setup: "tbide",
+    async take({ c }) {
+      await resetUi(c);
+      const bar = await toolbarRect(c);
+      const from = await rectOf(c, "#toolbarPreviewBtn");
+      const to = await rectOf(c, `#${TBIDE_BUTTON(2)}`);
+      if (!from || !to) throw new Error("the toolbar has no Preview button or no Action 2");
+      const x = from.x - 8;
+      return capture(c, "Toolbar", snapOut({ x, y: bar.y, width: to.x + to.width + 10 - x, height: bar.height }), {
+        away: () => parkMouse(c),
+      });
+    },
+  },
+  {
+    // ToolWindow.md's sample: the window Action 1 adds, floating where the IDE shows it
+    out: TBIDE_IMAGE("ToolWindow"),
+    setup: "tbide",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await tbIdeWindow(c);
+        return await capture(c, "ToolWindow", snapOut(await addinPanelRect(c, TBIDE_WINDOW)), {
+          away: () => parkMouse(c),
+        });
+      } finally {
+        await closeAddinWindow(c, TBIDE_WINDOW);
+      }
+    },
+  },
+  {
+    // the same window docked above PROPERTIES: the right-hand column of the layout
+    out: TBIDE_IMAGE("ToolWindow_Docked"),
+    setup: "tbide",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await tbIdeWindow(c);
+        await dockAboveProperties(c);
+        const pe = await dockedContainer(c, "PROJECT EXPLORER");
+        const props = await dockedContainer(c, "PROPERTIES");
+        if (!pe || !props) throw new Error("no docked PROJECT EXPLORER or PROPERTIES");
+        // down to the end of the PROPERTIES header
+        const head = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent.trim() === "PROPERTIES");
+  return h.closest(".sectionHeader").getBoundingClientRect().bottom;
+})()`);
+        const clip = { x: pe.x, y: pe.y, width: pe.width, height: head + 4 - pe.y };
+        return await capture(c, "ToolWindow_Docked", snapOut(clip), { away: () => parkMouse(c) });
+      } finally {
+        await closeAddinWindow(c, TBIDE_WINDOW);
+        await defaultLayout(c);
+      }
+    },
+  },
+  {
+    // DebugConsole.md's PrintText sample, run by Action 2: a line in the console's own colour and
+    // one in the colour given
+    out: TBIDE_IMAGE("DebugConsole_PrintText"),
+    setup: "tbide",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await floatPanel(c, "DEBUG CONSOLE", { width: 420, height: 96 });
+        await clearConsole(c);
+        await click(c, TBIDE_BUTTON(2));
+        const printed = await waitFor(c, async () => (await consoleText(c)).includes("Warning: something looks off"), {
+          timeout: 5000,
+          interval: 50,
+        });
+        if (!printed) throw new Error(`Action 2 printed no lines: ${JSON.stringify(await consoleText(c))}`);
+        return await consolePicture(c, "DebugConsole_PrintText", 2);
+      } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+      }
+    },
+  },
+  {
+    // Sample 10's tool window of styled div elements (HtmlElement.md), shown by its own button
+    out: TBIDE_IMAGE("Sample10"),
+    setup: "tbide-sample10",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        if (!(await addinPanelRect(c, S10_WINDOW))) await click(c, "addinButton-ShowToolWindow");
+        if (!(await waitFor(c, () => addinPanelRect(c, S10_WINDOW), { timeout: 5000, interval: 50 }))) {
+          throw new Error("Sample 10's button showed no tool window");
+        }
+        await notFlashing(c, S10_WINDOW);
+        return await capture(c, "Sample10", snapOut(await addinPanelRect(c, S10_WINDOW)), {
+          away: () => parkMouse(c),
+        });
+      } finally {
+        await closeAddinWindow(c, S10_WINDOW);
+      }
+    },
+  },
+];
+
 // ---------------------------------------------------------------- the table of shots
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
@@ -14993,8 +15870,18 @@ const SHOTS = [
   tourShot,
   ...codeChapterShots,
   ...debuggingShots,
+  assertFailedShot,
   newProjectOptionsShot,
   ...programShots,
+  ...flexGridShots,
+  ...vbShots,
+  ...commonCtlsShots,
+  ...webView2Shots,
+  ...cefShots,
+  ...waynesShots,
+  ...xCalendarShots,
+  ...comDlgShots,
+  ...tbIdeShots,
   ...codeLensShots,
   memoryShot,
   packageBuildShot,
@@ -15055,6 +15942,7 @@ const JOB_SECONDS = {
   "sample-3": 106,
   settings: 45,
   "settings-symbols": 10,
+  "settings-version": 10,
   "settings-webview2": 24,
   "settings-fusion": 14,
   glyphs: 45,
@@ -15089,12 +15977,23 @@ const JOB_SECONDS = {
   "code-chapter-2": 85,
   "code-chapter-3": 100,
   debugging: 74,
+  assert: 30,
   "debugging-2": 64,
   "debugging-3": 71,
   "no-project": 68,
   "no-project-2": 59,
   "no-project-3": 70,
   programs: 45,
+  vbflexgrid: 60,
+  vb: 60,
+  commonctls: 40,
+  webview2: 30,
+  cef: 40,
+  waynes: 90,
+  xcalendar: 40,
+  dialogs: 60,
+  tbide: 40,
+  "tbide-sample10": 30,
   codelens: 35,
   memory: 30,
   package: 25,

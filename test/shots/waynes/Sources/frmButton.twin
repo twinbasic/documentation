@@ -1,0 +1,37 @@
+[Description("")]
+[FormDesignerId("7A5B1C20-6D52-41A6-ACE3-DE5A45B476DC")]
+Class frmButton
+
+    ' WaynesButton's picture, one run per state: its hover and focused states styled apart from
+    ' the normal one, and the button put in the state the command line names (normal, hover,
+    ' focused) by the mouse messages that put it there; a label names the state. PressedState
+    ' cannot be shown: the button is told the mouse button is up again as soon as it is down,
+    ' since no button of the mouse itself is down.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Shots.Defaults btnState
+        btnState.HoverState.BackgroundFill.ColorPoints.SetSolidColor RGB(90, 160, 220)
+        btnState.FocusedState.Borders.SetSimpleBorder StrokeSize:=3, ColorRGB:=RGB(240, 150, 30)
+        Dim state As Variant = Array("normal", "NormalState", "hover", "HoverState", "focused", "FocusedState")
+        Dim i As Long
+        For i = 0 To UBound(state) Step 2
+            If state(i) = Shots.SceneVariant Then lblState.Caption = state(i + 1)
+        Next
+        If Len(lblState.Caption) = 0 Then Err.Raise 5, , "no state named " & Shots.SceneVariant
+        ' the middle of the button, and a point of the form away from it, in its client area
+        Const X As Long = 32 + 90
+        Const Y As Long = 20 + 26
+        Const AWAY As Long = 140
+        Select Case Shots.SceneVariant
+            Case "hover": Shots.Mouse WM_MOUSEMOVE, X, Y
+            Case "focused"
+                Shots.Click X, Y
+                Shots.Mouse WM_MOUSEMOVE, X, AWAY
+        End Select
+    End Sub
+
+End Class

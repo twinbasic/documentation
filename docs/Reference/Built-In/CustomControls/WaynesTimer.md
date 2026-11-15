@@ -12,8 +12,8 @@ A non-visual timer control. Wraps an internal [**CustomControlTimer**](Framework
 
 At design time the control paints a 🕑 clock-face glyph centred in its rectangle, on a pale grey background, scaled to fit the control. At run time the control is invisible --- its visible **Width** and **Height** are clamped to 32×32 on initialize but the control itself draws nothing.
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     Timer1.Interval = 1000
     Timer1.Enabled = True
 End Sub

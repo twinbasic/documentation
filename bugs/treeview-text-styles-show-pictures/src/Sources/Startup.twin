@@ -1,0 +1,111 @@
+' A TreeView whose Style is one of the four without "Picture" in its name (tvwTextOnly,
+' tvwPlusMinusText, tvwTreelinesText, tvwTreelinesPlusMinusText) still draws its nodes'
+' pictures. Sub Main fills two TreeViews with the same nodes, TreeView1 with a picture from
+' ImageList1 on each and TreeView2 with no ImageList, gives both each Style in turn, and
+' reports the pictures as drawn when TreeView1's first node has its text further right than
+' TreeView2's (TVM_GETITEMRECT, the text's rectangle). The package's StyleToWin32Styles sets only
+' TVS_HASBUTTONS and TVS_HASLINES, and the ImageList is given to the tree whatever the Style.
+' vb6/ is the same probe with MSCOMCTL.OCX's TreeView.
+' Run it with: node scripts/bug_repro.mjs run treeview-text-styles-show-pictures
+Module Startup
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function LoadIconW Lib "user32" (ByVal hInstance As LongPtr, ByVal lpIconName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PICTDESC, _
+        ByRef riid As GUID, ByVal fOwn As Long, ByRef Pic As IPicture) As Long
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, _
+        ByVal Length As LongPtr)
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+
+    Private Type PICTDESC
+        cbSizeofstruct As Long
+        picType As Long
+        hImage As LongPtr
+        hPal As LongPtr
+    End Type
+
+    Private Type GUID
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Const TVM_GETITEMRECT As Long = &H1104
+    Private Const TVM_GETNEXTITEM As Long = &H110A
+    Private Const TVGN_ROOT As Long = 0
+    Private Const IDI_INFORMATION As Long = 32516
+    Private Const PICTYPE_ICON As Long = 3
+
+    ' The system's information icon, which the picture does not own.
+    Private Function SystemIcon() As StdPicture
+        Dim d As PICTDESC
+        d.cbSizeofstruct = LenB(d)
+        d.picType = PICTYPE_ICON
+        d.hImage = LoadIconW(0, IDI_INFORMATION)
+        Dim iid As GUID
+        iid.Data1 = &H7BF80980
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B: iid.Data4(1) = &HBB: iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30: iid.Data4(6) = &HC: iid.Data4(7) = &HAB
+        Dim p As IPicture
+        OleCreatePictureIndirect d, iid, 0, p
+        Return p
+    End Function
+
+    ' Documents, holding Letters and Notes, expanded; each with the picture "info" when Pictures.
+    Private Sub Fill(ByVal tv As TreeView, ByVal Pictures As Boolean)
+        Dim root As Node
+        If Pictures Then
+            Set root = tv.Nodes.Add(, , "docs", "Documents", "info")
+            tv.Nodes.Add root, tvwChild, "letters", "Letters", "info"
+            tv.Nodes.Add root, tvwChild, "notes", "Notes", "info"
+        Else
+            Set root = tv.Nodes.Add(, , "docs", "Documents")
+            tv.Nodes.Add root, tvwChild, "letters", "Letters"
+            tv.Nodes.Add root, tvwChild, "notes", "Notes"
+        End If
+        root.Expanded = True
+    End Sub
+
+    ' Where the text of the tree's first node starts, in its window's pixels.
+    Private Function TextLeft(ByVal tv As TreeView) As Long
+        Dim r(0 To 3) As Long
+        Dim item As LongPtr = SendMessageW(tv.hWnd, TVM_GETNEXTITEM, TVGN_ROOT, 0)
+        RtlMoveMemory VarPtr(r(0)), VarPtr(item), LenB(item)
+        If SendMessageW(tv.hWnd, TVM_GETITEMRECT, 1, VarPtr(r(0))) = 0 Then Return -1
+        Return r(0)
+    End Function
+
+    Private Sub Settle()
+        Dim i As Long
+        For i = 1 To 10
+            DoEvents
+            Sleep 20
+        Next
+    End Sub
+
+    Public Sub Main()
+        Dim names As Variant = Array("tvwTextOnly", "tvwPictureText", "tvwPlusMinusText", "tvwPlusMinusPictureText", _
+            "tvwTreelinesText", "tvwTreelinesPictureText", "tvwTreelinesPlusMinusText", "tvwTreelinesPlusMinusPictureText")
+        Load Form1
+        Form1.ImageList1.ListImages.Add , "info", SystemIcon()
+        Set Form1.TreeView1.ImageList = Form1.ImageList1
+        Fill Form1.TreeView1, True
+        Fill Form1.TreeView2, False
+        Form1.Show
+        Settle
+        Dim s As Long
+        For s = 0 To 7
+            Form1.TreeView1.Style = s
+            Form1.TreeView2.Style = s
+            Settle
+            Debug.Print names(s) & " (" & s & "): pictures " & _
+                IIf(TextLeft(Form1.TreeView1) > TextLeft(Form1.TreeView2), "drawn", "not drawn")
+        Next
+        Unload Form1
+    End Sub
+
+End Module

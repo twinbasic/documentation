@@ -12,7 +12,7 @@ Returns the legal copyright string from the project's version information. Read-
 
 Syntax: **App**.**LegalCopyright**
 
-Returns a **String** containing the value set in the **Legal Copyright** field of the project's **Version Information** settings. If no value has been set, returns an empty string.
+Returns a **String** containing the value set in the **Legal Copyright** field of the project's [Version Info](../../../IDE/Project-Settings#legal-copyright) settings. If no value has been set, returns an empty string.
 
 ### See Also
 

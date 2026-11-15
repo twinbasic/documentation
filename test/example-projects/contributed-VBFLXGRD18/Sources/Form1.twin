@@ -1,0 +1,16 @@
+' A real form with one control on it, VBFlexGrid1, for the samples of the VBFLXGRD18
+' section: the reader's form with a VBFlexGrid on it, so that a sample that is run works
+' on a real grid. This is the `form` template's Form1 with the grid added (see
+' WIP.ExamplesBuild.md), as `wnc-form`'s is with a ListView.
+'
+' Form1.tbform is its designer file, and the two name the same designer id.
+
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class Form1
+
+    Sub New()
+    End Sub
+
+End Class

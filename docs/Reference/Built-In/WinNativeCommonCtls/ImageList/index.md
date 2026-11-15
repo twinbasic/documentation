@@ -43,6 +43,8 @@ When [**UseMaskColor**](#usemaskcolor) is **True** (the default), every bitmap a
 
 Setting [**ColorDepth**](#colordepth) to **ColorDepth32Bit** disables masking entirely --- the alpha channel is preserved directly.
 
+![A picture of an image list drawn with ListImage.Draw in each Style over a chequered ground, from a list of ColorDepth32Bit and one of ColorDepth24Bit: Normal and Transparent draw the picture alone, Selected blends it with the highlight colour and Focus a quarter as much, NoMask draws the 24-bit picture's masked pixels black, and with UseBackColor Normal fills the transparent pixels with the list's BackColor](../Enumerations/Images/ImlDrawConstants.png){:width="885" height="213"}
+
 ## Binding to consumers
 
 When an **ImageList** is bound to a [**ListView**](../ListView/) (through [**Icons**](../ListView/#icons), [**SmallIcons**](../ListView/#smallicons), or [**ColumnHeaderIcons**](../ListView/#columnheadericons)) or a [**TreeView**](../TreeView/) (through [**ImageList**](../TreeView/#imagelist)), the consuming control increments the **ImageList**'s internal bound-count. While the bound-count is non-zero, attempts to call [**ListImages.Clear**](ListImages#clear) or [**ListImages.Remove**](ListImages#remove) raise run-time error 35617 (*"ImageList cannot be modified while another control is bound to it"*). To modify the contents, first unbind by setting the consuming control's image-list property to **Nothing**.

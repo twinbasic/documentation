@@ -12,8 +12,8 @@ A tabular data display --- a grid of cells with column headers and row headers, 
 
 The grid has an array of [**Column**](Column) objects giving each column its [**Caption**](Column#caption) and [**Width**](Column#width). Five distinct [**CellRenderingOptions**](CellRenderingOptions) sub-objects control the appearance of column headers, row headers, normal cells, the hovered cell, the selected cell, and full-column / full-row multi-selection.
 
-```tb check_build inherits=Form
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     Dim cols(0 To 2) As Column
     Set cols(0) = New Column
     Set cols(1) = New Column
@@ -57,6 +57,10 @@ With Grid1.SelectedCellOptions
     .Borders.SetSimpleBorder StrokeSize:=2, ColorRGB:=vbBlue
 End With
 ```
+
+The two samples above together, with grid lines from [**VerticalLineOptions**](#verticallineoptions) and [**HorizontalLineOptions**](#horizontallineoptions), the dates from a fixed day, and the second cell of the third row selected. The selected cell's text is centred: [**SelectedCellOptions**](#selectedcelloptions) has a **TextRendering** of its own, which the sample does not align.
+
+![A grid with a grey gradient header row of ID, Name and Date in bold, grey row headers numbered from 1, white cells with left-aligned text and pale grey grid lines, and the cell Row 3 selected in pale blue with a blue border](Images/WaynesGrid.png){:width="561" height="345"}
 
 * TOC
 {:toc}

@@ -166,7 +166,7 @@ The full per-widget properties and methods are documented by each widget's home 
 
 ## Where the samples live
 
-Six worked addins ship in the twinBASIC samples folder. They are the canonical reference for "how to use the package end-to-end" and are referenced throughout the per-class pages.
+The addin samples, 10 to 16, ship in the twinBASIC samples folder. They are the canonical reference for "how to use the package end-to-end" and are referenced throughout the per-class pages.
 
 | Sample | Project | What it teaches |
 |--------|---------|-----------------|
@@ -176,3 +176,4 @@ Six worked addins ship in the twinBASIC samples folder. They are the canonical r
 | 13 | `WaynesListViewAddIn` | A `"listview"` custom-widget tool window with `ApplyCss`, double-click-to-remove behaviour, and inline-HTML `raiseEvent()` for custom event names. |
 | 14 | `WaynesVirtualListViewAddIn` | A `"virtuallistview"` with 5,000,000 rows backed by `onAsyncGetItemHTML` / `setAsyncResult` / `notifyChangedItem`. |
 | 15 | `tbGlobalSearchAddIn1` | A full-blown Global Search addin: virtual-FS traversal (**For Each** over [**Folder**](Folder)), text reading with comment-stripping ([**File.ReadText**](File#readtext)), editor navigation ([**Editors.Open**](Editors#open)), persistent options via `GetSetting` / `SaveSetting`. |
+| 16 | `WaynesWorldTodoManager` | TODO notes as inline widgets in the code editor ([**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)), each at a line, made again when the active editor changes ([**Host.OnChangedActiveEditor**](Host#onchangedactiveeditor)), listed in a `"listview"` tool window, and kept in the project with [**Project.SaveMetaData**](Project#savemetadata) / [**LoadMetaData**](Project#loadmetadata). |

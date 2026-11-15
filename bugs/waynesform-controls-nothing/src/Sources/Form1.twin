@@ -1,0 +1,21 @@
+' A form of the CustomControls package (a WaynesForm) holding one WaynesLabel, Label1, and a
+' WaynesTimer. It reports its Controls collection in its constructor and once it is shown.
+[Description("")]
+[FormDesignerId("5C1E7A40-2B9D-4F63-8E15-A0D4C7B2E901")]
+Class Form1
+
+    Sub New()
+        Startup.Report "in Sub New", Me
+    End Sub
+
+    Private Ticks As Long
+
+    Private Sub Timer1_Timer()
+        Ticks += 1
+        If Ticks = 3 Then
+            Startup.Report "while shown", Me
+            Me.Close
+        End If
+    End Sub
+
+End Class

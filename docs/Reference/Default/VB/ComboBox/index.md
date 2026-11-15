@@ -38,6 +38,8 @@ End Sub
 | **vbComboSimple**         | 1     | Editable text + a permanently visible list (no drop-down button).        |
 | **vbComboDropdownList**   | 2     | Drop-down list only --- the user must pick a value; typing is disabled.    |
 
+![The three combo box styles: a drop-down combo, a simple combo with its list always shown below its text box, and a drop-down list with its list dropped down](Images/ComboBox_Styles.png){:width="501" height="211"}
+
 Changing **Style** at run time recreates the underlying window (the existing list contents and selection are preserved). [**Sorted**](#sorted) and [**IntegralHeight**](#integralheight) recreate the window the same way.
 
 ## Editing the list

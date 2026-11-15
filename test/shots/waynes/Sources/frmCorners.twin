@@ -1,0 +1,31 @@
+[Description("")]
+[FormDesignerId("418A572B-0F99-4658-ACC4-492649090733")]
+Class frmCorners
+
+    ' CornerShape's picture: buttons in their default look with each shape on all four corners
+    ' at a radius of 16 pixels, a radius of 0, the shapes mixed on one button (the CornerShape
+    ' page's sample) and a circle.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Dim b As Variant
+        For Each b In Array(btnCurve, btnNotched, btnCutOut, btnZero, btnMixed, btnCircle)
+            Shots.Defaults b
+        Next
+        btnCurve.NormalState.Corners.SetAll tbCurve, 16
+        btnNotched.NormalState.Corners.SetAll tbNotched, 16
+        btnCutOut.NormalState.Corners.SetAll tbCutOut, 16
+        btnZero.NormalState.Corners.SetAll tbCurve, 0
+        With btnMixed.NormalState.Corners
+            .TopLeft.Shape = tbCurve     : .TopLeft.Radius = 16
+            .TopRight.Shape = tbNotched  : .TopRight.Radius = 16
+            .BottomLeft.Shape = tbCutOut : .BottomLeft.Radius = 16
+            .BottomRight.Shape = tbCurve : .BottomRight.Radius = 0
+        End With
+        btnCircle.NormalState.Corners.SetAll tbCurve, 40
+    End Sub
+
+End Class

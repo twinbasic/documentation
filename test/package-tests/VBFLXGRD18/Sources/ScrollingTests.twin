@@ -1,0 +1,85 @@
+' ScrollingTests: CellEnsureVisible in a grid whose ScrollBars leaves out a direction.
+[TestFixture]
+Module ScrollingTests
+
+    [TestCase]
+    Public Sub CellEnsureVisible_NoScrollBars_ScrollsToTheRow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 100: .Cols = 5
+            .ScrollBars = vbSBNone
+            .Row = 90
+            .CellEnsureVisible
+            Expect.IsTrue .RowIsVisible(90), "row 90 is in view after CellEnsureVisible, ScrollBars vbSBNone"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CellEnsureVisible_HorizontalBarOnly_ScrollsToTheRow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 100: .Cols = 5
+            .ScrollBars = vbHorizontal
+            .Row = 90
+            .CellEnsureVisible
+            Expect.IsTrue .RowIsVisible(90), "row 90 is in view after CellEnsureVisible, ScrollBars vbHorizontal"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CellEnsureVisible_VerticalBarOnly_ScrollsToTheColumn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 5: .Cols = 60
+            .ScrollBars = vbVertical
+            .Col = 55
+            .CellEnsureVisible
+            Expect.IsTrue .ColIsVisible(55), "column 55 is in view after CellEnsureVisible, ScrollBars vbVertical"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CellEnsureVisible_BothBars_ScrollsToTheCell()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 100: .Cols = 60
+            .ScrollBars = vbBoth
+            .Row = 90: .Col = 55
+            .CellEnsureVisible
+            Expect.IsTrue .RowIsVisible(90), "row 90 is in view after CellEnsureVisible, ScrollBars vbBoth"
+            Expect.IsTrue .ColIsVisible(55), "column 55 is in view after CellEnsureVisible, ScrollBars vbBoth"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TopRow_NoScrollBars_ScrollsToTheRow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.Grid
+            .Rows = 100: .Cols = 5
+            .ScrollBars = vbSBNone
+            .TopRow = 90
+            Expect.IsTrue .RowIsVisible(90), "row 90 is in view after TopRow = 90, ScrollBars vbSBNone"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

@@ -12,8 +12,8 @@ An owner-drawn push-button. Renders a configurable rectangle (with optional grad
 
 The button raises a [**Click**](#click) event when clicked, plus the standard set of mouse, focus, and keyboard events. By default the four state objects are pre-set with a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) --- `&HAC7220`) background and 15-pixel curved corners.
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     btnGo.Caption = "Continue"
     btnGo.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue
     btnGo.HoverState.BackgroundFill.SetSimplePattern vbBlue, vbWhite
@@ -40,6 +40,10 @@ The button paints in one of four states, chosen at each repaint:
 | [**NormalState**](#normalstate)    | None of the above.                                                              |
 
 Each state is a [**WaynesButtonState**](WaynesButtonState) --- a small bundle of [**Corners**](../Styles/Corners), [**BackgroundFill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**TextRendering**](../Styles/TextRendering).
+
+A button in its default look in its normal state, and with its **HoverState** given a lighter fill and its **FocusedState** an orange border:
+
+![The same blue button three times: in the normal state; in the hover state, lighter blue; and in the focused state, with an orange border](Images/WaynesButton_States.png){:width="816" height="195"}
 
 ## Properties
 

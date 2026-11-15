@@ -45,3 +45,5 @@ Reference values for system palette entries --- the colours the user has chosen 
 | **vbInactiveTitleBarGradient**{: #vbInactiveTitleBarGradient } | &H8000001C | Inactive title-bar gradient end colour. |
 | **vbMenuHighlight**{: #vbMenuHighlight } | &H8000001D | Menu-item highlight (hover) colour. |
 | **vbMenuBarFlat**{: #vbMenuBarFlat } | &H8000001E | Flat-style menu-bar background. |
+
+![A swatch of each system colour, as Windows 10 gives them in its default theme, beside its constant's name](Images/SystemColorConstants.png){:width="719" height="325"}

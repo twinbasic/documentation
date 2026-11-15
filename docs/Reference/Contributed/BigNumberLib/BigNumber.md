@@ -280,7 +280,7 @@ Syntax: *object*.**AssignAdditionModulus** *a*, *b*, *mod_c*
 *mod_c*
 : *required* A **BigNumber** holding the modulus. It should be positive.
 
-This section describes all four methods that end in **Modulus**. Each takes the remainder as [**AssignModulus**](#assignmodulus) does: for a positive modulus the result is in the range 0 up to one less than the modulus, whatever the signs of the operands. With a negative modulus the result has the sign of the modulus, except that a result of zero is the modulus itself, so `(3 + 4) Mod -7` is -7.
+This section describes the methods of modular arithmetic, whose names end in **Modulus**. Each takes the remainder as [**AssignModulus**](#assignmodulus) does: for a positive modulus the result is in the range 0 up to one less than the modulus, whatever the signs of the operands. With a negative modulus the result has the sign of the modulus, except that a result of zero is the modulus itself, so `(3 + 4) Mod -7` is -7.
 
 ```tb check_build check_run
 Dim a As New BigNumber

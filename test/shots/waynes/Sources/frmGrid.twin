@@ -1,0 +1,65 @@
+[Description("")]
+[FormDesignerId("3DCBE25D-732D-409B-A211-4C39B42D1236")]
+Class frmGrid
+
+    ' WaynesGrid's picture: the grid of the WaynesGrid page's samples, with grid lines, a cell
+    ' selected; its dates are fixed.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Shots.Defaults grdRows
+        ' the first column is the row headers
+        Dim cols(0 To 2) As Column
+        Set cols(0) = New Column
+        Set cols(1) = New Column
+        Set cols(2) = New Column
+        cols(0).Caption = "ID"
+        cols(0).Width = 60
+        cols(1).Caption = "Name"
+        cols(1).Width = 220
+        cols(2).Caption = "Date"
+        cols(2).Width = 200
+        grdRows.Columns = cols
+        grdRows.RowCount = 100
+        grdRows.HeaderRowHeight = 40
+        grdRows.RowHeight = 32
+        With grdRows.ColumnHeaderOptions
+            .Fill.SetSimplePattern &HE0E0E0, &HC0C0C0, _
+                    Pattern:=tbGradientNorthToSouth
+            .TextRendering.Font.Weight = tbBold
+            .TextRendering.Alignment = tbAlignMiddleCenter
+        End With
+        With grdRows.CellOptions
+            .Fill.ColorPoints.SetSolidColor vbWhite
+            .TextRendering.Alignment = tbAlignMiddleLeft
+            .TextRendering.Padding.Left = 10
+        End With
+        With grdRows.SelectedCellOptions
+            .Fill.ColorPoints.SetSolidColor &HFFEEDD
+            .Borders.SetSimpleBorder StrokeSize:=2, ColorRGB:=vbBlue
+        End With
+        With grdRows.VerticalLineOptions
+            .StrokeSize = 1
+            .Fill.ColorPoints.SetSolidColor &HD0D0D0
+        End With
+        With grdRows.HorizontalLineOptions
+            .StrokeSize = 1
+            .Fill.ColorPoints.SetSolidColor &HD0D0D0
+        End With
+        grdRows.SelectedCellX = 1
+        grdRows.SelectedCellY = 2
+        grdRows.Repaint
+    End Sub
+
+    Private Sub grdRows_GetCellText(ByVal X As Long, ByVal Y As Long, ByRef Value As String)
+        Select Case X
+            Case 0: Value = CStr(Y + 1)
+            Case 1: Value = "Row " & (Y + 1)
+            Case 2: Value = Format$(DateAdd("d", Y, #1/14/2025#), "yyyy-mm-dd")
+        End Select
+    End Sub
+
+End Class

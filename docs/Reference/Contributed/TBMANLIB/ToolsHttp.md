@@ -8,7 +8,7 @@ has_toc: false
 # ToolsHttp module
 {: .no_toc }
 
-The helpers of HTTP requests: two enumerations that name the request methods and the content types, URL encoding and decoding, and functions that write and read the `name=value` text of forms and headers. [**cHttpClient**](cHttpClient) uses the enumerations and four of the functions; a program can call all of them. The module has 8 constants, 2 enumerations and 13 procedures.
+The helpers of HTTP requests: two enumerations that name the request methods and the content types, URL encoding and decoding, and functions that write and read the `name=value` text of forms and headers. [**cHttpClient**](cHttpClient) uses the enumerations and four of the functions; a program can call all of them.
 
 ```tb check_build check_run
 Dim Form As New Scripting.Dictionary

@@ -29,6 +29,14 @@ Private Sub Button1_OnClick()
 End Sub
 ```
 
+The pane first shows floating over the IDE, centred in its window, at the suggested size:
+
+![A floating tool window titled Hello from My AddIn, 400 by 300 pixels, holding the heading Hello, world!](Images/ToolWindow.png){:width="400" height="300"}
+
+The user can dock it as the IDE's own panels are docked, by dragging the grip at the left of its title bar onto the edge of a docked panel. Here it is dropped on the top edge of PROPERTIES:
+
+![The right-hand column of the IDE: PROJECT EXPLORER, then the tool window Hello from My AddIn docked under it, then the header of PROPERTIES.](Images/ToolWindow_Docked.png){:width="267" height="668"}
+
 A `WithEvents` reference receives [**OnClose**](#onclose) when the user dismisses the pane --- typically the addin uses that event to release any per-window state (timers, references to DOM elements …).
 
 * TOC
@@ -115,7 +123,7 @@ Syntax: *toolWindow*.**ApplyCss** *styles*
 
 ```tb check_build
 ' Load CSS from an embedded resource:
-Dim css As String = StrConv(LoadResData("styles.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
+Dim css As String = StrConv(LoadResDataInternal("styles.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
 myToolWindow.ApplyCss css
 ```
 

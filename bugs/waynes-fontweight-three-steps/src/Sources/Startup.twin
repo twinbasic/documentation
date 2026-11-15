@@ -1,0 +1,176 @@
+' The text of a CustomControls control is drawn in three weights only, whichever of FontWeight's
+' nine values its TextRendering.Font.Weight holds: 100 to 500 draw as Segoe UI's regular face,
+' 600 as Segoe UI Semibold and 700 to 900 as Segoe UI Bold, the way GDI maps a weight for
+' "Segoe UI". The faces Segoe UI Light (300) and Segoe UI Black (900), which Windows 10 has, are
+' never used, so tbThin, tbExtraLight, tbLight and tbMedium draw as tbNormal, and tbExtraBold and
+' tbHeavy as tbBold. FontStyle has no font name, so no other family can be chosen.
+' Form1 sets each weight in turn on Label1 and measures the ink of its text (width x height, and
+' its total darkness); Report groups the weights that drew alike, and draws the same text with
+' GDI in Segoe UI to compare its width.
+' Run it with: node scripts/bug_repro.mjs run waynes-fontweight-three-steps
+Module Startup
+
+    Private Declare PtrSafe Function FindWindowExW Lib "user32" (ByVal hWndParent As LongPtr, ByVal hWndChildAfter As LongPtr, _
+        ByVal lpszClass As LongPtr, ByVal lpszWindow As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal cx As Long, ByVal cy As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal h As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal h As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function BitBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, _
+        ByVal hdcSrc As LongPtr, ByVal x1 As Long, ByVal y1 As Long, ByVal rop As Long) As Long
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long, ByVal w As Long, ByVal h As Long, ByVal rop As Long) As Long
+    Private Declare PtrSafe Function GetDIBits Lib "gdi32" (ByVal hDC As LongPtr, ByVal hbm As LongPtr, ByVal start As Long, ByVal cLines As Long, _
+        ByVal lpvBits As LongPtr, ByRef lpbmi As BITMAPINFOHEADER, ByVal usage As Long) As Long
+    Private Declare PtrSafe Function CreateFontW Lib "gdi32" (ByVal cHeight As Long, ByVal cWidth As Long, ByVal cEscapement As Long, ByVal cOrientation As Long, _
+        ByVal cWeight As Long, ByVal bItalic As Long, ByVal bUnderline As Long, ByVal bStrikeOut As Long, ByVal iCharSet As Long, _
+        ByVal iOutPrecision As Long, ByVal iClipPrecision As Long, ByVal iQuality As Long, ByVal iPitchAndFamily As Long, ByVal pszFaceName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function SetBkMode Lib "gdi32" (ByVal hDC As LongPtr, ByVal mode As Long) As Long
+    Private Declare PtrSafe Function DrawTextW Lib "user32" (ByVal hDC As LongPtr, ByVal lpchText As LongPtr, ByVal cchText As Long, ByRef lprc As RECT, ByVal format As Long) As Long
+
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Type BITMAPINFOHEADER
+        biSize As Long
+        biWidth As Long
+        biHeight As Long
+        biPlanes As Integer
+        biBitCount As Integer
+        biCompression As Long
+        biSizeImage As Long
+        biXPelsPerMeter As Long
+        biYPelsPerMeter As Long
+        biClrUsed As Long
+        biClrImportant As Long
+    End Type
+
+    ' What Label1's text measured at each weight, 100 * k for k = 1 to 9.
+    Public Measured(1 To 9) As String
+
+    Public Sub Main()
+        Dim f As New Form1
+        f.Show vbModal
+    End Sub
+
+    ' The window of this process's form: a form of the package is a window of the class tbForm.
+    Private Function FormWindow() As LongPtr
+        Dim h As LongPtr
+        Do
+            h = FindWindowExW(0, h, StrPtr("tbForm"), 0)
+            If h = 0 Then Err.Raise 5, , "the form has no window"
+            Dim pid As Long
+            GetWindowThreadProcessId h, pid
+            If pid = GetCurrentProcessId() Then Return h
+        Loop
+    End Function
+
+    ' The pixels of a rectangle of a DC, top-down, one Long each.
+    Private Sub Grab(ByVal dc As LongPtr, ByVal x As Long, ByVal y As Long, ByVal w As Long, ByVal hgt As Long, ByRef px() As Long)
+        Dim mem As LongPtr = CreateCompatibleDC(dc)
+        Dim scr As LongPtr = GetDC(0)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(scr, w, hgt)
+        ReleaseDC 0, scr
+        Dim old As LongPtr = SelectObject(mem, bmp)
+        BitBlt mem, 0, 0, w, hgt, dc, x, y, &HCC0020
+        SelectObject mem, old
+        Dim bi As BITMAPINFOHEADER
+        bi.biSize = 40: bi.biWidth = w: bi.biHeight = -hgt: bi.biPlanes = 1: bi.biBitCount = 32
+        ReDim px(w * hgt - 1)
+        GetDIBits mem, bmp, 0, hgt, VarPtr(px(0)), bi, 0
+        DeleteObject bmp
+        DeleteDC mem
+    End Sub
+
+    ' The ink of dark text on a white ground: its extent in pixels and its total darkness.
+    Private Function Measure(px() As Long, ByVal w As Long, ByVal hgt As Long) As String
+        Dim x As Long, y As Long, l As Long = w, r As Long = -1, t As Long = hgt, b As Long = -1
+        Dim dark As Double
+        For y = 0 To hgt - 1
+            For x = 0 To w - 1
+                Dim c As Long = px(y * w + x) And &HFFFFFF
+                Dim lum As Long = ((c And &HFF&) + ((c And &HFF00&) \ &H100&) + ((c And &HFF0000) \ &H10000)) \ 3
+                dark += 255 - lum
+                If lum < 128 Then
+                    If x < l Then l = x
+                    If x > r Then r = x
+                    If y < t Then t = y
+                    If y > b Then b = y
+                End If
+            Next
+        Next
+        Return "ink " & (r - l + 1) & " x " & (b - t + 1) & ", darkness " & CLng(dark / 1000)
+    End Function
+
+    Private Function InkWidth(ByVal m As String) As Long
+        Return CLng(Split(Mid$(m, 5), " x ")(0))
+    End Function
+
+    ' What a rectangle of the form, in pixels at 96 DPI, measures.
+    Public Function Ink(ByVal x As Long, ByVal y As Long, ByVal w As Long, ByVal hgt As Long) As String
+        Dim h As LongPtr = FormWindow()
+        Dim dpi As Long = GetDpiForWindow(h)
+        Dim dc As LongPtr = GetDC(h)
+        Dim px() As Long
+        Grab dc, x * dpi \ 96, y * dpi \ 96, w * dpi \ 96, hgt * dpi \ 96, px
+        ReleaseDC h, dc
+        Return Measure(px, w * dpi \ 96, hgt * dpi \ 96)
+    End Function
+
+    ' What the same text measures drawn by GDI in Segoe UI at a weight.
+    Private Function SegoeUI(ByVal weight As Long) As String
+        Dim h As LongPtr = FormWindow()
+        Dim dpi As Long = GetDpiForWindow(h)
+        Dim w As Long = 560 * dpi \ 96, hgt As Long = 120 * dpi \ 96
+        Dim scr As LongPtr = GetDC(0)
+        Dim mem As LongPtr = CreateCompatibleDC(scr)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(scr, w, hgt)
+        ReleaseDC 0, scr
+        Dim oldBmp As LongPtr = SelectObject(mem, bmp)
+        PatBlt mem, 0, 0, w, hgt, &HFF0062
+        SetBkMode mem, 1
+        Dim face As String = "Segoe UI"
+        Dim fnt As LongPtr = CreateFontW(-(28 * dpi \ 72), 0, 0, 0, weight, 0, 0, 0, 1, 0, 0, 4, 0, StrPtr(face))
+        Dim oldF As LongPtr = SelectObject(mem, fnt)
+        Dim rc As RECT
+        rc.Right = w: rc.Bottom = hgt
+        Dim s As String = "Wg Hq Wg Hq"
+        DrawTextW mem, StrPtr(s), Len(s), rc, 1 Or 4 Or 32
+        SelectObject mem, oldF
+        DeleteObject fnt
+        Dim px() As Long
+        Grab mem, 0, 0, w, hgt, px
+        SelectObject mem, oldBmp
+        DeleteObject bmp
+        DeleteDC mem
+        Return Measure(px, w, hgt)
+    End Function
+
+    Public Sub Report()
+        Dim k As Long, groups As String = "100"
+        For k = 2 To 9
+            groups &= IIf(Measured(k) = Measured(k - 1), " ", " | ") & (100 * k)
+        Next
+        Debug.Print "Weights drawn alike: " & groups
+        For k = 1 To 9
+            Debug.Print "  Weight " & (100 * k) & ": " & Measured(k)
+        Next
+        Dim same As Boolean = True, w As Variant
+        For Each w In Array(400, 600, 700)
+            Dim g As String = SegoeUI(w)
+            Debug.Print "  GDI Segoe UI " & w & ": " & g
+            If Abs(InkWidth(g) - InkWidth(Measured(w \ 100))) > 2 Then same = False
+        Next
+        Debug.Print "As wide as GDI's Segoe UI at 400, 600 and 700: " & same
+    End Sub
+
+End Module

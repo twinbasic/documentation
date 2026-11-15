@@ -1,0 +1,161 @@
+' ClipboardTests: Copy, Cut and Paste while another process has the clipboard open. Each case puts
+' the sentinel text on the clipboard first and puts back the text that was there before it.
+[TestFixture]
+Module ClipboardTests
+
+    Private mSaved As String
+
+    Private Sub Save()
+        On Error Resume Next
+        mSaved = Clipboard.GetText
+        Clipboard.SetText "sentinel"
+        On Error GoTo 0
+    End Sub
+
+    Private Sub Restore()
+        On Error Resume Next
+        Clipboard.Clear
+        If Len(mSaved) > 0 Then Clipboard.SetText mSaved
+        On Error GoTo 0
+    End Sub
+
+    Private Sub Grid2x1(ByVal f As HostForm)
+        With f.Grid
+            .FixedRows = 0: .FixedCols = 0
+            .Rows = 2: .Cols = 1
+            .TextMatrix(0, 0) = "ab": .TextMatrix(1, 0) = "cd"
+            .SelectRange 0, 0, 0, 0
+        End With
+    End Sub
+
+    [TestCase]
+    Public Sub Cut_ClipboardHeld_KeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Save
+        Grid2x1 f
+        If Not ClipHolder.Start("hold") Then
+            Expect.Fail "the process that holds the clipboard did not start"
+        Else
+            f.Grid.Cut
+            Expect.AreEqual "ab", f.Grid.TextMatrix(0, 0), "the text of the cut cell after Cut with the clipboard held by another process"
+        End If
+        ClipHolder.Finish
+        Restore
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cut_ClipboardHeld_UndoBringsTheTextBack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Save
+        Grid2x1 f
+        f.Grid.UndoLimit = 10
+        If Not ClipHolder.Start("hold") Then
+            Expect.Fail "the process that holds the clipboard did not start"
+        Else
+            f.Grid.Cut
+            If f.Grid.CanUndo Then f.Grid.Undo
+            Expect.AreEqual "ab", f.Grid.TextMatrix(0, 0), "the text of the cut cell after Cut with the clipboard held, and Undo"
+        End If
+        ClipHolder.Finish
+        Restore
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Copy_ClipboardHeld_RaisesNoAfterClipboardAction()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Save
+        Grid2x1 f
+        If Not ClipHolder.Start("hold") Then
+            Expect.Fail "the process that holds the clipboard did not start"
+        Else
+            Rig.ClearLog
+            f.Grid.Copy
+            Expect.AreEqual "BeforeClipboardAction 0", Rig.Events(), "the events raised by Copy with the clipboard held by another process"
+        End If
+        ClipHolder.Finish
+        Restore
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cut_ClipboardHeld_RaisesNoAfterClipboardAction()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Save
+        Grid2x1 f
+        If Not ClipHolder.Start("hold") Then
+            Expect.Fail "the process that holds the clipboard did not start"
+        Else
+            Rig.ClearLog
+            f.Grid.Cut
+            Expect.AreEqual "BeforeClipboardAction 1", Rig.Events(), "the events raised by Cut with the clipboard held by another process"
+        End If
+        ClipHolder.Finish
+        Restore
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Paste_ClipboardHeld_DoesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Save
+        Grid2x1 f
+        f.Grid.SelectRange 1, 0, 1, 0
+        If Not ClipHolder.Start("hold") Then
+            Expect.Fail "the process that holds the clipboard did not start"
+        Else
+            Rig.ClearLog
+            f.Grid.Paste
+            Expect.AreEqual "cd", f.Grid.TextMatrix(1, 0), "the text of the selected cell after Paste with the clipboard held by another process"
+            Expect.AreEqual "", Rig.Events(), "the events raised by Paste with the clipboard held by another process"
+        End If
+        ClipHolder.Finish
+        Restore
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Paste_ClipboardBusyAtTheSecondOpen_KeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Save
+        Grid2x1 f
+        f.Grid.SelectRange 1, 0, 1, 0
+        If Not ClipHolder.Start("thrash") Then
+            Expect.Fail "the process that opens and closes the clipboard did not start"
+        Else
+            Dim i As Long, wrote As Boolean
+            For i = 1 To 400
+                f.Grid.TextMatrix(1, 0) = "cd"
+                f.Grid.Paste
+                If f.Grid.TextMatrix(1, 0) <> "cd" And f.Grid.TextMatrix(1, 0) <> "sentinel" Then
+                    wrote = True
+                    Exit For
+                End If
+            Next
+            Expect.IsFalse wrote, "Paste left the selection holding only the text on the clipboard ('sentinel') in 400 pastes while another process opened and closed the clipboard without a pause"
+        End If
+        ClipHolder.Finish
+        Restore
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

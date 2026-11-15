@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^tvwTextOnly \\(0\\): pictures drawn$",
+      "^tvwPlusMinusText \\(2\\): pictures drawn$",
+      "^tvwTreelinesText \\(4\\): pictures drawn$",
+      "^tvwTreelinesPlusMinusText \\(6\\): pictures drawn$"
+    ]
+  }
+}

@@ -52,6 +52,10 @@ End With
 
 Setting [**OverflowMode**](#overflowmode) to **tbShrinkToFit** scales the glyphs down rather than truncating with an ellipsis when the text is too long for the available width --- useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
 
+The two samples above, the label given a dark **BackgroundFill** for its white text:
+
+![A label reading Monthly report in large white bold letters on a dark blue fill, and a blue button whose large bold caption, Go, is drawn in a white-to-pink gradient with a black outline](Images/TextRendering.png){:width="521" height="215"}
+
 * TOC
 {:toc}
 
@@ -96,7 +100,7 @@ Raised when [**Alignment**](#alignment) or [**OverflowMode**](#overflowmode) is 
 
 ## FontStyle class
 
-The font metrics that control how [**TextRendering**](#) lays out text. Accessed as [**TextRendering.Font**](#font).
+The font metrics that control how [**TextRendering**](#) lays out text. Accessed as [**TextRendering.Font**](#font). A **FontStyle** has no font name: the face is the package's choice.
 
 ### Italic
 {: .no_toc }
@@ -122,6 +126,10 @@ When **True**, an underline is drawn beneath each glyph. **Boolean**. Default: *
 {: .no_toc }
 
 The font weight on the OpenType `wght` scale. A member of [**FontWeight**](../Enumerations/FontWeight). Default: **tbNormal**.
+
+<!-- test: bug waynes-fontweight-three-steps -->
+> [!NOTE] BETA 1042
+> Only three weights are drawn: 100 to 500 alike, as regular text; 600 as semibold; and 700 to 900 alike, as bold. See [**FontWeight**](../Enumerations/FontWeight).
 
 ### OnChanged
 {: .no_toc }

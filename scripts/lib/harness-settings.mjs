@@ -10,7 +10,8 @@
 // exit 2. So is a TB_<PHASE> variable that is not such a number.
 //
 // A timeout is resolved as test/harness.md says: the tool's option, then the
-// variable, then the file. The option is the tool's to parse (optionSeconds, so
+// variable, then the package's entry in packageTimeouts (version 2), then the
+// file's timeouts. The option is the tool's to parse (optionSeconds, so
 // that a bad value is a usage error with the tool's own usage text); the rest is
 // timeoutMs's. Seconds go in, milliseconds come out.
 
@@ -24,7 +25,7 @@ export const HARNESS_FILE = path.join(REPO_ROOT, "test", "harness.json");
 /** How the file is named in a message. */
 export const HARNESS_NAME = "test/harness.json";
 /** The newest `version` this reader knows. */
-export const HARNESS_VERSION = 1;
+export const HARNESS_VERSION = 2;
 
 /** The modes the exclusions are keyed by: a compile, a `--build`, an `--llvm` build. */
 export const EXCLUSION_MODES = ["compile", "build", "llvm"];
@@ -103,6 +104,29 @@ export function exclusionProblems(list) {
 }
 
 /**
+ * What is wrong with the per-package timeouts' shape, as a list of sentences: an
+ * object keyed by package, each a non-empty object of the keys a person can
+ * override (OVERRIDES), each a number of seconds greater than 0.
+ * @param {unknown} list  the parsed `packageTimeouts` object
+ */
+export function packageTimeoutProblems(list) {
+  if (!isMap(list)) return ["it is not an object keyed by package"];
+  const problems = [];
+  for (const [pkg, limits] of Object.entries(list)) {
+    if (!isMap(limits) || !Object.keys(limits).length) {
+      problems.push(`${pkg}: not an object keyed by phase`);
+      continue;
+    }
+    for (const [key, value] of Object.entries(limits)) {
+      if (!(key in OVERRIDES))
+        problems.push(`${pkg}.${key}: not a phase a package may set (${Object.keys(OVERRIDES).join(", ")})`);
+      else if (!isSeconds(value)) problems.push(`${pkg}.${key}: not a number of seconds greater than 0`);
+    }
+  }
+  return problems;
+}
+
+/**
  * What is wrong with the whole file, as a list of sentences: the version, the
  * keys at every level, the exclusions' shape, and every timeout a number of
  * seconds greater than 0. Every timeout key must be present.
@@ -118,7 +142,12 @@ export function harnessProblems(data) {
     problems.push(`version ${data.version} is newer than this reader knows (${HARNESS_VERSION})`);
   }
   for (const key of Object.keys(data)) {
-    if (!["version", "exclusions", "timeouts"].includes(key)) problems.push(`${key}: not a known key`);
+    if (!["version", "exclusions", "timeouts", "packageTimeouts"].includes(key))
+      problems.push(`${key}: not a known key`);
+  }
+  if ("packageTimeouts" in data) {
+    if (data.version === 1) problems.push("packageTimeouts: version 1 has no packageTimeouts (it came in version 2)");
+    for (const p of packageTimeoutProblems(data.packageTimeouts)) problems.push(`packageTimeouts: ${p}`);
   }
   if (!("exclusions" in data)) problems.push("it has no exclusions");
   else for (const p of exclusionProblems(data.exclusions)) problems.push(`exclusions: ${p}`);
@@ -170,21 +199,54 @@ export function variableSeconds(key, env = process.env) {
 
 /**
  * A timeout in milliseconds: `seconds` (the tool's option, parsed) when it is
- * given, else the phase's TB_<PHASE> variable, else the file.
+ * given, else the phase's TB_<PHASE> variable, else the package's entry in
+ * `packageTimeouts` when `pkg` names one that sets it, else the file's
+ * `timeouts`.
  *
  * @param {string} key   a TIMEOUT_KEYS entry
  * @param {number} [seconds]  the option's value, from optionSeconds
  * @param {object} [o]
  * @param {Record<string, string | undefined>} [o.env]  the variables (default process.env)
  * @param {object} [o.harness]  the parsed file (default readHarness())
+ * @param {string} [o.pkg]  the package the run is for, as test/harness.md names it
  * @throws {HarnessError}
  */
-export function timeoutMs(key, seconds, { env = process.env, harness } = {}) {
+export function timeoutMs(key, seconds, { env = process.env, harness, pkg } = {}) {
   if (!TIMEOUT_KEYS.includes(key)) throw new Error(`not a timeout key: ${key}`);
   if (seconds !== undefined) return Math.round(seconds * 1000);
   const fromVariable = variableSeconds(key, env);
   if (fromVariable !== undefined) return Math.round(fromVariable * 1000);
-  return Math.round((harness ?? readHarness()).timeouts[key] * 1000);
+  const file = harness ?? readHarness();
+  const fromPackage = pkg === undefined ? undefined : file.packageTimeouts?.[pkg]?.[key];
+  if (fromPackage !== undefined) return Math.round(fromPackage * 1000);
+  return Math.round(file.timeouts[key] * 1000);
+}
+
+/**
+ * The options that give a tool which takes a tree, not a package (`tbrun`,
+ * `tbbuild`), the limits of `pkg`'s entry in `packageTimeouts`: one
+ * `--<option> <secs>` pair for each key the entry sets, resolved as timeoutMs
+ * resolves it (so a TB_<PHASE> variable still wins), and none when the package
+ * has no entry. `skip` names keys the caller sets an option for itself.
+ *
+ * @param {string} pkg
+ * @param {object} [o]
+ * @param {string[]} [o.skip]
+ * @param {Record<string, string | undefined>} [o.env]
+ * @param {object} [o.harness]
+ * @returns {string[]}
+ * @throws {HarnessError}
+ */
+export function packageTimeoutArgs(pkg, { skip = [], env = process.env, harness } = {}) {
+  const file = harness ?? readHarness();
+  const entry = file.packageTimeouts?.[pkg] ?? {};
+  const args = [];
+  for (const key of Object.keys(entry)) {
+    if (skip.includes(key)) continue;
+    const ms = timeoutMs(key, undefined, { env, harness: file, pkg });
+    args.push(`--${OVERRIDES[key].option}`, String(ms / 1000));
+  }
+  return args;
 }
 
 /**

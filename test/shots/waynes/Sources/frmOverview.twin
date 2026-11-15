@@ -1,0 +1,60 @@
+[Description("")]
+[FormDesignerId("E205FDC7-7AB9-4342-AB89-9A9BF3901D06")]
+Class frmOverview
+
+    ' The CustomControls landing page's picture: one of each visible control, in its default
+    ' look, as a small order form.
+
+    Private Sub tmrScene_Timer()
+        If Shots.Tick(Me) Then Me.Close
+    End Sub
+
+    Public Sub SetUp()
+        Shots.Defaults txtCustomer
+        Shots.Defaults sldCopies
+        Shots.Defaults grdItems
+        Shots.Defaults btnCancel
+        Shots.Defaults btnOrder
+        With lblHeader.TextRendering
+            .Font.Size = 16
+            .Font.Weight = tbSemiBold
+            .Alignment = tbAlignMiddleLeft
+        End With
+        lblCustomer.TextRendering.Alignment = tbAlignMiddleLeft
+        lblCopies.TextRendering.Alignment = tbAlignMiddleLeft
+        sldCopies.MinValue = 1
+        sldCopies.MaxValue = 10
+        sldCopies.Value = 3
+        ' the first column is the row headers
+        Dim cols(0 To 3) As Column
+        Dim i As Long
+        For i = 0 To 3
+            Set cols(i) = New Column
+        Next
+        cols(0).Caption = "#"
+        cols(0).Width = 40
+        cols(1).Caption = "Item"
+        cols(1).Width = 260
+        cols(2).Caption = "Quantity"
+        cols(2).Width = 110
+        cols(3).Caption = "Price"
+        cols(3).Width = 110
+        grdItems.Columns = cols
+        grdItems.HeaderRowHeight = 32
+        grdItems.RowHeight = 28
+        grdItems.RowCount = 3
+    End Sub
+
+    Private Sub grdItems_GetCellText(ByVal X As Long, ByVal Y As Long, ByRef Value As String)
+        Dim items As Variant = Array("Notebook, A5", "Pencil, HB", "Eraser")
+        Dim quantities As Variant = Array("2", "12", "1")
+        Dim prices As Variant = Array("3.50", "0.40", "0.90")
+        Select Case X
+            Case 0: Value = CStr(Y + 1)
+            Case 1: Value = items(Y)
+            Case 2: Value = quantities(Y)
+            Case 3: Value = prices(Y)
+        End Select
+    End Sub
+
+End Class

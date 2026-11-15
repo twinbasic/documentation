@@ -12,10 +12,10 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
 ## State
 
-Of 2,832 `tb` fences in 1,037 pages, **2,660 are marked `check_build`** and compile (BETA 1010,
-a full run with no finding), and 166 are `inert` with a recorded reason (114 of them
-signatures, most OLEGuids' methods). 5 are undecided, in four pages (three under `IDE/`, and
-`ToolWindow.md` of the tbIDE section). 2 fences are an `excerpt`. The run takes about 190 s on four lanes.
+`examples.bat --census` gives the current figures: how many `tb` fences there are, and how many
+of them are marked `check_build`, `inert` with a recorded reason (most of those signatures, most
+OLEGuids' methods), still undecided, or an `excerpt`. Every marked fence compiles. The run takes
+about three minutes on four lanes.
 1,076 of the marked samples are also `check_run`.
 
 New marked samples should come from editing pages, not from marking: the unmarked fences
@@ -1008,6 +1008,6 @@ a reader writes.
   one line each, because its purpose is "the control instances the samples assume". The
   invented *classes* go in `hidden` fences, because a class is not a control instance and a
   page is where it belongs. The line between the two is a judgement, not a rule.
-- Which pages should carry `check_run` (1,076 samples do)? A sample states its output in its own
+- Which pages should carry `check_run`? A sample states its output in its own
   text, as a trailing comment on a `Debug.Print` line or as the comment lines under
   `' Output:`; its comparison is only as useful as the pages that state a printed value.

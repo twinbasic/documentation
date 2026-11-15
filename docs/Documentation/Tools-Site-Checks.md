@@ -65,7 +65,7 @@ Exit codes: **0** every link is reachable and every anchor exists, **1** a link 
     node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
                                 [--stock-axe] [--minified]
 
-Automated accessibility scan of the built site, and the second of `check.bat`'s five steps (right after [`check_tree_fresh.mjs`](#check-tree-fresh)). It loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against sixteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 72 audits in all. The page list is derived, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) keeps it representative.
+Automated accessibility scan of the built site, and the second of `check.bat`'s five steps (right after [`check_tree_fresh.mjs`](#check-tree-fresh)). It loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against a sample of pages in both themes at two viewports, plus state audits that open a disclosure first. The page list is derived, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) keeps it representative.
 
 This script only reports. The scan itself --- page list, themes and viewports, blocked requests, axe run options, source patches and state audits --- lives in [`scripts/lib/axe-scan.mjs`](#axe-scan), shared with `sweep_a11y.mjs` and `check_a11y_fingerprint.mjs`. Change the scan there, not here.
 
@@ -94,7 +94,7 @@ Exit codes: **0** no page has a violation (incomplete checks are reported but do
 
     node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]
 
-Derives the accessibility scan's page list, and checks that it still covers every construct the site uses. The scan reads sixteen pages out of ~1,160. If the list stops being representative, nothing fails: the rule for a construct no sample page carries never runs.
+Derives the accessibility scan's page list, and checks that it still covers every construct the site uses. The scan reads a sample of pages out of {{tbdocs:pages}}. If the list stops being representative, nothing fails: the rule for a construct no sample page carries never runs.
 
 The script holds a list of **construct families**: markup shapes some axe rule keys on, each recording that rule. The modes:
 

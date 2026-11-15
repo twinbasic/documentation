@@ -10,6 +10,8 @@ has_toc: false
 
 A **WebView2** is a twinBASIC control that hosts the Microsoft Edge **WebView2** runtime --- drop one onto a [**Form**](../../VB/Form/) and the running Edge engine renders web content inside its rectangle. Application code can navigate to URLs, run JavaScript, intercept HTTP requests, share BASIC objects with the page, post messages back and forth, and print the document to PDF.
 
+![A window titled WebView2 Demo. Under the line A WebView2 control on a form, showing a page, the control fills most of the form with a web page on a pale grey-blue ground: the blue heading Hello from a WebView2; a paragraph saying that the page is a string of HTML that the form passed to NavigateToString, with NavigateToString in a code font, and that the Microsoft Edge engine draws it inside the control; three bullet points, Headings, lists and styles, as in a browser, JavaScript, which twinBASIC code can call, and No file and no network needed; and a pale blue box with a dark blue bar at its left, holding This line was set by the form's code, which called the page's setNote function with JsRun.](Images/WebView2_Page.png){:width="601" height="381"}
+
 The control wraps the underlying `ICoreWebView2*` COM interfaces and exposes them as ordinary BASIC properties, methods, and events. Most of the work happens asynchronously inside the browser process --- the control raises [**Ready**](#ready) once the WebView2 environment and controller have been created, and most members raise *"WebView2 control is not ready"* (run-time error 5) if called before then.
 
 ```tb check_build

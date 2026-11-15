@@ -17,6 +17,8 @@ A **ListView** is a flexible multi-column / icon list with four distinct visual 
 | **lvwList**                    | A single column of small-icon-plus-label entries, wrapped into multiple columns to fit. |
 | **lvwReport**                  | Multi-column table view with header row; columns are defined through [**ColumnHeaders**](ColumnHeaders). |
 
+![Four ListViews holding the same six files, one in each View: lvwIcon with large icons in rows, lvwSmallIcon with small icons in rows, lvwList with small icons in a column, and lvwReport with the columns Name, Type and Size, the sizes aligned right](Images/ListView_Views.png){:width="631" height="441"}
+
 The two main collections are accessed through properties: [**ListItems**](#listitems) for the rows, and [**ColumnHeaders**](#columnheaders) for the **Report**-view column headers.
 
 ```tb check_build

@@ -1,0 +1,65 @@
+[Description("")]
+[FormDesignerId("5C0F8A71-3B2E-4D69-8A14-7E91C2D4B606")]
+[PredeclaredId]
+Class frmWeb
+
+    ' The form of WebView2Shots: one WebView2 control, Web1, which shows the page that Page
+    ' returns once the control is ready. MainModule places it and waits for Loaded or Failure.
+
+    ' True once the page has loaded.
+    Public Loaded As Boolean
+    ' What went wrong, when the control could not be created or the page did not load.
+    Public Failure As String
+
+    Sub New()
+    End Sub
+
+    ' The control's user data (its cache and profile) goes in the folder of the signals, which
+    ' the tool makes for each run, rather than beside the exe.
+    Private Sub Web1_Create()
+        Dim signals As String = Environ$("TB_SHOT_SIGNALS")
+        If Len(signals) Then Web1.EnvironmentOptions.UserDataFolder = signals & "\wv2data"
+    End Sub
+
+    Private Sub Web1_Error(ByVal code As Long, ByVal msg As String)
+        Failure = "the WebView2 control raised Error " & code & ": " & msg
+    End Sub
+
+    Private Sub Web1_Ready()
+        Web1.NavigateToString Page()
+    End Sub
+
+    Private Sub Web1_NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long)
+        If IsSuccess Then
+            Loaded = True
+        Else
+            Failure = "the page did not load: error status " & WebErrorStatus
+        End If
+    End Sub
+
+    ' The page: the fixture's own text, in the fonts Windows comes with, and a function that
+    ' MainModule calls with JsRun to fill in the last paragraph.
+    Private Function Page() As String
+        Dim h As String
+        h = "<!doctype html><html><head><meta charset=""utf-8""><style>" & _
+            "body { font: 15px 'Segoe UI', sans-serif; margin: 0; padding: 18px 22px; color: #1f2933; background: #f7f9fc; }" & _
+            "h1 { font-size: 24px; font-weight: 600; margin: 0 0 10px; color: #0b5cad; }" & _
+            "p { margin: 0 0 12px; line-height: 1.45; }" & _
+            "ul { margin: 0 0 14px; padding-left: 22px; } li { margin: 3px 0; }" & _
+            "code { font: 14px Consolas, monospace; background: #e4e9f0; padding: 1px 4px; border-radius: 3px; }" & _
+            ".note { border-left: 4px solid #0b5cad; background: #e6f0fa; padding: 8px 12px; border-radius: 0 4px 4px 0; }" & _
+            "</style><script>" & _
+            "function setNote(text) { document.getElementById('note').textContent = text; return true; }" & _
+            "</script></head><body>" & _
+            "<h1>Hello from a WebView2</h1>" & _
+            "<p>This page is a string of HTML that the form passed to <code>NavigateToString</code>. " & _
+            "The Microsoft Edge engine draws it inside the control.</p>" & _
+            "<ul><li>Headings, lists and styles, as in a browser</li>" & _
+            "<li>JavaScript, which twinBASIC code can call</li>" & _
+            "<li>No file and no network needed</li></ul>" & _
+            "<p class=""note"" id=""note""></p>" & _
+            "</body></html>"
+        Return h
+    End Function
+
+End Class

@@ -1,0 +1,59 @@
+{
+  "version": "1.8.69.0",
+  "cases": {
+    "ClipboardTests.Cut_ClipboardHeld_KeepsTheText": {
+      "fails": "1 of 1 checks failed: the text of the cut cell after Cut with the clipboard held by another process: expected \"ab\", got \"\""
+    },
+    "ClipboardTests.Copy_ClipboardHeld_RaisesNoAfterClipboardAction": {
+      "fails": "1 of 1 checks failed: the events raised by Copy with the clipboard held by another process: expected \"BeforeClipboardAction 0\", got \"BeforeClipboardAction 0 | AfterClipboardAction 0\""
+    },
+    "ClipboardTests.Cut_ClipboardHeld_RaisesNoAfterClipboardAction": {
+      "fails": "1 of 1 checks failed: the events raised by Cut with the clipboard held by another process: expected \"BeforeClipboardAction 1\", got \"BeforeClipboardAction 1 | AfterClipboardAction 1\""
+    },
+    "ClipboardTests.Paste_ClipboardBusyAtTheSecondOpen_KeepsTheText": {
+      "fails": "1 of 1 checks failed: Paste left the selection holding only the text on the clipboard ('sentinel') in 400 pastes while another process opened and closed the clipboard without a pause: expected False, got True"
+    },
+    "InsertMarkTests.InsertMark_ByColumn_ColumnOutOfRangeRaises": {
+      "fails": "1 of 1 checks failed: InsertMark = 99 in a grid of six columns, InsertMarkMode by column, DropHighlightMode by row: expected 30010, got 0"
+    },
+    "MergingTests.GetMergedRange_RestrictColumns_FixedRow_CurrentRowZero": {
+      "fails": "1 of 2 checks failed: last column of the range of cell (1,0), FlexMergeCellsRestrictColumns, current row 0: expected 0, got 1"
+    },
+    "MergingTests.GetMergedRange_RestrictAll_FixedRow_CurrentRowZero": {
+      "fails": "1 of 2 checks failed: last column of the range of cell (1,0), FlexMergeCellsRestrictAll, current row 0: expected 0, got 1"
+    },
+    "MergingTests.GetMergedRange_RestrictColumns_RowZero_CurrentRowInTheBody": {
+      "fails": "2 of 2 checks failed: GetMergedRange of cell (0,0), FlexMergeCellsRestrictColumns, current row 1: error number: expected 0, got 9; last column of the range of cell (0,0), whose neighbour holds the same text, FlexMergeCellsRestrictColumns, current row 1: expected 1, got 0"
+    },
+    "MergingTests.GetMergedRange_MixedMergeRow_RangeContainsTheCell": {
+      "fails": "1 of 4 checks failed: the range of cell (0,1) contains its column: 0 to 0: expected True, got False"
+    },
+    "ScrollingTests.CellEnsureVisible_NoScrollBars_ScrollsToTheRow": {
+      "fails": "1 of 1 checks failed: row 90 is in view after CellEnsureVisible, ScrollBars vbSBNone: expected True, got False"
+    },
+    "ScrollingTests.CellEnsureVisible_HorizontalBarOnly_ScrollsToTheRow": {
+      "fails": "1 of 1 checks failed: row 90 is in view after CellEnsureVisible, ScrollBars vbHorizontal: expected True, got False"
+    },
+    "ScrollingTests.CellEnsureVisible_VerticalBarOnly_ScrollsToTheColumn": {
+      "fails": "1 of 1 checks failed: column 55 is in view after CellEnsureVisible, ScrollBars vbVertical: expected True, got False"
+    },
+    "SelectionTests.BeforeRowColChange_Cancel_RowSelAndColSelStay": {
+      "fails": "1 of 2 checks failed: RowSel after Row = 4 with BeforeRowColChange cancelled: expected 1, got 4"
+    },
+    "SelectionTests.BeforeRowColChange_Cancel_RaisesNoSelChange": {
+      "fails": "1 of 1 checks failed: the events raised by Row = 4 with BeforeRowColChange cancelled: expected \"BeforeRowColChange 4,1\", got \"BeforeRowColChange 4,1 | BeforeSelChange 4,1 | SelChange\""
+    },
+    "SelectionTests.BeforeRowColChange_Cancel_ClickKeepsTheSelection": {
+      "fails": "1 of 2 checks failed: RowSel after a click on row 4 with BeforeRowColChange cancelled: expected 1, got 4"
+    },
+    "SortingTests.FindTag_StartsWith_Right": {
+      "fails": "1 of 1 checks failed: FindTag of the start t to the right from cell (1,1): expected 1, got -1"
+    },
+    "SortingTests.FindTag_StartsWith_Left": {
+      "fails": "1 of 1 checks failed: FindTag of the start t to the left from cell (1,2): expected 2, got -1"
+    },
+    "SortingTests.FindTag_StartsWith_Right_IgnoresTheTagOfTheControl": {
+      "fails": "1 of 1 checks failed: FindTag of the start zzz to the right from cell (1,1) when the control's Tag is t2: expected -1, got 2"
+    }
+  }
+}

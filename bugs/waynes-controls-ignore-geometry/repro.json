@@ -1,0 +1,20 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^in Sub New, L1\\.Left = 60 \\(designed 20\\): drawn at the old place False, at the new place True$",
+      "^in Sub New, L2\\.Top = 140 \\(designed 40\\): drawn at the old place True, at the new place False$",
+      "^in Sub New, L3\\.Width = 100 \\(designed 80\\): drawn past the old width False$",
+      "^in Sub New, L4\\.Height = 120 \\(designed 60\\): drawn past the old height True$",
+      "^in Sub New, L5\\.Visible = False: drawn True$",
+      "^in Sub New, L6\\.Dock = tbDockRight: drawn at the right edge True, at the old place False$",
+      "^while shown, L1\\.Left = 60 \\(designed 20\\): drawn at the old place True, at the new place False$",
+      "^while shown, L2\\.Top = 140 \\(designed 40\\): drawn at the old place True, at the new place False$",
+      "^while shown, L3\\.Width = 100 \\(designed 80\\): drawn past the old width False$",
+      "^while shown, L4\\.Height = 120 \\(designed 60\\): drawn past the old height False$",
+      "^while shown, L5\\.Visible = False: drawn True$",
+      "^while shown, L6\\.Dock = tbDockRight: drawn at the right edge False, at the old place True$"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+' A form of the CustomControls package (a WaynesForm) holding one WaynesLabel, Label1, 560 x 120
+' pixels, white, with the caption "Wg Hq Wg Hq" at 28 points. Its timer sets each of the nine
+' FontWeight values in turn and measures the text drawn, then reports and closes the form.
+[Description("")]
+[FormDesignerId("5C1E7A40-2B9D-4F63-8E15-A0D4C7B2E901")]
+Class Form1
+
+    Sub New()
+        Label1.TextRendering.Font.Size = 28
+    End Sub
+
+    Private Ticks As Long
+
+    Private Sub Timer1_Timer()
+        Ticks += 1
+        If Ticks < 3 Then Exit Sub
+        Dim k As Long = (Ticks - 3) \ 2 + 1
+        If k <= 9 Then
+            If (Ticks - 3) Mod 2 = 0 Then
+                Label1.TextRendering.Font.Weight = 100 * k
+            Else
+                Startup.Measured(k) = Startup.Ink(20, 60, 560, 120)
+            End If
+        Else
+            Startup.Report
+            Me.Close
+        End If
+    End Sub
+
+End Class

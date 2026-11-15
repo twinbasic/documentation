@@ -12,11 +12,15 @@ A rectangular container control whose entire area is painted with a configurable
 
 The default fill is a solid mid-grey ([**WAYNESCOLOR_GREY**](#) --- `&H808080`); change it by accessing the **Fill.ColorPoints** collection.
 
-```tb check_build
-Private Sub Form_Load()
+```tb check_build inherits=WaynesForm
+Sub New()
     Frame1.BackgroundFill.ColorPoints.SetSolidColor vbWhite
 End Sub
 ```
+
+<!-- test: bug waynesframe-ignores-runtime-changes -->
+> [!WARNING] BETA 1042
+> A frame is never drawn again once its form is shown: a property set from then on --- its [**BackgroundFill**](#backgroundfill), say --- changes the property and nothing on the screen, and no error is raised. A value set in the form's `Sub New`, as above, is drawn, because the frame has not been drawn yet. The frame never keeps the [**CustomControlContext**](Framework/CustomControlContext) it is given, which the package's other controls use to ask for a repaint. To show a changing area, use a [**WaynesLabel**](WaynesLabel) with an empty caption, whose **BackgroundFill** is drawn as it is set.
 
 Frames work well as containers for [**Dock**](Enumerations/DockMode)-positioned children. Set the frame's own **Dock** to **tbDockFill** so it claims the form's body, then dock its children to **tbDockTop** / **tbDockLeft** / **tbDockFill** / etc. --- the docking calculation traverses the container tree, so children dock to the frame's client area rather than to the form. The order in which the children are added still determines which edges they claim first.
 

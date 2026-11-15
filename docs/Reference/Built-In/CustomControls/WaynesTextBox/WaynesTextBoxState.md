@@ -52,7 +52,7 @@ The [**Fill**](../Styles/Fill) used to draw the inline squiggle decoration when 
 ### DecorationINFO
 {: .no_toc }
 
-The [**Fill**](../Styles/Fill) used to draw the inline background-highlight decoration when the substring `INFO` is detected in [**Value**](.#value). Defaults to a light blue.
+The [**Fill**](../Styles/Fill) used to draw the inline background-highlight decoration when the substring `INFO` is detected in [**Value**](.#value). Defaults to amber.
 
 ### DecorationWARNING
 {: .no_toc }

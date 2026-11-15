@@ -1,0 +1,53 @@
+' InsertMarkTests: the check InsertMark makes of the row or column it is given.
+[TestFixture]
+Module InsertMarkTests
+
+    [TestCase]
+    Public Sub InsertMark_ByColumn_ColumnOutOfRangeRaises()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Cols = 6
+        f.Grid.InsertMarkMode = FlexDropTargetModeByColumn
+        On Error Resume Next
+        Err.Clear
+        f.Grid.InsertMark = 99
+        Expect.AreEqual 30010, Err.Number, "InsertMark = 99 in a grid of six columns, InsertMarkMode by column, DropHighlightMode by row"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_ByColumn_DropHighlightByColumn_ColumnOutOfRangeRaises()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Cols = 6
+        f.Grid.InsertMarkMode = FlexDropTargetModeByColumn
+        f.Grid.DropHighlightMode = FlexDropTargetModeByColumn
+        On Error Resume Next
+        Err.Clear
+        f.Grid.InsertMark = 99
+        Expect.AreEqual 30010, Err.Number, "InsertMark = 99 in a grid of six columns, InsertMarkMode and DropHighlightMode by column"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_ByRow_RowOutOfRangeRaises()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Grid.Rows = 6
+        On Error Resume Next
+        Err.Clear
+        f.Grid.InsertMark = 99
+        Expect.AreEqual 30009, Err.Number, "InsertMark = 99 in a grid of six rows, InsertMarkMode by row"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

@@ -10,7 +10,7 @@ which refuses a tree older than the sources that produced it, then
 [scripts/pick_a11y_sample.mjs --check](scripts/pick_a11y_sample.mjs) --- see
 [Choosing the sample](#choosing-the-sample) --- and then
 [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which runs puppeteer +
-axe-core over sixteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA
+axe-core over a sample of pages against WCAG 2.0/2.1/2.2 at Level A + AA
 (plus the `heading-order` best-practice rule) and exits non-zero on any
 violation. It requires `build.bat` to have produced an up-to-date `_site/`.
 
@@ -69,7 +69,7 @@ Syntax-highlight token colours are kept above 4.5:1 automatically: [builder/high
 
 ## Choosing the sample
 
-The scan audits sixteen pages out of ~1,160, so its page list decides what it can report at all -- and a page list that stops being representative fails *silently*. A hand-picked list goes stale as the site grows around it: a sample with no table, image, `<details>` widget or video card leaves `image-alt`, the table rules and `scrollable-region-focusable` in the run options with nothing to run on, and the gate reports a clean pass.
+The scan audits a sample of the site's pages, so its page list decides what it can report at all -- and a page list that stops being representative fails *silently*. A hand-picked list goes stale as the site grows around it: a sample with no table, image, `<details>` widget or video card leaves `image-alt`, the table rules and `scrollable-region-focusable` in the run options with nothing to run on, and the gate reports a clean pass.
 
 The full-site sweep ([scripts/sweep_a11y.mjs](scripts/sweep_a11y.mjs) — every page, both themes, both viewports, 3,476 audits, ~20 min) is the check on the sample. It shows which constructs the sample has to contain: table wrappers (`scrollable-region-focusable`), footnote back-links (`link-in-text-block`), the FAQ's `<summary>` elements at the phone viewport (`target-size`), heading structure (`heading-order`), diagrams (`role-img-alt`) and code-block colours (`color-contrast`).
 

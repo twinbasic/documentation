@@ -17,6 +17,8 @@ The effective rendering interacts with [**Appearance**](../../VBRUN/Constants/Ap
 | **ccNone**{: #ccNone }              | 0 | No border around the control. |
 | **ccFixedSingle**{: #ccFixedSingle } | 1 | Single-pixel border.          |
 
+![Three TreeViews: with BorderStyle ccNone the tree has no border, and with ccFixedSingle it has a thin grey border, the same with Appearance vbAppear3d and vbAppearFlat under visual styles](Images/TreeBorderStyleConstants.png){:width="611" height="217"}
+
 ## See Also
 
 - [TreeView](../TreeView/) -- consumer

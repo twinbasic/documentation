@@ -10,7 +10,7 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC programs [`imagestrip`](Tools-IDE#imagestrip), [`impexp`](Tools-Compiler#impexp) and [`tbbroker`](Tools-Compiler#tbbroker), `tbdocs` and its flags, and the PDF render driver --- are on seven pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
+Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC programs [`imagestrip`](Tools-IDE#imagestrip), [`impexp`](Tools-Compiler#impexp) and [`tbbroker`](Tools-Compiler#tbbroker), `tbdocs` and its flags, and the PDF render driver --- are on group pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
 
 * TOC goes here
 {:toc}

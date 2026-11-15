@@ -73,6 +73,10 @@ For Each ctl In MyForm.Controls
 Next
 ```
 
+<!-- test: bug waynesform-controls-nothing -->
+> [!NOTE] BETA 1042
+> A form's [**Controls**](../WaynesForm/#controls) is **Nothing** whenever code can read it, so this loop raises error 91, *Object variable or With block variable not set*.
+
 ## See Also
 
 - [CustomControlsCollection](CustomControlsCollection) -- the CoClass whose default interface this is

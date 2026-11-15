@@ -1,0 +1,67 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": -3092272,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbGradientNorthToSouth",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "tbFixedSizable",
+		"FormDesignerId": "{387D6D1C-1D24-400D-AC66-EF802DA2D3C0}",
+		"Height": 120,
+		"Left": 0,
+		"Name": "frmBorderStyle2",
+		"Top": 0,
+		"Width": 290,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSizable",
+			"ControlBox": true,
+			"MaximizeButton": true,
+			"MinimizeButton": true,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Height": 56,
+				"Left": 8,
+				"Name": "lblStyle",
+				"Top": 12,
+				"Visible": true,
+				"Width": 258,
+				"Caption": "BorderStyle = tbFixedSizable (2)",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Enabled": true,
+				"Height": 32,
+				"Interval": 50,
+				"Left": 0,
+				"Name": "tmrScene",
+				"Top": 0,
+				"Visible": true,
+				"Width": 32,
+				"_className": "WaynesTimer",
+				"_clsid": "{19E29F0D-8062-40D5-962E-5BCD1F6C090E}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]

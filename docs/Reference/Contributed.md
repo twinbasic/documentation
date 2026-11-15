@@ -27,4 +27,5 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**TwinTimerLib**](TwinTimerLib/) -- a Win32 timer class that reports the elapsed time
 - [**VBA_JSON**](VBA_JSON/) -- JSON parsing and serialization, with UTC and ISO 8601 date conversion
 - [**VBComDlg**](VBComDlg/) -- the **CommonDialog** class, for the Windows common dialogs
+- [**VBFLXGRD18**](VBFLXGRD18/) -- **VBFlexGrid**, a grid control with editing in cells, in place of the FlexGrid control of `MSFLXGRD.OCX`
 - [**xCalendar**](xCalendar/) -- a calendar control, in place of the Calendar control of `MSCAL.OCX`

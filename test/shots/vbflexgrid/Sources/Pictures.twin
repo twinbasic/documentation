@@ -1,0 +1,111 @@
+Module Pictures
+
+    ' The pictures the scenes put into cells and behind the grid, made in code so that the
+    ' fixture carries no image file: Windows' information icon at 16 by 16 pixels, and a
+    ' bitmap with a vertical gradient for the wallpaper.
+
+    Private Type PICTDESC
+        cbSizeofstruct As Long
+        picType As Long
+        hImage As LongPtr
+        hPal As LongPtr
+    End Type
+
+    Private Type GUID
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PICTDESC, _
+        ByRef riid As GUID, ByVal fOwn As Long, ByRef Pic As IPicture) As Long
+    Private Type SHSTOCKICONINFO
+        cbSize As Long
+        hIcon As LongPtr
+        iSysImageIndex As Long
+        iIcon As Long
+        szPath(0 To 519) As Byte
+    End Type
+
+    Private Declare PtrSafe Function SHGetStockIconInfo Lib "shell32" (ByVal siid As Long, ByVal uFlags As Long, _
+        ByRef psii As SHSTOCKICONINFO) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal cx As Long, ByVal cy As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal h As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal h As LongPtr) As Long
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function FillRect Lib "user32" (ByVal hDC As LongPtr, ByRef r As RECT, ByVal hBrush As LongPtr) As Long
+
+    Private Const PICTYPE_BITMAP As Long = 1
+    Private Const PICTYPE_ICON As Long = 3
+    Private Const SIID_INFO As Long = 79
+    Private Const SHGSI_ICON As Long = &H100&
+    Private Const SHGSI_SMALLICON As Long = &H1&
+
+    Private Function IID_IPicture() As GUID
+        Dim g As GUID
+        g.Data1 = &H7BF80980
+        g.Data2 = &HBF32
+        g.Data3 = &H101A
+        g.Data4(0) = &H8B: g.Data4(1) = &HBB: g.Data4(2) = &H0: g.Data4(3) = &HAA
+        g.Data4(4) = &H0: g.Data4(5) = &H30: g.Data4(6) = &HC: g.Data4(7) = &HAB
+        Return g
+    End Function
+
+    ' Windows' information icon, 16 by 16 pixels, owned by the picture. LoadImage gives a
+    ' system icon only shared, and a shared one at the size it was first loaded at, 32 pixels.
+    Public Function InfoIcon() As StdPicture
+        Dim info As SHSTOCKICONINFO
+        info.cbSize = LenB(info)
+        If SHGetStockIconInfo(SIID_INFO, SHGSI_ICON Or SHGSI_SMALLICON, info) <> 0 Then Err.Raise 5, , "SHGetStockIconInfo failed"
+        Dim d As PICTDESC
+        d.cbSizeofstruct = LenB(d)
+        d.picType = PICTYPE_ICON
+        d.hImage = info.hIcon
+        Dim p As IPicture
+        OleCreatePictureIndirect d, IID_IPicture(), 1, p
+        Return p
+    End Function
+
+    ' A bitmap of Width by Height pixels whose rows go from colour Top to colour Bottom.
+    Public Function Gradient(ByVal Width As Long, ByVal Height As Long, ByVal Top As Long, ByVal Bottom As Long) As StdPicture
+        Dim screenDC As LongPtr = GetDC(0)
+        Dim dc As LongPtr = CreateCompatibleDC(screenDC)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(screenDC, Width, Height)
+        ReleaseDC 0, screenDC
+        Dim old As LongPtr = SelectObject(dc, bmp)
+        Dim y As Long
+        For y = 0 To Height - 1
+            Dim t As Double = y / (Height - 1)
+            Dim r As Long = (Top And &HFF) * (1 - t) + (Bottom And &HFF) * t
+            Dim g As Long = ((Top \ &H100) And &HFF) * (1 - t) + ((Bottom \ &H100) And &HFF) * t
+            Dim b As Long = ((Top \ &H10000) And &HFF) * (1 - t) + ((Bottom \ &H10000) And &HFF) * t
+            Dim brush As LongPtr = CreateSolidBrush(RGB(r, g, b))
+            Dim rc As RECT
+            rc.Left = 0: rc.Top = y: rc.Right = Width: rc.Bottom = y + 1
+            FillRect dc, rc, brush
+            DeleteObject brush
+        Next
+        SelectObject dc, old
+        DeleteDC dc
+        Dim d As PICTDESC
+        d.cbSizeofstruct = LenB(d)
+        d.picType = PICTYPE_BITMAP
+        d.hImage = bmp
+        Dim p As IPicture
+        OleCreatePictureIndirect d, IID_IPicture(), 1, p
+        Return p
+    End Function
+
+End Module

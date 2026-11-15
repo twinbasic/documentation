@@ -97,6 +97,10 @@ Syntax: *object*.**Options** [ = *value* ]
 The getter returns the value that was set. The setting applies whether it is made before or after [**Init**](#init). With **AutoCompleteOptionAppend** the text of the best match is appended to what was typed and selected; with **AutoCompleteOptionNone** nothing is appended.
 <!-- /test -->
 
+A text box served by an **AutoComplete** whose [**CustomSource**](#customsource) holds `Apple`, `Apricot`, `Avocado`, `Banana`, `Blackberry`, `Blueberry` and `Cherry`, after the user has typed `Ap`, with each of the three options that complete:
+
+![Three forms, each with a text box into which Ap has been typed. With AutoCompleteOptionSuggest the box holds Ap and a list under it offers Apple and Apricot. With AutoCompleteOptionAppend the box holds Apple, with the appended ple selected, and no list. With AutoCompleteOptionSuggestAppend the box holds Apple with ple selected, and the list under it offers Apple and Apricot.](Images/Options.png){:width="1056" height="201"}
+
 ## Methods
 
 ### Disable

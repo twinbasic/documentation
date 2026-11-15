@@ -1,0 +1,12 @@
+' A form with one control on it, ProbeControl1, a UserControl of this project
+' (ProbeControl.twin). Form1.tbform is its designer file.
+
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class Form1
+
+    Sub New()
+    End Sub
+
+End Class

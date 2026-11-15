@@ -11,12 +11,14 @@ has_toc: false
 
 The Win32-frame settings of a [**WaynesForm**](.) --- border style, initial window state, startup position, taskbar visibility, and the title-bar buttons. Exposed as [**WaynesForm.WindowsOptions**](.#windowsoptions); a single instance per form, created automatically.
 
-Most of the fields take effect *once*, when the form is first shown --- changing [**StartUpPosition**](#startupposition) or [**WindowState**](#windowstate) on a form that is already visible has no effect. The exception is the title-bar buttons; whether they have a visible effect depends on whether [**BorderStyle**](#borderstyle) is one of the styles that include those buttons in the first place.
+The fields are applied when the form's window is made, as the form is first shown. Whether the title-bar buttons appear also depends on whether [**BorderStyle**](#borderstyle) is one of the styles that include them.
 
 The type itself is `Private Class` --- the instance is accessed only through the form's **WindowsOptions** property, and a variable typed as **WindowsFormOptions** cannot be declared from outside the package.
 
+A form's code sets the fields in its constructor, `Sub New`; a **WaynesForm** raises no **Load** event (see [Setting up a form](.#setting-up-a-form)).
+
 ```tb check_build inherits=WaynesForm
-Private Sub Form_Load()
+Sub New()
     With Me.WindowsOptions
         .StartUpPosition = tbStartUpCenterScreen
         .BorderStyle = tbFixedDialog
@@ -25,6 +27,10 @@ Private Sub Form_Load()
     End With
 End Sub
 ```
+
+<!-- test: bug waynesform-window-ignores-code -->
+> [!WARNING] BETA 1042
+> The form's window is made from the values the form designer saved, and never from these fields as code has set them. A field set in code --- in `Sub New`, before the form is shown, or while it is shown --- reads back the new value, but the window's border, buttons, place, state and taskbar button stay as designed, and no error is raised. Set the fields in the form designer.
 
 ## Properties
 
@@ -41,12 +47,12 @@ Whether the form's title bar shows the system control box (the icon at the far l
 ### MaximizeButton
 {: .no_toc }
 
-Whether the title bar shows a **Maximize** button. **Boolean**. Default: **True**. Effective only when [**BorderStyle**](#borderstyle) is one of the resizable styles.
+Whether the title bar shows a **Maximize** button. **Boolean**. Default: **True**. Shown when [**BorderStyle**](#borderstyle) is **tbFixedSingle**, **tbFixedSizable** or **tbFixedDialog**; see [**BorderStyle**](../Enumerations/BorderStyle).
 
 ### MinimizeButton
 {: .no_toc }
 
-Whether the title bar shows a **Minimize** button. **Boolean**. Default: **True**. Effective only when [**BorderStyle**](#borderstyle) is one of the styles that supports minimizing.
+Whether the title bar shows a **Minimize** button. **Boolean**. Default: **True**. Shown when [**BorderStyle**](#borderstyle) is **tbFixedSingle**, **tbFixedSizable** or **tbFixedDialog**; see [**BorderStyle**](../Enumerations/BorderStyle).
 
 ### ShowInTaskbar
 {: .no_toc }
@@ -68,4 +74,4 @@ The window state of the form when first shown --- normal, minimized, or maximize
 ### OnChanged
 {: .no_toc }
 
-Raised whenever any of the seven fields is assigned. The parent [**WaynesForm**](.) listens for this event and (where applicable to a not-yet-shown form) re-applies the frame settings.
+Raised whenever any of the seven fields is assigned. The parent [**WaynesForm**](.) listens for this event and repaints itself.

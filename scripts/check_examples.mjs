@@ -127,6 +127,7 @@ import {
   crashedIn,
   diagKind,
   embeddedPackages,
+  exclusionPackage,
   joinConcatGroups,
   makeBatches,
   runBatch,
@@ -292,12 +293,12 @@ const BUILD = values.build || LLVM;
 const EXCLUSION_MODE = LLVM ? "llvm" : BUILD ? "build" : "compile";
 
 // test/harness.json (test/harness.md), read and checked before anything runs:
-// the exclusions, and each phase's limit in ms -- the option, else the
-// TB_<PHASE> variable, else the file. A fault in either is exit 2.
-let HARNESS, LIMITS;
+// the exclusions, and each TB_<PHASE> variable, whose value a batch's limits
+// take (limitsFor). A fault in either is exit 2.
+let HARNESS;
 try {
   HARNESS = readHarness();
-  LIMITS = Object.fromEntries(Object.entries(seconds).map(([key, s]) => [key, timeoutMs(key, s)]));
+  for (const [key, s] of Object.entries(seconds)) timeoutMs(key, s);
 } catch (e) {
   if (!(e instanceof HarnessError)) throw e;
   console.error(`check_examples: ${e.message}`);
@@ -700,7 +701,7 @@ function stageBatch(batch, work) {
   // under Packages/ makes.
   packTree(proj, dir);
   // A batch of win64 copies (splitArches) is built for that target, the rest for win32.
-  return { proj, dir, map, runs, arch: batch.arch ?? ARCHES[0] };
+  return { proj, dir, map, runs, project: batch.project, arch: batch.arch ?? ARCHES[0] };
 }
 
 // ------------------------------------------------------------------- building
@@ -714,15 +715,23 @@ const IDE = findIde(values.ide);
 let tidy = null;
 
 // How a run batch's wait ends (see buildStaged): its sentinel, or the run's
-// quiet period or limit from test/harness.json (LIMITS).
+// quiet period or limit from test/harness.json (limitsFor).
 // Whether a batch's own samples bring a [RunAfterBuild] Sub, whose compile a build
 // follows after the link (buildProject); a run batch's dispatcher is captureRun's.
 const runsAfterBuild = (staged) => [...staged.map.values()].some((e) => DECLARES_HOOK.test(e.fence.content));
-const runWait = () => ({
+const runWait = (limits) => ({
   done: (lines) => lines.some((l) => l.trim() === RUN_DONE),
-  runMs: LIMITS.compilerRun,
-  quietMs: LIMITS.compilerRunQuiet,
+  runMs: limits.compilerRun,
+  quietMs: limits.compilerRunQuiet,
 });
+
+// A batch's limits in ms: each phase's option, else its TB_<PHASE> variable, else the entry of
+// the batch's package in test/harness.json's packageTimeouts, else the file's timeouts
+// (timeoutMs). The package is named as the exclusions name it, from the batch's template.
+function limitsFor(project) {
+  const pkg = exclusionPackage({ project });
+  return Object.fromEntries(Object.entries(seconds).map(([key, s]) => [key, timeoutMs(key, s, { pkg })]));
+}
 
 // What each run sample did, by fence id, from the last build of a project that
 // held it: its share of the lines the dispatcher wrote, and the sample that
@@ -780,7 +789,8 @@ const timingBatch = (batch, staged) =>
 async function buildCanary(batch, session, work) {
   const staged = stageBatch(batch, work);
   timingBatch(batch, staged);
-  const run = staged.runs.length ? runWait() : null;
+  const limits = limitsFor(batch.project);
+  const run = staged.runs.length ? runWait(limits) : null;
   const r = await compileProject({
     project: staged.proj,
     ide: IDE,
@@ -789,8 +799,8 @@ async function buildCanary(batch, session, work) {
     build: BUILD || !!run,
     llvm: LLVM,
     run,
-    timeout: LIMITS.compile,
-    buildTimeout: LIMITS.build,
+    timeout: limits.compile,
+    buildTimeout: limits.build,
     followRun: runsAfterBuild(staged),
   });
   if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
@@ -812,7 +822,8 @@ async function buildStaged(staged, session) {
   // been quiet for the run's quiet period, counted from [BUILD] Executing or the
   // run's last output, whichever is later, so that a pause in an LLVM build's log
   // never ends it (captureRun).
-  const run = staged.runs.length ? runWait() : null;
+  const limits = limitsFor(staged.project);
+  const run = staged.runs.length ? runWait(limits) : null;
   const compile = () =>
     compileProject({
       project: staged.proj,
@@ -822,8 +833,8 @@ async function buildStaged(staged, session) {
       build: BUILD || !!run,
       llvm: LLVM,
       run,
-      timeout: LIMITS.compile,
-      buildTimeout: LIMITS.build,
+      timeout: limits.compile,
+      buildTimeout: limits.build,
       followRun: runsAfterBuild(staged),
     });
   let r = await compile();

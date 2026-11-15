@@ -1,0 +1,518 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": -3092272,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbGradientNorthToSouth",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "FillPattern",
+		"FormDesignerId": "{209B2A36-B4E3-462B-A659-CFCA3409A292}",
+		"Height": 540,
+		"Left": 0,
+		"Name": "frmFillPatterns",
+		"Top": 0,
+		"Width": 1008,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSingle",
+			"ControlBox": true,
+			"MaximizeButton": false,
+			"MinimizeButton": false,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Height": 56,
+				"Left": 12,
+				"Name": "lblFill0",
+				"Top": 12,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 12,
+				"Name": "lblName0",
+				"Top": 70,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 208,
+				"Name": "lblFill1",
+				"Top": 12,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 208,
+				"Name": "lblName1",
+				"Top": 70,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 404,
+				"Name": "lblFill2",
+				"Top": 12,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 404,
+				"Name": "lblName2",
+				"Top": 70,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 600,
+				"Name": "lblFill3",
+				"Top": 12,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 600,
+				"Name": "lblName3",
+				"Top": 70,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 796,
+				"Name": "lblFill4",
+				"Top": 12,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 796,
+				"Name": "lblName4",
+				"Top": 70,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 12,
+				"Name": "lblFill5",
+				"Top": 108,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 12,
+				"Name": "lblName5",
+				"Top": 166,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 208,
+				"Name": "lblFill6",
+				"Top": 108,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 208,
+				"Name": "lblName6",
+				"Top": 166,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 404,
+				"Name": "lblFill7",
+				"Top": 108,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 404,
+				"Name": "lblName7",
+				"Top": 166,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 600,
+				"Name": "lblFill8",
+				"Top": 108,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 600,
+				"Name": "lblName8",
+				"Top": 166,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 12,
+				"Name": "lblFill9",
+				"Top": 204,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 12,
+				"Name": "lblName9",
+				"Top": 262,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 208,
+				"Name": "lblFill10",
+				"Top": 204,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 208,
+				"Name": "lblName10",
+				"Top": 262,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 404,
+				"Name": "lblFill11",
+				"Top": 204,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 404,
+				"Name": "lblName11",
+				"Top": 262,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 600,
+				"Name": "lblFill12",
+				"Top": 204,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 600,
+				"Name": "lblName12",
+				"Top": 262,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 12,
+				"Name": "lblFill13",
+				"Top": 300,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 12,
+				"Name": "lblName13",
+				"Top": 358,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 208,
+				"Name": "lblFill14",
+				"Top": 300,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 208,
+				"Name": "lblName14",
+				"Top": 358,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 404,
+				"Name": "lblFill15",
+				"Top": 300,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 404,
+				"Name": "lblName15",
+				"Top": 358,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 600,
+				"Name": "lblFill16",
+				"Top": 300,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 600,
+				"Name": "lblName16",
+				"Top": 358,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 12,
+				"Name": "lblFill17",
+				"Top": 396,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 12,
+				"Name": "lblName17",
+				"Top": 454,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 208,
+				"Name": "lblFill18",
+				"Top": 396,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 208,
+				"Name": "lblName18",
+				"Top": 454,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 404,
+				"Name": "lblFill19",
+				"Top": 396,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 404,
+				"Name": "lblName19",
+				"Top": 454,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 56,
+				"Left": 600,
+				"Name": "lblFill20",
+				"Top": 396,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Height": 30,
+				"Left": 600,
+				"Name": "lblName20",
+				"Top": 454,
+				"Visible": true,
+				"Width": 184,
+				"Caption": "",
+				"_className": "WaynesLabel",
+				"_clsid": "{6C9EBA9F-C7D3-479A-9604-BB81AEF3C6E9}"
+			},
+			{
+				"Enabled": true,
+				"Height": 32,
+				"Interval": 50,
+				"Left": 0,
+				"Name": "tmrScene",
+				"Top": 0,
+				"Visible": true,
+				"Width": 32,
+				"_className": "WaynesTimer",
+				"_clsid": "{19E29F0D-8062-40D5-962E-5BCD1F6C090E}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]
