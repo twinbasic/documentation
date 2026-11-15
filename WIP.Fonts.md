@@ -5,7 +5,8 @@ Companion to [WIP.md](WIP.md)'s [Typography](WIP.md#typography) section. This fi
 the Unicode coverage and the axis pinning are what they are, and the JavaScript port of the
 generator, which is blocked on a harfbuzzjs build defect documented here in full. Everything
 about *using* the faces --- the `@font-face` wiring, the dark-theme specificity trap, the
-PDF's font handling, the diagram width tables --- stays in WIP.md.
+PDF's font handling, the diagram width tables --- is in WIP.md's Typography section and
+[WIP.Typography.md](WIP.Typography.md).
 
 Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fine here.
 
@@ -126,7 +127,7 @@ harfbuzzjs's tests do not exercise pinning at all. harfbuzzjs has subset CFF2 si
 silently wrong.
 
 **The fix is one line in harfbuzzjs**: `#undef HB_NO_DRAW` in `config-override-subset.h`
-(or restore `-DHB_CONFIG_OVERRIDE_LAST_H`, which is what 1.2.0 used and why it was correct).
+(or `-DHB_CONFIG_OVERRIDE_LAST_H`, which harfbuzzjs 1.2.0 builds with, and is correct).
 There is a secondary design point for upstream HarfBuzz --- a subsetter that cannot compute
 CFF2 instance metrics should refuse rather than emit a font with mismatched outlines and an
 invalid `head` --- but the actionable report is harfbuzzjs's.

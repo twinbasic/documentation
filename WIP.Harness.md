@@ -2,8 +2,8 @@
 
 How the twinBASIC compiler is reached without a person driving the IDE: getting
 at the package sources, censusing what they contain, compiling a probe,
-capturing what one prints, and testing an IDE add-in. Split out of
-[WIP.md](WIP.md), which keeps the invocations and the operational rules under
+capturing what one prints, and testing an IDE add-in. [WIP.md](WIP.md) keeps the
+invocations and the operational rules under
 [Driving the twinBASIC compiler](WIP.md#driving-the-twinbasic-compiler) --- this
 file is why they are what they are.
 
@@ -192,7 +192,7 @@ has one 2,514-character run of 263 pipe-separated identifiers, from `On|Off|Expl
 keywords, attributes and object members (`Debug`, `Circle`, `PSet`), so a name in it is only a
 candidate. Swept, exactly one name the page did not document was accepted anywhere:
 `[PropertyPage]`, at eighteen sites, all of them members of a Class or an Interface, with a
-String argument only (any other is TB5163). It now has an entry. The other 195 are refused at
+String argument only (any other is TB5163), and it has an entry. The other 195 are refused at
 every site.
 
 **Six things the sweep has to get right, each of which gives a wrong report when missed:**
@@ -241,7 +241,7 @@ the attribute does there against a control without it: the type library of an Ac
 built with `project.dllRegisterAfterBuild: false` and dumped with TLI
 (`C:\Windows\SysWOW64\cscript.exe` and `TLI.TypeLibInfoFromFile`, since `tlbinf32.dll` is
 32-bit), diagnostics from `tbbuild`, and output from `tbrun` and `tbrun --exe`. Where it did
-something, the page now names the site. **The sites below were accepted and did nothing, or
+something, the page names the site. **The sites below were accepted and did nothing, or
 nothing anyone could see, so the page leaves them out; a later sweep that lists them again
 is not news.** Read a new sweep's list against this one and judge only what is not here.
 
@@ -443,8 +443,8 @@ the scratch folder of its commands.
 
 A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
 reports. Two rules keep the cause readable. With its streams redirected, PowerShell writes
-progress records and errors to stderr as CLIXML (`#< CLIXML`, as `tb-registry.mjs` also
-found, below), so the script silences progress and writes a failure itself, as plain UTF-8
+progress records and errors to stderr as CLIXML (`#< CLIXML`, as in `tb-registry.mjs`,
+below), so the script silences progress and writes a failure itself, as plain UTF-8
 text. And a Win32 error read from PowerShell is not the call's: PowerShell makes calls of its
 own before the next statement runs, so a `CreateProcess` that set 3 reads as 203,
 "The system could not find the environment option that was entered". Each call is made, and
@@ -582,8 +582,7 @@ the Debugger domain enabled stops at them, which looks like a hang.
 **Measured** (BETA 1010, the 74 batch projects of a full `examples.bat` run, and a set of
 probe projects: errors, an embedded package, a compiler crash, `[RunAfterBuild]` runs that
 print, raise an access violation, run `End` and raise an unhandled error). Every project gave
-the same diagnostics and run output after a switch as in a fresh IDE, once the resets below
-were in place. One after another, the 74 took 351 s in fresh IDEs and 213 s in one IDE; on four
+the same diagnostics and run output after a switch as in a fresh IDE, with the resets below. One after another, the 74 took 351 s in fresh IDEs and 213 s in one IDE; on four
 lanes at once, 134 s (the `examples.bat` run itself, 71 of them) against 72.6 s. In a switch the
 new compile starts about 1.4 s after `openProject()`. Over 74 switches the IDE's processes stayed
 at 13, its working set between 0.99 and 1.25 GB with no trend, its temp folder at 2 or 3 files; a
@@ -617,8 +616,8 @@ project is closed at once, so that its compiler stops restarting.
 **Concurrency works and is the route to a fast probe suite.** Each run takes a slot from
 `tbbroker` ([WIP.Broker.md](WIP.Broker.md)) --- a private desktop, and the number its WebView2
 user-data folder, temp folder and work folder are named by --- and its IDE's DevTools port is
-one Windows picks, so instances do not collide. Fixed ports collided often: Windows hands out
-ports from 1024 up on the dev box, so a compiler's or a browser's socket could sit on one. Three projects: **26 s sequentially, 10 s in parallel**, with each run
+one Windows picks, so instances do not collide. Fixed ports collide: Windows hands out
+ports from 1024 up on the dev box, so a compiler's or a browser's socket can sit on one. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
 **A port given with `--port` that another IDE holds is refused.** The harness attaches to
@@ -697,7 +696,7 @@ Rules it follows:
   line in that record after the last `[BUILD] Executing` line exits 2, naming the line and
   printing the partial output. `main.js` calls that function by name from the compiler's
   `event_clearDebugConsole`, which `Debug.Cls` raises, from the pane's Clear command, and on
-  closing the project; no other path that empties the console was found. The IDE does not
+  closing the project; no other path that empties the console is known. The IDE does not
   clear the console when a build starts, so the probe's first `Debug.Cls` erases the build log
   from `[BUILD] Starting...` on. `event_clearDebugConsole` writes an empty line after its
   clear, so the record of a second `Debug.Cls` begins with one.
@@ -720,11 +719,10 @@ Rules it follows:
   for a person, so `captureRun` ends the wait once the panel is open and `tbrun` names the
   error (exit 5). The page holds the panel's text in `activeDebuggingErrorHeader` and
   `activeDebuggingError`; `clearDebuggingCallframe` resets `activeDebuggingFrameId` and not
-  the text, so a set frame is what says the panel is open (BETA 1034). Before this,
-  `tbrun` reported such a probe that printed nothing first as a build that "did not reach
-  [BUILD] Executing": the build, the probe's `Debug.Cls` and the stop all fell between two
-  polls, the console read as empty before and after, and the erased Executing line was
-  looked for only when the console changed. It is now looked for on every poll of the build.
+  the text, so a set frame is what says the panel is open (BETA 1034). The erased Executing
+  line is looked for on every poll of the build, not only when the console changed: for a
+  probe that prints nothing first, the build, its `Debug.Cls` and the stop can all fall
+  between two polls, and the console then reads as empty before and after.
 - **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
   log records that it faulted, when it opened a box, or when it was still running at
   `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
@@ -837,7 +835,7 @@ LLVM**, as VB6 drops `Debug` statements from a compiled program.
 
 **An unhandled error in the exe opens a box and waits for it**, so `--exe` passes
 `dialogs: "close"`: the launcher records each box and presses OK. Without that the exe
-sat until `--timeout`. The box is the only sign of the error. In BETA 1010 a plain exe
+sits until `--timeout`. The box is the only sign of the error. In BETA 1010 a plain exe
 shows a box titled with the project's application title, `Run-time error '11' <description>`,
 and exits with code 0 once the box is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*,
 `unhandled error in ProbeMod.Oops` (the module and procedure), with no number or
@@ -850,7 +848,7 @@ because the launcher, not Node, starts the exe.
 `App.IsInIDE` would say the same, but `App` exists only in a project that references the
 VB package or the AppGlobalClassObject package: in any other, `TbRun` fails to compile
 (TB5079, `Unrecognized symbol 'App'`) and `tbrun` exits 1 on a probe that is fine (BETA 1010;
-either package alone is enough, and the install's Samples 6 and 8 had neither).
+either package alone is enough, and the install's Samples 6 and 8 have neither).
 Adding that reference to the staged copy would change what the probe's own names resolve
 to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails under
 `--llvm`, because LLVM-compiled code skips `Debug.Assert` in the IDE too. A tree with a
@@ -861,7 +859,7 @@ to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails u
 **An LLVM build uses a cache server, a process of its own:**
 `<install>\bin\twinBASIC_win64.exe --threads=<n> --keepalive=0|1 --cache=1`. Every compiler on
 the machine finds it through one machine-wide pipe,
-`\\.\pipe\twinBASIC.LLVMCache.Registration.v<n>` (`v6` for BETA 1005 to 1010; the name is read
+`\\.\pipe\twinBASIC.LLVMCache.Registration.v<n>` (`v6` for BETA 1007 to 1010; the name is read
 from the install's compiler DLL), so one server serves every IDE, of any install whose DLL
 names the same pipe. A compiler that needs the server and finds none starts it **as its own
 child**, so it lives in that IDE's job (kill-on-close, no breakaway: [The IDE runs inside a
@@ -937,8 +935,8 @@ One compile has more than the file's limit: the `help-offline` lane's build of t
 which embeds the ~60 MB help archive, gets the file's `compile` plus 20 s (`ARCHIVE_COMPILE_MS`
 in `test/addin/help.test.mjs`, through `Lane.addAddin`'s `timeout`). The archive holds the
 compiler's start: on BETA 1042 that compile settled 8.0 to 9.7 s after the project opened (the
-compile itself 6 ms), the add-in without it 1 to 2 s, so the 10 s limit failed the lane now and
-then ("did not settle within 10 s").
+compile itself 6 ms), the add-in without it 1 to 2 s, so the 10 s limit would fail the lane now
+and then ("did not settle within 10 s").
 
 ### Timing each phase: `TB_TIMINGS`
 
@@ -956,41 +954,35 @@ What it showed on BETA 1010 (350 compiles: `check_examples --build` and `--llvm`
 start to project open 2.85 / 3.46 / 4.04; the compiler's own compile, `compilationStarted` to the
 last file's diagnostics, 0.03 / 0.08 / 0.30; the whole compile wait, project load included, 3.33 / 5.34 /
 13.8, its tail the compiler's start-up for a project that embeds a large package (WinReg,
-ArrayListLib; the early path now agrees for a package whose own files have errors, by adding the
+ArrayListLib; the early path agrees for a package whose own files have errors, by adding the
 panel's rows of files the wire does not report on, `unlistedRows`); a build, Build pressed to linked, at
 most 1.0 (4.97 with LLVM); a `[RunAfterBuild]` run at most 0.83 (25.3 with LLVM, one of them
 printing for 15 s and finishing). None reached a timeout.
 
-**On BETA 1042, Generics' compile wait never took the early ending**, and it was two flaws of
-`waitForCompile` (fixed 2026-11-14), not the compile. Nine runs of `package_tests Generics --arch
-both` all ended `still`, with `waitMs` 8.0 to 9.1 s: the compile was done 2 to 3 s after the project
-opened, and the other 5 s was the stand-still fallback. tblaunch ends the same compile once every
-source has published, plus 150 ms. The `compile` line's `check` field (the wire's counts, the
-unlisted rows' counts, the page's counts, its rows and their expected total, from the last sample
-compared) shows why:
+**Two rules keep `waitForCompile`'s early ending from falling back to the 5 s stand-still**, both
+pinned in `test/example-batches.test.mjs` with a fake page and its traffic. The `compile` line's
+`check` field (the wire's counts, the unlisted rows' counts, the page's counts, its rows and their
+expected total, from the last sample compared) shows why a wait did not end early. tblaunch, which
+ends the same compile once every source has published, plus 150 ms, takes its rows from each file's
+latest publish and its done and late-publish times when the event is read (`CompileDone.twin`), so
+neither rule concerns it.
 
-- **The wire counted an embedded package's file twice.** `src` leaves out Packages because a package
-  loaded from the compiler's cache publishes once, at load (WinDevLib's TB0003 rows). But a compile
-  that reaches a package's code publishes for that package file again: Generics' `Tuple.twin`, 4
-  errors, in every compile of its tests. `c.wire.check` summed every file the compile published,
-  `unlistedRows` added the panel's rows of every file outside `src`, and `Tuple.twin` was counted by
-  both: 9 + 10 = 19 against the page's 15, every time. The wire's counts are now those of `src`
-  alone, and the rows count everything else. ArrayListLib and WinReg's early ending was never
-  affected, since their compiles publish nothing for their packages.
-- **The quiet period was timed from before the sample was read.** Once the counts agreed, the
-  wait ended 10 ms after the compile's last publish, not 300 ms after it. The loop took `now`
-  before `readBuildState`, the evaluate took 480 ms while the page compiled, and the wire heard the
-  compile end during that time. The agreement was then dated before the compile it agreed with, and
-  was already older than `EARLY_QUIET_MS` when it was seen. The quiet period now runs from when the
-  sample comes back (the deadline still runs from when it was asked for). A later publish in the same
-  compile, of any file, restarts the quiet, as tblaunch's settle does (`check`'s `last`).
+- **The wire counts only the listed sources, `src`, and `unlistedRows` everything else.** `src`
+  leaves out Packages because a package loaded from the compiler's cache publishes once, at load
+  (WinDevLib's TB0003 rows). But a compile that reaches a package's code publishes for that package
+  file again: Generics' `Tuple.twin`, 4 errors, in every compile of its tests. Summing every file
+  the compile published, beside the panel's rows of every file outside `src`, counts such a file
+  twice (9 + 10 = 19 against the page's 15), and the wait never agrees.
+- **The quiet period runs from when the sample comes back** (the deadline still runs from when it
+  was asked for), and a later publish in the same compile, of any file, restarts it, as tblaunch's
+  settle does (`check`'s `last`). The evaluate in `readBuildState` can take 480 ms while the page
+  compiles, and the wire can hear the compile end during that time; timed from before it, the
+  agreement is dated before the compile it agrees with, and the wait ends 10 ms after the last
+  publish, not 300 ms.
 
-tblaunch has neither flaw. Its rows come from each file's latest publish and are compared with
-nothing, and its done and late-publish times are taken when the event is read (`CompileDone.twin`).
-After the fix, 12 Generics compile waits (6 runs, both arches) all ended `early`, with `waitMs` 3.2 to
-8.9 s, each about 320 ms after the compile's last publish. The spread is in when the compile started
-(2.9 to 8.5 s into the wait, with another session's corpus runs loading the machine), not in the
-wait. Both flaws are pinned in `test/example-batches.test.mjs`, with a fake page and its traffic.
+With both, Generics' compile waits on BETA 1042 (12, both arches) end `early`, each about 320 ms
+after the compile's last publish, with `waitMs` 3.2 to 8.9 s: the spread is in when the compile
+started (2.9 to 8.5 s into the wait, on a loaded machine), not in the wait.
 
 ### Building for win64
 
@@ -1243,8 +1235,8 @@ changing `tb-registry.mjs`.
 
 `IDE_FLAGS` stop an IDE writing its settings, and nothing stops it reading them: the IDE reads its
 options, panel layouts, keyboard groups and a few more keys through `hostAppObject.GetIDESetting(key)`
-from the user's registry key, so a font size the owner set in their own IDE showed in every IDE the
-tools started (a help-lane check failed on 14 px against 13 px). `scripts/lib/tb-defaults.mjs` makes
+from the user's registry key, so unhooked, a font size the user set in their own IDE shows in every
+IDE the tools start. `scripts/lib/tb-defaults.mjs` makes
 every IDE `launchIde` starts run with the defaults, in the page only and with no write to the
 registry; `try-help-addin` passes `userSettings: true` and keeps the user's.
 
@@ -1254,8 +1246,8 @@ polls that file every 5 ms (`launchIde`'s own poll is at 100 ms and answers too 
 browser target, auto-attaches to every target with `waitForDebuggerOnStart`, adds the script to each page
 with `Page.addScriptToEvaluateOnNewDocument` and resumes it. For a port the caller chose (`tbbuild
 --port N`, `tbrun --port N`) WebView2 writes no `DevToolsActivePort`, so the hook asks
-`http://127.0.0.1:<port>/json/version` every 20 ms for the browser's address instead; until 2026-11-15
-such a run waited a minute and failed. The page is `about:blank` when attached, and
+`http://127.0.0.1:<port>/json/version` every 20 ms for the browser's address instead. The page is
+`about:blank` when attached, and
 never navigates twice. The script puts a setter on `window.hostAppObject`, which `main2.js` assigns, and
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
 `GENERAL2`, `SaveIDESetting` of those keys does nothing, and every other call goes through with `this`
@@ -1263,14 +1255,14 @@ bound to the real object. The keys it left unanswered are the licence's, `LICENC
 `PUBLISHER` and `NEWYEAR_*`.
 **No error report leaves a tool's IDE.** The IDE posts one to `https://twinbasic.com/notify` for each
 native exception and page error when `ALLOWERRORREPORTINGV3` says `AGREED_`, and a reproducer that crashes
-the compiler is such an exception, so a machine whose owner agreed reported its test crashes (until
-2026-11-04). The hook answers that key `DISAGREED_TOOLS`, and `window.fetch` answers a request for that
+the compiler is such an exception, so on a machine whose owner agreed, a tool's IDE would report its
+test crashes. The hook answers that key `DISAGREED_TOOLS`, and `window.fetch` answers a request for that
 address itself and counts it in `__tbDefaults.reports`, in case a page turns reporting on.
 `test/ide-folders.test.mjs` tests both with a stand-in `fetch`, which is why it never sends anything.
 The saves are dropped for two keys' sake. `main.js` tests `g_DontSaveIdeSettings`, which is what
 `--no-save-ide-settings` sets, before every save but those of `OBJECT_BROWSER`, `NEWFRONTPAGE` and
-`PUBLISHER`, so a tool's IDE wrote the first two to the user's registry on BETA 1034: `NEWFRONTPAGE` as
-soon as the New / Open Project dialog changed section or closed. `PUBLISHER` is written only when
+`PUBLISHER`, so a tool's IDE would write the first two to the user's registry (BETA 1034): `NEWFRONTPAGE`
+as soon as the New / Open Project dialog changes section or closes. `PUBLISHER` is written only when
 someone signs in on the Package Publishing panel.
 **The flag does not cover a first run.** The page reads it in `parseCommandLine`, after the first-run
 questions, so while the licence agreement, the error-reporting question and the first-run IDE Options
@@ -1279,47 +1271,46 @@ written (`bugs/no-save-flag-unguarded-saves`). A tool's IDE is not a first run, 
 `GENERAL` and the machine's registry holds both answers. A test or a shot that makes one answers those keys
 `""` from a proxy in front of the hook, in from the document's start, and that proxy blocks every
 `SaveIDESetting` (`test/ide/starting-kit.mjs`).
-A new build can add a key, which is read from the user's registry until it is blanked: BETA 1023 added
-`OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and BETA 1033 `NEWFRONTPAGE` (the
-New / Open Project dialog's section), both blanked since 2026-11-02. After a new BETA, list the keys the page passes
+A new build can add a key, which is read from the user's registry until it is blanked, as
+`OBJECT_BROWSER` (the Object Browser's view, filters, sorts and pane sizes) and `NEWFRONTPAGE` (the
+New / Open Project dialog's section) were. After a new BETA, list the keys the page passes
 to `GetIDESetting` (a search of the install's `ide/*.js` for the call) and compare them with `BLANKED_KEYS`, and list
 the `SaveIDESetting` calls that do not test `g_DontSaveIdeSettings`.
 The recent lists are left alone: `test/ide/recent-projects-copies.test.mjs` needs the IDE's own, and
 `shoot_docs.mjs`'s `PAGE_DEFAULTS` empties them where a picture shows them.
 
-A probe of 50 launches hooked 49. The one miss was a page whose document began before the script was
-added. `attachIde` therefore checks `window.__tbDefaults`, the marker the script sets (it lists the keys
+A page's document can begin before the script is added (a probe of 50 launches hooked 49).
+`attachIde` therefore checks `window.__tbDefaults`, the marker the script sets (it lists the keys
 answered, never their values), and reloads the page once when it is missing: the hook's session still holds
-the script, the reload takes about 40 ms, and the UI and the command-line project come back. The reload
-waits for the hook to be installed (`hook.ready`): the hook connects on its own, and in a `shoot_docs
---jobs 10` run on BETA 1033 the help setup's page was reloaded before it had attached, loaded unhooked
-again, and failed the setup. `ready` also waits for the pages being prepared: a page that existed
-before the auto-attach is attached by `setAutoAttach` itself and prepared from its event, which `ready`
-did not wait for, so in another `--jobs 10` run on BETA 1033 (2026-11-01) a debugging setup's page was
-reloaded before its script was added, and failed the setup the same way. A page that could not be
-prepared is named in the error. That was not the whole cause: the next `--jobs 10` run failed a
-sample setup the same way with every page prepared, for a reason still unknown. So `checkDefaults`
-also adds the script on its own connection to the page before the reload, which is open while the
-page reloads whatever became of the hook's session, and a marker still missing after that reports
-the page's address and state, the last check's error, the check's steps and the hook's (`trace`:
-connected, each page attached and prepared, ready, a closed connection), each with its time. Those
-named the cause in a `--jobs 16` retake on BETA 1033 (2026-11-02, settings-webview2), and likely the
-sample setup's too: `attach` takes the target listed as `main.htm`, which it is while its navigation
-there is still pending, so the check found `about:blank` with no marker, and its reload loaded
-`about:blank` again and cancelled the navigation (the page "about:blank, complete" after the reload,
-every page prepared). So `checkDefaults` first waits, a minute at most, for the page to commit
-`main.htm`, whose document may then have run the hook after all, and fails with "its page never loaded
-main.htm" rather than reload a page that has not. A marker still
-missing after that is a harness error, exit 2, since the run would have the user's settings. The hook's
-connection lives as long as the process, so a `tbbuild --keep` IDE is hooked until `tbbuild` ends.
+the script, the reload takes about 40 ms, and the UI and the command-line project come back. Three
+things keep the reload from loading an unhooked page again, each needed when many IDEs start at
+once (`shoot_docs --jobs 10` and more):
+
+- **The reload waits for the hook to be installed** (`hook.ready`), since the hook connects on its
+  own. `ready` also waits for the pages being prepared: a page that existed before the auto-attach
+  is attached by `setAutoAttach` itself and prepared from its event. A page that could not be
+  prepared is named in the error.
+- **`checkDefaults` adds the script on its own connection to the page before the reload**, which is
+  open while the page reloads whatever became of the hook's session.
+- **`checkDefaults` first waits, a minute at most, for the page to commit `main.htm`.** `attach`
+  takes the target listed as `main.htm`, which it is while its navigation there is still pending;
+  the check would find `about:blank` with no marker, and a reload then loads `about:blank` again and
+  cancels the navigation. The committed document may have run the hook after all; a page that never
+  commits fails with "its page never loaded main.htm" rather than be reloaded.
+
+A marker still missing after that reports the page's address and state, the last check's error, the
+check's steps and the hook's (`trace`: connected, each page attached and prepared, ready, a closed
+connection), each with its time, and is a harness error, exit 2, since the run would have the user's
+settings. The hook's connection lives as long as the process, so a `tbbuild --keep` IDE is hooked
+until `tbbuild` ends.
 
 **The same script fixes defects of the IDE that would mislead every tool** (`IDE_FIXES` in
 `tb-defaults.mjs`, each named by its BUGS-TO-REPORT.md entry's slug and applying that entry's
-`bugs/<slug>/fix.js` in the page rather than to the install). The first is
+`bugs/<slug>/fix.js` in the page rather than to the install, so that it reaches every tool that
+reads the console at an open, which a patched copy of the install would not). One is
 *console-cleared-at-open*: BETA 1042 empties the DEBUG CONSOLE a second time as the first project
-opens, which erased an add-in's loaded line and failed `help`, `help-offline`, `keys-help` and
-`parent` on the plain install (2026-11-12; before that they were judged on a patched copy, which
-every other tool reading the console at an open had no way to use). The console's list is assigned to
+opens, which erases an add-in's loaded line and would fail `help`, `help-offline`, `keys-help` and
+`parent` on the plain install. The console's list is assigned to
 `debugConsoleContent`, a `var` of `main.js` with no initialiser, so the setter the script puts on
 `window` stays and sees the assignment; it sets the list's `useCachedItemHeights` to `false` when the
 build left it unset, which is the fix's one line. **A fix never hides its defect:** it acts only where
@@ -1396,8 +1387,8 @@ compiler, and `tbbuild` ends the IDE as soon as it sees the crash. A compiler st
 `taskkill /T` is walking the tree is not in the tree it walked, so it outlives the kill: a
 `twinBASIC_win32_noDEP.exe --compiler=...` whose parent is gone, with
 `twinBASIC_nativedbg_win32.exe` attached, still holding the install's files open (about one
-crash-fixture run in a dozen). The same kill is in `tbbuild` against the real install, so
-such a process may be holding the real install's files.
+crash-fixture run in a dozen). The same race in `tbbuild` against the real install would
+leave such a process holding the real install's files.
 
 **The fix is a job object**, the Windows primitive for "this process and everything it ever
 starts". [tb-launch.ps1](scripts/lib/tb-launch.ps1) creates one with
@@ -1429,8 +1420,8 @@ the launcher starts does. A kept IDE is therefore unprotected: killed while its 
 restarting, it can still orphan one.
 
 `--show` starts the IDE directly, without a launcher or a job: it is for a person watching,
-and has not been moved onto the launcher because that would mean putting an untested window
-on somebody's screen.
+and is kept off the launcher because that would mean putting an untested window on somebody's
+screen.
 
 ## Building an add-in and loading it
 
@@ -1753,8 +1744,8 @@ projects, and the same folder holds the packages the user has downloaded. `TB_AD
 what keeps a user's add-in from acting outside the IDE there.
 
 **Ctrl+C ends the lanes and still puts everything back.** The runner handles `SIGINT`: it
-starts no more lanes, ends the running ones, waits, and tidies (with both lanes' IDEs open it
-ended both and put everything back within two seconds). Testing it needs care: Windows passes
+starts no more lanes, ends the running ones, waits, and tidies (with two lanes' IDEs open it
+ends both and puts everything back within two seconds). Testing it needs care: Windows passes
 a process's "ignore Ctrl+C" setting on to the processes it starts, and every process started
 from the session that ran the test has it, so a `CTRL_C_EVENT` sent with
 `GenerateConsoleCtrlEvent` into the runner's own hidden console reaches nothing. Start the
@@ -1889,8 +1880,7 @@ target) and reload (47 s: two builds and two restarts).
 
 `scripts/ide_js.mjs` and its library `scripts/ide-js/lib.mjs` (the rules are in
 [WIP.md](WIP.md#driving-the-twinbasic-compiler), *Fixing the IDE itself*; the usage is on
-[Tools-Defects](docs/Documentation/Tools-Defects.md#ide_jsmjs)). It came out of a study on
-2026-10-18, whose prototype it replaces.
+[Tools-Defects](docs/Documentation/Tools-Defects.md#ide_jsmjs)).
 
 **What the file is.** BETA 1010's `ide/main.js` is one line of 1,263,324 bytes: 314,309
 tokens, no comment, no source map. Its top level is 979 function declarations, 46 classes
@@ -1936,13 +1926,11 @@ and the build's into an edit, so a fix written on one BETA and patched into a la
 unit changed takes the later build's change back out. Before patching a build other than the
 one a fix was written on, run `shape` on it: its diff is exactly what the patch changes.
 
-**The IDE does not check `main.js`.** A copy of BETA 1010 with the two edits of
-`export-verbose-done-escaped`'s fix (that entry and `debug-print-escaped-twice` were retired
-once BETA 1034 fixed both; the fix and the reproducers are in git history) ran the export lane: the defect's test reported that it
-no longer reproduced, its two controls and the lane's six other tests passed, and
-`bug_repro.mjs verify debug-print-escaped-twice` said NO LONGER REPRODUCES (it reproduces on an
-unpatched, byte-identical copy). That was the study's prototype; the tool's patch of the
-same fix is byte for byte the same.
+**The IDE does not check `main.js`.** A copy of BETA 1010 patched with the two edits of
+`export-verbose-done-escaped`'s fix (in git history) ran the export lane: the defect's test
+reported that it no longer reproduced, its two controls and the lane's other tests passed, and
+`bug_repro.mjs verify debug-print-escaped-twice` said NO LONGER REPRODUCES, where an unpatched,
+byte-identical copy reproduces it. `patch` writes that fix byte for byte the same.
 
 **The packages.** eslint-scope does the scope analysis, which decides which identifiers are
 one variable: hoisting, block and class scopes and `catch` all have to be right for a rename

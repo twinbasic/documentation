@@ -1,20 +1,18 @@
 # The IDE section — finishing it
 
-The IDE section (`docs/IDE/`, `/tB/IDE`) has been rewritten so that every page is fit for
-the book, and `docs/_book.yml` holds no IDE entry under `left_out:`: keep it so. This file
-covers the structure, the conventions, where each fact comes from, and how a chapter is
-written. Owner decisions:
+Every page of the IDE section (`docs/IDE/`, `/tB/IDE`) is fit for the book, and
+`docs/_book.yml` holds no IDE entry under `left_out:`: keep it so. This file covers the
+structure, the conventions, where each fact comes from, and how a chapter is written. Owner
+decisions:
 
 - task chapters plus a reference part;
-- permalinks flattened, with redirects;
-- the how-to material in `Features/Compiler-IDE` moved here;
-- `docs/IDE/_Images/*.af` deleted.
+- flat permalinks, with redirects for a page that moves;
+- the how-to material of `Features/Compiler-IDE` lives here;
+- no `.af` files under `docs/IDE/`.
 
-The section is not bound to its current structure. The existing pages are raw material.
-
-Where the work stands, what is next and what is open is in the kit, `TODO.md` in
-`.claude/scratch/ide-docs/` (gitignored), under *RESUME HERE*: read it before anything
-else. The kit also holds each chapter's fact sheet and its briefs.
+What is open is in the kit, `TODO.md` in `.claude/scratch/ide-docs/` (gitignored), under
+*RESUME HERE*: read it before anything else. The kit also holds each chapter's fact sheet and
+its briefs.
 
 ## What "book-ready" means for a page
 
@@ -31,19 +29,19 @@ else. The kit also holds each chapter's fact sheet and its briefs.
 **Part A, Working in the IDE.** Each chapter is one page, or a short landing page with a few
 children. Second person ("you") is allowed here, as in tutorials.
 
-| # | Chapter | Permalink | Takes in |
+| # | Chapter | Permalink | Covers |
 |---|---|---|---|
 | 1 | A tour of the IDE (landing page) | `/tB/IDE` | `index.md` |
-| 2 | Starting a project | `/tB/IDE/Starting/` + children (**written**) | New Project, Splash Screen, FAQ's first-launch and VBP-import parts |
+| 2 | Starting a project | `/tB/IDE/Starting/` + children | New Project, Splash Screen, FAQ's first-launch and VBP-import parts |
 | 3 | Projects and files | `/tB/IDE/Projects` | Project Explorer (file and object views, Add, context menu; no resource editors: images preview, the rest open as text), references and packages (links to Features/Packages), Export Project (from Menu/File) |
 | 3a | Project Settings (reference) | `/tB/IDE/Project-Settings` | `Project Settings.md`, kept whole; **its anchors stay**, as 19 links use them |
 | 4 | Writing code | `/tB/IDE/Code` + children | Editor, Find/Replace, Outline, Open Editors, History, Diagnostics, `Features/Compiler-IDE/CodeLens` |
 | 5 | Designing forms and reports | `/tB/IDE/Forms`, `/tB/IDE/Reports` | tbForm, Toolbox, Properties, the Format menu's operations, tbReport |
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
-| 8 | Customising the IDE | `/tB/IDE/Customising/` + children (**written**) | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
+| 8 | Customising the IDE | `/tB/IDE/Customising/` + children | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
 | 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (no community add-in is listed yet) |
-| 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children (**written**) | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
+| 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
 **Part B, Reference.** Written impersonally. One page per menu, plus the Toolbar, the Status Bar
 and the keyboard shortcuts, under `/tB/IDE/Reference/…`. Each entry gives the item, its
@@ -57,9 +55,9 @@ shortcut, one or two sentences, and a link to the chapter that explains it.
 - Webpage, the one pane that is not in a chapter, has a page of its own here.
 
 **Moving pages.** When a page moves, its old permalink goes into `redirect_from:`, and every
-inbound link is changed to the new canonical URL. The 61 inbound links are in
-`Features/`, `Reference/`, `Tutorials/`, `LLVM/`, `Miscellaneous/FAQs.md`, `Documentation/`
-and `docs/index.md`. An anchor another page links to keeps its heading text.
+inbound link is changed to the new canonical URL. Inbound links come from `Features/`,
+`Reference/`, `Tutorials/`, `LLVM/`, `Miscellaneous/FAQs.md`, `Documentation/` and
+`docs/index.md`. An anchor another page links to keeps its heading text.
 `redirect_from` cannot rescue an anchor, so check these:
 
 - `Project-Settings#…`;
@@ -68,9 +66,12 @@ and `docs/index.md`. An anchor another page links to keeps its heading text.
 Where a merged page's pictures live does not change: `shoot_docs.mjs` writes them by path
 (`out`), so leave the files in `docs/IDE/Images/` and `Menu/Images/` and change only the links.
 
+A page that a chapter will absorb keeps its old URL until that chapter is written; the chapter
+then takes the old URL into its `redirect_from:`, so nothing moves twice.
+
 **Features/Compiler-IDE** keeps a short "what's new compared to VB6" page that links into
-the chapters. The how-to sections of `IDE-Features.md`, `Debugging.md` and `CodeLens.md` move
-here, and those pages get `redirect_from` only if they are removed outright.
+the chapters; the how-to material is in the chapters. A page there gets `redirect_from` only if
+it is removed outright.
 
 **A landing page with children has a trailing slash** (`/tB/IDE/Customising/`, as
 `/tB/IDE/AddIns/`). Without the slash, the link check resolves `Customising#anchor` to the
@@ -80,11 +81,11 @@ child folder.
 written in English only. The subsets cover Latin and Greek; see `scripts/build_fonts.py`.
 
 **Nav order.** The chapters take `nav_order` 1--10 in the order of the table above.
-`IDE Reference` has 99. The nav sorts numbered pages before unnumbered ones, so until a pane
-page is absorbed it sorts after the Reference.
+`IDE Reference` has 99. The nav sorts numbered pages before unnumbered ones, so a page with no
+`nav_order` sorts after the Reference.
 
-**The book.** `_book.yml`'s IDE part becomes Part A's chapters followed by Part B. A page leaves
-`left_out:` when it is finished, not before.
+**The book.** `_book.yml`'s IDE part is Part A's chapters followed by Part B. A new IDE page goes
+into it when it is finished, not before.
 
 ## Conventions
 
@@ -101,8 +102,7 @@ for contributors.
 - **Keys**: `<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>`, with key names in mixed case and no
   spaces around the `+`. Every key is written by name: `<kbd>Enter</kbd>`, `<kbd>F5</kbd>`,
   `<kbd>Break</kbd>`, and arrows as `<kbd>Up</kbd>`, `<kbd>Down</kbd>`, `<kbd>Left</kbd>` and
-  `<kbd>Right</kbd>`. Glyphs are avoided, because the font subsets need not hold them. The 59 existing `<kbd>CTRL</kbd>`
-  are converted in one mechanical pass.
+  `<kbd>Right</kbd>`. Glyphs are avoided, because the font subsets need not hold them.
 - **Never re-list a picture's labels** (owner). The screenshots are SVGs whose text is
   accessible, so a bare list of a menu's or dialog's items (label and keys, nothing else) only
   repeats the picture. A reference entry says what the item does. An item with nothing to say
@@ -159,65 +159,3 @@ for contributors.
 4. **Writing.** A Sonnet agent writes the pages from the fact sheet only, nothing from memory.
 5. **Review.** Read the diff against the fact sheet, then run `build.bat && check.bat`. Then move
    the pages into the book part, run `book.bat`, and check the pages there.
-
-**Order**, by what readers need most:
-
-1. Customising (IDE Options)
-2. Writing code
-3. Running and debugging
-4. Forms and reports
-5. Projects and files
-6. Building
-7. Starting a project
-8. Troubleshooting
-9. Reference
-10. The tour
-
-The restructure comes first, in its own commit, before any chapter is written. It moves only
-the pages whose place in the new structure is settled:
-
-- Project Settings;
-- the menus, the Toolbar and the Status Bar, into Part B.
-
-It also sets up the nav and the book parts.
-
-A page that a chapter will absorb keeps its old URL until that chapter is written. The chapter
-then takes the old URL into its `redirect_from:`. That way nothing moves twice.
-
-## What the IDE has that no page covers yet
-
-From the survey of BETA 1005. Each chapter's fact sheet confirms the items in its own chapter.
-
-- **IDE Options:** all of them except Tab Size and the LLVM options. Examples are Intellisense
-  mode, the Handles/Implements syntax, Show Hidden Members, advanced hover, sticky scrolling,
-  Restore Editors State, the fonts, and the real OS title bar.
-- **Code editor:**
-  - the component, scope and procedure combo boxes, which also insert event handlers;
-  - Rename Symbol, Go To Definition and Last Position;
-  - bookmarks;
-  - the right-click menu and the tab context menu;
-  - Paste As Comment;
-  - Monaco's command palette and multi-cursor commands;
-  - automatic backups.
-- **Finding:** Find In Project, the Quick Find widget, Go To Line/Column.
-- **Form designer:** the menu editor, control arrays, locking, tab-index overlay, grid and zoom,
-  "Launch the form in isolation", Select Parent, the in-place toolbar, the context menu, and the
-  Toolbox's search, names toggle and "more components".
-- **Properties:** search, the system-colour picker, ActiveX property pages.
-- **Report designer:** everything beyond the list of bands and tools.
-- **Running:**
-  - the status bar's **PROCESS** boxes for running programs (Terminate, Bring To Front);
-  - **Run Or Preview** (<kbd>F6</kbd>);
-  - setting a breakpoint in the gutter, and whether breakpoints persist;
-  - Step Out (on the toolbar, not on the Debug menu).
-- **Diagnostics:** the four filter toggles and the context menu.
-- **Debug Console:** the copy commands in its context menu.
-- **Project Explorer:** the file context menu (Copy Path, View As JSON, View As Markdown Preview,
-  Export…), the object view, search, and the empty headings for each Add item.
-- **Packages:** the Available Packages tab, Import from file, the link and overwrite prompts, and
-  the "package needed" prompts for WinNativeForms and CustomControls.
-- **Status bar:** the memory figure, Ln/Col, LLVM progress and the Personal edition badge. The
-  error, warning, hint and info counters are in the DIAGNOSTICS panel's header, not here.
-- **Themes:** custom `.theme` files in a `themes` folder.
-- **Webpage:** mobile mode, and back, forward and reload.
-- **Troubleshooting:** the DevTools command (`tbIdeDevTools_Show`, which has no menu item).

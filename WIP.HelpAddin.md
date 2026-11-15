@@ -4,16 +4,16 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the twinBASIC I
 that shows the documentation for the symbol under the cursor, and the harness that tests IDE
 add-ins by machine, which the add-in is developed against.
 
-**What exists.** The add-in is in [add-in/](add-in/) (Stage 4, below): F1 to a page, the
+**The add-in** is in [add-in/](add-in/) (Stage 4, below): F1 to a page, the
 help pane, the compiler's hover to tell which `Add`, a name with no page shown by its
 declaration and `[Description]`, offline help served from an archive in the DLL, hover help,
 a detached window, a settings panel, and only the packages the project references.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
-- All of Stage 2's questions, P1 to P21, are answered. Most are held by probe lanes that
-  fail when a later IDE build behaves differently.
-- Every build publishes `tB/symbols.json`, 5,536 names at 4,086 URLs, under a drift guard that
-  fails the build when one of its URLs goes.
+- Stage 2's questions are held, most of them, by probe lanes that fail when a later IDE
+  build behaves differently.
+- Every build publishes `tB/symbols.json` under a drift guard that fails the build when one
+  of its URLs goes.
 - The site reads a `theme` parameter, and the help pane passes the IDE's theme with it, and
   a `pane` parameter, with which a page shows without the site's navigation and header
   (Stage 4, increment 2).
@@ -261,7 +261,7 @@ Read in `toolWindowElementAddChild` and `toolWindowElementSetProperty`, and meas
   through `innerHTML` ran its handler at once, with nothing clicked, and an inline `onclick`
   ran when clicked; both saw `typeof openEditors === "object"`, a global of the IDE's page.
   That is the one way an add-in can call the page's internals; see [Open
-  decisions](#open-decisions) for where it may be used. **Sample 15 already relies on it:**
+  decisions](#open-decisions) for where it may be used. **Sample 15 relies on it:**
   each search result it gives its list view's `addItem` is HTML with an inline
   `onclick='raiseEvent("onClickMatch", event, true, path, line, column)'`, and a click on
   one runs it. The event travels only from the element that carries the handler: Sample
@@ -602,8 +602,8 @@ has the harness side of each item.
    under the runner leaves its registry entries to the runner, which sweeps only the lanes'
    folders.
 
-Stage 1 holds when both scenarios pass under `addin-test.bat` and the whole registry,
-`IDESettings` included through hashes, is identical around the run.
+Two scenarios hold Stage 1: both pass under `addin-test.bat`, with the whole registry,
+`IDESettings` included through hashes, identical around the run.
 
 - **Sample 10:** toolbar button, then its tool window, then a message box (the three-button
   box answered `button2`, the follow-up answered `ok`, then a notification and a DEBUG
@@ -615,7 +615,7 @@ Stage 1 holds when both scenarios pass under `addin-test.bat` and the whole regi
 
 Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP and the file
 system. Record every answer in this file with the build number it was measured on. A new
-question gets the next number; all of P1 to P21 are answered.
+question gets the next number, P22.
 
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
@@ -654,27 +654,27 @@ The table gives each answer in brief; the sections above have the detail.
 
 | # | Question | What it decides |
 |---|---|---|
-| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? **Answered, BETA 1007: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
-| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 1007: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well. | F1 or another key --- F1 |
-| P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? **Answered, BETA 1007: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too (checked outside the lane, on BETA 1005). Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
-| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Answered, BETA 1007: yes, and yes.** Inline handlers run as the IDE page's own script, with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
-| P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **Answered, BETA 1007:** hover gives the declaration, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
-| P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? Needs a DLL placed there, which the user's own IDE would load too --- **ask before running it against the real `%APPDATA%`.** **Answered, BETA 1007: yes**, from `addins\win32` there and not from `addins` itself. The compiler loads from the folder the page sends it. The lane points `APPDATA` at a folder of its own, so no DLL goes in the user's. | harness isolation --- every lane IDE gets an `APPDATA` of its own |
-| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Answered, BETA 1007: yes, and yes.** The target a project opens in picks the compiler, and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
-| P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 1007: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
-| P9 | Does a compiler restart reload add-ins from disk? **Answered, BETA 1007: yes.** The restart removes every add-in's buttons and shortcuts, leaves its windows showing `(currently unavailable)`, kills the old compiler so that no `Class_Terminate` runs, and starts a compiler that loads whatever file is in the folders then. A window comes back by its id. | a rebuild loop without restarting the IDE --- it works: rename aside, copy in, restart |
-| P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 1007: yes**, through the launcher, the IDE and the compiler the IDE starts, and again in a compiler a restart starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both return `1`; left out, `Environ$` is empty and the Win32 call says unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrives with the lane's port in it. | the side-effect switch |
-| P11 | Does the IDE write into its own install folder during a session? **Answered: no.** A compile, a compiler crash, exports, a `tbbuild` and `tbrun` runs leave every file of the install byte-identical, mtimes included; `%APPDATA%` was not re-checked. | hardlinks or copies --- copies, for safety, at 380 ms |
-| P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 1007: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
-| P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 1007: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. A frame with a relative `src` shows the file on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
-| P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 1007: what `tbCreateCompilerAddin` does.** The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
-| P15 | Does the compiler say anything about a name's `[Description]`, or a COM type library's help string? **Answered, BETA 1007: hover gives it**, after the line naming where the name is declared, for a procedure, a member, a constant, a module variable, an enumeration, a `Type`, a class and a module, and a type library's member (`Scripting.IDictionary.Add`: "Add a new key and item to the dictionary."). Classes and modules, the project's and a type library's, are `in library <name>`. A procedure with none gets the IDE's tip, `*no further info available. Tip: use [Description("")] ...*`. On a procedure's name where it is declared, hover gives a block of code-generation details (`TB-DEBUG CODEGEN SIZE: [NOT-READY]`) instead. Signature help gives the same text. A member of an enumeration has none: a `[Description(...)]` line inside an `Enum` is not an attribute but a member of its own, named by a bracketed identifier, as VB6 allows (`Debug.Print Shade.[Description("The light one.")]` prints its value), so hover lists it as a member of the enumeration (twinbasic/twinbasic#2465, closed as not a bug). | Stage 4, increment 4: a name with no page shows its declaration and description from the hover; no parser of the project's source is needed |
-| P16 | What does hover help through the public API cost, and how long does a widget live? **Answered, BETA 1007:** `GetSelectionInfo` takes 0.5 ms a call, reading `Text` of a 152-character file 0.2 ms, `AddMonacoWidget` 5.2 ms and `Remove` 2.3 ms (with another lane running); a 100 ms `AddinTimer` ticks every 109 ms. A widget with a column is drawn above its line (below when there is no room), stays when the cursor moves, and is removed by the IDE when another file is shown; `Remove` on it after that raises no error. An add-in has no cursor or mouse event (only `OnProjectLoaded`, `OnChangedActiveEditor`, `OnChangedTheme`, a tool window's `OnClose` and a button's `OnClick`), so it can only poll the cursor, and cannot see the mouse | Stage 4, increment 6: polling every 250 ms costs nothing worth counting |
-| P17 | Can the page's Monaco take a second hover provider for `twinbasic`, as the add-in would register it through the page? **Answered, BETA 1007: yes.** Its text is shown in the IDE's own hover, above the compiler's, from a synchronous answer and from a promise answered 500 ms later, and goes once the provider is disposed. Registered for `"*"`, which matches less closely than the IDE's `"twinbasic"`, its text is shown below the compiler's. A link in it is drawn as `<a data-href="<url>" href="">`, and a click listener on the window in the capture phase receives the click, and with `preventDefault` and `stopPropagation` nothing is opened. The IDE's hover shows after 1,000 ms (`hover:{delay:1e3}`) and is off when the user turns off *showExtraInformationWhenHovering* | Stage 4, increment 6: the mouse route, the owner's second exception to page internals |
-| P18 | What keeps a hover shown while the mouse slides down it past the code editor's bottom? **Answered, BETA 1007: the IDE.** It draws `.monaco-hover` at `z-index: 1000 !important`, above its dock resizer along the editor's edge (`.dockElementResizer`, `z-index: 1000`) and its drop targets, so they never take the mouse from the hover (Monaco's `_onEditorMouseLeave` would hide it). Monaco alone keeps a hover the mouse is over: its DOM stays inside the editor's, and the hover is sticky. CDP's mouse reaches the 6 px resizer only in steps small enough to land on it, so the test slides the mouse a pixel at a time | Stage 4, increment 6: nothing in the add-in; the `help` lanes check the IDE's behaviour |
-| P19 | Can an add-in show a window of its own, a Form holding the WebView2 package's control? **Answered, BETA 1007: yes** ([detach.test.mjs](test/addin/detach.test.mjs), `probes/detach`). A minimal hand-written `.tbform` builds, given `_className` and `_clsid` on the form and the control. `Show vbModeless` gives a visible top-level window, owned by the compiler's process (`twinBASIC_win32_noDEP.exe`, a child of `twinBASIC.exe`), with no message loop of the add-in's own; the control is ready about 250 ms after the first Show, 60--80 ms for a later form. A page loaded with `NavigateToString` posts to the add-in and receives what it posts, and an iframe in it loads an `http://localhost` page. Hide and Show keep the page; Unload and a new form work; the IDE ending leaves no `msedgewebview2.exe` of the window's behind. **The harness gives the IDE `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, the compiler inherits them, and they override the control's own options: with them left in place the control fails, error `8007139F`** (which of the two, not isolated). With no user data folder set, the control uses `bin\twinBASIC_win32_noDEP.exe.WebView2`, which the IDE has made already | Stage 4, increment 7: the detached window, and the variables it removes under the test switch |
-| P20 | Can an add-in learn, through the public API, which packages its project references? **Answered, BETA 1007: yes** ([references.test.mjs](test/addin/references.test.mjs), `probes/references` and its three hosts `probes/references-*`). `<Project>/Packages`, reached with `For Each` from `Host.FileSystem.RootFolder` (`twinbasic:/`), holds a folder for each package the project references, newest first, then VBRUN and VBA, which are always there; a package's own references are folders inside its own `Packages`. A folder is named for the package's project, which is the key the symbol index's `packages` map uses (`VB`, not the reference's symbol `WindowsControlsPackage`; `Assert`, not `TwinBasicAssertions`); `VBComDlg`, which only WinNativeCommonCtls references, is the one name the map lacks. `IsPackagesFolder` is true for every `Packages` folder and false for a package's. A package is one folder shared by every list it is in, and its `Path` and `Parent` name the first one it was found in, so only `Name` identifies it. The list is complete when `Host_OnProjectLoaded` runs. Applying a reference added or removed on the References page restarts the compiler with no question asked, and the new add-in instance's list shows the change. A type library is a file in `References`, not a package. | Stage 4, increment 9: the packages the add-in offers |
-| P21 | What does reading `Parent` of the file system's root do? **Answered, BETA 1007: it crashes the compiler; BETA 1042: it raises error &H80004005 (E_FAIL, *Automation error*) and leaves the target Nothing** ([parent.test.mjs](test/addin/parent.test.mjs), `probes/parent`, one IDE per case, the case passed in `TB_P21_CASE`). The read itself fails, before the value is used: into an `Object` or a `Folder`, in `Is Nothing`, in `TypeName`. Up to BETA 1034 each compiler the IDE restarts loads the add-in and crashes again, under `On Error Resume Next` too; on 1042 the error, unhandled, ends the event handler without a message, as an unhandled `Err.Raise` does. The project folder's `Parent` reads, and is the root (`twinbasic:/`). On 1042 the lane is judged on a copy patched for the console defect (`bugs/console-cleared-at-open`). | no add-in here reads the root's `Parent` (P20's tells the root by its path); the NOTE on FileSystemItem's **Parent**; a BUGS entry |
+| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? **BETA 1007: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
+| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **BETA 1007: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well. | F1 or another key --- F1 |
+| P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? **BETA 1007: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too (checked outside the lane, on BETA 1005). Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
+| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **BETA 1007: yes, and yes.** Inline handlers run as the IDE page's own script, with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
+| P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **BETA 1007:** hover gives the declaration, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
+| P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? Needs a DLL placed there, which the user's own IDE would load too --- **ask before running it against the real `%APPDATA%`.** **BETA 1007: yes**, from `addins\win32` there and not from `addins` itself. The compiler loads from the folder the page sends it. The lane points `APPDATA` at a folder of its own, so no DLL goes in the user's. | harness isolation --- every lane IDE gets an `APPDATA` of its own |
+| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **BETA 1007: yes, and yes.** The target a project opens in picks the compiler, and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
+| P8 | Is a loaded add-in DLL locked against being overwritten? **BETA 1007: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
+| P9 | Does a compiler restart reload add-ins from disk? **BETA 1007: yes.** The restart removes every add-in's buttons and shortcuts, leaves its windows showing `(currently unavailable)`, kills the old compiler so that no `Class_Terminate` runs, and starts a compiler that loads whatever file is in the folders then. A window comes back by its id. | a rebuild loop without restarting the IDE --- it works: rename aside, copy in, restart |
+| P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **BETA 1007: yes**, through the launcher, the IDE and the compiler the IDE starts, and again in a compiler a restart starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both return `1`; left out, `Environ$` is empty and the Win32 call says unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrives with the lane's port in it. | the side-effect switch |
+| P11 | Does the IDE write into its own install folder during a session? **No.** A compile, a compiler crash, exports, a `tbbuild` and `tbrun` runs leave every file of the install byte-identical, mtimes included; `%APPDATA%` was not re-checked. | hardlinks or copies --- copies, for safety, at 380 ms |
+| P12 | Does `raiseEvent` from plain tool-window HTML throw? **BETA 1007: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
+| P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **BETA 1007: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. A frame with a relative `src` shows the file on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
+| P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **BETA 1007: what `tbCreateCompilerAddin` does.** The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
+| P15 | Does the compiler say anything about a name's `[Description]`, or a COM type library's help string? **BETA 1007: hover gives it**, after the line naming where the name is declared, for a procedure, a member, a constant, a module variable, an enumeration, a `Type`, a class and a module, and a type library's member (`Scripting.IDictionary.Add`: "Add a new key and item to the dictionary."). Classes and modules, the project's and a type library's, are `in library <name>`. A procedure with none gets the IDE's tip, `*no further info available. Tip: use [Description("")] ...*`. On a procedure's name where it is declared, hover gives a block of code-generation details (`TB-DEBUG CODEGEN SIZE: [NOT-READY]`) instead. Signature help gives the same text. A member of an enumeration has none: a `[Description(...)]` line inside an `Enum` is not an attribute but a member of its own, named by a bracketed identifier, as VB6 allows (`Debug.Print Shade.[Description("The light one.")]` prints its value), so hover lists it as a member of the enumeration (twinbasic/twinbasic#2465, closed as not a bug). | Stage 4, increment 4: a name with no page shows its declaration and description from the hover; no parser of the project's source is needed |
+| P16 | What does hover help through the public API cost, and how long does a widget live? **BETA 1007:** `GetSelectionInfo` takes 0.5 ms a call, reading `Text` of a 152-character file 0.2 ms, `AddMonacoWidget` 5.2 ms and `Remove` 2.3 ms (with another lane running); a 100 ms `AddinTimer` ticks every 109 ms. A widget with a column is drawn above its line (below when there is no room), stays when the cursor moves, and is removed by the IDE when another file is shown; `Remove` on it after that raises no error. An add-in has no cursor or mouse event (only `OnProjectLoaded`, `OnChangedActiveEditor`, `OnChangedTheme`, a tool window's `OnClose` and a button's `OnClick`), so it can only poll the cursor, and cannot see the mouse | Stage 4, increment 6: polling every 250 ms costs nothing worth counting |
+| P17 | Can the page's Monaco take a second hover provider for `twinbasic`, as the add-in would register it through the page? **BETA 1007: yes.** Its text is shown in the IDE's own hover, above the compiler's, from a synchronous answer and from a promise answered 500 ms later, and goes once the provider is disposed. Registered for `"*"`, which matches less closely than the IDE's `"twinbasic"`, its text is shown below the compiler's. A link in it is drawn as `<a data-href="<url>" href="">`, and a click listener on the window in the capture phase receives the click, and with `preventDefault` and `stopPropagation` nothing is opened. The IDE's hover shows after 1,000 ms (`hover:{delay:1e3}`) and is off when the user turns off *showExtraInformationWhenHovering* | Stage 4, increment 6: the mouse route, the owner's second exception to page internals |
+| P18 | What keeps a hover shown while the mouse slides down it past the code editor's bottom? **BETA 1007: the IDE.** It draws `.monaco-hover` at `z-index: 1000 !important`, above its dock resizer along the editor's edge (`.dockElementResizer`, `z-index: 1000`) and its drop targets, so they never take the mouse from the hover (Monaco's `_onEditorMouseLeave` would hide it). Monaco alone keeps a hover the mouse is over: its DOM stays inside the editor's, and the hover is sticky. CDP's mouse reaches the 6 px resizer only in steps small enough to land on it, so the test slides the mouse a pixel at a time | Stage 4, increment 6: nothing in the add-in; the `help` lanes check the IDE's behaviour |
+| P19 | Can an add-in show a window of its own, a Form holding the WebView2 package's control? **BETA 1007: yes** ([detach.test.mjs](test/addin/detach.test.mjs), `probes/detach`). A minimal hand-written `.tbform` builds, given `_className` and `_clsid` on the form and the control. `Show vbModeless` gives a visible top-level window, owned by the compiler's process (`twinBASIC_win32_noDEP.exe`, a child of `twinBASIC.exe`), with no message loop of the add-in's own; the control is ready about 250 ms after the first Show, 60--80 ms for a later form. A page loaded with `NavigateToString` posts to the add-in and receives what it posts, and an iframe in it loads an `http://localhost` page. Hide and Show keep the page; Unload and a new form work; the IDE ending leaves no `msedgewebview2.exe` of the window's behind. **The harness gives the IDE `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, the compiler inherits them, and they override the control's own options: with them left in place the control fails, error `8007139F`** (which of the two, not isolated). With no user data folder set, the control uses `bin\twinBASIC_win32_noDEP.exe.WebView2`, which the IDE has made already | Stage 4, increment 7: the detached window, and the variables it removes under the test switch |
+| P20 | Can an add-in learn, through the public API, which packages its project references? **BETA 1007: yes** ([references.test.mjs](test/addin/references.test.mjs), `probes/references` and its three hosts `probes/references-*`). `<Project>/Packages`, reached with `For Each` from `Host.FileSystem.RootFolder` (`twinbasic:/`), holds a folder for each package the project references, newest first, then VBRUN and VBA, which are always there; a package's own references are folders inside its own `Packages`. A folder is named for the package's project, which is the key the symbol index's `packages` map uses (`VB`, not the reference's symbol `WindowsControlsPackage`; `Assert`, not `TwinBasicAssertions`); `VBComDlg`, which only WinNativeCommonCtls references, is the one name the map lacks. `IsPackagesFolder` is true for every `Packages` folder and false for a package's. A package is one folder shared by every list it is in, and its `Path` and `Parent` name the first one it was found in, so only `Name` identifies it. The list is complete when `Host_OnProjectLoaded` runs. Applying a reference added or removed on the References page restarts the compiler with no question asked, and the new add-in instance's list shows the change. A type library is a file in `References`, not a package. | Stage 4, increment 9: the packages the add-in offers |
+| P21 | What does reading `Parent` of the file system's root do? **BETA 1042: it raises error &H80004005 (E_FAIL, *Automation error*) and leaves the target Nothing; BETA 1007 to 1034 crash the compiler** ([parent.test.mjs](test/addin/parent.test.mjs), `probes/parent`, one IDE per case, the case passed in `TB_P21_CASE`). The read itself fails, before the value is used: into an `Object` or a `Folder`, in `Is Nothing`, in `TypeName`. On 1042 the error, unhandled, ends the event handler without a message, as an unhandled `Err.Raise` does; on 1007 to 1034 each compiler the IDE restarts loads the add-in and crashes again, under `On Error Resume Next` too. The project folder's `Parent` reads, and is the root (`twinbasic:/`). On 1042 the lane is judged on a copy patched for the console defect (`bugs/console-cleared-at-open`). | no add-in here reads the root's `Parent` (P20's tells the root by its path); the NOTE on FileSystemItem's **Parent**; a BUGS entry |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -684,7 +684,7 @@ under `/tB/` because the file is part of the same contract as the URLs in it, an
 fixed from here on. Permanent Links documents the format for any reader;
 [Building](docs/Documentation/Building.md#the-symbol-index) and
 [WIP.Build.md](WIP.Build.md#the-symbol-index-and-the-drift-guard-on-its-urls) the build side.
-It has 5,536 entries at 4,086 distinct URLs; 782 KB, 52 KB gzipped, under 100 ms of the build.
+It is about 780 KB, 52 KB gzipped, and under 100 ms of the build.
 The file is emitted the way `assets/js/search-data.json` is, so an installed add-in can fetch
 a newer index; the add-in also embeds a copy (Stage 0), for when the site cannot be reached.
 
@@ -735,7 +735,7 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
   `node indexer/twin-index.mjs derive` ([indexer/lib/package-api.mjs](indexer/lib/package-api.mjs))
   writes from the packages of an install, read and parsed as the indexer's `sync` reads them,
   through the declaration scanner [scripts/lib/twin-api.mjs](scripts/lib/twin-api.mjs). It is committed, like
-  `inter-metrics.json`, because CI has no install. 1,379 types in 16 exports, 255 KB. It
+  `inter-metrics.json`, because CI has no install. It
   supplies each symbol's package, container and kind, lists the public symbols that have no
   page (documentation coverage as a side effect), and supplies each class's default
   interface, which is what the compiler names a class's members by (P5). Four facts about
@@ -757,7 +757,7 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
   - **`[Hidden]` is not "absent".** `Module [_HiddenModule]` carries it, and its members are
     globals.
   - **The default-interface map comes from CoClasses:** `interfaces` maps `VBA._Collection`
-    to `VBA.Collection` and `tbIDE.IToolWindowsV1` to `tbIDE.ToolWindows`, 37 in all, which
+    to `VBA.Collection` and `tbIDE.IToolWindowsV1` to `tbIDE.ToolWindows`, which
     is P5's hover answer turned into a lookup. A lookup that takes the compiler's word has
     to map `_Collection` to `Collection`.
 - **Regenerate** `package-api.json` with `node indexer/twin-index.mjs derive` when the
@@ -771,10 +771,10 @@ follows the rules in [Permanent Links](docs/Documentation/Permanent-Links.md).
 `scripts/check_symbol_index.mjs`, a `test.bat` gate, asserts each derivation rule, each
 scanner trap and the guard's refusals on fixtures. Every URL resolves by construction, and
 `tB/symbols.json` is in the online tree's index, so `--check-audit-index` sees it written.
-The build's summary gives the count of public symbols no page documents, 602 today, and
-`--symbol-gaps <file>` lists them: 173 VB and 294 WinNativeCommonCtls members inherited and
-named only in prose, 48 WinNativeCommonCtls types --- enumerations and structures declared in
-its controls' base classes and its public `...Consts` modules --- 39 members of VBA's
+The build's summary gives the count of public symbols no page documents, and
+`--symbol-gaps <file>` lists them: mostly VB and WinNativeCommonCtls members inherited and
+named only in prose, WinNativeCommonCtls types --- enumerations and structures declared in
+its controls' base classes and its public `...Consts` modules --- members of VBA's
 `_HiddenModule` and `Interaction`, and a tail of a few each.
 
 **Names that belong to more than one page**, to test lookup against (the generated index
@@ -793,23 +793,23 @@ has the complete list):
 - `Item` --- `Collection.Item`, and `Item` on six tbIDE classes (`Editors`, `Folder`,
   `HtmlElements`, `HtmlElementProperties`, `HtmlEventProperties`, `Toolbars`).
 
-**Not done, and why:**
+**Data types** (owner, 2026-10-18) are the one exception to the `/tB/` rule:
+each type the summary page's `symbols:` names is a language entry of kind `type` at its
+`##` section of `/Reference/Data-Types` (`#long`), which links to the type's own page,
+`/tB/Core/Long`. With `package` null, `Find` gives a bare `String` the type before the
+VBA function, and a hover that names `VBA.Strings` (F1 on `String(5, "x")`) still picks
+the function; the help lane has a case for each.
 
-- **Keywords with no page of their own** --- `ElseIf`, `Until`, `Step`, `To`, `In`,
-  `ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
-  them. Adding one is a `symbols:` line on the page that explains it, which is a content
-  decision per keyword. Deferred.
-- **Data types are done** (owner, 2026-10-18), as the one exception to the `/tB/` rule:
-  each type the summary page's `symbols:` names is a language entry of kind `type` at its
-  `##` section of `/Reference/Data-Types` (`#long`), which links to the type's own page,
-  `/tB/Core/Long`. With `package` null, `Find` gives a bare `String` the type before the
-  VBA function, and a hover that names `VBA.Strings` (F1 on `String(5, "x")`) still picks
-  the function; the help lane has a case for each.
-- **The offline tree has no copy of the index.** The add-in embeds its own, and the help
-  archive (increment 5) is the offline tree as built, less `HELP_ARCHIVE_SKIP` in
-  `builder/help-archive-step.mjs` (the Documentation Development section, Videos,
-  Challenges, every `downloads` folder). `HelpServer` redirects any file the archive
-  lacks to `SiteUrl()`, because every page's navigation links to those sections.
+**The offline tree has no copy of the index.** The add-in embeds its own, and the help
+archive (increment 5) is the offline tree as built, less `HELP_ARCHIVE_SKIP` in
+`builder/help-archive-step.mjs` (the Documentation Development section, Videos,
+Challenges, every `downloads` folder). `HelpServer` redirects any file the archive
+lacks to `SiteUrl()`, because every page's navigation links to those sections.
+
+**Not done: keywords with no page of their own** --- `ElseIf`, `Until`, `Step`, `To`, `In`,
+`ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
+them. Adding one is a `symbols:` line on the page that explains it, which is a content
+decision per keyword. Deferred.
 
 ### Stage 4: the add-in, in increments
 
@@ -1011,9 +1011,8 @@ not: a restart saves a harness about a second against opening a new IDE.
      `docs/_site-offline` by the `helpArchive` task of a build of the documentation, once
      the offline tree is complete and before the Gantt chart goes into `BuildInfo.html`
      (`builder/help-archive-step.mjs` over `lib/help-archive.mjs`; `--no-help-archive`
-     skips it, and CI never passes that, since the download carries the archive) (about
-     26 MB, 1,475 files; the DLL builds with it for
-     win32 and win64). An add-in built without it serves nothing
+     skips it, and CI never passes that, since the download carries the archive); the DLL
+     builds with it for win32 and win64. An add-in built without it serves nothing
      and uses the live site. The offline tree is the one served: its links are
      relative, so they work on any origin, and its pages hold only their part of the nav
      tree.
@@ -1031,7 +1030,7 @@ not: a restart saves a harness about a second against opening a new IDE.
      restart.
    - **The origin is `http://localhost:<port>`, not 127.0.0.1.** The IDE's page is on
      localhost, so a frame on another localhost port is same-site and in its frame tree; a
-     frame on 127.0.0.1 is not there at all, and every case that reads the page failed.
+     frame on 127.0.0.1 is not there at all, and every case that reads the page fails.
    - *Open in browser* still opens the live site.
    - **The lane.** `help.test.mjs` runs twice: `help` builds a copy of `add-in/` without
      `Resources/HELP`, whatever the working tree holds, and `help-offline` builds it with an
@@ -1065,8 +1064,8 @@ not: a restart saves a harness about a second against opening a new IDE.
      click on one whose `data-href` starts with it is taken in the capture phase and sent
      to the add-in, which shows the page in the pane.
    - **The hover stays past the editor's edge** (P18). The editor is created with
-     `fixedOverflowWidgets`, so a long hover reaches past the code editor's edge. Since
-     BETA 1005 the IDE draws `.monaco-hover` at `z-index: 1000 !important`, above the dock
+     `fixedOverflowWidgets`, so a long hover reaches past the code editor's edge. The IDE
+     draws `.monaco-hover` at `z-index: 1000 !important`, above the dock
      resizer along that edge and the dock's drop targets, so the mouse sliding down the
      hover past the edge keeps it. The add-in adds nothing for this, with hover help on or
      off. The `help` and `help-offline` lanes check the IDE's behaviour: the test makes the
@@ -1239,7 +1238,7 @@ not: a restart saves a harness about a second against opening a new IDE.
     (`builder/addin-project.mjs`, the `addinProject` task), and *Getting the add-in* links
     to it first, the source route second. It holds the files git tracks, the symbol index
     of the build that publishes it, and the archive that build wrote as
-    `Resources/HELP/site.zip` (the project is then about 28 MB), so the add-in built from it
+    `Resources/HELP/site.zip`, so the add-in built from it
     serves the pages itself with no internet; CI passes no `--no-help-archive` for that
     reason. A build that wrote no archive packs none. The offline tree holds no copy, and
     its links to the file go to the website. The reader still builds the two DLLs in the
@@ -1352,8 +1351,7 @@ not: a restart saves a harness about a second against opening a new IDE.
       and by `test/ide-js.test.mjs`), and put in place of the script's `$COMMANDS$` marker by
       `ApplyFix`.
 14. **A panel layout editor** (owner, 2026-11-12: Manage Panel Layouts in the spirit of item
-    13, on by default). The editor is add-in 1.3.0, the help's detached state per layout 1.4.0
-    (the last bullets). `Resources/SCRIPTS/layouteditor.js`, put in by
+    13, on by default). `Resources/SCRIPTS/layouteditor.js`, put in by
     `BuildPane` as item 13's script is, with a settings row of its own (`Fixes`,
     `LayoutEditor`, on by default; the window's box follows through `layouteditor:<1|0>`),
     tested by the `ide-test` lane `layouteditor` (`test/ide/layouteditor.test.mjs`, the script

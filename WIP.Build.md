@@ -83,7 +83,7 @@ Two details:
   records the lane a task *completed* on, not the one that claimed it.
 
 [builder/PLAN-checks.md](builder/PLAN-checks.md) designs folding `check.bat`'s
-gates into the task graph. The link checker is in: extraction runs inside
+gates into the task graph. The link checker runs there: extraction runs inside
 `flush`, where both trees' final HTML is already in worker memory, so the build
 never writes ~270 MB out only to read it back and re-parse it. The
 `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are not
@@ -230,7 +230,7 @@ that are individually true. Mine this file for cases: it is substantially a cata
 
 **The split is by what a gate interrogates, not by what it happens to open.** `check_axe_patch_equiv.mjs` loads a built page, but only because its probe needs some document to run inside --- what it tests is the axe source patch, and it would be worth running against an empty `docs/`. That is the test: a new gate belongs in `test.bat` if it would still mean something with no documentation in the tree.
 
-Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` in `check.bat`. Both are in `test.bat`.
+`check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` are in `test.bat`, whatever a note under `builder/PLAN-*.md` says.
 
 **Both CI workflows run every one of these scripts as its own step, unconditionally** --- CI never invokes the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
@@ -431,8 +431,8 @@ inside an admonition takes its markers with it into the stash. It asks
 `blockRegions`, with the same parser, which lines are code instead.
 
 It also reads the label, the rest of the `[!TYPE]` line (`lib/callout-labels.mjs`),
-and throws on one it cannot parse: it used to drop that text silently, which is
-how a typo in a label would vanish. A package version in a label is checked against
+and throws on one it cannot parse, because dropping that text silently would let
+a typo in a label vanish. A package version in a label is checked against
 `page.packageVersion`, the section's `indexed_from`, which the main thread stamps
 on every page before the render chunks go to the workers, since a chunk need not
 hold the section's landing page. The code-region gate calls the chain with no
@@ -793,7 +793,7 @@ The decisions, each with what it rules out:
 
 - **What goes in is `git ls-files` of `add-in/`, read from the working folder.** A plain
   walk of the folder packs whatever lies there: a stale `Resources/HELP/site.zip`
-  (gitignored, ~26 MB, from some earlier build), a `Build/` folder an IDE wrote, a
+  (gitignored, from some earlier build), a `Build/` folder an IDE wrote, a
   scratch module. Reading git's blobs instead would leave a local build's download one
   commit behind the add-in being edited. `Resources/HELP/` is also refused by name, in
   case it is ever added. A file git does not track is named in the build's output.
@@ -872,8 +872,8 @@ The decisions, each with what it rules out:
 discovered. Design: [builder/PLAN-counts.md](builder/PLAN-counts.md);
 code: [builder/counts.mjs](builder/counts.mjs); documented for
 contributors at [Authoring
-Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Twelve names
-are live, and most of the prose is still hand-written.
+Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). The names are
+those `counts.mjs` defines, and most of the prose is still hand-written.
 
 `enumerations` counts the bullets in `Reference/Enumerations.md`'s alphabetical index
 --- the `attributeAnchors` shape, a scan of one page's `rawContent`, legitimate because
@@ -1052,7 +1052,7 @@ Three implementation details are essential:
 
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Classification probes, both directions:
-  the regexes this repo has shipped (including the incomplete fix),
+  the two exponential shapes above (the narrowed name class included),
   `^(a+)+$`, and some that must *not* be flagged --- plus the fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
@@ -1074,7 +1074,7 @@ Three implementation details are essential:
   identically, so the fallback is slower, not weaker.
 
 Limitation: a regex recheck cannot decide comes back `unknown`, and an unknown is
-an *unchecked* regex rather than a passing one (currently 0; `--census` prints them).
+an *unchecked* regex rather than a passing one (`--census` prints them).
 
 #### It reads constructed regexes too
 

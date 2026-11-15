@@ -16,7 +16,6 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 of them are marked `check_build`, `inert` with a recorded reason (most of those signatures, most
 OLEGuids' methods), still undecided, or an `excerpt`. Every marked fence compiles. The run takes
 about three minutes on four lanes.
-1,076 of the marked samples are also `check_run`.
 
 New marked samples should come from editing pages, not from marking: the unmarked fences
 that are left are not programs (see [What cannot be marked](#what-cannot-be-marked)).
@@ -172,7 +171,7 @@ Do not reach for it too early. An enum member a default project cannot name (the
 sits inside a `Private Module` or a private base class) is not `blocked`: the question
 *what would a reader actually do?* has an answer, the asterisk. `*WinNativeCommonCtls`
 exposes the package's private half, and `WinNativeCommonCtls.ImlDrawTransparent` compiles.
-The templates `wnc-private` and `cef-private` join `vb-private` and `cc-private` for this,
+The templates `vb-private`, `cc-private`, `wnc-private` and `cef-private` are for this,
 and each such page carries an IMPORTANT saying which library symbol to set and why.
 
 **The rule: documenting a call and leaving no way to make it work is worse than either
@@ -303,7 +302,8 @@ compiler's own list.
 
 Version-controlled exported trees under `test/example-projects/<name>/` --- a `Settings`
 file plus `Sources/`, exactly what `node scripts/impexp.mjs export` produces and what `tbrun`
-already consumes. Three whole ones exist:
+already consumes. Two whole ones exist, `console` and `packages`; every other template is a delta
+over one of them. The table lists both, and the deltas a sample names or meets most often:
 
 | template | references | for |
 |---|---|---|
@@ -314,10 +314,10 @@ already consumes. Three whole ones exist:
 | `wnc-form` | `packages`, a delta: `form`'s Form1 with a ListView, `ListView1`, on it | a `check_run` sample that looks at what a WinNativeCommonCtls control draws. Never inferred |
 | `activex-control` | `console`, a delta: an ActiveX Control project with a property page, `ProbePage`, and the designer file of a UserControl, `ProbeControl` | a sample of a UserControl: its `slot=file` fence is the class, naming that designer id, and a `projname=` of its own keeps it the only one in its project. Never inferred |
 
-(The table is the three whole templates. The deltas over them --- `vb-private`, `cc-private`,
-`wnc-private`, `wnc-form`, `activex-control`, `cef-private`, `implicit`, `cef`, `webview2` --- are
-`TEMPLATE_BASE` in `scripts/lib/example-batches.mjs`, with `form` and the `contributed-<Package>`
-ones, which `TEMPLATE_BASE` gets from the directories so named.)
+(The full list of deltas --- `vb-private`, `cc-private`, `wnc-private`, `wnc-form`,
+`activex-control`, `cef-private`, `implicit`, `form`, `cef`, `webview2` and the
+`contributed-<Package>` ones --- is `TEMPLATE_BASE` in `scripts/lib/example-batches.mjs`, which
+gets the `contributed-<Package>` ones from the directories so named.)
 
 **`contributed-<Package>`: packages embedded, not committed.** A project uses a TWINSERV
 package by embedding its whole exported tree under `Packages/<symbolId>/`, with a reference
@@ -333,9 +333,9 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   `contributed-xCalendar` has `Sources/tbxStageXCalendar.twin` beside its `Settings`, with
   `Public xCalendar1 As xCalendar.xCalendar`, as `tbxStage.twin` declares `Text1` for the
   built-in controls.
-- **One template per package, because a reader's project references one.** With the nine in
-  one project, VBA_JSON's `Dictionary` class hid the `Scripting.Dictionary` that WinReg's
-  samples name.
+- **One template per package, because a reader's project references one.** In one project
+  with the others, VBA_JSON's `Dictionary` class hides the `Scripting.Dictionary` that
+  WinReg's samples name.
 - **A project does not see the names a package's own references declare.** WinReg embeds
   WinDevLib, and its samples' `REGTYPES`, `BOOL` and `RegOpenKeyEx` are unresolved unless
   `contributed-WinReg` references WinDevLib (at the version WinReg embeds, 8.8.0.507)
@@ -345,7 +345,7 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   1034: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
   template-alone build finds those rows; the run prints them as a note naming the package
   rather than as a template FAIL, every other template row still fails, and the samples are
-  judged by their own rows as before. Their landing pages say so in a NOTE, and both sections
+  judged by their own rows. Their landing pages say so in a NOTE, and both sections
   are listed under Experimental Packages until the packages compile.
 - **When a section's `indexed_from` moves to a new version, change the version fields in its
   `test/example-projects/contributed-<Package>/Settings` with it**, or its samples compile
@@ -452,9 +452,10 @@ marked). The run goes on, so one slow template cannot cost the
 other batches their result.
 The template built with no samples (`ownRowsOf`, which tells the template's own rows from
 a batch's) is built once more when it meets the limit; met twice, the batch that asked is not
-judged and the template is forgotten, so the next batch asks again. Taking that empty read as
-a clean template blamed every sample of a package that does not compile on its own: a shared
-`--fresh` run reported 17 ArrayListLib samples for the package's own TB5001 rows.
+judged and the template is forgotten, so the next batch asks again. An empty read is not a
+clean template: taken as one, it blames every sample of a package that does not compile on its
+own for the package's own rows (17 ArrayListLib samples for its TB5001 rows, in a shared
+`--fresh` run).
 
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
 would put 120, 55, 4 and 3 samples on four lanes, and a run takes as long as its biggest
@@ -553,7 +554,7 @@ Next` and returns, by `End Sub` or `Exit Sub`, leaves `Err` set for its caller, 
 twinBASIC alike (VB6 against BETA 1010, identical). Only a `Resume`
 from an `On Error GoTo` handler, or any `On Error` statement, clears it. With a test after
 the call, InStr.md's sample that demonstrates error 5 under its own `On Error Resume Next`
-was reported as raising it. The caller's handler is reached only by an error the callee did
+would be reported as raising it. The caller's handler is reached only by an error the callee did
 not handle (`InStr(0, "abc", "a")` unhandled in a sample's body printed `[tbx-run] error 5
 Invalid procedure call or argument`, and the next sample ran), and `Resume tbxNext<n>`
 clears it before the next call.
@@ -794,8 +795,8 @@ LLVM refusal is isolated, and its samples reported as failing the build, as any 
   ends, so that concurrent runs share nothing and a run leaves nothing behind. Each lane
   holds a slot from `tbbroker` for the whole run ([WIP.Broker.md](WIP.Broker.md)).
 - **A build adds three collision rules a compile does not have**, each checked on BETA 1010 (`--build --only` over the pages that hold such samples builds clean):
-  - **`expect-error` samples are batched apart.** One such sample (Option.md, TB5079) left
-    the 129 samples beside it unbuilt, since a project with an error is not built.
+  - **`expect-error` samples are batched apart.** A project with an error is not built, so
+    one such sample (Option.md, TB5079) would leave every sample beside it unbuilt.
   - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
     Two Mains compile, but binding the startup object fails the build ("'Main' is
     ambiguous"), as `tbxMain.twin`'s header says. `makeBatches`' `alone` picks the unit,
@@ -843,9 +844,7 @@ LLVM refusal is isolated, and its samples reported as failing the build, as any 
   share one; a later run removes the folders of runs whose process has ended, and leaves one
   it cannot remove yet. A `--keep` run marks its folder with a `.keep` file from the start
   (`keepRunFolder` in `scripts/lib/tb-registry.mjs`), and the sweep leaves a marked folder
-  for good; before that, a kept folder went within seconds of the next run starting.
-  `sweep_attributes.mjs` sweeps `tbsweep\<pid>` the same way. Before each IDE ran in its launcher's job, a run that died left its
-  lanes' IDEs running on desktops nobody could see, holding that folder.
+  for good. `sweep_attributes.mjs` sweeps `tbsweep\<pid>` the same way.
 - **Batches are packed in process by impexp** (`packTree` in `scripts/lib/tb-project.mjs`),
   never by the compiler executable's `import`, which exits 999 with nothing written on a
   tree holding an embedded package and 0 after the failures it reports;

@@ -11,29 +11,27 @@ then the reasons.
 
 **Desktops leak in DWM.** On Windows 10 22H2 (19045) every `CreateDesktop` leaves composition
 objects in `dwm.exe` that are never freed after the desktop is gone (about two handles per
-desktop), and DWM walks that state on every window change. The tools made one desktop per launch
-(`tbbuild-<port>`, `rfo-<pid>`, `vb6run-<pid>`...), so two days of tests left DWM at 23,000
-handles and 1 GB (a fresh DWM: about 2,000), and dragging a window took seconds; restarting DWM
-cured it at once. Measured on BETA 1007, 2026-10-16:
+desktop), and DWM walks that state on every window change. Two days of tests that made one
+desktop per launch left DWM at 23,000 handles and 1 GB (a fresh DWM: about 2,000), and dragging
+a window took seconds; restarting DWM cured it at once. Measured on BETA 1007, 2026-10-16:
 
 | | DWM handles |
 |---|---|
 | 8 IDEs one after another, each from a new `tb-launch.ps1`, on **one desktop another process held** | 2082 → 2082 |
 | releasing that desktop afterwards | +2, once |
-| 8 IDEs, each on a **desktop of its own** (the old way) | +2 per launch, for good |
+| 8 IDEs, each on a **desktop of its own** | +2 per launch, for good |
 
 So a desktop is made once and held for as long as the broker runs, and handed from one launch to
 the next.
 
-**Ports collided.** Each tool picked fixed ports (9333, 9346, 9440, 9480, 9560, 9620, 9660,
-9700, 9720, 9800, 9910...) and only some claimed them (`tb-ports.mjs`'s lock files, which nothing
-outside those tools, launcher-re included, knows about). Worse, on the dev box the TCP dynamic
-port range is 1024--65535 (the Windows default is 49152--65535; `netsh int ipv4 show dynamicport
-tcp`), so every port Windows picks for anyone --- each compiler's six listening sockets, the page
-server's, every loopback WebSocket the IDE page opens, any program's outgoing connection --- can
-land on a tool's fixed port. No lock among the tools could prevent that.
+**Fixed ports collide.** A fixed port per tool, claimed by lock files among the tools, does not
+work: nothing outside those tools (launcher-re included) knows the locks, and on the dev box the
+TCP dynamic port range is 1024--65535 (the Windows default is 49152--65535; `netsh int ipv4 show
+dynamicport tcp`), so every port Windows picks for anyone --- each compiler's six listening
+sockets, the page server's, every loopback WebSocket the IDE page opens, any program's outgoing
+connection --- can land on a tool's fixed port. No lock among the tools can prevent that.
 
-The fix for ports is mostly not to choose them: **WebView2 given `--remote-debugging-port=0`**
+So ports are mostly not chosen: **WebView2 given `--remote-debugging-port=0`**
 (after the IDE's own `=<port>` argument; the last one wins) binds a port Windows picks and writes
 it to `<user data folder>\EBWebView\DevToolsActivePort`, as `"48752\n/devtools/browser/<id>"`,
 and attaching on that port works (BETA 1007, 2026-10-16). A broker port is for what must be
@@ -98,10 +96,9 @@ Do not start it elevated: its desktops and pipe would carry an elevated DACL.
 ## Concepts
 
 - **Slot** --- a number from 1 to `--max`, unique among live leases. It is what a client names its
-  own things by, in place of the port it used to: the IDE's temp folder and WebView2 profile, the
-  ids of the projects it stages (`laneProjectId`). A slot is free again once its lease ends, and
-  is then reused, so a client empties what it names by the slot before using it, as `launchIde`
-  empties its folders now.
+  own things by: the IDE's temp folder and WebView2 profile, the ids of the projects it stages
+  (`laneProjectId`). A slot is free again once its lease ends, and is then reused, so a client
+  empties what it names by the slot before using it, as `launchIde` empties its folders.
 - **Desktop** --- slot *n* is always the desktop `<prefix>n` (`tbpool-3`), in the window station
   `WinSta0`. The broker makes it the first time a lease needs it and holds it open until it ends.
   A client starts its processes on it by name (`STARTUPINFO.lpDesktop`); `CreateDesktop` with an
@@ -217,7 +214,7 @@ and `onLost`; a refused request rejects with a `BrokerError` whose `code` is the
 - **One thread.** Every pipe instance is tied to one I/O completion port; the loop waits on it for
   a quarter of a second at a time and between packets looks at the held processes
   (`WaitForSingleObject(h, 0)`), the dirty desktops (`EnumDesktopWindows`) and the waiters. No
-  thread of the twinBASIC runtime is involved (launcher-re found its thread safety undocumented),
+  thread of the twinBASIC runtime is involved (its thread safety is undocumented),
   and there is no limit of 64 handles to wait on.
 - **Reads** go to the completion port; **writes** go to an event (its handle with the low bit set
   keeps them off the port) and are waited for, 5 s at most.
@@ -229,7 +226,7 @@ and `onLost`; a refused request rejects with a `BrokerError` whose `code` is the
 
 ## Tests
 
-`test/broker.test.mjs` (14 tests, about 7 s, in `test.bat`) starts brokers on pipes and desktop
+`test/broker.test.mjs` (about 7 s, in `test.bat`) starts brokers on pipes and desktop
 names of its own and checks: one broker per pipe, `start`/`status`/`stop` and their exit codes,
 the client starting the broker; slots made once and handed out again, a lease ending with its
 connection, a held process keeping it until it ends, release with a held process, the refusals,

@@ -94,7 +94,7 @@ four in place.
 | Key | Means |
 |-----|-------|
 | `package_name` | The packages in the indexer's store that the section documents, by their names there, when the folder's name is not theirs: `WebView2Package` for `WebView2`, `CustomControls, CustomControlsPackage` for `CustomControls`, `cefPackage145` for `CEF`. Absent, the folder's name is the package's. `indexer/lib/doc-pages.mjs` reads it. |
-| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against, as its release tag. Currently `beta-x-1010` on all thirteen, the build whose `indexer/snapshots/` the pages are compared with. |
+| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against, as its release tag (`beta-x-<n>`): the build whose `indexer/snapshots/` the pages are compared with. A contributed section's is the package's four-part TWINSERV version. |
 | `exclude_from_docs` | Modules or classes in that package deliberately left undocumented --- internals, private helpers, API shims. |
 | `exclude_kinds` | Member *kinds* deliberately left undocumented. Only `WinEventLogLib` uses it, for `Declare`. |
 
@@ -103,9 +103,7 @@ newer build, and anything new that is not named in `exclude_from_docs` or `exclu
 a documentation gap.** Without them a re-index cannot tell "not yet written" from
 "deliberately omitted", which is the whole point of recording them.
 
-All thirteen package landing pages carry `indexed_from`. `exclude_from_docs` is on three
-of them (`InternalStuff`; `EventLogHelperPrivate` + `EventLogAPIs`;
-`ServicesConstantsPublic`). The three CEF builds are one section with one snapshot; why, and
+Every package landing page carries `indexed_from`. The three CEF builds are one section with one snapshot; why, and
 how the indexer ties a section to its snapshots: [indexer/README.md](indexer/README.md#documented-packages).
 
 **Bump `indexed_from` whenever a package is re-indexed against a newer build**, in the same
@@ -114,7 +112,7 @@ commit as the content it adds, and write the new snapshots into `indexer/snapsho
 default package (`node indexer/twin-index.mjs derive`). A stale value is worse than none: it asserts a
 completeness check was run against a build that no longer matches the package.
 
-One other inert key is a different thing: `has_children` on four pages is a
+One other inert key is a different thing: `has_children`, on a few pages, is a
 just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Nobody
 needs to maintain it.
 
@@ -165,7 +163,7 @@ from any folder, with no `../`. The build (`relativeLinksPlugin` in `builder/ren
 writes the page's permalink; the fragment is kept as written, and the link check checks it. A
 name is a word (letters, digits, `_`, `-`, starting with a letter); an unknown name, a name two
 pages claim, and `tb:` as an image's source fail the build. Inside code a `tb:` link is left as
-written. The first is `shortcut: Errors` on `Reference/Run-time-Errors.md`, whose anchors are the
+written. `shortcut: Errors` is on `Reference/Run-time-Errors.md`, whose anchors are the
 error numbers themselves: `[5](tb:Errors#5)`. Any page that wants one may have one; a plain
 markdown preview (GitHub, an editor) shows such a link as dead.
 
@@ -388,8 +386,8 @@ When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Ref
 (owner, 2026-10-21): the documentation is meant to become switchable between VB6, VBA and
 twinBASIC, and the VBA text should not be lost. Put it in an HTML comment that starts
 `<!-- VBA:` and says why it is out, outside any table (a comment line inside a markdown
-table ends the table), and keep `--` out of it. The first are the **vbUseCompareOption** rows
-of InStr and InStrRev, which raise error 5 in both runtimes.
+table ends the table), and keep `--` out of it. The **vbUseCompareOption** rows of InStr and
+InStrRev, which raise error 5 in both runtimes, are commented out this way.
 
 ## Document the product as it is, not as it was
 
