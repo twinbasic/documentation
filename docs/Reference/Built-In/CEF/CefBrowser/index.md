@@ -10,6 +10,8 @@ has_toc: false
 
 A **CefBrowser** is a twinBASIC control that hosts the Chromium Embedded Framework --- drop one onto a [**Form**](../../VB/Form/) and Chromium renders web content inside its rectangle. Application code can navigate to URLs, run JavaScript, exchange messages with the loaded page, register virtual-host folders, and print the document to PDF.
 
+![A window titled CefBrowser Demo. Under the line A CefBrowser control on a form, showing a page, the control fills most of the form with a web page on a pale grey-blue ground: the blue heading Hello from a CefBrowser; a paragraph saying that the page is a string of HTML that the form passed to NavigateToString, with NavigateToString in a code font, and that the Chromium Embedded Framework draws it inside the control; three bullet points, Headings, lists and styles, as in a browser, JavaScript, which twinBASIC code can call, and No file and no network needed; and a pale blue box with a dark blue bar at its left, holding This line was set by the form's code, which called the page's setNote function with JsRun.](Images/CefBrowser_Page.png){:width="601" height="381"}
+
 The control spawns a separate browser process the first time it is used in a session and communicates with it across an IPC channel; many properties and methods raise *"CefBrowser control is not ready"* (run-time error 5) when called before the [**Ready**](#ready) event has fired.
 
 ```tb check_build
@@ -43,6 +45,10 @@ A **CefBrowser** control progresses through three distinct phases, each triggere
 | [**Ready**](#ready)            | The browser process is live and IPC has connected. The control is now fully functional.                            |
 
 Calling navigation, scripting, or setting accessors before [**Ready**](#ready) raises run-time error 5 with the message *"CefBrowser control is not ready."* Once **Ready** fires, the control auto-navigates to the [**DocumentURL**](#documenturl) field if it has a non-empty value (the design-time default is `https://www.twinbasic.com`).
+
+<!-- test: bug cef-move-before-ready -->
+> [!WARNING] BETA 1042
+> Moving or resizing the control after it raises [**Create**](#create) and before it raises [**Ready**](#ready) --- with [**Move**](#move) in **Form_Load**, for instance --- makes the browser helper process end with an access violation. The control then raises neither **Ready** nor [**Error**](#error), and its later calls, such as [**Navigate**](#navigate), raise run-time error -2147467259, *Unspecified error*. Place and size the control in the form designer, or move it once **Ready** has been raised.
 
 The first **CefBrowser** to initialise in a process launches the shared browser helper executable; subsequent **CefBrowser** instances share that helper. Closing the last **CefBrowser** does not terminate the helper --- it lingers for the life of the host process so that a future control can attach to it without re-launching.
 

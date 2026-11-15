@@ -289,7 +289,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
-  alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
+  alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `cef`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `projects`, `projects-refs`,
   `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
@@ -908,21 +908,22 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   runtime starts on a private desktop, and `PW_RENDERFULLCONTENT` captures its content, byte for
   byte alike from run to run (BETA 1042). The control is 300 px high: at 280 the page shows a
   scrollbar.
-- **CEF has no picture yet** (BETA 1042, cefPackage v145 with the release's
-  `cefRuntime145_win32.zip`, extracted under `%TEMP%\tb-cef`, never `%LocalAppData%`). A fixture
-  like `webview2`'s, its CefBrowser `Cef1` given `BrowserExecutableFolder` (with a trailing
-  backslash: the package joins it and `libcef.dll` with nothing between), `UserDataFolder` in the
-  signals folder and a verbose `LogFilePath`, raises **Create** on a private desktop and then
-  neither **Ready** nor **Error** in 20 s. CEF's log shows the browser process (the exe again,
-  `--browser=`) starting, "No displays detected" and a fake 1920x1080 display, then nothing; no
-  renderer process ever logs. The browser process then ends with an access violation
-  (`0xC0000005`) in the exe's own code, not in `libcef.dll` (Application Error 1000, a different
-  offset each build; Windows wrote dumps to `%LocalAppData%\CrashDumps`, which were moved to
-  `%TEMP%`). Trace flag 32 (`Debug.TracePrint`, which the package uses at each step of
-  `Initialize`) wrote no file. Whether the private desktop is the cause is not known: a program
-  may not be started on the user's desktop to compare. Not narrowed, not in BUGS-TO-REPORT. The fixture and its setup code
-  are not committed (a copy is kept locally). A CefBrowser that reaches **Ready** in some
-  other harness run is the next step, before any picture.
+- **Setup `cef`**: `test/shots/cef`, CefShots, the CEF section's one picture, taken by
+  `sceneShot` as webview2's is, with the same page and the same `JsRun` line. The CEF runtime is
+  not part of twinBASIC: the setup downloads the release the CEF page links
+  (`cefRuntime145_win32.zip`, the exe's architecture) into `%TEMP%\tb-cef` once, and names its
+  folder to the program in `TB_SHOT_CEF_RUNTIME`, which the form passes to
+  `BrowserExecutableFolder` with a trailing backslash (the package joins it and `libcef.dll`
+  with nothing between); `UserDataFolder` is in the run's signals folder, never
+  `%LocalAppData%`, the package's default for both. `TB_SHOT_CEF_LOG` names a file for CEF's
+  verbose log. **The control's place and size are in the `.tbform`, never set in code**: a
+  CefBrowser moved before it raises Ready crashes its browser process, and raises neither
+  Ready nor Error (BUGS-TO-REPORT, `bugs/cef-move-before-ready`, BETA 1042). The private
+  desktop is no obstacle: CEF logs "No displays detected" and uses a fake display, and draws;
+  two runs give the same bytes (BETA 1042). A browser process that
+  crashes is the exe itself, so its dump has no names: run the exe under `cdb -o` on a leased
+  desktop (`launchOnDesktop`) and dump with `/ma`, then match the faulting procedure's calls
+  (imports, constants) against the package's source, exported with `impexp`.
 - **Setup `waynes`**: `test/shots/waynes`, WaynesShots, the pictures of the CustomControls
   section, taken by `sceneShot`, or by `waynesRuns` for a picture of several runs in rows (the
   button's states, the six border styles). A form of the package is a window of class `tbForm`

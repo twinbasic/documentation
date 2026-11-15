@@ -14093,3 +14093,45 @@ Every line reaches the IDE's page with the class `debugConsoleOutputTextYELLOW`,
 Severity: low. Nothing is lost, but an add-in cannot tell its warnings from its other lines by colour, as the argument promises.
 
 <!-- Reproducer: bugs/printtext-colorrgb-ignored/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only console-colour` (test/addin/console-colour.test.mjs; its add-in is the ConsoleColourProbe, test/addin/probes/consolecolour, which prints a line for each of 0, four RGB colours and the five codes), the three tests named in repro.json, which pass on BETA 1042, win32 (2026-11-14). The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-14 taking the tbIDE pictures (shoot_docs setup tbide, test/shots/tbide), whose DebugConsole_PrintText picture shows DebugConsole.md's sample: its orange line is yellow. docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText) carries a NOTE labelled BETA 1042 for it; when a fixed build is released, the NOTE goes. -->
+
+---
+
+## A CefBrowser moved before Ready crashes CEF's browser process, and raises neither Ready nor Error
+
+**Describe the bug**
+Moving or resizing a `CefBrowser` after it raises `Create` and before it raises `Ready` makes its browser process (the program's exe, started again with `--browser=`) end with an access violation (0xC0000005). A `Move` in `Form_Load` is enough. The control then raises neither `Ready` nor `Error`. The program's later calls to it, such as `Navigate`, raise run-time error -2147467259, *Unspecified error*, rather than the "not ready" error 5, and the program also shows a run-time error box, -2147467259 *Automation error*, even with `On Error Resume Next` around those calls.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `cef-move-before-ready.twinproj` (attached as `cef-move-before-ready.zip`), build it, and run the exe. Run from the IDE, it shows "Please build the project before trying to run it in the IDE." and ends. `Sub Main` shows `Form1` twice: first with its `CefBrowser` where the designer put it, then with `Form_Load` making the control 10 pixels narrower. Each time it waits up to 4 seconds for `Ready`. The exe exits with 10 if the first raised `Ready`, plus 1 if the second did. It uses the package's default runtime folder, unless a copy of the runtime is under `%TEMP%\tb-cef`.
+2. Or, in a form with a `CefBrowser`:
+
+   ```vb
+   Private Sub Form_Load()
+       CefBrowser1.Move CefBrowser1.Left, CefBrowser1.Top, CefBrowser1.Width - 150, CefBrowser1.Height
+   End Sub
+
+   Private Sub CefBrowser1_Ready()
+       Debug.Print "Ready"
+   End Sub
+   ```
+3. See the exe exit with 10: the first control raises `Ready`, and the moved one raises nothing. Its browser process ends with an access violation in the exe's own code, which the event log records as Application Error 1000.
+
+The cause is in the package (cefPackage v145). The control's `HandleResize` calls `BrowserObj.SyncSize()` whenever `BrowserObj` is set, and `CreateCEFBrowser` sets it before `BrowserObj.CreateInstance` asks CEF for the browser. In the browser process, `BrowserOM.SyncSize` calls `CType(Of cef_browser_t)(BrowserCached).get_host()`, but `BrowserCached` is 0 until CEF calls `on_after_created` (`ClientLifeSpanHandler`), so `get_host` reads a function pointer at offset 0x18 of address 0. A full-memory dump of the browser process shows the fault in the `get_host` wrapper, called from `SyncSize`. `on_after_created` calls `SyncSize` itself once `BrowserCached` is set, so `SyncSize` can return when `BrowserCached` is 0.
+
+What decides it:
+- The move: the same exe with both forms left as designed exits with 11, and no process faults.
+- Not the order: in that run the second control, which shares the first one's browser process, raises `Ready` too.
+
+**Expected behavior**
+The control raises `Ready`, as it does when it is not moved, and as a `WebView2` control moved at the same point does. If the browser process fails, the control raises `Error`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042, with the CEF runtime 145.0.7632.160 (`cefRuntime145_win32.zip` of the twinbasic/cef-runtimes release v1.0.0)
+
+**Additional context**
+Severity: medium. A program that lays out its controls in `Form_Load` gets a browser that never loads, and nothing tells it why. Checked as a 32-bit exe only.
+
+<!-- Reproducer: bugs/cef-move-before-ready/ (mode run, exe: exit 10 and the access violation, win32, BETA 1042, 2026-11-15; with both forms unmoved it exits 11). Not run as win64: only the win32 runtime was downloaded (owner's approval was for that one); the reproducer falls back to the package's default runtime folder, and uses %TEMP%\tb-cef when the runtime is there. The later calls' errors come from a scratch probe (Navigate and Unload raise -2147467259 under On Error Resume Next; DocumentTitle raises nothing; the Automation error box still shows). Found 2026-11-15 taking the CEF picture (shoot_docs setup cef): the fixture moved its control in Sub Main. Narrowed with a full-memory dump of the browser process, taken by running the exe under cdb -o on a private desktop. The fixture now places its control in its .tbform. docs/Reference/Built-In/CEF/CefBrowser/index.md (Lifecycle) carries a WARNING labelled BETA 1042 for it; when a fixed build is released, the WARNING goes. -->
+

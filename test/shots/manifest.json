@@ -671,6 +671,10 @@
     "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png": {
       "build": 1042
     },
+    "Reference/Built-In/CEF/CefBrowser/Images/CefBrowser_Page.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Built-In/CustomControls/Enumerations/Images/BorderStyle.png": {
       "build": 1042,
       "scale": 1.5

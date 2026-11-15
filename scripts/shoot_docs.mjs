@@ -93,7 +93,10 @@
 //               calendar laid over the form
 //   webview2    test/shots/webview2, WebView2Shots: the WebView2 section's picture of the
 //               control showing a page, taken as the programs setup's are
-//   waynes      test/shots/waynes, WaynesShots: the CustomControls section's pictures of its
+//   cef         test/shots/cef, CefShots: the CEF section's picture of the CefBrowser control
+//               showing a page, taken as webview2's is, with the CEF runtime downloaded once
+//               into %TEMP%\tb-cef
+//   waynes     test/shots/waynes, WaynesShots: the CustomControls section's pictures of its
 //               controls on a form of the package, taken as the programs setup's are; a
 //               picture of several states or frames is several runs of the program in rows
 //   xcalendar   test/shots/xcalendar, XCalendarShots, with the TWINSERV package xCalendar
@@ -187,6 +190,7 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer";
@@ -2018,6 +2022,7 @@ const SETUPS = {
     start: (run) => startPrograms(run, WEBVIEW2_SHOTS),
     prepare: (run) => preparePrograms(run, "WebView2Shots"),
   },
+  cef: { start: (run) => startPrograms(run, CEF_SHOTS), prepare: prepareCef },
   waynes: {
     start: (run) => startPrograms(run, WAYNES_SHOTS),
     prepare: (run) => preparePrograms(run, "WaynesShots"),
@@ -12094,6 +12099,45 @@ const webView2Shots = [
   sceneShot("Reference/Built-In/WebView2/WebView2/Images/WebView2_Page.png", "webview2", "page", /^$/),
 ];
 
+// ---- cef: test/shots/cef, CefShots, the CEF section's picture of a CefBrowser showing the same
+// kind of page as the WebView2 one, taken as sceneShot takes a scene. The CEF runtime is not part
+// of twinBASIC: the setup downloads the release the CEF page links (v145, win32, the exe's
+// architecture) into %TEMP%\tb-cef, once, and names its folder to the program in
+// TB_SHOT_CEF_RUNTIME, which the form passes to BrowserExecutableFolder; the control's cache
+// goes in the run's folder of signals. Neither goes under %LocalAppData%, the package's
+// defaults.
+
+const CEF_SHOTS = path.join(REPO_ROOT, "test", "shots", "cef");
+const CEF_RUNTIME_ZIP = "https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime145_win32.zip";
+const CEF_CACHE = path.join(tmpdir(), "tb-cef", "145_win32");
+const CEF_RUNTIME = path.join(CEF_CACHE, "145_0_7632_160_Win32");
+
+// The runtime's folder, downloaded and extracted (by Windows' own tar) when it is not there.
+async function cefRuntime(name) {
+  if (existsSync(path.join(CEF_RUNTIME, "libcef.dll"))) return CEF_RUNTIME;
+  say(name, `downloading the CEF runtime into ${CEF_CACHE}`);
+  mkdirSync(CEF_CACHE, { recursive: true });
+  const res = await fetch(CEF_RUNTIME_ZIP, { signal: AbortSignal.timeout(600000) });
+  if (!res.ok) throw new Error(`the CEF runtime's download failed: HTTP ${res.status}`);
+  const zip = path.join(CEF_CACHE, path.basename(CEF_RUNTIME_ZIP));
+  writeFileSync(zip, Buffer.from(await res.arrayBuffer()));
+  const tar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+  const r = spawnSync(tar, ["-xf", zip, "-C", CEF_CACHE], { encoding: "utf8", windowsHide: true });
+  rmSync(zip, { force: true });
+  if (r.status !== 0 || !existsSync(path.join(CEF_RUNTIME, "libcef.dll"))) {
+    throw new Error(`the CEF runtime did not extract to ${CEF_RUNTIME}: ${r.stderr || r.error?.message || r.status}`);
+  }
+  return CEF_RUNTIME;
+}
+
+async function prepareCef(run) {
+  // the package joins the folder and a file name with nothing between them
+  process.env.TB_SHOT_CEF_RUNTIME = `${await cefRuntime(run.name)}\\`;
+  return preparePrograms(run, "CefShots");
+}
+
+const cefShots = [sceneShot("Reference/Built-In/CEF/CefBrowser/Images/CefBrowser_Page.png", "cef", "page", /^$/)];
+
 // ---- waynes: test/shots/waynes, WaynesShots, the CustomControls section's pictures of its
 // controls, one form of the package per scene, named on the exe's command line as the programs
 // setup's forms are, and taken as sceneShot takes them. A form of the package shows nothing
@@ -15833,6 +15877,7 @@ const SHOTS = [
   ...vbShots,
   ...commonCtlsShots,
   ...webView2Shots,
+  ...cefShots,
   ...waynesShots,
   ...xCalendarShots,
   ...comDlgShots,
@@ -15943,6 +15988,7 @@ const JOB_SECONDS = {
   vb: 60,
   commonctls: 40,
   webview2: 30,
+  cef: 40,
   waynes: 90,
   xcalendar: 40,
   dialogs: 60,

@@ -65,14 +65,6 @@ Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).
 - **`Class_Initialize` and `Sub New` together in a WaynesForm class** give TB5135. BETA 1042,
   the `waynes` setup.
 
-### CEF
-
-- **A CefBrowser on a private desktop** raises `Create` and never `Ready` or `Error`; its
-  browser process ends with an access violation in the program's own code. BETA 1042, the
-  parked `cef` setup; the details and what to try next are in
-  [WIP.Screenshots.md](WIP.Screenshots.md) ("CEF has no picture yet"). May be the private
-  desktop.
-
 ### VBFLXGRD18
 
 - **Without an explicit `Load Form1`**, `Form1.VBFlexGrid1` through the implicit instance

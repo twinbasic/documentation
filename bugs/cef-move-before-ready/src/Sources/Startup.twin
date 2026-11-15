@@ -1,0 +1,48 @@
+' Moving or resizing a CefBrowser after its window is made and before it raises Ready ends the
+' CEF browser process with an access violation, and the control then raises neither Ready nor
+' Error. The control's Resize handler calls BrowserOM.SyncSize in the browser process as soon as
+' the browser is being created, and SyncSize calls get_host on BrowserCached, which is still 0
+' until CEF calls on_after_created (cefPackage v145: CefControl.twin, HandleResize;
+' BrowserOM.twin, SyncSize; ClientLifeSpanHandler.twin, on_after_created).
+'
+' Sub Main shows Form1 twice: first with its control where the designer put it, then with the
+' control made 10 pixels narrower in Form_Load, and waits up to 4 seconds each time for Ready.
+' The exe exits with 10 if the first raised Ready, plus 1 if the second did: it exits with 10,
+' since the second never does, although the browser process has been running since the first.
+' A run from the IDE shows the box "Please build the project before trying to run it in the
+' IDE." and ends, so build it and run the exe.
+'
+' The CEF runtime is the package's default folder, or the copy under %TEMP%\tb-cef when there is
+' one; the browser's data goes in a folder under %TEMP%.
+' Run it with: node scripts/bug_repro.mjs run cef-move-before-ready
+Module Startup
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Public Sub Main()
+        Dim code As Long = 10 * ShowOnce(False) + ShowOnce(True)
+        ExitProcess code
+    End Sub
+
+    ' 1 if the control raised Ready within 4 seconds, else 0.
+    Private Function ShowOnce(ByVal MoveInLoad As Boolean) As Long
+        Dim f As New Form1
+        f.MoveInLoad = MoveInLoad
+        f.Show
+        Dim t0 As Single = Timer
+        Do While Not f.IsReady And Len(f.Failure) = 0 And Timer - t0 < 4
+            DoEvents
+            Sleep 50
+        Loop
+        ShowOnce = IIf(f.IsReady, 1, 0)
+        Unload f
+    End Function
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Debug.Print "The exe exits with 10 when the CefBrowser moved in Form_Load never raises Ready, and 11 when it does."
+    End Sub
+
+End Module
