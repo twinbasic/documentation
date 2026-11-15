@@ -355,7 +355,7 @@ async function startIde({ exe, project, s, own, port, show, keep, env, browserAr
   // Started before the IDE is, since main.htm commits a fraction of a second after its port file
   // is written; attachIde checks the hook ran, by the port. The hook's connection lives as long
   // as this process, so a kept IDE (`keep`) is hooked only until this process ends.
-  const hook = userSettings ? null : installDefaultsHook({ profile: ideProfile, since: started, fixes });
+  const hook = userSettings ? null : installDefaultsHook({ profile: ideProfile, since: started, fixes, port });
   const hooked = async (pid, launcher) => {
     const p = await found(pid);
     if (hook && p) defaultsHooks.set(p, hook);

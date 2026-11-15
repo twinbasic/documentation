@@ -199,6 +199,9 @@ const LOOK = "({ main: /main\\.htm$/i.test(location.pathname), ran: !!window.__t
  * @param {string} o.profile  the IDE's WEBVIEW2_USER_DATA_FOLDER
  * @param {number} o.since    when it was started; a DevToolsActivePort older than 2 s before is left over
  * @param {string[]} [o.fixes]  the IDE_FIXES its page makes (default all; fixesWithout)
+ * @param {number | null} [o.port]  the DevTools port the IDE was given, when the caller chose one: WebView2
+ *   writes DevToolsActivePort only for `--remote-debugging-port=0`, so for a chosen port the browser is asked
+ *   for its address at `/json/version` instead
  * @returns {{ error: Error | null, closed: Promise<void>, ready: Promise<void>, stop: () => void }}
  *   `error` is why no hook was installed (set once known); `failures` the pages it could not
  *   prepare; `ready` settles once the hook is installed with every page then known prepared,
@@ -206,7 +209,7 @@ const LOOK = "({ main: /main\\.htm$/i.test(location.pathname), ran: !!window.__t
  *   connection, and is called when the IDE ends or fails to start. A hook that was installed leaves
  *   the page's `window.__tbDefaults`, which attachIde checks.
  */
-export function installDefaultsHook({ profile, since, fixes = IDE_FIXES }) {
+export function installDefaultsHook({ profile, since, fixes = IDE_FIXES, port: chosen = null }) {
   let markReady;
   const hook = {
     // The page's script, which checkDefaults adds again before a reload.
@@ -233,6 +236,25 @@ export function installDefaultsHook({ profile, since, fixes = IDE_FIXES }) {
     let port;
     let wsPath;
     while (!stopped) {
+      if (chosen) {
+        // A port the caller chose (`--port`): WebView2 writes no DevToolsActivePort for it, so the
+        // browser's own address comes from its HTTP endpoint, once it listens. launchIde waited for
+        // the port to be free before the IDE started, so what answers here is this IDE's browser.
+        try {
+          const r = await fetch(`http://127.0.0.1:${chosen}/json/version`, { signal: AbortSignal.timeout(1000) });
+          const url = (await r.json()).webSocketDebuggerUrl;
+          if (url) {
+            port = chosen;
+            wsPath = new URL(url).pathname;
+            break;
+          }
+        } catch {
+          // not listening yet
+        }
+        if (Date.now() > until) throw new Error(`the IDE's browser did not answer on port ${chosen} in a minute`);
+        await wait(20);
+        continue;
+      }
       try {
         if (statSync(file).mtimeMs >= since - 2000) {
           const [a, b] = readFileSync(file, "utf8").split(/\r?\n/);

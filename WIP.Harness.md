@@ -1252,7 +1252,10 @@ The script has to run before `main.js` reads the keys, and `main.htm` commits 0.
 IDE's browser process writes `DevToolsActivePort`. So `installDefaultsHook` starts before the IDE does,
 polls that file every 5 ms (`launchIde`'s own poll is at 100 ms and answers too late), connects to the
 browser target, auto-attaches to every target with `waitForDebuggerOnStart`, adds the script to each page
-with `Page.addScriptToEvaluateOnNewDocument` and resumes it. The page is `about:blank` when attached, and
+with `Page.addScriptToEvaluateOnNewDocument` and resumes it. For a port the caller chose (`tbbuild
+--port N`, `tbrun --port N`) WebView2 writes no `DevToolsActivePort`, so the hook asks
+`http://127.0.0.1:<port>/json/version` every 20 ms for the browser's address instead; until 2026-11-15
+such a run waited a minute and failed. The page is `about:blank` when attached, and
 never navigates twice. The script puts a setter on `window.hostAppObject`, which `main2.js` assigns, and
 wraps the host object: `GetIDESetting` answers `""` for the blanked keys and `"{}"` for `GENERAL` and
 `GENERAL2`, `SaveIDESetting` of those keys does nothing, and every other call goes through with `this`
