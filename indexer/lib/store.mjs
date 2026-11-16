@@ -302,20 +302,33 @@ async function writeToStore(storePath, group, symbol, rawFiles, apiJson) {
   const sourcesDir = path.join(pkgDir, "sources");
   await fs.rm(sourcesDir, { recursive: true, force: true });
   await fs.rm(path.join(pkgDir, SETTINGS_FILE), { force: true });
+  for (const [rel, content] of keptFiles(rawFiles)) {
+    const dest =
+      rel === SETTINGS_FILE ? path.join(pkgDir, SETTINGS_FILE) : path.join(sourcesDir, rel.slice("Sources/".length));
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.writeFile(dest, content);
+  }
+  await writeIndex(pkgDir, apiJson);
+}
+
+/**
+ * The files of a package the store keeps, as a Map from the path `readStoredFiles`
+ * gives each (`Sources/<rel>`, and `Settings`) to its content: the Settings file
+ * and the sources, `Sources/` added to a source outside that folder. So the files
+ * of a package and those the store holds of it compare path for path.
+ */
+function keptFiles(rawFiles) {
+  const kept = new Map();
   for (const f of rawFiles) {
     if (f.relativePath.toLowerCase() === SETTINGS_FILE.toLowerCase()) {
-      await fs.mkdir(pkgDir, { recursive: true });
-      await fs.writeFile(path.join(pkgDir, SETTINGS_FILE), f.content);
+      kept.set(SETTINGS_FILE, f.content);
       continue;
     }
     if (!SOURCE_EXTS.has(path.extname(f.relativePath).toLowerCase())) continue;
-    let rel = f.relativePath;
-    if (rel.startsWith("Sources/")) rel = rel.slice("Sources/".length);
-    const dest = path.join(sourcesDir, rel);
-    await fs.mkdir(path.dirname(dest), { recursive: true });
-    await fs.writeFile(dest, f.content);
+    const rel = f.relativePath.startsWith("Sources/") ? f.relativePath.slice("Sources/".length) : f.relativePath;
+    kept.set(`Sources/${rel}`, f.content);
   }
-  await writeIndex(pkgDir, apiJson);
+  return kept;
 }
 
 async function writeIndex(pkgDir, apiJson) {
@@ -375,6 +388,7 @@ export {
   commitStore,
   copyToSnapshots,
   ensureStore,
+  keptFiles,
   manifestPath,
   recordedFingerprint,
   reindexStored,

@@ -158,6 +158,16 @@ a scanner change would have moved every section with a newer version on TWINSERV
   pin among them. A version it drops can still be read from the store or the cache; with
   neither, `sync` fails that package, which is the right answer for a section documenting a
   version that can no longer be had.
+- **`sync --query` lists what changed upstream and writes nothing** (owner, 2026-11-17),
+  contributed packages by default, the built-in ones with `--builtin`. The built-in ones are
+  compared by content because their only version is the build's, and a new build usually
+  leaves most of them byte for byte the same: between BETA 1034 and 1042, VB alone differed.
+  The comparison reports sources and public API apart, since a changed source with the same
+  API (a fix inside a procedure) is no documentation work, and the API is that of the stored
+  sources indexed by this scanner, so that a scanner change is never reported as an upstream
+  one. Contributed packages are compared by version only: comparing their content would mean
+  downloading every newer version, and a new version is worth a look either way (VBComDlg
+  1.0.14.0 changes no public API).
 - **The newest build is what `beta` in the built-in manifest names**, so `analyze`'s
   callouts.json still lists the callouts labelled below the newest BETA installed, whatever the
   pins say: those are the callouts a new build leaves to check.

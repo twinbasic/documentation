@@ -53,6 +53,7 @@ import {
   cacheDownload,
   cachedDownload,
   copyToSnapshots,
+  keptFiles,
   manifestPath,
   readStoredFiles,
   reindexStored,
@@ -62,6 +63,7 @@ import {
   syncSnapshots,
   writeToStore,
 } from "../indexer/lib/store.mjs";
+import { compareBuilds, describeComparison, queryContributed } from "../indexer/lib/query.mjs";
 import { latestVersion, versionString } from "../indexer/lib/sync.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "../indexer/lib/vb6-preprocess.mjs";
 
@@ -1754,6 +1756,130 @@ describe("pinning a package at the version its section documents", () => {
     assert.equal(installOfBeta("1034", exes), real);
     assert.equal(installOfBeta(1042, exes), misnamed);
     assert.equal(installOfBeta("1010", exes), null);
+  });
+});
+
+// ------------------------------------------------------- sync --query
+
+describe("what sync --query lists", () => {
+  const version = (s, symbol, publishedDate) => {
+    const [versionMajor, versionMinor, versionRevision, versionBuild] = s.split(".");
+    return { symbol, versionMajor, versionMinor, versionRevision, versionBuild, publishedDate };
+  };
+  const listed = (id, symbol, versions) => ({
+    projectId: id,
+    publisher: "someone",
+    versions: versions.map((s, i) => version(s, symbol, i === 0 ? "07-NOV-2026" : "01-JAN-2026")),
+  });
+  const listing = [
+    listed("{1}", "Pinned", ["1.1.0.0", "1.0.0.0"]),
+    listed("{2}", "Current", ["2.0.0.0"]),
+    listed("{3}", "Stored", ["3.1.0.0", "3.0.0.0"]),
+    listed("{4}", "Unseen", ["0.1.0.0"]),
+  ];
+  const pins = new Map([
+    ["contributed/Pinned", "1.0.0.0"],
+    ["contributed/Current", "2.0.0.0"],
+    ["contributed/Dropped", "4.0.0.0"],
+    ["default/VB", "beta-x-1042"],
+  ]);
+  const stored = new Map([
+    ["Pinned", "1.1.0.0"],
+    ["Stored", "3.0.0.0"],
+    ["Lamps", "1.0.0.0"],
+  ]);
+  const short = (rows) => rows.map((r) => [r.symbol, r.state, r.base, r.newest, r.documented]);
+
+  test("a contributed package is compared with its pin, else with the store's version, and is new with neither", () => {
+    const rows = queryContributed(listing, { pins, stored });
+    assert.deepEqual(short(rows), [
+      ["Current", "same", "2.0.0.0", "2.0.0.0", true],
+      ["Dropped", "gone", "4.0.0.0", null, true],
+      ["Lamps", "gone", "1.0.0.0", null, false],
+      // The pin wins over a store moved past it by --upgrade.
+      ["Pinned", "newer", "1.0.0.0", "1.1.0.0", true],
+      ["Stored", "newer", "3.0.0.0", "3.1.0.0", false],
+      ["Unseen", "new", null, "0.1.0.0", false],
+    ]);
+    assert.equal(rows.find((r) => r.symbol === "Pinned").published, "07-NOV-2026");
+  });
+
+  test("--package limits the rows, listed or gone", () => {
+    assert.deepEqual(
+      short(queryContributed(listing, { pins, stored, filter: ["Stored", "Dropped"] })).map((r) => r[0]),
+      ["Dropped", "Stored"],
+    );
+  });
+
+  test("a built-in package is compared by its files and its public API", () => {
+    const sources = (text) =>
+      keptFiles([
+        file("Settings", '{"project.name": "P"}'),
+        file("Sources/M.twin", text),
+        file("Resources/logo.png", "not kept"),
+      ]);
+    const api = (text) =>
+      JSON.parse(buildApi({ symbol: "P", version: "v", files: [file("Sources/M.twin", text)] }).json);
+    const one = lines("Public Module M", "    Public Sub A(): End Sub", "End Module");
+    const two = lines(
+      "Public Module M",
+      "    Public Sub A(ByVal x As Long): End Sub",
+      "    Public Sub B(): End Sub",
+      "End Module",
+    );
+    const comment = `${one}\n' a comment\n`;
+    const private_ = lines(
+      "Public Module M",
+      "    Public Sub A(): End Sub",
+      "    Private Sub Z(): End Sub",
+      "End Module",
+    );
+    const compare = (a, b) =>
+      compareBuilds({ baselineFiles: sources(a), newestFiles: sources(b), baselineApi: api(a), newestApi: api(b) });
+
+    assert.deepEqual(compare(one, one), { sources: "same", api: { added: 0, removed: 0, modified: 0 } });
+    assert.equal(describeComparison(compare(one, one)), "same sources");
+    assert.equal(describeComparison(compare(one, comment)), "sources changed, public API the same");
+    assert.equal(describeComparison(compare(one, private_)), "sources changed, public API the same");
+    assert.deepEqual(compare(one, two).api, { added: 1, removed: 0, modified: 1 });
+    assert.equal(describeComparison(compare(one, two)), "public API changed: 1 added, 1 changed");
+    assert.equal(describeComparison(compare(two, one)), "public API changed: 1 removed, 1 changed");
+  });
+
+  test("what cannot be compared is said so: no stored sources, or neither sources nor a snapshot", () => {
+    const api = JSON.parse(buildApi({ symbol: "P", version: "v", files: [] }).json);
+    const unknown = compareBuilds({ baselineFiles: null, newestFiles: new Map(), baselineApi: api, newestApi: api });
+    assert.deepEqual(unknown, { sources: null, api: { added: 0, removed: 0, modified: 0 } });
+    assert.equal(describeComparison(unknown), "public API the same (no stored sources to compare)");
+    assert.equal(
+      describeComparison(
+        compareBuilds({ baselineFiles: null, newestFiles: new Map(), baselineApi: null, newestApi: api }),
+      ),
+      "cannot be compared: no stored sources or snapshot",
+    );
+  });
+
+  test("keptFiles keeps what the store keeps, under the paths readStoredFiles gives", async () => {
+    const files = [
+      file("Settings", "{}"),
+      file("Sources/Main.twin", "a"),
+      file("Sources/Sub/Old.bas", "b"),
+      file("Other.twin", "c"),
+      file("Sources/Form1.tbform", "{}"),
+    ];
+    assert.deepEqual([...keptFiles(files).keys()].sort(), [
+      "Settings",
+      "Sources/Main.twin",
+      "Sources/Other.twin",
+      "Sources/Sub/Old.bas",
+    ]);
+    const store = mkdtempSync(path.join(tmp, "kept-"));
+    await writeToStore(store, "built-in", "P", files, "{}");
+    const back = keptFiles(await readStoredFiles(path.join(store, "built-in", "P")));
+    assert.deepEqual(
+      [...back].map(([k, v]) => [k, v.toString()]).sort(),
+      [...keptFiles(files)].map(([k, v]) => [k, v.toString()]).sort(),
+    );
   });
 });
 

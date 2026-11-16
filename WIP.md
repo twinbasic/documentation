@@ -494,7 +494,9 @@ as it is. The rules:
 - **A documented package is pinned at its `indexed_from`**: `sync` reads it at that version and
   writes its snapshot only of that version; **`sync --upgrade` (with `--package` for one) is the
   only way past the pin** (owner). A plain `sync` lists what is newer, and moves a package the
-  store holds past its pin back to it ([WIP.Indexer.md](WIP.Indexer.md#pinning)).
+  store holds past its pin back to it ([WIP.Indexer.md](WIP.Indexer.md#pinning)). **`sync
+  --query` (`--builtin` for the bundled packages) lists what changed upstream and writes
+  nothing**: run it to see what work is waiting.
 - **Bump a section's `indexed_from` when its package is re-indexed**: `sync --upgrade`,
   `analyze`, the pages, the bump, then a plain `sync`, which writes the new snapshots, and
   `derive`; commit the pages, the new `indexed_from`, the new snapshots and `derive`'s

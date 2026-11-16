@@ -87,6 +87,7 @@ the list of symbols to document is its product, not a failure.
 
 ```sh
 node indexer/twin-index.mjs sync [--package <name>] [--packages <a>,<b>] [--upgrade] [--ide <path> | --release]
+node indexer/twin-index.mjs sync --query [--builtin] [--package <name>] [--packages <a>,<b>] [--ide <path> | --release]
 ```
 
 Reads packages, extracts sources, generates `api.json` snapshots.
@@ -97,6 +98,8 @@ Reads packages, extracts sources, generates `api.json` snapshots.
 | `--packages VBA,ArrayListLib` | Sync multiple specific packages. |
 | _(no flag)_ | Sync everything. |
 | `--upgrade` | Move the packages named, or every package, to the newest version instead of keeping each documented one at its [pin](#pinned-versions). |
+| `--query` | Write nothing; list what has changed upstream ([below](#sync---query)). Excludes `--upgrade`. |
+| `--builtin` | With `--query` only: compare the built-in and default packages too. |
 | `--ide <path>` | The twinBASIC install of the newest build, given as its folder or its `twinBASIC.exe`. Without it: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop, found as the compiler harness finds it. No path is built in. |
 | `--release` | Download the built-in and default packages from GitHub releases instead of reading an install: the latest, and the release of each older build a package is pinned at. Excludes `--ide`. |
 
@@ -127,6 +130,31 @@ folder out of its history.
 The pin is what makes indexing everything again safe: after a change to the
 scanner, a plain `sync` writes each snapshot from the version its section
 describes, and no section moves to a new version until someone moves it.
+
+#### sync --query
+
+Lists what has changed upstream, and writes nothing: it does not create or
+change the store, its manifests, its downloads or the snapshots
+(`lib/query.mjs` decides, `runQuery` in `twin-index.mjs` reads and prints).
+
+- **Contributed packages**, by version: each whose newest TWINSERV version is
+  not its baseline, the pin of a documented package or the store's version of
+  any other, with the date TWINSERV says it was published; each TWINSERV lists
+  that the store does not hold; and each the store holds or the reference
+  documents that TWINSERV no longer lists.
+- **Built-in and default packages**, with `--builtin`, or when `--package` or
+  `--packages` names one: they have no version of their own, so each package of
+  the newest build (the install `sync` would read, or the latest release with
+  `--release`) is compared with its baseline build by content. Its source files
+  are compared with those the store holds (`keptFiles`, the files the store
+  keeps, under the paths `readStoredFiles` gives), and its public API with the
+  one this scanner gives the stored sources, counted as `analyze` counts it:
+  symbols added, removed and changed. Without stored sources of the baseline,
+  the committed snapshot gives the API, and the sources are not compared. A
+  package of the same build as its baseline is not compared.
+
+A run that names only built-in or default packages does not contact TWINSERV.
+Its exit code is 0, or 1 when a name matches no package.
 
 The install is looked for before anything is fetched, and one that is not
 there is refused (exit 2) with the options that would fix it. A run that
@@ -590,6 +618,7 @@ indexer/
   lib/
     sync.mjs                   TWINSERV listing + download
     pins.mjs                   which version of each package sync wants: its pin, or the newest
+    query.mjs                  sync --query: what changed upstream, by version or by content
     builtin-sync.mjs           install / GitHub release manifest comparison + extraction, an install by BETA
     twinserv-client.mjs        TWINSERV HTTP client
     github-release.mjs         GitHub Releases client

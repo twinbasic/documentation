@@ -18,6 +18,7 @@ import {
   installOfBeta,
   listInstalledPackages,
   readInstalledPackages,
+  tagForBeta,
 } from "./lib/builtin-sync.mjs";
 import { downloadRelease, getLatestRelease, getReleaseByTag } from "./lib/github-release.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
@@ -27,8 +28,10 @@ import {
   cachedDownload,
   commitStore,
   ensureStore,
+  keptFiles,
   manifestPath,
   recordedFingerprint,
+  readStoredFiles,
   reindexStored,
   storedPackages,
   storedVersion,
@@ -37,6 +40,7 @@ import {
   writeToStore,
 } from "./lib/store.mjs";
 import { heldBack, pinnedBuild, pinsOf, planBuiltin, planContributed } from "./lib/pins.mjs";
+import { compareBuilds, describeComparison, queryContributed } from "./lib/query.mjs";
 import { indexerFingerprint } from "./lib/fingerprint.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 import { documentedPackages, groupFolder, sectionPages } from "./lib/doc-pages.mjs";
@@ -235,6 +239,14 @@ Options:
                          documented ones (not with --package or --packages)
   --upgrade              sync: move the packages named, or every one, to the
                          newest version instead of keeping them at their pins
+  --query                sync: read nothing into the store, and list what has
+                         changed upstream: each contributed package whose
+                         newest TWINSERV version is not its pin (or, for one
+                         no section documents, the store's version)
+  --builtin              sync --query: also compare the newest build's
+                         built-in and default packages with their pinned
+                         build, by their sources and public API (naming one
+                         with --package or --packages does the same)
   --ide <path>           sync: the install of the newest build, its folder or
                          its twinBASIC.exe (default: $TB_IDE, else the newest
                          Desktop\\twinBASIC_IDE_BETA_<n>); derive: the install
@@ -318,6 +330,8 @@ const cli = withUsageError(() => {
       ide: { type: "string" },
       release: { type: "boolean" },
       upgrade: { type: "boolean" },
+      query: { type: "boolean" },
+      builtin: { type: "boolean" },
       all: { type: "boolean" },
       check: { type: "boolean" },
       out: { type: "string" },
@@ -328,6 +342,10 @@ const cli = withUsageError(() => {
   if (read.stopped === "help") return read;
   refuseTogether(read.values, ["all", "package", "packages"]);
   refuseTogether(read.values, ["ide", "release"]);
+  refuseTogether(read.values, ["query", "upgrade"]);
+  if (read.values.builtin && !read.values.query) {
+    throw new CliError("not-applicable", "--builtin applies only with --query");
+  }
   // Which packages analyze covers is its own matter, and sync reads the lot.
   const named = read.positionals[0];
   if (read.values.all && named !== undefined && named !== "analyze") {
@@ -356,6 +374,7 @@ withUsageError(() => {
     package: ["sync", "analyze", "draft"],
     packages: ["sync", "analyze", "draft"],
     upgrade: ["sync"],
+    query: ["sync"],
     check: ["derive"],
     out: ["derive"],
   };
@@ -367,6 +386,13 @@ withUsageError(() => {
 
 switch (command) {
   case "sync": {
+    if (cli.values.query) {
+      process.exitCode = await runQuery(cli.filter, cli.install, {
+        release: cli.values.release === true,
+        builtin: cli.values.builtin === true,
+      });
+      break;
+    }
     // The install is looked for before anything is fetched.
     const install = cli.values.release ? null : (cli.install ?? withUsageError(() => resolveInstall()));
     process.exitCode = await runSync(cli.filter, install, { upgrade: cli.values.upgrade === true });
@@ -725,6 +751,181 @@ async function syncBuiltin(filter, install, run) {
     });
   }
   run.held.push(...heldBack(items));
+}
+
+// --- sync --query ---
+
+// The version of each package of one group the store holds, a Map from its name.
+// Reads only: a store never made is an empty one.
+async function storedVersions(group) {
+  const held = new Map();
+  let names;
+  try {
+    names = await fs.readdir(path.join(STORE_PATH, group));
+  } catch {
+    return held; /* no such group, or no store */
+  }
+  for (const name of names) {
+    const version = await storedVersion(STORE_PATH, group, name);
+    if (version) held.set(name, version);
+  }
+  return held;
+}
+
+// Rows of cells as lines, each column as wide as its widest cell.
+function columns(rows) {
+  const widths = [];
+  for (const row of rows) {
+    for (const [i, cell] of row.entries()) widths[i] = Math.max(widths[i] ?? 0, cell.length);
+  }
+  return rows.map((row) =>
+    row
+      .map((cell, i) => cell.padEnd(widths[i]))
+      .join("  ")
+      .trimEnd(),
+  );
+}
+
+function printGroup(title, rows, cells) {
+  if (!rows.length) return;
+  console.log(`  ${title}:`);
+  for (const line of columns(rows.map(cells))) console.log(`    ${line}`);
+}
+
+// Lists what has changed upstream, and changes nothing: no store, manifest,
+// download or snapshot is written. The contributed packages always, unless only
+// built-in or default ones are named; those with --builtin or when named.
+async function runQuery(filter, explicitInstall, { release, builtin }) {
+  const pins = pinsOf(await documentedPackages(DOCS_REF_DIR));
+  const builtinNames = new Set(DEFAULT_PACKAGES);
+  for (const key of pins.keys()) if (!key.startsWith("contributed/")) builtinNames.add(key.split("/")[1]);
+  for (const group of ["default", "built-in"])
+    for (const name of (await storedVersions(group)).keys()) builtinNames.add(name);
+  for (const { symbol } of Object.values((await readManifest("built-in"))?.packages ?? {})) builtinNames.add(symbol);
+
+  const known = new Set();
+  if (!filter || filter.some((name) => !builtinNames.has(name))) await queryContributedPackages(filter, pins, known);
+  if (builtin || filter?.some((name) => builtinNames.has(name))) {
+    const install = release ? null : (explicitInstall ?? withUsageError(() => resolveInstall()));
+    await queryBuiltinPackages(filter, install, pins, known);
+  }
+
+  const missing = (filter ?? []).filter((name) => !known.has(name));
+  for (const name of missing) console.warn(`  No package named ${name}`);
+  return missing.length ? 1 : 0;
+}
+
+async function queryContributedPackages(filter, pins, known) {
+  console.log("Fetching TWINSERV package index...");
+  const listing = await twinservListing();
+  const rows = queryContributed(listing, { pins, stored: await storedVersions("contributed"), filter });
+  for (const { symbol } of rows) known.add(symbol);
+
+  const documented = (r) => (r.documented ? "documented" : "");
+  const published = (r) => (r.published ? `published ${r.published}` : "");
+  console.log(
+    "\nContributed packages, TWINSERV's newest against the pin of each documented one and the store's version of the others:",
+  );
+  const of = (state) => rows.filter((r) => r.state === state);
+  printGroup("Newer on TWINSERV", of("newer"), (r) => [
+    r.symbol,
+    `${r.base} → ${r.newest}`,
+    published(r),
+    documented(r),
+  ]);
+  printGroup("New, not in the store", of("new"), (r) => [r.symbol, r.newest, published(r)]);
+  printGroup("No longer on TWINSERV", of("gone"), (r) => [r.symbol, r.base, documented(r)]);
+  console.log(`  ${of("same").length} unchanged.`);
+  if (of("newer").some((r) => r.documented)) {
+    console.log("  sync --upgrade --package <name> reads a documented one's newest version.");
+  }
+}
+
+// The api.json a documented package's committed snapshot holds of `version`, or null.
+async function snapshotOf(group, symbol, version) {
+  try {
+    const api = JSON.parse(await fs.readFile(path.join(SNAPSHOTS_PATH, group, symbol, "api.json"), "utf-8"));
+    return api.format === API_FORMAT && api.version === version ? api : null;
+  } catch {
+    return null;
+  }
+}
+
+// Compares each built-in and default package of the newest build with its pin's
+// build, or the store's build when no section documents it, by content: the
+// packages carry no version but the build's.
+async function queryBuiltinPackages(filter, install, pins, known) {
+  let tag;
+  let packages;
+  if (install) {
+    console.log(`\nReading twinBASIC BETA ${install.beta} from ${install.root}...`);
+    tag = tagForBeta(install.beta);
+    packages = readInstalledPackages(install.root);
+  } else {
+    console.log("\nDownloading the latest twinBASIC release...");
+    const latest = await getLatestRelease();
+    tag = latest.tag;
+    packages = extractBuiltinPackages(await downloadRelease(latest.assetUrl));
+  }
+
+  const rows = [];
+  const seen = new Set();
+  for (const pkg of packages) {
+    seen.add(pkg.symbol);
+    known.add(pkg.symbol);
+    if (filter && !filter.includes(pkg.symbol)) continue;
+    const group = packageGroup(pkg.symbol, "builtin");
+    const pin = pins.get(`${group}/${pkg.symbol}`) ?? null;
+    const stored = await storedVersion(STORE_PATH, group, pkg.symbol);
+    const base = pin ?? stored;
+    const row = { symbol: pkg.symbol, documented: pin !== null, base: base ?? "" };
+    if (!base) {
+      rows.push({ ...row, text: "new, not in the store", changed: true });
+      continue;
+    }
+    if (base === tag) {
+      rows.push({ ...row, text: "the same build", changed: false });
+      continue;
+    }
+    // The baseline's sources are the store's when it holds that build; its API is
+    // indexed from them by this scanner, else taken from the committed snapshot.
+    const storedFiles = stored === base ? await readStoredFiles(path.join(STORE_PATH, group, pkg.symbol)) : null;
+    const baselineApi = storedFiles
+      ? JSON.parse(buildApi({ symbol: pkg.symbol, version: base, files: storedFiles }).json)
+      : pin
+        ? await snapshotOf(group, pkg.symbol, base)
+        : null;
+    const comparison = compareBuilds({
+      baselineFiles: storedFiles ? keptFiles(storedFiles) : null,
+      newestFiles: keptFiles(pkg.files),
+      baselineApi,
+      newestApi: JSON.parse(buildApi({ symbol: pkg.symbol, version: tag, files: pkg.files }).json),
+    });
+    rows.push({ ...row, text: describeComparison(comparison), changed: comparison.sources !== "same" });
+  }
+  for (const [key, pin] of pins) {
+    const [group, symbol] = key.split("/");
+    if (group === "contributed" || seen.has(symbol) || (filter && !filter.includes(symbol))) continue;
+    known.add(symbol);
+    rows.push({ symbol, documented: true, base: pin, text: `not in ${tag}`, changed: true });
+  }
+  rows.sort((a, b) => (a.symbol < b.symbol ? -1 : a.symbol > b.symbol ? 1 : 0));
+
+  console.log(
+    `\nBuilt-in and default packages of ${tag}, against the pin of each documented one and the store's build of the others:`,
+  );
+  printGroup(
+    "Changed",
+    rows.filter((r) => r.changed),
+    (r) => [r.symbol, r.base, r.text, r.documented ? "documented" : ""],
+  );
+  const same = rows.filter((r) => !r.changed);
+  console.log(
+    `  ${same.length} unchanged${same.length ? ` (${[...new Set(same.map((r) => r.text))].join("; ")})` : ""}.`,
+  );
+  if (rows.some((r) => r.changed && r.documented)) {
+    console.log("  sync --upgrade --package <name> reads a documented one from this build.");
+  }
 }
 
 // --- analyze command ---

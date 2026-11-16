@@ -156,6 +156,7 @@ Exit codes: **0** the table was written or is unchanged (with `--check`, it is c
 {: #twin-index }
 
     node indexer/twin-index.mjs sync [--package <name> | --packages <a>,<b>] [--upgrade] [--ide <path> | --release]
+    node indexer/twin-index.mjs sync --query [--builtin] [--package <name> | --packages <a>,<b>] [--ide <path> | --release]
     node indexer/twin-index.mjs analyze [--package <name> | --packages <a>,<b> | --all]
     node indexer/twin-index.mjs draft [--package <name> | --packages <a>,<b>]
     node indexer/twin-index.mjs derive [--check] [--out <file>] [--ide <path> | --release]
@@ -174,6 +175,8 @@ The build does not run it and it is not a gate. It sits in `indexer/` rather tha
 | `--packages <a>,<b>` | `sync`, `analyze`, `draft` | The same for a comma-separated list. Not with `--package`. |
 | `--all` | `analyze` | Covers every package in the store, not only the documented ones. Not with `--package` or `--packages`. |
 | `--upgrade` | `sync` | Moves the packages named, or every package, to the newest version instead of keeping each at its [pin](#pins). |
+| `--query` | `sync` | Lists what has changed upstream, and writes nothing; see [What `sync --query` lists](#sync-query). Not with `--upgrade`. |
+| `--builtin` | `sync --query` | Compares the built-in and default packages too. |
 | `--ide <path>` | `sync`, `derive` | `sync`: the twinBASIC install of the newest build. `derive`: the install to read, instead of that of the pinned build. Not with `--release`. |
 | `--release` | `sync`, `derive` | Downloads the built-in and default packages from GitHub releases instead of reading an install. |
 | `--check` | `derive` | Fails if `builder/package-api.json` is stale, instead of writing it. |
@@ -195,6 +198,8 @@ A name that matches no package is reported, the other packages are done, and the
 
 `sync` judges a package by what the store holds, never by the manifest. A package is read again when the store lacks its sources or its `api.json`, or holds an `api.json` in an older format or of another version than the one wanted. A package whose `api.json` another version of the scanner wrote is indexed again from the sources already in the store, with no download. A clone has no store, so its first `sync` reads every package. A pinned version that TWINSERV no longer lists, and the store does not hold, cannot be read: `sync` reports it, and the exit code is 1.
 
+**What `sync --query` lists.**{: #sync-query } With `--query`, `sync` reads nothing into the store and writes nothing at all: no sources, manifest, download or snapshot. It lists the contributed packages whose newest version on TWINSERV is not their baseline, with the date it was published: the baseline is the pin of a documented package, and the version the store holds of any other. It also lists the packages TWINSERV lists that the store does not hold, and those the store holds or the reference documents that TWINSERV no longer lists. The built-in and default packages are left out unless `--builtin` is given, or `--package` or `--packages` names one of them. They carry no version of their own, only the build's, so each package of the newest build is compared with its baseline build by content: its source files with those the store holds, and its public API, the symbols added, removed or changed as `analyze` counts them, with the API of the stored sources. A package with no stored sources of its baseline is compared by its API alone, with the committed snapshot. The newest build is the install `sync` would read, or the latest release with `--release`. A run that names only built-in or default packages does not contact TWINSERV.
+
 **Which packages are documented.** A section of the reference documents a package when its folder under `docs/Reference/Default/`, `Built-In/` or `Contributed/` has an `index.md`, and the landing page's `package_name` lists the package (without that key, the folder's name is the package's). The page's `package_name`, `indexed_from`, `exclude_from_docs` and `exclude_kinds` are described under [Frontmatter and permalinks](Authoring#frontmatter-and-permalinks); the indexer reads them and the build does not put them into any page. `sync` copies a package's `api.json` to `indexer/snapshots/` when the reference documents the package, the store holds it at its pin, indexed by the current scanner, and the two files differ. So a snapshot is only ever of the version the section's pages describe: a package moved past its pin by `--upgrade` keeps its snapshot until `indexed_from` names the new version, and a new section gets its snapshot from the next `sync`, even when the store was brought up to date before the section existed.
 
 **What `analyze` reports.** By default it covers the documented packages and says how many others it left out. `--package` and `--packages` name any package. A package that no section documents has no pages to compare with, so every public symbol of it is listed as one to create, and so it is for every package under `--all`. A symbol is a type, or a name that a type declares: the Get, Let and Set of a property, and the overloads of a name, are one symbol, as the reference has one page for each. Only Public and Protected members of public types count, less what `exclude_from_docs` and `exclude_kinds` name. Each package is analyzed in one of two modes.
@@ -210,7 +215,7 @@ A name that matches no package is reported, the other packages are done, and the
 
 **Moving the reference to a new build**, or one package to a new version:
 
-1. Run `sync --upgrade` with the new install, or `sync --upgrade --package <name>` for one package. The store moves to the newest versions; the snapshots stay at the pins, and `analyze` compares with the ones at `HEAD`.
+1. `sync --query --builtin` lists what has changed. Run `sync --upgrade` with the new install, or `sync --upgrade --package <name>` for one package. The store moves to the newest versions; the snapshots stay at the pins, and `analyze` compares with the ones at `HEAD`.
 2. Run `analyze`, then `draft`, and write the pages the plans list, where they say. Check each callout `analyze` lists as labelled with an older build or version on the new one, and move its label or remove it.
 3. Set `indexed_from` on each section to the new build's tag (`beta-x-1005` is BETA 1005) or the package's new version. Run `sync` again, which writes the new snapshots now that the store holds each package at its new pin, and, for a new build, `derive`, which reads the newly pinned build. Commit the pages, the new `indexed_from`, the new snapshots and `builder/package-api.json` together. A snapshot committed on its own, or an `indexed_from` that is not the snapshot's `version`, sends the next `analyze` into audit mode.
 
