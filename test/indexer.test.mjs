@@ -263,8 +263,8 @@ describe("buildApi on a hand-made package", () => {
 
   test("names the package, its project and its version, in the format the README describes", () => {
     const { api, json, stats } = build();
-    assert.equal(API_FORMAT, 3);
-    assert.equal(api.format, 3);
+    assert.equal(API_FORMAT, 4);
+    assert.equal(api.format, 4);
     assert.equal(api.package, "DemoPkg");
     assert.equal(api.project, "Demo");
     assert.equal(api.version, "1.2");
@@ -696,6 +696,9 @@ describe("the alternatives of an #If are one member", () => {
         kind: "function",
         vis: "public",
         declare: true,
+        lib: "user32",
+        entry: "Win",
+        params: [],
         description: "Window handle",
         signatures: [
           {
@@ -710,7 +713,7 @@ describe("the alternatives of an #If are one member", () => {
     assert.equal(json.split("\n").filter((l) => l.includes('"signatures"')).length, 1);
   });
 
-  test("a declaration under a condition alone, overloads under one condition, and the same name in two #If blocks stay as they are", () => {
+  test("a declaration under a condition alone, overloads under one condition, and the same name in two #If blocks stay as they are, each with its condition", () => {
     const { api } = build(
       "Module M",
       "#If A Then",
@@ -726,14 +729,22 @@ describe("the alternatives of an #If are one member", () => {
       "#End If",
       "End Module",
     );
-    assert.deepEqual(members(api, "One"), [{ name: "One", kind: "sub", vis: "public", signature: "Public Sub One()" }]);
+    assert.deepEqual(members(api, "One"), [
+      { name: "One", kind: "sub", vis: "public", cond: "A", signature: "Public Sub One()" },
+    ]);
     assert.deepEqual(
-      members(api, "Two").map((x) => x.signature),
-      ["Public Sub Two()", "Public Sub Two(a)"],
+      members(api, "Two").map((x) => [x.cond, x.signature]),
+      [
+        ["A", "Public Sub Two()"],
+        ["A", "Public Sub Two(a)"],
+      ],
     );
     assert.deepEqual(
-      members(api, "Same").map((x) => x.signature),
-      ["Public Sub Same()", "Public Sub Same(a)"],
+      members(api, "Same").map((x) => [x.cond, x.signature]),
+      [
+        ["B", "Public Sub Same()"],
+        ["C", "Public Sub Same(a)"],
+      ],
     );
     assert.ok([...members(api, "Two"), ...members(api, "Same")].every((x) => x.signatures === undefined));
   });
@@ -780,6 +791,131 @@ describe("the alternatives of an #If are one member", () => {
     );
     assert.equal(members(api, "F").length, 2);
     assert.ok(members(api, "F").every((x) => x.signatures === undefined));
+    assert.deepEqual(
+      members(api, "F").map((x) => [x.cond, x.declare]),
+      [
+        ["A", true],
+        ["Not (A)", undefined],
+      ],
+    );
+  });
+
+  test("a Declare records what it binds, and the alternatives of an #If write once what they have alike", () => {
+    const { api, json } = build(
+      "Module M",
+      '    Public Declare PtrSafe Function Plain Lib "kernel32" (ByVal a As Long, [TypeHint(X)] b As Any) As Long',
+      '    Public DeclareWide PtrSafe Function W CDecl Lib "msvcrt" Alias "wcslen" (ByVal s As String) As LongPtr',
+      "#If Win64 Then",
+      '    Public Declare PtrSafe Function Pop Lib "ntoskrnl.exe" Alias "ExpInterlockedPopEntrySList" (ByVal h As LongPtr) As LongPtr',
+      "#Else",
+      '    Public Declare PtrSafe Function Pop FastCall Lib "ntoskrnl.exe" (ByVal h As LongPtr) As LongPtr',
+      "#End If",
+      "End Module",
+    );
+    const { signature: _1, ...plain } = members(api, "Plain")[0];
+    assert.deepEqual(plain, {
+      name: "Plain",
+      kind: "function",
+      vis: "public",
+      declare: true,
+      lib: "kernel32",
+      entry: "Plain",
+      params: ["ByVal a As Long", "b As Any"],
+      returnType: "Long",
+    });
+    const { signature: _2, ...wide } = members(api, "W")[0];
+    assert.deepEqual(wide, {
+      name: "W",
+      kind: "function",
+      vis: "public",
+      declare: true,
+      lib: "msvcrt",
+      entry: "wcslen",
+      cdecl: true,
+      wide: true,
+      params: ["ByVal s As String"],
+      returnType: "LongPtr",
+    });
+    const [pop] = members(api, "Pop");
+    assert.deepEqual(
+      [pop.lib, pop.params, pop.entry, pop.fastcall],
+      ["ntoskrnl.exe", ["ByVal h As LongPtr"], undefined, undefined],
+    );
+    assert.deepEqual(
+      pop.signatures.map(({ cond, entry, fastcall }) => ({ cond, entry, fastcall })),
+      [
+        { cond: "Win64", entry: "ExpInterlockedPopEntrySList", fastcall: undefined },
+        { cond: "Not (Win64)", entry: "Pop", fastcall: true },
+      ],
+    );
+    assert.deepEqual(api.problems, []);
+    assert.equal(json.split("\n").filter((l) => l.includes('"signatures"')).length, 1);
+  });
+
+  test("a Declare whose library is a constant names the constant", () => {
+    const { api } = build(
+      "Module M",
+      '    Private Const DETOURS = "SlimDetours.dll"',
+      "    Public Declare PtrSafe Function Hook Lib DETOURS (ByVal e As Long) As Long",
+      "End Module",
+    );
+    const [hook] = members(api, "Hook");
+    assert.deepEqual([hook.lib, hook.libConst, hook.entry], [undefined, "DETOURS", "Hook"]);
+    assert.deepEqual(api.problems, []);
+  });
+
+  test("a Declare whose library cannot be read is listed in problems", () => {
+    const { api } = build(
+      "Module M",
+      "    Public Declare PtrSafe Function Odd Lib (ByVal a As Long) As Long",
+      "End Module",
+    );
+    assert.equal(members(api, "Odd")[0].declare, true);
+    assert.equal(members(api, "Odd")[0].lib, undefined);
+    assert.deepEqual(
+      api.problems.map((p) => p.why),
+      ["a Declare whose library is not read: Odd"],
+    );
+  });
+
+  test("a field and an enumeration value keep their place, with the condition each is declared under", () => {
+    const { api } = build(
+      "Module M",
+      "    Public Type T",
+      "        A As Long",
+      "#If Win64 Then",
+      "        Pad As Long",
+      "#End If",
+      "        B As Long",
+      "    End Type",
+      "    Public Enum E",
+      "        One",
+      "#If X Then",
+      "        Two",
+      "#Else",
+      "        Deux",
+      "#End If",
+      "    End Enum",
+      "End Module",
+    );
+    const t = api.types.find((x) => x.name === "T");
+    assert.deepEqual(
+      t.fields.map((f) => [f.name, f.cond]),
+      [
+        ["A", undefined],
+        ["Pad", "Win64"],
+        ["B", undefined],
+      ],
+    );
+    const e = api.types.find((x) => x.name === "E");
+    assert.deepEqual(
+      e.values.map((v) => [v.name, v.cond]),
+      [
+        ["One", undefined],
+        ["Two", "X"],
+        ["Deux", "Not (X)"],
+      ],
+    );
   });
 
   test("a nested #If and an #ElseIf are alternatives of one block; the member is as visible as its most visible, and an item says when it is not", () => {
@@ -1141,6 +1277,16 @@ describe("a member holding the alternatives of an #If", () => {
       ["signature"],
       1,
     ]);
+  });
+
+  test("a member declared under an #If on its own has its condition in front, and a change of it modifies the symbol", () => {
+    const lone = (cond) => ({ ...m("Lone", "sub", "Public Sub Lone()"), ...(cond ? { cond } : {}) });
+    assert.equal(flattenSymbols(apiWith(lone("Win64")))[1].signature, "#If Win64 Then Public Sub Lone()");
+    const r = diffApi(apiWith(lone("Win64")), apiWith(lone(null)));
+    assert.deepEqual(
+      r.modified.map((x) => x.changes.join()),
+      ["signature"],
+    );
   });
 
   test("a plain declaration that gains an alternative under an #If is modified, not added or removed", () => {

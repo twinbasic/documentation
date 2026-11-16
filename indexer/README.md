@@ -361,12 +361,12 @@ snapshots.
 
 One file for each package, written by `lib/api-model.mjs` from what
 `scripts/lib/twin-api.mjs` reads out of the package's sources. Its first key
-is `format`, which changes whenever the shape does (3 today); `sync` indexes a
+is `format`, which changes whenever the shape does (4 today); `sync` indexes a
 package again when the store holds another number.
 
 ```json
 {
-  "format": 3,
+  "format": 4,
   "package": "VBA",
   "project": "VBA",
   "version": "beta-x-1010",
@@ -402,11 +402,20 @@ package again when the store holds another number.
 | `values` | An Enum has these instead, in declaration order. |
 | `fields` | A Type or Union has these as well as `members`, in declaration order. |
 
-**A member** is `{ name, kind, vis, declare?, signature, returnType?,
-accessor?, hidden?, attrs?, description? }` (or `signatures` for `signature`, for
-the alternatives of an `#If`, described below): `kind` is `sub`, `function`,
-`property`, `event`, `delegate`, `const` or `field`; `declare` is true for a
-`Declare` statement, which is a `sub`, `function` or `property` as well;
+**A member** is `{ name, kind, vis, cond?, declare?, signature, lib?, libConst?,
+entry?, cdecl?, fastcall?, wide?, params?, returnType?, accessor?, hidden?, attrs?,
+description? }` (or `signatures` for `signature`, for the alternatives of an
+`#If`, described below): `kind` is `sub`, `function`, `property`, `event`,
+`delegate`, `const` or `field`; `cond` is the condition of the `#If` it is
+declared under, written as for an alternative below, when it is under one;
+`declare` is true for a `Declare` statement, which is a `sub`, `function` or
+`property` as well, and a Declare has what it binds, read from its signature
+by `declareParts` in `scripts/lib/twin-api.mjs`: `lib` the library, or
+`libConst` the name of the constant that holds it (`Lib DETOURS`), `entry`
+the entry point (its `Alias`, else its name), `cdecl` or `fastcall` true for
+that calling convention, `wide` true for a `DeclareWide`, and `params` its
+parameters as written, without the attributes before each (a Declare whose
+library cannot be read has none of these, and is listed in `problems`);
 `returnType` is the type after the parameter list of a Function, a Property Get
 or a Delegate Function, without the `Implements`, `Overrides` or `Handles`
 clause that may follow it, else the type the name's closing type-declaration
@@ -426,8 +435,9 @@ Property Get, a Delegate, a Declare, a variable, a field or a constant. The
 
 **A member declared in the branches of an `#If`** is one member when its
 declarations are alternatives, and holds them in `signatures`, one item for each
-in declaration order: `{ cond, vis?, signature, returnType?, hidden?, attrs?,
-description? }`. `cond` is the condition of its branch, in the source's own
+in declaration order: `{ cond, vis?, signature, lib?, libConst?, entry?, cdecl?,
+fastcall?, wide?, params?, returnType?, hidden?, attrs?, description? }`. `cond`
+is the condition of its branch, in the source's own
 words, with the branches before it negated: `Win64` and `Not (Win64)` for the
 two branches of `#If Win64 Then ... #Else ... #End If`, `Not (A) And B` for the
 `#ElseIf B` after `#If A`, `Outer And Inner` in a nested one. Declarations are
@@ -435,22 +445,23 @@ alternatives when they are in one `#If` block (a nested one with its outer
 block), of one name and kind, the same `accessor` (a Property Get is not an
 alternative of its Let) and both or neither a Declare, with more than one
 condition among them; two declarations under the same condition are overloads
-and stay members of their own, as does a declaration under a condition on its
-own. The member has `name`, `kind`, `vis` (the most accessible of the
+and stay members of their own, each with its `cond`, as does a declaration
+under a condition on its own. The member has `name`, `kind`, `vis` (the most accessible of the
 alternatives), `declare` and `accessor`, and what all the alternatives have
-alike once, as a member that is not merged has it: `returnType`, `hidden`,
-`attrs` and `description`, which an attribute list above the `#If` gives to every
-branch. Only a key that differs is on an item, and `vis` is on one only when it
+alike once, as a member that is not merged has it: what a Declare binds,
+`returnType`, `hidden`, `attrs` and `description`, which an attribute list above
+the `#If` gives to every branch. Only a key that differs is on an item, and `vis` is on one only when it
 is not the member's. A merged member has no `signature` of its own. The
 differ treats it as the members it holds: one symbol of the name and kind, a
 line in its `signature` for each alternative, `#If Win64 Then Public Declare ...`,
-so that a changed condition is a changed signature. The values of an Enum and
-the fields of a Type are not merged: their order is part of what they mean, and
-each alternative stays in it.
+so that a changed condition is a changed signature; it puts the `cond` of a
+member that is not merged in front of its signature the same way. The values of
+an Enum and the fields of a Type are not merged: their order is part of what
+they mean, and each alternative stays in it, with its `cond`.
 
-**A value** is `{ name, value?, hidden?, attrs?, description? }`, `value` the
-text after the `=`. **A field** is `{ name, vis, signature, hidden?, attrs?,
-description? }`. **An alias** is `{ name, target, vis, in?, file, signature,
+**A value** is `{ name, cond?, value?, hidden?, attrs?, description? }`, `value`
+the text after the `=`. **A field** is `{ name, vis, cond?, signature, hidden?,
+attrs?, description? }`. **An alias** is `{ name, target, vis, in?, file, signature,
 hidden?, attrs?, description? }`.
 
 *Order and layout.* Types are in code-unit order of their path

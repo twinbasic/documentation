@@ -1,5 +1,5 @@
 import path from "node:path";
-import { parseSources } from "../../scripts/lib/twin-api.mjs";
+import { declareParts, parseSources } from "../../scripts/lib/twin-api.mjs";
 import { MODIFIERS } from "../../scripts/lib/twin-declarations.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "./vb6-preprocess.mjs";
 
@@ -15,7 +15,7 @@ import { CONTAINER_MAP, preprocessVB6 } from "./vb6-preprocess.mjs";
  */
 
 /** Changes whenever the shape of api.json does; the first number in the file. */
-export const API_FORMAT = 3;
+export const API_FORMAT = 4;
 
 const SOURCES = /^Sources\//i;
 const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
@@ -103,10 +103,35 @@ function common(rec, d) {
   return rec;
 }
 
-function memberRecord(m) {
+// What a Declare binds, in the order api.json writes it: `lib`, or `libConst`
+// for a library named by a constant, `entry`, `cdecl`, `fastcall` and `wide` only
+// when true, and `params`.
+const DECLARE_KEYS = ["lib", "libConst", "entry", "cdecl", "fastcall", "wide", "params"];
+
+function declareRecord(parts) {
+  const rec = parts.lib !== null ? { lib: parts.lib } : { libConst: parts.libConst };
+  rec.entry = parts.entry;
+  for (const key of ["cdecl", "fastcall", "wide"]) if (parts[key]) rec[key] = true;
+  rec.params = parts.params;
+  return rec;
+}
+
+/**
+ * A member's record. `cond` is the condition of the #If it is declared under, if
+ * any; a member that is one of several alternatives is written by mergedRecord,
+ * with a `cond` on each of them instead. `unread(m)` is called for a Declare whose
+ * library and parameters cannot be read from its signature.
+ */
+function memberRecord(m, unread) {
   const rec = { name: m.name, kind: m.kind, vis: m.vis };
+  if (m.cond != null) rec.cond = m.cond;
   if (isDeclare(m.signature)) rec.declare = true;
   rec.signature = m.signature;
+  if (rec.declare) {
+    const parts = declareParts(m.signature);
+    if (parts) Object.assign(rec, declareRecord(parts));
+    else unread(m);
+  }
   if (m.returnType != null) rec.returnType = m.returnType;
   if (m.accessor != null) rec.accessor = m.accessor;
   return common(rec, m);
@@ -153,19 +178,21 @@ const ACCESS_ORDER = ["public", "protected", "friend", "private"];
  * One member for the alternatives of an #If: `name`, `kind`, `vis` (the most
  * accessible of theirs), `declare` and `accessor` as they all have them, and
  * `signatures`, one item for each in declaration order: `{ cond, vis?, signature,
- * returnType?, hidden?, attrs?, description? }`. `vis` is written on an item only
- * when it is not the member's. So are the other keys, but for one that every
- * alternative has alike (the attributes and the description above an #If, or a
- * result type that is the same in each branch): that is written once, on the
- * member, where a member that is not merged has it.
+ * lib?, libConst?, entry?, cdecl?, fastcall?, wide?, params?, returnType?, hidden?,
+ * attrs?, description? }`. `vis` is written on an item only when it is not the member's.
+ * So are the other keys, but for one that every alternative has alike (the
+ * attributes and the description above an #If, a result type that is the same in
+ * each branch, the library of a Declare): that is written once, on the member,
+ * where a member that is not merged has it.
  */
-function mergedRecord(alts) {
-  const recs = alts.map(memberRecord);
+function mergedRecord(alts, unread) {
+  const recs = alts.map((m) => memberRecord(m, unread));
   const vis = recs.map((r) => r.vis).sort((a, b) => ACCESS_ORDER.indexOf(a) - ACCESS_ORDER.indexOf(b))[0];
   const shared = (key) =>
     recs[0][key] !== undefined && recs.every((r) => JSON.stringify(r[key]) === JSON.stringify(recs[0][key]));
   const rec = { name: recs[0].name, kind: recs[0].kind, vis };
   if (recs[0].declare) rec.declare = true;
+  for (const key of DECLARE_KEYS) if (shared(key)) rec[key] = recs[0][key];
   if (shared("returnType")) rec.returnType = recs[0].returnType;
   if (recs[0].accessor !== undefined) rec.accessor = recs[0].accessor;
   for (const key of ["hidden", "attrs", "description"]) if (shared(key)) rec[key] = recs[0][key];
@@ -173,7 +200,7 @@ function mergedRecord(alts) {
     const item = { cond: alts[k].cond };
     if (r.vis !== vis) item.vis = r.vis;
     item.signature = r.signature;
-    for (const key of ["returnType", "hidden", "attrs", "description"]) {
+    for (const key of [...DECLARE_KEYS, "returnType", "hidden", "attrs", "description"]) {
       if (r[key] !== undefined && rec[key] === undefined) item[key] = r[key];
     }
     return item;
@@ -181,15 +208,21 @@ function mergedRecord(alts) {
   return rec;
 }
 
+// A value or a field keeps its place among the others, each alternative of an #If
+// included, with the condition it is declared under.
 function valueRecord(m) {
   const rec = { name: m.name };
+  if (m.cond != null) rec.cond = m.cond;
   const value = enumValueOf(m.signature);
   if (value !== null) rec.value = value;
   return common(rec, m);
 }
 
 function fieldRecord(m) {
-  return common({ name: m.name, vis: m.vis, signature: m.signature }, m);
+  const rec = { name: m.name, vis: m.vis };
+  if (m.cond != null) rec.cond = m.cond;
+  rec.signature = m.signature;
+  return common(rec, m);
 }
 
 // The index in `types` of the type each is declared in, or -1: the nearest type
@@ -269,7 +302,10 @@ export function buildApi({ symbol, version, files }) {
   const parents = parentsOf(parsed.types);
   const inPath = [];
   const reachable = [];
+  const unreadDeclares = [];
   const records = parsed.types.map((t, i) => {
+    const unread = (m) =>
+      unreadDeclares.push({ file: t.file, line: m.line, why: `a Declare whose library is not read: ${m.name}` });
     const p = parents[i];
     inPath[i] = p < 0 ? null : `${inPath[p] ? `${inPath[p]}.` : ""}${parsed.types[p].name}`;
     reachable[i] = t.vis === "public" && (p < 0 || reachable[p]);
@@ -301,7 +337,7 @@ export function buildApi({ symbol, version, files }) {
     const sorted = (list) =>
       alternatives(list)
         .sort((a, b) => byCodeUnit(a.name, b.name) || byCodeUnit(a.kind, b.kind) || a.order - b.order)
-        .map(({ alts }) => (alts.length > 1 ? mergedRecord(alts) : memberRecord(alts[0])));
+        .map(({ alts }) => (alts.length > 1 ? mergedRecord(alts, unread) : memberRecord(alts[0], unread)));
     if (t.kind === "enum") {
       rec.values = t.members.map(valueRecord);
     } else if (t.kind === "type" || t.kind === "union") {
@@ -337,7 +373,7 @@ export function buildApi({ symbol, version, files }) {
       return common(rec, a);
     });
 
-  const problems = parsed.problems
+  const problems = [...parsed.problems, ...unreadDeclares]
     .map((p) => ({ file: inside(p.file), line: p.line, why: p.why }))
     .sort((a, b) => byCodeUnit(a.file, b.file) || a.line - b.line || byCodeUnit(a.why, b.why));
 

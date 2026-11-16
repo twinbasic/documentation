@@ -109,13 +109,22 @@ Branches of an `#If` are read as alternatives that each start from the block str
 `#If` found, nothing is evaluated, and branches that leave different blocks open are listed in
 `problems`.
 
-## api.json format 3 and the `#If` merge
+## api.json format 4 and the `#If` merge
 
 `format` changes whenever the shape does, and `sync` indexes a package again when the store
 holds another number. Format 3 merges the declarations in the branches of an `#If`
 (`#If VBA7 Then ... As LongPtr #Else ... As Long`) into **one member with a `signatures` list**,
 a condition on each. Separate members with no condition would make an `#If` pair look like
 overloads and hide a changed condition from the differ.
+
+Format 4 (owner, 2026-11-15) adds two things. **Every declaration under an `#If` keeps its
+`cond`**, a member, field or value the merge leaves alone included: format 3 kept it only on
+the alternatives of a merge, so a Declare under one branch alone (tbKMode's `KfLowerIrql`, x86
+only) or a Sub and a Declare of one name in the two branches (`InterlockedIncrement`) read as
+unconditional. And **a Declare records what it binds** (`lib`, or `libConst` for `Lib
+DETOURS`, `entry`, `cdecl`, `fastcall`, `wide`, `params`), read by `declareParts`, so that a tool checking a package's Declares against
+Windows reads them from the snapshot rather than parsing twinBASIC again; `builder/package-api.json`
+keeps no signatures and so none of this.
 The differ reads the merged form, with the condition in front of each signature, so that a
 changed condition, a new branch or an edited signature each modifies the one symbol of that
 name and kind. The rules for what counts as an alternative (same block, name, kind, accessor

@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "tbRegExp",
   "project": "tbRegExp",
   "version": "1.9.0.0",
@@ -165,7 +165,7 @@
         {"name":"Compile","kind":"sub","vis":"private","signature":"Private Sub Compile(ByRef outBytecode() As Long, ByRef s As String, Optional ByVal caseInsensitive As Boolean = False)"},
         {"name":"ComputeFirstChar","kind":"function","vis":"private","signature":"Private Function ComputeFirstChar( ByRef bytecode() As Long, ByRef outChar As Long, ByRef outRangesPc As Long, ByRef outIFlag As Long ) As Long","returnType":"Long"},
         {"name":"CopyCaptures","kind":"sub","vis":"private","signature":"Private Sub CopyCaptures(ByRef context As DfsMatcherContext, ByRef captures As CapturesTy)"},
-        {"name":"CopyMemory","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub CopyMemory Lib \"kernel32\" Alias \"RtlMoveMemory\" (Destination As Any, Source As Any, ByVal Length As LongPtr)"},
+        {"name":"CopyMemory","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub CopyMemory Lib \"kernel32\" Alias \"RtlMoveMemory\" (Destination As Any, Source As Any, ByVal Length As LongPtr)","lib":"kernel32","entry":"RtlMoveMemory","params":["Destination As Any","Source As Any","ByVal Length As LongPtr"]},
         {"name":"DfsMatch","kind":"function","vis":"private","signature":"Private Function DfsMatch( ByRef outCaptures As CapturesTy, ByRef bytecode() As Long, ByRef inputStr As String, Optional ByVal stepsLimit As Long = DEFAULT_STEPS_LIMIT, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Long","returnType":"Long"},
         {"name":"DfsMatchFrom","kind":"function","vis":"private","signature":"Private Function DfsMatchFrom( ByRef context As DfsMatcherContext, ByRef outCaptures As CapturesTy, ByRef bytecode() As Long, ByRef inputStr As String, ByVal sp As Long, Optional ByVal stepsLimit As Long = DEFAULT_STEPS_LIMIT, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Long","returnType":"Long"},
         {"name":"DfsRunThreads","kind":"function","vis":"private","signature":"Private Function DfsRunThreads( ByRef outCaptures As CapturesTy, ByRef context As DfsMatcherContext, ByRef bytecode() As Long, ByRef inputStr As String, ByVal sp As Long, ByVal multiline As Boolean, ByVal dotAll As Boolean ) As Long","returnType":"Long"},

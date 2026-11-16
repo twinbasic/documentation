@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "VBRUN",
   "project": "VBRUN",
   "version": "beta-x-1042",
@@ -59,7 +59,7 @@
       "file": "Constants.twin",
       "signature": "Public Module Constants",
       "members": [
-        {"name":"CreatePropertyBagObject","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function CreatePropertyBagObject Lib \"<hiddenmodule>\" Alias \"#30\" () As stdole.IUnknown","returnType":"stdole.IUnknown","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""}
+        {"name":"CreatePropertyBagObject","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function CreatePropertyBagObject Lib \"<hiddenmodule>\" Alias \"#30\" () As stdole.IUnknown","lib":"<hiddenmodule>","entry":"#30","wide":true,"params":[],"returnType":"stdole.IUnknown","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""}
       ]
     },
     {
@@ -228,7 +228,7 @@
       "file": "Constants.twin",
       "signature": "Public Enum ButtonConstants",
       "values": [
-        {"name":"vbButtonGraphical","value":"1"},
+        {"name":"vbButtonGraphical","cond":"FEATURE_GRAPHICAL_BUTTONS","value":"1"},
         {"name":"vbButtonStandard","value":"0"}
       ]
     },

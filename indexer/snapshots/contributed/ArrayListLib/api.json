@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "ArrayListLib",
   "project": "ArrayListLib",
   "version": "1.6.151.1",
@@ -352,9 +352,9 @@
         {"name":"fFeatures","vis":"public","signature":"fFeatures As Integer"},
         {"name":"cbElements","vis":"public","signature":"cbElements As Long"},
         {"name":"cLocks","vis":"public","signature":"cLocks As Long"},
-        {"name":"dummyPadding","vis":"public","signature":"dummyPadding As Long"},
-        {"name":"pvData","vis":"public","signature":"pvData As LongLong"},
-        {"name":"pvData","vis":"public","signature":"pvData As Long"},
+        {"name":"dummyPadding","vis":"public","cond":"Win64","signature":"dummyPadding As Long"},
+        {"name":"pvData","vis":"public","cond":"Win64","signature":"pvData As LongLong"},
+        {"name":"pvData","vis":"public","cond":"Not (Win64)","signature":"pvData As Long"},
         {"name":"rgsabound0","vis":"public","signature":"rgsabound0 As SAFEARRAYBOUND"}
       ],
       "members": []
@@ -371,16 +371,16 @@
         {"name":"FADF_FIXEDSIZE","kind":"const","vis":"public","signature":"Public Const FADF_FIXEDSIZE As Long = &H10"},
         {"name":"FADF_HAVEVARTYPE","kind":"const","vis":"public","signature":"Public Const FADF_HAVEVARTYPE As Long = &H80"},
         {"name":"FADF_VARIANT","kind":"const","vis":"public","signature":"Public Const FADF_VARIANT As Long = &H800"},
-        {"name":"FillMemory","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub FillMemory Lib \"kernel32\" Alias \"RtlFillMemory\" (Destination As Any, ByVal Length As Long, ByVal Fill As Byte)"},
+        {"name":"FillMemory","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub FillMemory Lib \"kernel32\" Alias \"RtlFillMemory\" (Destination As Any, ByVal Length As Long, ByVal Fill As Byte)","lib":"kernel32","entry":"RtlFillMemory","params":["Destination As Any","ByVal Length As Long","ByVal Fill As Byte"]},
         {"name":"LSetByVal","kind":"sub","vis":"private","signature":"Private Sub LSetByVal(ByRef Target As UDTStringPointer, ByVal Value As String)"},
         {"name":"MemMoveBSTR","kind":"sub","vis":"private","signature":"Private Sub MemMoveBSTR(ByRef Target As LongPtr, ByRef Source As LongPtr, ByVal ByteCount As Long)"},
         {"name":"MemMoveEx","kind":"sub","vis":"public","signature":"Public Sub MemMoveEx(ByVal Target As LongPtr, ByVal Source As LongPtr, ByVal ByteCount As LongPtr)"},
         {"name":"ReassignArrayTo","kind":"sub","vis":"public","signature":"Public Sub ReassignArrayTo(ByRef Destination As Variant, ByRef Source As Variant)"},
-        {"name":"RtlMoveMemory","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub RtlMoveMemory Lib \"kernel32\" (ByVal lpDest As LongPtr, ByVal lpSource As LongPtr, ByVal Size As LongPtr)"},
+        {"name":"RtlMoveMemory","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub RtlMoveMemory Lib \"kernel32\" (ByVal lpDest As LongPtr, ByVal lpSource As LongPtr, ByVal Size As LongPtr)","lib":"kernel32","entry":"RtlMoveMemory","wide":true,"params":["ByVal lpDest As LongPtr","ByVal lpSource As LongPtr","ByVal Size As LongPtr"]},
         {"name":"SAFEARRAY_CELEMENTS_OFFSET","kind":"const","vis":"public","signature":"Public Const SAFEARRAY_CELEMENTS_OFFSET As Long = VARIANT_SIZE / INT_SIZE + 4 + PTR_SIZE"},
         {"name":"SAFEARRAY_LLBOUND_OFFSET","kind":"const","vis":"public","signature":"Public Const SAFEARRAY_LLBOUND_OFFSET As Long = VARIANT_SIZE / INT_SIZE + 8 + PTR_SIZE"},
         {"name":"SAFEARRAY_PVDATA_OFFSET","kind":"const","vis":"public","signature":"Public Const SAFEARRAY_PVDATA_OFFSET As Long = 8 + PTR_SIZE"},
-        {"name":"SafeArrayCopyData","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SafeArrayCopyData Lib \"oleaut32\" (ByRef psaSource As Any, ByRef psaTarget As Any) As Long","returnType":"Long"},
+        {"name":"SafeArrayCopyData","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SafeArrayCopyData Lib \"oleaut32\" (ByRef psaSource As Any, ByRef psaTarget As Any) As Long","lib":"oleaut32","entry":"SafeArrayCopyData","params":["ByRef psaSource As Any","ByRef psaTarget As Any"],"returnType":"Long"},
         {"name":"VariantArrayClone","kind":"sub","vis":"public","signature":"Public Sub VariantArrayClone(ByVal DestinationAddress As LongPtr, ByVal SourceAddress As LongPtr, ByVal GetCount As Long, Optional ByVal ArrayElementSize As Long = VARIANT_SIZE)"},
         {"name":"ZeroMemory","kind":"sub","vis":"public","signature":"Public Sub ZeroMemory(ByVal TargetAddress As LongPtr, ByVal ByteCount As Long)"}
       ]

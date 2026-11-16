@@ -475,7 +475,8 @@ for (const [what, src, want, opts] of [
 // missed: an attribute on the same line, CDecl and a block
 // comment between the name and Lib, an Alias, no parameters, an attribute before a parameter with a
 // comma inside it, an escaped name, a branch of an #If, and FastCall with an Alias and DeclareWide
-// (tbKMode 0.3.0.5).
+// (tbKMode 0.3.0.5); and a Declared Property Get (VB's and VBA's packages), a name with a
+// type-declaration character and a library named by a constant (DetoursLib).
 {
   const src = probe(
     [
@@ -492,6 +493,9 @@ for (const [what, src, want, opts] of [
       "#End If",
       'Public Declare PtrSafe Function ObDereferenceObject FastCall Lib "ntoskrnl.exe" Alias "ObfDereferenceObject" (ByVal Object As LongPtr) As LongPtr',
       'Public DeclareWide PtrSafe Function RtlDuplicateUnicodeString Lib "ntdll" (ByVal Flags As Long, StringIn As UNICODE_STRING, StringOut As UNICODE_STRING) As Long',
+      'Public DeclareWide PtrSafe Property Get FormsGetCount Lib "<hiddenmodule>" Alias "#100" () As Long',
+      'Public Declare Function GetTickCount& Lib "kernel32" ()',
+      'Public Declare PtrSafe Function Hook Lib DETOURS Alias "SlimDetoursInlineHook" (ByVal bEnable As Long) As Long',
     ].join("\n"),
   );
   const members = parseTwin(src, "probe.twin").types.find((t) => t.name === "Probe")?.members ?? [];
@@ -612,15 +616,51 @@ for (const [what, src, want, opts] of [
         entry: "RtlDuplicateUnicodeString",
         cdecl: false,
         fastcall: false,
+        wide: true,
         params: ["ByVal Flags As Long", "StringIn As UNICODE_STRING", "StringOut As UNICODE_STRING"],
+      },
+    ],
+    [
+      "FormsGetCount",
+      undefined,
+      {
+        name: "FormsGetCount",
+        lib: "<hiddenmodule>",
+        entry: "#100",
+        cdecl: false,
+        fastcall: false,
+        wide: true,
+        params: [],
+      },
+    ],
+    [
+      "GetTickCount",
+      undefined,
+      { name: "GetTickCount", lib: "kernel32", entry: "GetTickCount", cdecl: false, fastcall: false, params: [] },
+    ],
+    [
+      "Hook",
+      undefined,
+      {
+        name: "Hook",
+        lib: null,
+        libConst: "DETOURS",
+        entry: "SlimDetoursInlineHook",
+        cdecl: false,
+        fastcall: false,
+        params: ["ByVal bEnable As Long"],
       },
     ],
   ]) {
     const got = parts(name, i);
+    // `libConst` is null and `wide` false unless the expectation says otherwise, in
+    // declareParts' own key order.
+    const { name: n, lib, libConst = null, params, wide = false, ...rest } = want;
+    const full = { name: n, lib, libConst, ...rest, wide, params };
     check(
       `declareParts: ${name}${i === undefined ? "" : ` (branch ${i})`}`,
-      show(got) === show(want),
-      show({ got, want }),
+      show(got) === show(full),
+      show({ got, want: full }),
     );
   }
   check("declareParts: no Declare gives null", declareParts("Public Sub P(ByVal x As Long)") === null, "");
