@@ -8,6 +8,8 @@ permalink: /Tutorials/CEF/Getting-Started
 
 # Getting Started
 
+This tutorial prepares a project for the **CefBrowser** control: the package it references, the Chromium runtime it needs, and the first control on a form.
+
 ## Package requirements
 
 To create a project that uses the CEF package, add the right compiler-package reference to your project. The package ships in three flavours --- one per supported Chromium version --- and you pick exactly one:

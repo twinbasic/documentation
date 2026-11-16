@@ -9,6 +9,8 @@ redirect_from:
 
 # Anchoring
 
+The **Anchors** and **Dock** properties keep a control in place as its form or container is resized: anchoring holds chosen edges at a fixed distance from the container's edges, and docking attaches the control to one side, or fills the container with it.
+
 One of the new form designer features you see in twinBASIC is the 'Anchors' property, in the **LAYOUT** group of the PROPERTIES panel:
 
 ![The PROPERTIES panel for the TextBox Text1, showing its LAYOUT group, with the Anchors row underlined](../Images/b26da59b-4e98-40b7-b97b-bb3cef4ca1d0.png){:width="402" height="191"}

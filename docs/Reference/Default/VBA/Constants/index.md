@@ -7,6 +7,8 @@ has_toc: false
 
 # Constants module
 
+The Constants module holds the constants of the VBA package that belong to no enumeration, such as **vbCrLf**, **vbNullString** and **vbObjectError**, and lists the package's enumerations.
+
 ## Constants
 
 **vbBack**{: #vbBack }

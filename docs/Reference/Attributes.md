@@ -9,6 +9,8 @@ index: TB5155
 # Attributes
 {: .no_toc }
 
+An attribute, written in square brackets, gives the compiler an instruction or annotates a form, module, class, type, enumeration, declaration or procedure.
+
 Attributes have two major functions: 
 
 - they can act as instructions to compiler to influence how code is generated, or 

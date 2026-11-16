@@ -7,6 +7,8 @@ permalink: /Features/Language/Loop-Control
 
 # Loop Control
 
+twinBASIC adds **Continue For**, **Continue While** and **Continue Do**, which go on to a loop's next pass, and **Exit While**, which leaves a **While** loop.
+
 The following new statements are available for controlling the procession of loops:
 
 - `Continue For` - Proceed to the next iteration (or end) of `For` loop.

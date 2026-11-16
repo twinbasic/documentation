@@ -671,7 +671,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 |---|---|---|
 | `computeSiteSeo` | `(config, markdown) → { seoSiteTitle, seoLogoUrl }` | Site-level SEO constants. Called by `markdownInit` on main; needs a built markdown-it instance. |
 | `computeChunkSeo` | `(pages, seoSiteTitle, config, markdown) → void` | Per-page SEO (`seoTitle` / `seoFullTitle` / `seoCanonical` / `seoIsHome` / `seoDescription`), set in place. Called by each render worker between `renderPhase` and `templatePhase`. |
-| `pageSummary` | `(page) → string` | The first sentence of the page's introduction (above its first `<h2>`), as plain text, cut at 240 characters; `""` when there is none, or it only repeats the title. A page's `<meta name="description">` and its note in `llms.txt`. |
+| `pageSummary` | `(page) → string` | The first sentence of the page's introduction (above its first `<h2>`), as plain text, cut at 240 characters; `""` when there is none. A paragraph inside a callout, one that opens with a bold label ending in a colon (a contributed package's `**Author:**` line) and one that only repeats the title are passed over. A page's `<meta name="description">` and its note in `llms.txt`. |
 | `renderTitle` | `(text, markdown) → string` | Runs one title through `markdownify → strip_html → normalize_whitespace → escape_once`. |
 | `stripHtml` | `(s) → string` | Drops `<script>` / `<style>` / HTML comments, then strips remaining tag delimiters. Re-exported for `search.mjs`. |
 

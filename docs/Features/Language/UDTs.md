@@ -10,6 +10,8 @@ index_also:
 
 # Enhancements to User-Defined Types (UDTs)
 
+A User-Defined Type can hold procedures, constructors, destructors, operators and API declarations, and set how its members are packed in memory.
+
 ## Procedures, Constructors, Destructors, and Operators
 {: index="operator overloading; overloading operators" }
 

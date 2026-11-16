@@ -11,6 +11,8 @@ redirect_from:
 
 # Creating a TWINPACK package
 
+A package is made from the **Package** sample project, then saved as a TWINPACK file or published to TWINSERV, the package server.
+
 To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and in its **Samples** section, choose the card labelled **Package**:
 
 ![The New / Open Project dialog on its Samples section, with a red ring round the name of the Package sample, Sample 7](Images/6ad7a172-0e1b-4276-ac89-042681552507.png){:width="970" height="728"}

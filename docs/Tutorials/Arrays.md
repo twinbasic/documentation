@@ -7,6 +7,8 @@ permalink: /Tutorials/Arrays
 # Arrays
 {: .no_toc }
 
+This tutorial explains arrays in twinBASIC: declaring and sizing them, finding their bounds and size, reaching their elements, returning them from functions, and low-level access to an array's memory and to a string's characters.
+
 Arrays come in two kinds:
 
 1. Fixed size arrays, whose size specification is a compile-time constant.  

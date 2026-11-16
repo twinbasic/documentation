@@ -10,6 +10,8 @@ redirect_from:
 
 # Getting Started
 
+This tutorial prepares a project for the **WebView2** control: the packages it references, and the first control on a form.
+
 ## Package requirements
 
 To create projects that use WebView2, your projects must include both the `WinNativeForms` package and the `WebView2` package in your projects.  

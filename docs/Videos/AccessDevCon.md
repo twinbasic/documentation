@@ -6,6 +6,8 @@ permalink: /Videos/AccessDevCon
 
 # Access DevCon - Videos
 
+Recordings of the twinBASIC talks at Access DevCon, a conference for Microsoft Access developers, from 2021 to 2026.
+
 To learn more about the conference: [https://www.donkarl.com/devcon][2].
 
 ### Access DevCon 2026 - Practical twinBASIC

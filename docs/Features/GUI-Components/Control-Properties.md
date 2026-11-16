@@ -7,6 +7,8 @@ permalink: /Features/GUI-Components/Control-Properties
 
 # Control Property Enhancements
 
+Lists what twinBASIC adds to the properties of the **TextBox**, **Label** and **Timer** controls.
+
 ## TextBox Enhancements
 
 - `TextBox.NumbersOnly` property: Restricts input to 0-9 by setting the `ES_NUMBER` style on the underlying control.

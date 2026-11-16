@@ -92,13 +92,11 @@ const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 /**
  * A page's summary, as plain text, from its renderedContent: the first sentence of its
  * introduction, which the documentation's own rule puts directly under the heading (WIP.md,
- * Plain-English prose); or "" when it has none, or one that only repeats the title. Its
- * `<meta name="description">` (template.mjs) and its note in /llms.txt (llms-txt.mjs).
+ * Plain-English prose); or "" when it has none. Its `<meta name="description">` (template.mjs)
+ * and its note in /llms.txt (llms-txt.mjs).
  */
 export function pageSummary(page) {
-  const summary = firstSentence(page.renderedContent);
-  const title = String(page.frontmatter?.title ?? "").toLowerCase();
-  return summary.replace(/[.:]$/, "").toLowerCase() === title ? "" : summary;
+  return firstSentence(page.renderedContent, page.frontmatter?.title);
 }
 
 /**
@@ -106,17 +104,53 @@ export function pageSummary(page) {
  * its first level-2 heading, as plain text; or "" when the introduction has none, as the
  * Glossary's has not, whose first paragraph defines its first term. A sentence ends at `.`, `!`
  * or `?` before white space and a capital letter, or at the paragraph's end.
+ *
+ * Three kinds of paragraph are passed over, being no summary of the page: one inside a callout
+ * (`> [!NOTE]`), whose first paragraph is its title, "Note"; one that opens with a field, a
+ * bold label ending in a colon, as the `**Author:** ... **Version:** ...` line that opens a
+ * contributed package's landing page (WIP.md) does; and one that only repeats `title`, the
+ * page's, as a subtitle in bold under a numbered heading does (a challenge's).
  */
-export function firstSentence(html) {
+export function firstSentence(html, title = "") {
   const page = String(html ?? "");
   const h2 = page.search(/<h2[\s>]/);
-  for (const m of (h2 < 0 ? page : page.slice(0, h2)).matchAll(PARAGRAPH)) {
+  const intro = h2 < 0 ? page : page.slice(0, h2);
+  const callouts = calloutRanges(intro);
+  const name = String(title ?? "").toLowerCase();
+  for (const m of intro.matchAll(PARAGRAPH)) {
+    if (callouts.some(([from, to]) => m.index >= from && m.index < to)) continue;
+    if (FIELD.test(m[1])) continue;
     const text = decodeEntities(stripHtml(m[1])).replace(/\s+/g, " ").trim();
-    if (!text) continue;
+    if (!text || (name && text.replace(/[.:]$/, "").toLowerCase() === name)) continue;
     const end = /[.!?](?=\s+[A-Z])/.exec(text);
     return shorten(end ? text.slice(0, end.index + 1) : text);
   }
   return "";
+}
+
+const FIELD = /^\s*<strong>[^<]*:<\/strong>/;
+const CALLOUT_OPEN = /<div class="markdown-alert\b/g;
+const DIV_TAG = /<(\/?)div\b[^>]*>/g;
+
+// Where each callout is in `html`, as [start, end) offsets: from its `<div class="markdown-alert
+// ...">` to the `</div>` that closes it, counting the divs inside it (a code block is one).
+function calloutRanges(html) {
+  const out = [];
+  for (const open of html.matchAll(CALLOUT_OPEN)) {
+    if (out.length && open.index < out[out.length - 1][1]) continue;
+    let depth = 0;
+    let end = html.length;
+    DIV_TAG.lastIndex = open.index;
+    for (let tag = DIV_TAG.exec(html); tag; tag = DIV_TAG.exec(html)) {
+      depth += tag[1] ? -1 : 1;
+      if (depth === 0) {
+        end = tag.index + tag[0].length;
+        break;
+      }
+    }
+    out.push([open.index, end]);
+  }
+  return out;
 }
 
 function shorten(text) {

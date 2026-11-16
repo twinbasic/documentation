@@ -7,7 +7,7 @@ permalink: /Challenges/1
 
 # twinBASIC Monthly Challenge #1
 
-## Self-Contained Diagnostic Tool
+**Self-Contained Diagnostic Tool**
 
 Build a **self-contained Windows diagnostic tool** using **twinBASIC**.
 
