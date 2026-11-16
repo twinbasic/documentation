@@ -24,7 +24,7 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { importProject } from "../scripts/impexp.mjs";
 import { API_FORMAT, buildApi, qualified, renderApi } from "../indexer/lib/api-model.mjs";
-import { compareInstallManifest } from "../indexer/lib/builtin-sync.mjs";
+import { compareInstallManifest, installOfBeta } from "../indexer/lib/builtin-sync.mjs";
 import { auditCoverage, diffApi, flattenSymbols } from "../indexer/lib/differ.mjs";
 import {
   documentedPackages,
@@ -47,15 +47,19 @@ import {
 import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib/fingerprint.mjs";
 import { derivePackageApi } from "../indexer/lib/package-api.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
+import { heldBack, pinnedBuild, pinsOf, planBuiltin, planContributed, wantedVersion } from "../indexer/lib/pins.mjs";
 import {
-  adoptSnapshots,
   apiHeadOf,
+  cacheDownload,
+  cachedDownload,
   copyToSnapshots,
   manifestPath,
   readStoredFiles,
   reindexStored,
   storedPackages,
+  storedVersion,
   storeStatus,
+  syncSnapshots,
   writeToStore,
 } from "../indexer/lib/store.mjs";
 import { latestVersion, versionString } from "../indexer/lib/sync.mjs";
@@ -1534,27 +1538,222 @@ describe("copyToSnapshots", () => {
   });
 });
 
-describe("adoptSnapshots", () => {
-  const store = mkdtempSync(path.join(tmp, "adopt-store-"));
-  const snapshots = mkdtempSync(path.join(tmp, "adopt-snapshots-"));
+describe("syncSnapshots", () => {
+  const store = mkdtempSync(path.join(tmp, "pin-store-"));
+  const snapshots = mkdtempSync(path.join(tmp, "pin-snapshots-"));
+  const snapshot = (group, name) => path.join(snapshots, group, name, "api.json");
+  const putSnapshot = (group, name, text) => {
+    mkdirSync(path.dirname(snapshot(group, name)), { recursive: true });
+    writeFileSync(snapshot(group, name), text);
+  };
   putPackage(store, "contributed", "New", { api: apiText("1.0.5.0") });
-  putPackage(store, "contributed", "Newer", { api: apiText("2.0.0.0") });
-  putPackage(store, "built-in", "Kept", { api: apiText("beta-x-1005") });
-  mkdirSync(path.join(snapshots, "built-in", "Kept"), { recursive: true });
-  writeFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), apiText("beta-x-0997"));
+  putPackage(store, "contributed", "Upgraded", { api: apiText("2.0.0.0") });
+  putPackage(store, "contributed", "Unpinned", { api: apiText("1.0.0.0") });
+  putPackage(store, "contributed", "Stale", { api: apiText("1.0.0.0"), fingerprint: "0".repeat(64) });
+  putPackage(store, "built-in", "Rescanned", { api: apiText("beta-x-1005", { problems: [] }) });
+  putPackage(store, "built-in", "Other", { api: apiText("beta-x-1005") });
+  putSnapshot("contributed", "Upgraded", apiText("1.0.0.0"));
+  putSnapshot("contributed", "Stale", apiText("1.0.0.0", { project: "Old" }));
+  // As a snapshot written by another version of the scanner looks: other bytes, the same version.
+  putSnapshot("built-in", "Rescanned", apiText("beta-x-1005", { project: "Old" }));
   const documented = new Map([
     ["contributed/New", { indexedFrom: "1.0.5.0" }],
-    ["contributed/Newer", { indexedFrom: "1.0.0.0" }],
+    ["contributed/Upgraded", { indexedFrom: "1.0.0.0" }],
+    ["contributed/Unpinned", { indexedFrom: null }],
+    ["contributed/Stale", { indexedFrom: "1.0.0.0" }],
     ["contributed/Unsynced", { indexedFrom: "1.0.0.0" }],
-    ["built-in/Kept", { indexedFrom: "beta-x-1005" }],
+    ["built-in/Rescanned", { indexedFrom: "beta-x-1005" }],
+    ["built-in/Other", { indexedFrom: "beta-x-1005" }],
   ]);
 
-  test("gives a documented package with no snapshot the store's, only at the version its section names", async () => {
-    assert.deepEqual(await adoptSnapshots(store, snapshots, documented), [{ group: "contributed", package: "New" }]);
-    assert.equal(readFileSync(path.join(snapshots, "contributed", "New", "api.json"), "utf-8"), apiText("1.0.5.0"));
-    assert.throws(() => readFileSync(path.join(snapshots, "contributed", "Newer", "api.json")), { code: "ENOENT" });
-    // A snapshot there is the baseline, whatever the store holds.
-    assert.equal(readFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), "utf-8"), apiText("beta-x-0997"));
+  test("a name limits it to that package", async () => {
+    assert.deepEqual(await syncSnapshots(store, snapshots, documented, ["Other"]), [
+      { group: "built-in", package: "Other" },
+    ]);
+    assert.throws(() => readFileSync(snapshot("contributed", "New")), { code: "ENOENT" });
+  });
+
+  test("writes the store's api.json of each package held at its pin, whether it had a snapshot or not", async () => {
+    assert.deepEqual(await syncSnapshots(store, snapshots, documented), [
+      { group: "contributed", package: "New" },
+      { group: "built-in", package: "Rescanned" },
+    ]);
+    assert.equal(readFileSync(snapshot("contributed", "New"), "utf-8"), apiText("1.0.5.0"));
+    assert.equal(readFileSync(snapshot("built-in", "Rescanned"), "utf-8"), apiText("beta-x-1005", { problems: [] }));
+  });
+
+  test("leaves a package past its pin, one with no pin and one indexed by another scanner as they are", () => {
+    assert.equal(readFileSync(snapshot("contributed", "Upgraded"), "utf-8"), apiText("1.0.0.0"));
+    assert.throws(() => readFileSync(snapshot("contributed", "Unpinned")), { code: "ENOENT" });
+    assert.equal(readFileSync(snapshot("contributed", "Stale"), "utf-8"), apiText("1.0.0.0", { project: "Old" }));
+  });
+
+  test("writes nothing the second time", async () => {
+    assert.deepEqual(await syncSnapshots(store, snapshots, documented), []);
+  });
+});
+
+describe("the downloads a store keeps", () => {
+  test("a package's .twinpack is kept by version, and one never downloaded is not there", async () => {
+    const store = mkdtempSync(path.join(tmp, "downloads-"));
+    assert.equal(await cachedDownload(store, "Pkg", "1.0.0.0"), null);
+    await cacheDownload(store, "Pkg", "1.0.0.0", Buffer.from("one"));
+    await cacheDownload(store, "Pkg", "1.1.0.0", Buffer.from("two"));
+    assert.equal((await cachedDownload(store, "Pkg", "1.0.0.0")).toString(), "one");
+    assert.equal((await cachedDownload(store, "Pkg", "1.1.0.0")).toString(), "two");
+    // Outside every group folder, so analyze never takes it for a package.
+    assert.deepEqual(await storedPackages(store, { documented: new Map(), all: true }), { list: [], skipped: 0 });
+  });
+
+  test("storedVersion is the version of the store's api.json, or null", async () => {
+    const store = mkdtempSync(path.join(tmp, "held-"));
+    putPackage(store, "contributed", "Pkg", { api: apiText("1.2.0.0") });
+    assert.equal(await storedVersion(store, "contributed", "Pkg"), "1.2.0.0");
+    assert.equal(await storedVersion(store, "contributed", "Missing"), null);
+  });
+});
+
+// ------------------------------------------------------- pinning
+
+describe("pinning a package at the version its section documents", () => {
+  const pins = pinsOf(
+    new Map([
+      ["contributed/Pinned", { indexedFrom: "1.0.0.0" }],
+      ["contributed/Gone", { indexedFrom: "3.0.0.0" }],
+      ["contributed/NoPin", { indexedFrom: null }],
+      ["default/VB", { indexedFrom: "beta-x-1034" }],
+      ["built-in/tbIDE", { indexedFrom: "beta-x-1042" }],
+      ["built-in/Dropped", { indexedFrom: "beta-x-1034" }],
+    ]),
+  );
+  const v = (s, symbol = "x") => {
+    const [versionMajor, versionMinor, versionRevision, versionBuild] = s.split(".").map(Number);
+    return { symbol, versionMajor, versionMinor, versionRevision, versionBuild };
+  };
+  const listed = (id, symbol, versions) => ({
+    projectId: id,
+    publisher: "someone",
+    versions: versions.map((s) => v(s, symbol)),
+  });
+  const listing = [
+    listed("{1}", "Pinned", ["1.1.0.0", "1.0.0.0", "0.9.0.0"]),
+    listed("{2}", "Free", ["2.0.0.0", "1.0.0.0"]),
+    listed("{3}", "Delisted", ["1.0.0.0"]),
+  ];
+  // Delisted's pin is a version TWINSERV no longer lists.
+  const delistedPins = new Map([...pins, ["contributed/Delisted", "0.5.0.0"]]);
+  const wants = (items) => Object.fromEntries(items.map((i) => [i.symbol, i.want]));
+
+  test("the pins are the indexed_from of each section that has one", () => {
+    assert.deepEqual(
+      [...pins],
+      [
+        ["contributed/Pinned", "1.0.0.0"],
+        ["contributed/Gone", "3.0.0.0"],
+        ["default/VB", "beta-x-1034"],
+        ["built-in/tbIDE", "beta-x-1042"],
+        ["built-in/Dropped", "beta-x-1034"],
+      ],
+    );
+  });
+
+  test("a pinned package is wanted at its pin, the others at the newest, and --upgrade wants the newest of each", () => {
+    assert.equal(wantedVersion({ pin: "1.0", newest: "1.1", upgrade: false }), "1.0");
+    assert.equal(wantedVersion({ pin: "1.0", newest: "1.1", upgrade: true }), "1.1");
+    assert.equal(wantedVersion({ pin: null, newest: "1.1", upgrade: false }), "1.1");
+    const { items } = planContributed(listing, { pins });
+    assert.deepEqual(wants(items), { Pinned: "1.0.0.0", Free: "2.0.0.0", Delisted: "1.0.0.0" });
+    assert.deepEqual(wants(planContributed(listing, { pins, upgrade: true }).items), {
+      Pinned: "1.1.0.0",
+      Free: "2.0.0.0",
+      Delisted: "1.0.0.0",
+    });
+  });
+
+  test("each item carries TWINSERV's record of the wanted version, and null when TWINSERV no longer lists it", () => {
+    const { items } = planContributed(listing, { pins: delistedPins });
+    const pinned = items.find((i) => i.symbol === "Pinned");
+    assert.deepEqual(
+      { id: pinned.id, newest: pinned.newest, pin: pinned.pin, publisher: pinned.publisher },
+      { id: "{1}", newest: "1.1.0.0", pin: "1.0.0.0", publisher: "someone" },
+    );
+    assert.equal(versionString(pinned.version), "1.0.0.0");
+    assert.equal(items.find((i) => i.symbol === "Delisted").version, null);
+  });
+
+  test("a pinned package TWINSERV does not list at all is still wanted, at its pin, from the store", () => {
+    assert.deepEqual(planContributed(listing, { pins }).unlisted, [
+      { symbol: "Gone", pin: "3.0.0.0", want: "3.0.0.0" },
+    ]);
+    assert.deepEqual(planContributed(listing, { pins, filter: ["Pinned"] }).unlisted, []);
+  });
+
+  test("--package limits the plan to the packages it names", () => {
+    const { items } = planContributed(listing, { pins, filter: ["Free"], upgrade: true });
+    assert.deepEqual(wants(items), { Free: "2.0.0.0" });
+  });
+
+  test("a built-in package is wanted at its pin's build, and a documented one the newest build dropped too", () => {
+    const groupOf = (s) => (s === "VB" ? "default" : "built-in");
+    const items = planBuiltin(["VB", "tbIDE", "cefPackage49"], { newestTag: "beta-x-1042", groupOf, pins });
+    assert.deepEqual(
+      items.map(({ group, symbol, newest, pin, want }) => [group, symbol, newest, pin, want]),
+      [
+        ["default", "VB", "beta-x-1042", "beta-x-1034", "beta-x-1034"],
+        ["built-in", "tbIDE", "beta-x-1042", "beta-x-1042", "beta-x-1042"],
+        ["built-in", "cefPackage49", "beta-x-1042", null, "beta-x-1042"],
+        ["built-in", "Dropped", null, "beta-x-1034", "beta-x-1034"],
+      ],
+    );
+    const upgraded = planBuiltin(["VB"], { newestTag: "beta-x-1042", groupOf, pins, filter: ["VB"], upgrade: true });
+    assert.deepEqual(wants(upgraded), { VB: "beta-x-1042" });
+  });
+
+  test("heldBack lists the packages kept at a pin while a newer version exists", () => {
+    const groupOf = (s) => (s === "VB" ? "default" : "built-in");
+    const items = [
+      ...planContributed(listing, { pins }).items,
+      ...planBuiltin(["VB", "tbIDE"], { newestTag: "beta-x-1042", groupOf, pins }),
+    ];
+    assert.deepEqual(heldBack(items), [
+      { symbol: "Pinned", pin: "1.0.0.0", newest: "1.1.0.0" },
+      { symbol: "VB", pin: "beta-x-1034", newest: "beta-x-1042" },
+    ]);
+    assert.deepEqual(heldBack(planContributed(listing, { pins, upgrade: true }).items), []);
+  });
+
+  test("pinnedBuild is the one build the built-in and default sections are pinned at, and refuses two", () => {
+    assert.equal(pinnedBuild(new Map([["contributed/X", "1.0.0.0"]])), null);
+    assert.equal(
+      pinnedBuild(
+        new Map([
+          ["default/VB", "beta-x-1042"],
+          ["built-in/tbIDE", "beta-x-1042"],
+          ["contributed/X", "1.0.0.0"],
+        ]),
+      ),
+      "beta-x-1042",
+    );
+    assert.throws(() => pinnedBuild(pins), /more than one build: beta-x-1034 \(VB, Dropped\); beta-x-1042 \(tbIDE\)/);
+  });
+
+  test("installOfBeta takes the first install of that BETA by its build.js, an exe or a folder", () => {
+    const desktop = mkdtempSync(path.join(tmp, "installs-"));
+    const install = (folder, beta) => {
+      const root = path.join(desktop, folder);
+      mkdirSync(path.join(root, "packages"), { recursive: true });
+      mkdirSync(path.join(root, "ide"), { recursive: true });
+      writeFileSync(path.join(root, "ide", "build.js"), `var tbVersionInfo = 'twinBASIC IDE BETA ${beta}';`);
+      return root;
+    };
+    const misnamed = install("twinBASIC_IDE_BETA_1034", "1042");
+    const real = install("unpacked", "1034");
+    const bare = path.join(desktop, "twinBASIC_IDE_BETA_1010");
+    mkdirSync(bare);
+    const exes = [path.join(misnamed, "twinBASIC.exe"), bare, path.join(real, "twinBASIC.exe")];
+    assert.equal(installOfBeta("1034", exes), real);
+    assert.equal(installOfBeta(1042, exes), misnamed);
+    assert.equal(installOfBeta("1010", exes), null);
   });
 });
 

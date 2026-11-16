@@ -27,16 +27,22 @@ The examples below call the package **myPackage**; write your package's name in 
 
 1. **Publish the new version to TWINSERV.** The tools fetch the package from the package server, never from GitHub, so a version that is not published there cannot be documented yet.
 
-2. **Update the package's API snapshot, and list what changed:**
+2. **Read the new version, and list what changed:**
 
    ```bash
-   node indexer/twin-index.mjs sync --package myPackage
+   node indexer/twin-index.mjs sync --upgrade --package myPackage
    node indexer/twin-index.mjs analyze --package myPackage
    ```
 
-   `sync` rewrites `indexer/snapshots/contributed/myPackage/api.json` from the new version. `analyze` lists the public symbols to document, to update and to remove, and every callout labelled with the old version, which is to be checked again. Until the new snapshot is committed, `analyze` says it runs in *audit mode*; that is expected. [twin-index.mjs](Tools-Build#twin-index) has the details.
+   The section is [pinned](Tools-Build#pins) at the version its `indexed_from:` names, so `sync` reads the new version only when `--upgrade` asks for it. `analyze` lists the public symbols to document, to update and to remove, and every callout labelled with the old version, which is to be checked again. [twin-index.mjs](Tools-Build#twin-index) has the details.
 
 3. **Edit the pages.** On the landing page, set `indexed_from:` and the **Version:** line to the new version, all four parts (`1.2.0.0`). Then go through the callouts `analyze` listed: move each label to the new version if it still holds, or remove the callout if it no longer does ([Callouts in a contributed package's section](Authoring#callouts-in-a-contributed-packages-section)). The build refuses a label naming any version but the one `indexed_from:` names.
+
+   Then write the package's new API snapshot, `indexer/snapshots/contributed/myPackage/api.json`, which `sync` writes only for the version `indexed_from:` names:
+
+   ```bash
+   node indexer/twin-index.mjs sync --package myPackage
+   ```
 
    A member page that goes away needs the same care as any other removed page ([Removing a page](Authoring#removing-a-page)). When another page takes over its subject, give that page a `redirect_from:` entry with the old URL, so that links to it keep working.
 
@@ -78,4 +84,4 @@ The examples below call the package **myPackage**; write your package's name in 
 
 `test.bat` fails while the versions disagree, while a copy of `Expect.twin` is in the project, and while `RunAll.twin` is not what `package-tests.bat` would write ([check_package_tests.mjs](Tools-Toolchain-Tests#check-package-tests)). The build fails on a callout labelled with another version.
 
-Nothing catches a snapshot left at the old version, a test run that was skipped, or samples that were never run: `package-tests.bat` and `examples.bat` need a twinBASIC install, so they run in no CI workflow. The pull request's description is where a reviewer sees that they ran.
+Nothing catches a snapshot left at the old version (the `sync` at the end of step 3 was not run), a test run that was skipped, or samples that were never run: `package-tests.bat` and `examples.bat` need a twinBASIC install, so they run in no CI workflow. The pull request's description is where a reviewer sees that they ran.

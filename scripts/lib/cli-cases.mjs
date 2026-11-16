@@ -1166,12 +1166,16 @@ bad(
   );
   bad(tool, ["bogus", "--all"], "--all does not apply to bogus\n");
   bad(tool, ["bogus", "--all=1"], "--all takes no value\n");
+  // --upgrade is sync's: it moves packages past their pins.
+  bad(tool, ["analyze", "--upgrade"], "--upgrade does not apply to analyze\n");
+  bad(tool, ["bogus", "--upgrade=1"], "--upgrade takes no value\n");
   // derive covers every package and has options of its own. Each of its cases
   // carries --check, so that one whose refusal stopped firing would read the
   // install and compare, never write builder/package-api.json.
   bad(tool, ["derive", "--check", "--package", "VBA"], "--package does not apply to derive\n");
   bad(tool, ["derive", "--check", "--packages", "VBA,VB"], "--packages does not apply to derive\n");
   bad(tool, ["derive", "--check", "--all"], "--all does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--upgrade"], "--upgrade does not apply to derive\n");
   bad(tool, ["derive", "--check", "--out"], "--out needs a value\n");
   bad(tool, ["derive", "--check=1"], "--check takes no value\n");
   // draft places the pages of the report analyze wrote, for the packages in it;

@@ -7,32 +7,36 @@ import { CliError, die, exitOnCrash, parseCli, printHelpAndExit, refuseTogether,
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { calloutLabelsOf } from "../lib/callout-labels.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
-import { findIde } from "../scripts/lib/tb-install.mjs";
-import { compareWithManifest, fetchPackage, versionString } from "./lib/sync.mjs";
+import { findIde, listIdes } from "../scripts/lib/tb-install.mjs";
+import { downloadTwinpack, latestVersion, twinpackFiles, twinservListing } from "./lib/sync.mjs";
 import {
   betaForTag,
   compareBuiltinManifest,
   compareInstallManifest,
   extractBuiltinPackages,
   installBeta,
+  installOfBeta,
   listInstalledPackages,
   readInstalledPackages,
 } from "./lib/builtin-sync.mjs";
-import { downloadRelease, getLatestRelease } from "./lib/github-release.mjs";
+import { downloadRelease, getLatestRelease, getReleaseByTag } from "./lib/github-release.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
 import {
   STORE_PROBLEMS,
-  adoptSnapshots,
+  cacheDownload,
+  cachedDownload,
   commitStore,
-  copyToSnapshots,
   ensureStore,
   manifestPath,
   recordedFingerprint,
   reindexStored,
   storedPackages,
+  storedVersion,
   storeStatus,
+  syncSnapshots,
   writeToStore,
 } from "./lib/store.mjs";
+import { heldBack, pinnedBuild, pinsOf, planBuiltin, planContributed } from "./lib/pins.mjs";
 import { indexerFingerprint } from "./lib/fingerprint.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 import { documentedPackages, groupFolder, sectionPages } from "./lib/doc-pages.mjs";
@@ -57,6 +61,14 @@ const GIT_SHOW_MAX_BYTES = 1 << 30;
 function packageGroup(symbol, source) {
   if (source === "contributed") return "contributed";
   return DEFAULT_PACKAGES.includes(symbol) ? "default" : "built-in";
+}
+
+// What `sync` prints for a package it reads: from the version the store held,
+// `from` (null for none), to `item.want`, and how that stands to its pin.
+function describeMove(from, { want, pin }) {
+  const move = from === null ? `${want}, new` : from === want ? want : `${from} → ${want}`;
+  if (!pin) return move;
+  return want === pin ? `${move} (its pin)` : `${move} (past its pin, ${pin})`;
 }
 
 // What `sync` prints for a package it indexed.
@@ -203,7 +215,11 @@ Commands:
             index, from the built-in and default packages
 
 sync reads the built-in and default packages from the local twinBASIC install,
-and the contributed packages from TWINSERV. derive reads the same install, and
+and the contributed packages from TWINSERV. A package the reference documents
+is pinned at the version its section's indexed_from names: sync reads it at
+that version, from the install of that build or that version on TWINSERV, and
+lists the newer ones; --upgrade moves it to the newest. A snapshot is written
+only of the pinned version. derive reads the install of the pinned build, and
 needs no sync first.
 
 analyze covers the packages the reference documents, those with a section in
@@ -217,12 +233,15 @@ Options:
   --packages <a>,<b>     Process only the specified packages
   --all                  analyze: every package in the store, not only the
                          documented ones (not with --package or --packages)
-  --ide <path>           sync, derive: the install to read, its folder or its
-                         twinBASIC.exe (default: $TB_IDE, else the newest
-                         Desktop\\twinBASIC_IDE_BETA_<n>)
+  --upgrade              sync: move the packages named, or every one, to the
+                         newest version instead of keeping them at their pins
+  --ide <path>           sync: the install of the newest build, its folder or
+                         its twinBASIC.exe (default: $TB_IDE, else the newest
+                         Desktop\\twinBASIC_IDE_BETA_<n>); derive: the install
+                         to read (default: that of the pinned build)
   --release              sync, derive: download the built-in and default
-                         packages from the latest GitHub release instead of
-                         reading an install
+                         packages from GitHub releases instead of reading an
+                         install
   --check                derive: fail if the file is stale, instead of
                          writing it
   --out <file>           derive: write somewhere other than
@@ -233,13 +252,14 @@ Exit codes:
   0  the command finished: sync wrote every package it was asked for, or found
      it up to date; analyze wrote its report; draft placed its pages; derive
      wrote the file, or with --check found it up to date
-  1  a package named by --package or --packages failed to sync, or does not
-     exist, or is not in the report (draft); the others were done; with
-     derive --check, the file is stale
+  1  a package failed to sync (its pinned version is nowhere to be had
+     included), or one named by --package or --packages does not exist, or is
+     not in the report (draft); the others were done; with derive --check, the
+     file is stale
   2  a refused command line, no twinBASIC install found, no snapshots to
      analyze (run sync first), no report to draft from (run analyze first),
-     packages that declare different APIs under one project name (derive), or
-     a crash
+     packages that declare different APIs under one project name (derive),
+     sections pinned at more than one build (derive without --ide), or a crash
 `;
 
 // The twinBASIC install the built-in and default packages are read from, as
@@ -297,6 +317,7 @@ const cli = withUsageError(() => {
       packages: { type: "string" },
       ide: { type: "string" },
       release: { type: "boolean" },
+      upgrade: { type: "boolean" },
       all: { type: "boolean" },
       check: { type: "boolean" },
       out: { type: "string" },
@@ -334,6 +355,7 @@ withUsageError(() => {
     release: ["sync", "derive"],
     package: ["sync", "analyze", "draft"],
     packages: ["sync", "analyze", "draft"],
+    upgrade: ["sync"],
     check: ["derive"],
     out: ["derive"],
   };
@@ -347,7 +369,7 @@ switch (command) {
   case "sync": {
     // The install is looked for before anything is fetched.
     const install = cli.values.release ? null : (cli.install ?? withUsageError(() => resolveInstall()));
-    process.exitCode = await runSync(cli.filter, install);
+    process.exitCode = await runSync(cli.filter, install, { upgrade: cli.values.upgrade === true });
     break;
   }
   case "analyze":
@@ -357,18 +379,51 @@ switch (command) {
     process.exitCode = await runDraft(cli.filter);
     break;
   case "derive": {
-    const install = cli.values.release ? null : (cli.install ?? withUsageError(() => resolveInstall()));
-    process.exitCode = await runDerive(install, { check: cli.values.check, out: cli.values.out });
+    const source = await deriveSource(cli.install, cli.values.release === true);
+    process.exitCode = await runDerive(source, { check: cli.values.check, out: cli.values.out });
     break;
   }
+}
+
+// An install of one BETA, `{ root, beta }`, or null: the one --ide named, then
+// $TB_IDE, then the twinBASIC_IDE_BETA_<n> folders on the Desktop, newest first.
+function installForBeta(beta, explicit = null) {
+  const exes = [
+    explicit && path.join(explicit.root, "twinBASIC.exe"),
+    process.env.TB_IDE,
+    ...listIdes().map((i) => i.exe),
+  ];
+  const root = installOfBeta(beta, exes.filter(Boolean));
+  return root ? { root, beta } : null;
+}
+
+// What derive reads: the install --ide names; else the build the default and
+// built-in sections are pinned at, from its install, or with --release (or
+// without one) from its release; else, with nothing pinned, the newest install
+// or the latest release. `{ install, tag }`, `tag` null for the latest release.
+async function deriveSource(explicit, release) {
+  if (explicit) return { install: explicit, tag: null };
+  let tag;
+  try {
+    tag = pinnedBuild(pinsOf(await documentedPackages(DOCS_REF_DIR)));
+  } catch (e) {
+    die(2, `${e.message}: pass --ide to name the build`);
+  }
+  if (!tag) return { install: release ? null : withUsageError(() => resolveInstall()), tag: null };
+  const beta = betaForTag(tag);
+  const install = release ? null : installForBeta(beta);
+  if (!install && !release) console.log(`No install of BETA ${beta}, the pinned build: its release is downloaded.`);
+  return { install, tag };
 }
 
 // --- sync command ---
 
 // The built-in and default packages a run can name without asking anyone: the
-// three default ones, and what the install holds or the last release had.
-async function knownBuiltinNames(install) {
+// three default ones, the documented ones, and what the install holds or the
+// last release had.
+async function knownBuiltinNames(install, pins) {
   const names = new Set(DEFAULT_PACKAGES);
+  for (const key of pins.keys()) if (!key.startsWith("contributed/")) names.add(key.split("/")[1]);
   if (install) {
     for (const { symbol } of listInstalledPackages(install.root)) names.add(symbol);
     return names;
@@ -378,52 +433,71 @@ async function knownBuiltinNames(install) {
   return names;
 }
 
-// `install` is `{ root, beta }` for the local twinBASIC install the built-in and
-// default packages are read from, or null for the latest GitHub release.
-async function runSync(filter, install) {
+// `install` is `{ root, beta }` for the local twinBASIC install of the newest
+// build, or null for the latest GitHub release. Each documented package is read
+// at its pin, the version its section's indexed_from names, unless `upgrade`
+// moves it to the newest; the others are read at the newest.
+async function runSync(filter, install, { upgrade = false } = {}) {
   await ensureStore(STORE_PATH, SNAPSHOTS_PATH);
 
-  const synced = [];
-  const failed = [];
-  // Every package name either source knows, to tell a name that matches nothing.
-  const known = new Set();
+  const documented = await documentedPackages(DOCS_REF_DIR);
+  const run = {
+    pins: pinsOf(documented),
+    upgrade,
+    synced: [],
+    failed: [],
+    // Every package name either source knows, to tell a name that matches nothing.
+    known: new Set(),
+    // The documented packages kept at their pins while a newer version exists.
+    held: [],
+  };
 
   // A run limited to built-in and default packages has nothing to ask TWINSERV.
-  const builtinNames = await knownBuiltinNames(install);
+  const builtinNames = await knownBuiltinNames(install, run.pins);
   if (filter?.every((name) => builtinNames.has(name))) {
     console.log("Skipping TWINSERV: only built-in and default packages are named.");
   } else {
-    await syncContributed(filter, { synced, failed, known });
+    await syncContributed(filter, run);
   }
-  await syncBuiltin(filter, install, { synced, known });
+  await syncBuiltin(filter, install, run);
 
-  // --- Commit store and copy snapshots ---
+  const { synced, failed } = run;
   if (synced.length) {
     const parts = synced.map((s) => {
       if (s.from && s.from !== s.to) return `${s.package} ${s.from}→${s.to}`;
       return `${s.package} ${s.to}`;
     });
     await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
-    // The committed snapshots are the baseline the documentation is compared
-    // with, so they are only for the packages the reference documents.
-    const documented = await documentedPackages(DOCS_REF_DIR);
-    const baseline = synced.filter((s) => documented.has(`${s.group}/${s.package}`));
-    const written = await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, baseline);
-    console.log(
-      written.length ? `\nSnapshots updated: ${written.map((w) => w.package).join(", ")}.` : "\nSnapshots unchanged.",
-    );
-    if (baseline.length < synced.length) {
-      console.log(`  ${synced.length - baseline.length} synced packages have no page in the reference: no snapshot.`);
-    }
   }
-  // A section started after its package was synced: the store is current, so
-  // the run above did not index the package, and its snapshot is the store's.
-  const adopted = await adoptSnapshots(STORE_PATH, SNAPSHOTS_PATH, await documentedPackages(DOCS_REF_DIR));
-  if (adopted.length)
-    console.log(`\nSnapshots of newly documented packages: ${adopted.map((w) => w.package).join(", ")}.`);
+
+  // The committed snapshots are the baseline the documentation is compared with:
+  // only for the packages the reference documents, and only of their pins.
+  const written = await syncSnapshots(STORE_PATH, SNAPSHOTS_PATH, documented, filter);
+  console.log(
+    written.length ? `\nSnapshots written: ${written.map((w) => w.package).join(", ")}.` : "\nSnapshots unchanged.",
+  );
+  const past = [];
+  for (const [key, pin] of run.pins) {
+    const [group, name] = key.split("/");
+    if (filter && !filter.includes(name)) continue;
+    const held = await storedVersion(STORE_PATH, group, name);
+    if (held && held !== pin) past.push(`${name} ${held} (pinned at ${pin})`);
+  }
+  if (past.length) {
+    console.log(
+      `\nThe store holds these past their pins; their snapshots stay at the pin until indexed_from names the new version:\n  ${past.join("\n  ")}\n` +
+        "analyze --package <name> lists the work; a sync without --upgrade moves one back.",
+    );
+  }
+  if (run.held.length) {
+    console.log(
+      `\nNewer than the pinned version:\n  ${run.held.map((h) => `${h.symbol}: ${h.pin}, newest ${h.newest}`).join("\n  ")}\n` +
+        "sync --upgrade --package <name> moves one to the newest.",
+    );
+  }
 
   for (const name of filter ?? []) {
-    if (known.has(name)) continue;
+    if (run.known.has(name)) continue;
     failed.push({ symbol: name, error: "no such package" });
     console.warn(`  No package named ${name}`);
   }
@@ -434,67 +508,84 @@ async function runSync(filter, install) {
 
 // --- Contributed packages (TWINSERV) ---
 
-async function syncContributed(filter, { synced, failed, known }) {
+// A contributed package's `.twinpack` of the version an item wants: the copy an
+// earlier sync kept, else TWINSERV's, which is kept in turn.
+async function contributedFiles(item) {
+  let buffer = await cachedDownload(STORE_PATH, item.symbol, item.want);
+  if (!buffer) {
+    buffer = await downloadTwinpack(item.id, item.version);
+    await cacheDownload(STORE_PATH, item.symbol, item.want, buffer);
+  }
+  return twinpackFiles(buffer);
+}
+
+// What the contributed manifest records of a package: who publishes it and the
+// version the store holds.
+function contributedEntry(item) {
+  return {
+    symbol: item.symbol,
+    publisher: item.publisher,
+    version: item.want,
+    publishedDate: item.version?.publishedDate,
+    publishedTime: item.version?.publishedTime,
+  };
+}
+
+async function syncContributed(filter, run) {
+  const { synced, failed, known } = run;
   console.log("Fetching TWINSERV package index...");
-  const {
-    toDownload,
-    unchanged,
-    removed,
-    manifest: contribManifest,
-  } = await compareWithManifest(manifestPath(STORE_PATH, "contributed"));
-  for (const item of [...toDownload, ...unchanged]) known.add(item.symbol);
+  const listing = await twinservListing();
+  const manifest = (await readManifest("contributed")) ?? { syncedAt: null, packages: {} };
+  const recorded = JSON.stringify(manifest.packages);
+  const { items, unlisted } = planContributed(listing, { pins: run.pins, filter, upgrade: run.upgrade });
+  for (const pkg of listing) known.add(latestVersion(pkg).symbol);
+  for (const { symbol } of unlisted) known.add(symbol);
 
-  let contribToDownload = filter ? toDownload.filter((p) => filter.includes(p.symbol)) : toDownload;
-
-  // Download again the packages the manifest calls unchanged but the store
-  // does not hold as they are now: no sources, no api.json, one in an older
-  // format, or one indexed from another version. The store is the record of
-  // what has been read; the manifest only says what was last fetched.
+  // The store is the record of what has been read: a package is read when it
+  // holds no sources or no api.json of the wanted version, in this format, and
+  // indexed again from its sources when another version of the scanner wrote it.
   const problems = [];
-  const reindex = []; // held in the store, but indexed by another version of the scanner
-  for (const item of unchanged) {
-    if (filter && !filter.includes(item.symbol)) continue;
-    const why = await storeStatus(STORE_PATH, "contributed", item.symbol, versionString(item.version));
-    if (!why) continue;
+  const reindex = [];
+  const fetch = [];
+  for (const item of [...items, ...unlisted]) {
+    const why = await storeStatus(STORE_PATH, "contributed", item.symbol, item.want);
+    if (!why) {
+      if (item.id) manifest.packages[item.id] = contributedEntry(item);
+      continue;
+    }
     problems.push({ symbol: item.symbol, why });
     if (why === "old-scanner") reindex.push(item);
-    else contribToDownload.push({ ...item, reason: why });
+    else if (item.version) fetch.push(item);
+    else {
+      const error = `${item.want} is not on TWINSERV, and the store does not hold it`;
+      failed.push({ symbol: item.symbol, error });
+      console.warn(`  FAILED: ${item.symbol}: ${error}`);
+    }
   }
   printStoreProblems(problems);
-
-  const addedC = contribToDownload.filter((p) => p.reason === "added");
-  const updatedC = contribToDownload.filter((p) => p.reason === "updated");
-  if (addedC.length) console.log(`  Add: ${addedC.map((p) => p.symbol).join(", ")}`);
-  if (updatedC.length) console.log(`  Update: ${updatedC.map((p) => p.symbol).join(", ")}`);
-  if (!filter && removed.length) console.log(`  Remove: ${removed.map((p) => p.symbol).join(", ")}`);
-  if (!contribToDownload.length && !reindex.length && !removed.length) console.log("  Up to date.");
+  const listed = new Set(listing.map((p) => p.projectId));
+  const removed = filter ? [] : Object.entries(manifest.packages).filter(([id]) => !listed.has(id));
+  if (removed.length) console.log(`  No longer on TWINSERV: ${removed.map(([, p]) => p.symbol).join(", ")}`);
+  if (!problems.length && !removed.length) console.log("  Up to date.");
 
   // A package about to be downloaded is indexed with the rest; only the others are
   // indexed again from what the store holds.
   await reindexFromStore(
     "contributed",
-    reindex.map((item) => ({ symbol: item.symbol, version: versionString(item.version) })),
+    reindex.map((item) => ({ symbol: item.symbol, version: item.want })),
     synced,
   );
+  for (const item of reindex) if (item.id) manifest.packages[item.id] = contributedEntry(item);
 
-  for (const item of contribToDownload) {
+  for (const item of fetch) {
     try {
-      console.log(`  Fetching ${item.symbol}...`);
-      const files = await fetchPackage(item.id, item.version);
-      const ver = versionString(item.version);
-      const { json: apiJson, stats } = buildApi({ symbol: item.symbol, version: ver, files });
-
+      const from = await storedVersion(STORE_PATH, "contributed", item.symbol);
+      console.log(`  ${item.symbol}: ${describeMove(from, item)}`);
+      const files = await contributedFiles(item);
+      const { json: apiJson, stats } = buildApi({ symbol: item.symbol, version: item.want, files });
       await writeToStore(STORE_PATH, "contributed", item.symbol, files, apiJson);
-
-      contribManifest.packages[item.id] = {
-        symbol: item.symbol,
-        publisher: item.pkg.publisher,
-        version: ver,
-        publishedDate: item.version.publishedDate,
-        publishedTime: item.version.publishedTime,
-      };
-
-      synced.push({ group: "contributed", package: item.symbol, from: null, to: ver });
+      manifest.packages[item.id] = contributedEntry(item);
+      synced.push({ group: "contributed", package: item.symbol, from, to: item.want });
       console.log(`    ${describeIndex(stats)}`);
     } catch (e) {
       failed.push({ symbol: item.symbol, error: e.message });
@@ -502,107 +593,138 @@ async function syncContributed(filter, { synced, failed, known }) {
     }
   }
 
-  if (!filter) {
-    for (const { id } of removed) {
-      delete contribManifest.packages[id];
-    }
+  for (const [id] of removed) delete manifest.packages[id];
+  if (JSON.stringify(manifest.packages) !== recorded || !manifest.syncedAt) {
+    manifest.syncedAt = new Date().toISOString();
+    await writeManifest("contributed", manifest);
   }
-
-  if (contribToDownload.length || (!filter && removed.length) || !(await readManifest("contributed"))) {
-    contribManifest.syncedAt = new Date().toISOString();
-    await writeManifest("contributed", contribManifest);
-  }
+  run.held.push(...heldBack(items));
 }
 
 // --- Built-in + Default packages (the local install, or the GitHub release) ---
 
-async function syncBuiltin(filter, install, { synced, known }) {
+// The packages of one build, read: from the newest build's own source when it is
+// that build, else from an install of it, else from its release.
+async function readBuild(tag, newest) {
+  if (tag === newest.tag) {
+    if (newest.root) return readInstalledPackages(newest.root);
+    console.log(`  Downloading the release ${tag}...`);
+    return extractBuiltinPackages(await downloadRelease(newest.assetUrl));
+  }
+  const beta = betaForTag(tag);
+  if (!beta) throw new Error(`${tag} is not the tag of a twinBASIC release`);
+  const install = newest.source === "install" ? installForBeta(beta) : null;
+  if (install) {
+    console.log(`  Reading BETA ${beta} from ${install.root}...`);
+    return readInstalledPackages(install.root);
+  }
+  console.log(`  Downloading the release ${tag}...`);
+  return extractBuiltinPackages(await downloadRelease((await getReleaseByTag(tag)).assetUrl));
+}
+
+async function syncBuiltin(filter, install, run) {
+  const { synced, failed, known } = run;
   const builtinManifestPath = manifestPath(STORE_PATH, "built-in");
-  let built;
+  let newest;
   if (install) {
     console.log(`\nReading twinBASIC BETA ${install.beta} from ${install.root}...`);
-    built = await compareInstallManifest(builtinManifestPath, install);
+    newest = await compareInstallManifest(builtinManifestPath, install);
   } else {
     console.log("\nChecking twinBASIC release...");
-    built = await compareBuiltinManifest(builtinManifestPath);
+    newest = await compareBuiltinManifest(builtinManifestPath);
   }
-  console.log(`  Tag: ${built.tag}`);
+  console.log(`  Newest build: ${newest.tag}`);
 
-  // Read again if the store lacks a package the manifest lists, or holds it
-  // from another build or an older indexer. The manifest says what a sync
-  // recorded; the store says what it holds. A sync limited to some packages
-  // moves the manifest to the new build for all of them, so only the store
-  // can say that the others are still from the old one.
-  // A package held with its sources but indexed by another version of the scanner is
-  // indexed again from them, when nothing else needs the install to be read.
+  // The packages of the newest build: listed by the install, or by the manifest
+  // when it describes this release, else by the release itself, read whole.
+  const reads = new Map();
+  let listing;
+  if (newest.root) listing = listInstalledPackages(newest.root);
+  else if (!newest.needsUpdate && Object.keys(newest.manifest.packages ?? {}).length) {
+    listing = Object.entries(newest.manifest.packages).map(([guid, { symbol }]) => ({ guid, symbol }));
+  } else {
+    listing = await readBuild(newest.tag, newest);
+    reads.set(newest.tag, listing);
+  }
+
+  const items = planBuiltin(
+    listing.map((p) => p.symbol),
+    {
+      newestTag: newest.tag,
+      groupOf: (symbol) => packageGroup(symbol, "builtin"),
+      pins: run.pins,
+      filter,
+      upgrade: run.upgrade,
+    },
+  );
+  for (const { symbol } of listing) known.add(symbol);
+  for (const { symbol } of items) known.add(symbol);
+
+  // Read again if the store lacks a package, or holds it of another build than
+  // the one wanted or from an older indexer; index it again from its sources
+  // when only the scanner has changed.
+  const problems = [];
   const reindex = [];
-  if (!built.needsUpdate) {
-    const problems = [];
-    for (const { symbol } of Object.values(built.manifest.packages || {})) {
-      if (filter && !filter.includes(symbol)) continue;
-      const why = await storeStatus(STORE_PATH, packageGroup(symbol, "builtin"), symbol, built.tag);
-      if (why) problems.push({ symbol, why });
+  const toRead = new Map();
+  for (const item of items) {
+    const why = await storeStatus(STORE_PATH, item.group, item.symbol, item.want);
+    if (!why) continue;
+    problems.push({ symbol: item.symbol, why });
+    if (why === "old-scanner") reindex.push(item);
+    else {
+      if (!toRead.has(item.want)) toRead.set(item.want, []);
+      toRead.get(item.want).push(item);
     }
-    printStoreProblems(problems);
-    if (problems.some((p) => p.why !== "old-scanner")) built.needsUpdate = true;
-    else reindex.push(...problems.map((p) => p.symbol));
   }
-  for (const symbol of reindex) {
-    await reindexFromStore(packageGroup(symbol, "builtin"), [{ symbol, version: built.tag }], synced);
+  printStoreProblems(problems);
+  if (!problems.length) console.log("  Up to date.");
+  for (const item of reindex) {
+    await reindexFromStore(item.group, [{ symbol: item.symbol, version: item.want }], synced);
   }
 
-  if (built.needsUpdate) {
-    let builtinPackages;
-    if (install) {
-      builtinPackages = readInstalledPackages(built.root);
-      console.log(`  Read ${builtinPackages.length} packages`);
-    } else {
-      console.log("  Downloading release...");
-      const zipBuffer = await downloadRelease(built.assetUrl);
-      builtinPackages = extractBuiltinPackages(zipBuffer);
-      console.log(`  Extracted ${builtinPackages.length} packages`);
-    }
-
-    const toProcess = filter ? builtinPackages.filter((p) => filter.includes(p.symbol)) : builtinPackages;
-
-    // Where the packages were read from, and which build: the BETA number of an
-    // install, the tag of a release. Never the install's path, which names its user.
-    const builtinManifest = {
-      syncedAt: new Date().toISOString(),
-      source: built.source,
-      beta: built.beta,
-      twinbasicTag: built.tag,
-      publishedAt: built.publishedAt,
-      packages: {},
-    };
-
-    if (filter && built.manifest.packages) {
-      Object.assign(builtinManifest.packages, built.manifest.packages);
-    }
-
-    for (const pkg of toProcess) {
-      const group = packageGroup(pkg.symbol, "builtin");
-      const { json: apiJson, stats } = buildApi({ symbol: pkg.symbol, version: built.tag, files: pkg.files });
-
-      await writeToStore(STORE_PATH, group, pkg.symbol, pkg.files, apiJson);
-
-      builtinManifest.packages[pkg.guid] = { symbol: pkg.symbol };
-      synced.push({ group, package: pkg.symbol, from: built.manifest.twinbasicTag, to: built.tag });
-      console.log(`    ${pkg.symbol}: ${describeIndex(stats)}`);
-    }
-
-    for (const pkg of builtinPackages) {
-      if (!builtinManifest.packages[pkg.guid]) {
-        builtinManifest.packages[pkg.guid] = { symbol: pkg.symbol };
+  for (const [tag, wanted] of toRead) {
+    let packages = reads.get(tag);
+    if (!packages) {
+      try {
+        packages = await readBuild(tag, newest);
+        reads.set(tag, packages);
+      } catch (e) {
+        for (const item of wanted) {
+          failed.push({ symbol: item.symbol, error: e.message });
+          console.warn(`    FAILED: ${item.symbol}: ${e.message}`);
+        }
+        continue;
       }
     }
-
-    await writeManifest("built-in", builtinManifest);
-    for (const { symbol } of Object.values(builtinManifest.packages)) known.add(symbol);
-  } else {
-    console.log(`  Up to date (${built.tag}).`);
-    for (const { symbol } of Object.values(built.manifest.packages || {})) known.add(symbol);
+    for (const item of wanted) {
+      const pkg = packages.find((p) => p.symbol === item.symbol);
+      if (!pkg) {
+        const error = `${tag} has no package of that name`;
+        failed.push({ symbol: item.symbol, error });
+        console.warn(`    FAILED: ${item.symbol}: ${error}`);
+        continue;
+      }
+      const from = await storedVersion(STORE_PATH, item.group, item.symbol);
+      const { json: apiJson, stats } = buildApi({ symbol: pkg.symbol, version: tag, files: pkg.files });
+      await writeToStore(STORE_PATH, item.group, pkg.symbol, pkg.files, apiJson);
+      synced.push({ group: item.group, package: pkg.symbol, from, to: tag });
+      console.log(`    ${pkg.symbol}: ${describeMove(from, item)}; ${describeIndex(stats)}`);
+    }
   }
+
+  // The manifest describes the newest build: where it was read from, which one,
+  // and its packages. Never the install's path, which names its user.
+  if (newest.needsUpdate) {
+    await writeManifest("built-in", {
+      syncedAt: new Date().toISOString(),
+      source: newest.source,
+      beta: newest.beta,
+      twinbasicTag: newest.tag,
+      publishedAt: newest.publishedAt,
+      packages: Object.fromEntries(listing.map(({ guid, symbol }) => [guid, { symbol }])),
+    });
+  }
+  run.held.push(...heldBack(items));
 }
 
 // --- analyze command ---
@@ -978,16 +1100,21 @@ async function runDraft(filter) {
 
 // --- derive command ---
 
-// Writes builder/package-api.json from every built-in and default package of the
-// install, or of the latest release with --release: the snapshots hold only the
-// documented packages, and keep no declaration order. `install` is as for sync.
-async function runDerive(install, { check, out = PACKAGE_API_PATH }) {
+// Writes builder/package-api.json from every built-in and default package of one
+// build: the snapshots hold only the documented packages, and keep no declaration
+// order. `install` is `{ root, beta }` to read, else the release of `tag` is
+// downloaded, else the latest release (deriveSource decides).
+async function runDerive({ install, tag }, { check, out = PACKAGE_API_PATH }) {
   let beta;
   let packages;
   if (install) {
     console.log(`Reading twinBASIC BETA ${install.beta} from ${install.root}...`);
     beta = install.beta;
     packages = readInstalledPackages(install.root);
+  } else if (tag) {
+    console.log(`Downloading the twinBASIC release ${tag}...`);
+    beta = betaForTag(tag);
+    packages = extractBuiltinPackages(await downloadRelease((await getReleaseByTag(tag)).assetUrl));
   } else {
     console.log("Downloading the latest twinBASIC release...");
     const release = await getLatestRelease();

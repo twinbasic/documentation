@@ -45,7 +45,8 @@ committed, holds old sources or none, so `sync` prints "Up to date" over stale d
 the packages it skipped look current and are not. So the manifest says only what was last
 fetched, a clone has none, and its first `sync` reads every package. Whether a package
 is current is judged from what the store holds: its sources, an `api.json` in the format this
-indexer writes, of the version the source has now, written by the scanner this checkout has.
+indexer writes, of the version wanted (its pin, or the newest), written by the scanner this
+checkout has.
 
 **The fingerprint.** An `api.json` is a function of the sources *and of the code that reads
 them*. The store records, beside each `api.json`, a SHA-256 over `scripts/lib/twin-api.mjs`,
@@ -122,21 +123,52 @@ and Declare-ness, more than one condition; two declarations under one condition 
 overloads) are in the README.
 
 **A change to the fingerprinted code or to `format` means regenerating the committed snapshots
-from the build they record (`indexed_from`), in the same commit as the change.** If it does
+from the version they record (`indexed_from`), in the same commit as the change.** If it does
 not, `analyze` compares the new scanner's output with the old scanner's and reports the
-scanner's changes as changes to the API. It needs that build's install, `sync --ide <folder>`:
-`--release` downloads only the newest release, and a plain `sync` reads the newest install,
-which would write the snapshots of another build.
+scanner's changes as changes to the API. A plain `sync` does it, because each documented
+package is pinned (next section).
+
+## Pinning
+
+**A documented package is pinned at its section's `indexed_from`** (owner, 2026-11-16), and
+`sync` reads it at that version unless `--upgrade` moves it. Before pinning, `sync` fetched
+the newest TWINSERV version of every contributed package, so regenerating the snapshots after
+a scanner change would have moved every section with a newer version on TWINSERV at once
+(four on 2026-11-16), silently, in a commit about the scanner.
+
+- **The pin is `indexed_from`, not the working-tree snapshot's `version`** (owner). The two
+  agree at every commit; `indexed_from` is the one a person writes. The price: a plain `sync`
+  in the middle of an upgrade moves that package back to its pin, and says so; `--upgrade
+  --package <name>` moves it forward again, from the download cache.
+- **The snapshot follows the pin** (`syncSnapshots`): it is written only when the store holds
+  the package at its pin, current, and differs. So an upgrade writes no snapshot, and bumping
+  `indexed_from` and running `sync` writes the new one. The same rule gives a section started
+  after its package was synced its snapshot, with no case of its own.
+- **The store holds one version of each package**, the wanted one. Keeping the pin and an
+  upgrade side by side would serve the rare case of a scanner change during an upgrade, at the
+  cost of a second layout every reader of the store would have to know. The download cache,
+  `downloads/<package>/<version>.twinpack`, outside the store's history, makes moving back and
+  forth free instead.
+- **Built-in and default packages are pinned too** (owner), each at its own build, read from
+  the `twinBASIC_IDE_BETA_<n>` folder of that build (by the BETA its `ide/build.js` names),
+  else from its GitHub release by tag. The packages no section documents (the two spare CEF
+  builds) follow the newest build. `derive` reads the pinned build, and refuses sections pinned
+  at more than one, since it writes one file of one build.
+- **TWINSERV keeps old versions**: on 2026-11-16 it listed every pinned version, the oldest
+  pin among them. A version it drops can still be read from the store or the cache; with
+  neither, `sync` fails that package, which is the right answer for a section documenting a
+  version that can no longer be had.
+- **The newest build is what `beta` in the built-in manifest names**, so `analyze`'s
+  callouts.json still lists the callouts labelled below the newest BETA installed, whatever the
+  pins say: those are the callouts a new build leaves to check.
 
 ## Decisions of the owner
 
 - **Snapshots are committed only for the documented packages**, default, built-in and
   contributed. The packages no section documents and the extra CEF builds are indexed into
   the store and left out of the repository. A package joins when its section does; `sync`
-  copies a snapshot for a documented package it indexed in that run, and gives a documented
-  package with none the store's `api.json` when that is of its `indexed_from` version
-  (`adoptSnapshots`): a package is usually synced before its section exists, and a later
-  sync finds its store current and indexes nothing.
+  writes the snapshot of a documented package whenever the store holds it at its pin
+  (`syncSnapshots`, under *Pinning*).
 - **They are taken from the build each section's `indexed_from` names**, not from a newer
   one, so that the pages and the baseline agree and `analyze` of a newer build shows the real
   distance.
