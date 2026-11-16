@@ -206,6 +206,8 @@ They cover the ellipsis plugin, which keeps the dots past the third in a run suc
 - a link only the online tree holds becomes the website's absolute URL (with the base path, and encoded) and is not counted as unresolved;
 - a link in neither tree stays as written and is counted.
 
+And they cover the links of a page's [markdown copy](Building#markdown-for-agents): a `tb:` shortcut, a path from the source file's folder, a path from the page's URL, a `redirect_from:` alias, a folder-style page, the home page and a reference definition each go to the copy of the page they reach, with their fragment; an image, a fragment of the page itself, another site, a path that is no page and a footnote's text stay as the HTML has them. Each runs twice: with the main thread's link tables, which hold the pages, and with a worker's, which hold the stubs `serializeLinkTables` ships.
+
 No browser, no built tree, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.

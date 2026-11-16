@@ -262,7 +262,7 @@ const copyMd = createMarkdownIt({
   counts: { pages: 7 },
 });
 const copyOf = (src, frontmatter = { title: "T" }) =>
-  markdownCopy({ rawContent: src, frontmatter }, copyMd, { resolveHref: copyResolver });
+  markdownCopy({ rawContent: src, frontmatter }, copyMd, { href: copyResolver });
 // biome-ignore format: a table, one entry per line
 const COPY_PROBES = [
   ["a comment and a link inside a fence, and beside it",
@@ -274,6 +274,9 @@ const COPY_PROBES = [
   ["a comment, a link and a definition inside code spans",
     "# T\n\n`<!-- kept -->` and `[a](b)` and [c](d)\n\n`[e]: f`\n\n[g]: h\n",
     "# T\n\n`<!-- kept -->` and `[a](b)` and [c](/resolved/d)\n\n`[e]: f`\n\n[g]: /resolved/h\n"],
+  ["a footnote's text is no link destination; a definition's is",
+    "# T\n\nx[^1]\n\n[^1]: Dim is a note\n\n[g]: h\n",
+    "# T\n\nx[^1]\n\n[^1]: Dim is a note\n\n[g]: /resolved/h\n"],
   ["a link whose destination holds a code span is left as written",
     "# T\n\n[a](`b`) and [c](d)\n",
     "# T\n\n[a](`b`) and [c](/resolved/d)\n"],

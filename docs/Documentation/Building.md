@@ -329,9 +329,10 @@ A copy is the page's source, changed only where the source says something differ
 - the front matter goes, and a page that does not start with a level-1 heading gets one from its `title:`;
 - the `{{tbdocs:...}}` placeholders are expanded;
 - HTML comments go, the `<!-- test: ... -->` markers among them;
-- a link the build resolves --- a `tb:` shortcut, or a path written from the source file's folder, such as `../Core/Dim.md` or `Images/x.png` --- becomes the URL the page's HTML has.
+- a link to another page goes to that page's copy, with its fragment: `[Dim](Dim#syntax)` on a page beside it becomes `[Dim](/tB/Core/Dim.md#syntax)`, so a reader of the copies stays in markdown. The page a link goes to is the one the page's HTML reaches, whether the build resolved the link (a `tb:` shortcut, or a path from the source file's folder) or a browser resolves it against the page's URL, through a `redirect_from:` alias included;
+- a link to a file, such as an image, becomes the URL the page's HTML has.
 
-Code is never changed: fences, code spans and indented code blocks are masked before any of these rewrites run, and [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) compares every page's copy with its source. A copy sits in the folder its page is served from, so every other relative link resolves from the copy as it does from the page. The offline tree holds no copies, and its pages name the website's.
+Code is never changed: fences, code spans and indented code blocks are masked before any of these rewrites run, and [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) compares every page's copy with its source. A copy sits in the folder its page is served from, so a relative link to anything else resolves from the copy as it does from the page. The offline tree holds no copies, and its pages name the website's.
 
 The build also writes `/llms.txt`, an index for language models in the form [llmstxt.org](https://llmstxt.org/) proposes: the site's summary, then a list of links to the copies for each top-level part of the navigation, each with the page's first sentence. `llms_txt` in `_config.yml` holds the summary and names the parts listed last, under `## Optional`, which a reader short of room may skip. A name there that is not the title of a top-level page fails the build. [`builder/llms-txt.mjs`](Builder#module-map) writes the file.
 

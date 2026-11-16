@@ -21,6 +21,7 @@ import { countPlugin, expandDownloadPlaceholders, findSurvivingPlaceholder } fro
 import { replaceOutsideCode } from "./code-guard.mjs";
 import { TERM_ID_PREFIX } from "./search.mjs";
 import { splitFragment } from "./url.mjs";
+import { markdownCopyUrl } from "./markdown-copy.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
 import { inlineDiagram } from "./inline-diagram.mjs";
 import { checkCalloutLabel, parseCalloutLabel } from "../lib/callout-labels.mjs";
@@ -499,9 +500,14 @@ export function createMarkdownIt(ctx) {
   // from (counts.mjs); none in a caller that has no downloads, which leaves them unexpanded.
   md.downloads = ctx.downloads ?? null;
   // What a page's markdown copy (markdown-copy.mjs) needs to read its source as this instance
-  // renders it: the counts countPlugin substitutes, and the links relativeLinksPlugin resolves.
+  // renders it: the counts countPlugin substitutes, the links relativeLinksPlugin resolves, and
+  // the pages a browser reaches at the links it leaves as written.
   md.counts = ctx.counts ?? null;
-  md.resolveHref = (value, page) => resolveHref(value, page, ctx);
+  md.links = {
+    baseurl: String(ctx.baseurl ?? ""),
+    target: (value, page) => resolveTarget(value, page, ctx),
+    pageAt: (path) => pageAtSitePath(path, ctx.linkTables),
+  };
 
   return md;
 }
@@ -1697,16 +1703,18 @@ export function buildLinkTables(pages) {
   return { byPath, byUrl, byRedirect, byShortcut };
 }
 
-// Serialize linkTables for cross-thread transfer. resolveLink() only reads
-// .permalink from each page, so shipping [key, permalink] pairs is sufficient.
-// Workers reconstruct minimal { permalink } stubs via reconstructLinkTables.
+// Serialize linkTables for cross-thread transfer. The link resolution reads
+// .permalink from each page, and a page's markdown copy reads .markdownUrl
+// (markdown-copy.mjs, copyHref), so shipping [key, permalink, markdownUrl] is
+// sufficient. Workers reconstruct minimal { permalink, markdownUrl } stubs via
+// reconstructLinkTables.
 export function serializeLinkTables(lt) {
-  const pairs = (m) => [...(m ?? new Map()).entries()].map(([k, p]) => [k, p.permalink]);
+  const entries = (m) => [...(m ?? new Map()).entries()].map(([k, p]) => [k, p.permalink, markdownCopyUrl(p)]);
   return {
-    byPath: pairs(lt.byPath),
-    byUrl: pairs(lt.byUrl),
-    byRedirect: pairs(lt.byRedirect),
-    byShortcut: pairs(lt.byShortcut),
+    byPath: entries(lt.byPath),
+    byUrl: entries(lt.byUrl),
+    byRedirect: entries(lt.byRedirect),
+    byShortcut: entries(lt.byShortcut),
   };
 }
 
@@ -1714,17 +1722,44 @@ function putOnce(map, key, value) {
   if (!map.has(key)) map.set(key, value);
 }
 
-function resolveLink(href, tables, baseurl) {
+// The page a path below the site root names, by its source file, its URL or a
+// redirect to it; or null. `path` may be URL-encoded.
+function lookupPage(path, tables) {
   if (!tables) return null; // a tool rendering without the site's pages
-  let path;
-  try {
-    path = decodeURIComponent(href);
-  } catch {
-    path = href;
+  const decoded = decodePath(path);
+  const trimmed = decoded.replace(/\/$/, "");
+  return tables.byPath.get(decoded) ?? tables.byUrl.get(trimmed) ?? tables.byRedirect.get(trimmed) ?? null;
+}
+
+/**
+ * The page a browser reaches at `path`, a path below the site root with no leading slash: the
+ * page whose URL it is, or whose `redirect_from:` stub is there. Null when no page is, and for a
+ * path that only names a page's source file, which the site does not serve. Exported for the
+ * page's markdown copy (markdown-copy.mjs), whose links the HTML leaves as written resolve
+ * against the page's URL.
+ */
+export function pageAtSitePath(path, tables) {
+  if (!tables) return null;
+  const trimmed = decodePath(path).replace(/\/$/, "");
+  if (trimmed === "") return rootPage(tables);
+  return tables.byUrl.get(trimmed) ?? tables.byRedirect.get(trimmed) ?? null;
+}
+
+// The page at `/`, which byUrl leaves out: its key would be "", which resolveLink must not match.
+const rootPages = new WeakMap();
+function rootPage(tables) {
+  if (!rootPages.has(tables)) {
+    rootPages.set(tables, [...tables.byPath.values()].find((p) => p.permalink === "/") ?? null);
   }
-  const trimmed = path.replace(/\/$/, "");
-  const target = tables.byPath.get(path) ?? tables.byUrl.get(trimmed) ?? tables.byRedirect.get(trimmed);
-  return target ? `${baseurl}${target.permalink}` : null;
+  return rootPages.get(tables);
+}
+
+function decodePath(path) {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
 }
 
 function relativeLinksPlugin(md, ctx) {
@@ -1747,11 +1782,19 @@ function relativeLinksPlugin(md, ctx) {
 
 /**
  * What the destination `value` of a link (or, with `image`, of an image) on `fromPage` becomes
- * in the page's HTML, or null when it stays as written. Exported for the page's markdown copy
- * (markdown-copy.mjs), which must resolve its links as the HTML does; `ctx` is what
- * createMarkdownIt was given.
+ * in the page's HTML, or null when it stays as written; `ctx` is what createMarkdownIt was given.
  */
-export function resolveHref(value, fromPage, ctx, { image = false } = {}) {
+export function resolveHref(value, fromPage, ctx, options) {
+  return resolveTarget(value, fromPage, ctx, options)?.url ?? null;
+}
+
+/**
+ * resolveHref's answer with what it found: `{ url, page, fragment }`, where `page` is the link
+ * table's entry for the page the link goes to, null for a static file, and `fragment` is the
+ * part after `#`, or "". Null when the HTML keeps the destination as written. Exported for the
+ * page's markdown copy (markdown-copy.mjs), whose links to pages go to their copies.
+ */
+export function resolveTarget(value, fromPage, ctx, { image = false } = {}) {
   // `tb:<Name>[#fragment]`: the page whose front matter says `shortcut: <Name>`.
   // Before the scheme test, which would pass it through as a URL.
   if (/^tb:/i.test(value)) {
@@ -1766,7 +1809,7 @@ export function resolveHref(value, fromPage, ctx, { image = false } = {}) {
       );
     }
     const url = `${ctx.baseurl}${target.permalink}`;
-    return frag ? `${url}#${frag}` : url;
+    return { url: frag ? `${url}#${frag}` : url, page: target, fragment: frag ?? "" };
   }
   if (/^([a-z][a-z0-9+.\-]*:|#|\/\/)/i.test(value)) return null;
 
@@ -1783,9 +1826,12 @@ export function resolveHref(value, fromPage, ctx, { image = false } = {}) {
     resolved = resolveBelowRoot(fromDir, pathPart);
     if (resolved === null) return null;
   }
-  const newValue = resolveAsset(resolved, ctx) ?? resolveLink(resolved, ctx.linkTables, ctx.baseurl);
-  if (!newValue) return null;
-  return fragPart ? `${newValue}#${fragPart}` : newValue;
+  const withFragment = (url) => (fragPart ? `${url}#${fragPart}` : url);
+  const asset = resolveAsset(resolved, ctx);
+  if (asset) return { url: withFragment(asset), page: null, fragment: fragPart ?? "" };
+  const page = lookupPage(resolved, ctx.linkTables);
+  if (!page) return null;
+  return { url: withFragment(`${ctx.baseurl}${page.permalink}`), page, fragment: fragPart ?? "" };
 }
 
 // Static assets aren't in the page-permalink tables; resolve them as

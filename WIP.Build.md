@@ -505,14 +505,24 @@ GitHub's HTML view of the source.
 The copies are on the site rather than on `raw.githubusercontent.com` (owner) because the sources'
 links are written against the page's URL, not the file's: `[Option](../../Core/Option)` on
 `Reference/Default/VBA/Strings/InStr.md` resolves from `/tB/Modules/Strings/InStr` and 404s from
-the raw file. A copy in the page's own folder resolves every such link as the page does. The links
-the build itself resolves --- `tb:` shortcuts and paths from the source file's folder --- the copy
-resolves through `resolveHref`, the function `relativeLinksPlugin` calls, so the two cannot drift.
-When the copies were introduced (2026-11-16), every page's copy, rendered as that page, gave the
-page's own link URLs: 29,446 links on 1,538 pages. The link scan finds `](dest)` and
-`[label]: dest`; markdown-it finds the same links on every page but those inside comments, which
-the copy drops first. A destination with white space in it is not looked for, since no page has
-one; `encodeSpacesInMediaUrls` would be the model if one appears.
+the raw file.
+
+**A copy's link to a page goes to that page's copy** (owner), root-absolute with the baseurl and
+the link's fragment, so an agent following links stays in markdown. Which page is the HTML's
+answer, never the copy's own: `resolveTarget` (render.mjs, the function `relativeLinksPlugin`
+calls through `resolveHref`) for a `tb:` shortcut and a path from the source file's folder, and
+for a link the HTML keeps as written, the URL API resolving it against the page's permalink, as a
+browser does, then `pageAtSitePath`: a page's URL, its `redirect_from:` alias, or `/`, which
+`byUrl` leaves out (its key would be "", which `resolveLink` must not match). A link table entry
+carries its page's copy across to the workers (`serializeLinkTables`: `[key, permalink,
+markdownUrl]`). A link to a file is the HTML's URL; a pure fragment stays, since the copy is the
+same document. When the links were moved to the copies (2026-11-16), markdown-it's links in each
+copy, against those of the same copy with its links as written, gave on 1,538 pages: 19,783 to the
+copy of the page the HTML reaches, 9,358 to where the HTML's go (in-page fragments, other sites,
+484 files), none wrong. The link scan finds `](dest)` and `[label]: dest`, not a footnote's
+`[^1]: text`; markdown-it finds the same links on every page but those inside comments, which the
+copy drops first. A destination with white space in it is not looked for, since no page has one;
+`encodeSpacesInMediaUrls` would be the model if one appears.
 
 The copies cost about 13 MB in the online tree and nothing in the offline tree or the help archive:
 an offline page's `<link>` goes to the website's copy, by the general rule for a file only the

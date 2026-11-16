@@ -72,9 +72,9 @@ export function renderLlmsTxt(pages, site) {
   if (settings.summary) out.push(`> ${String(settings.summary).trim().replace(/\s+/g, " ")}`, "");
   out.push(
     "Every page of this site is also published as markdown, at the page's URL with `.md` added, " +
-      "or `index.md` where the URL ends in `/`. The links below go to the markdown, and each page's " +
-      'HTML names its own in `<link rel="alternate" type="text/markdown">`. A relative link in the ' +
-      "markdown resolves as it does on the page.",
+      "or `index.md` where the URL ends in `/`. The links below go to the markdown, and so do the " +
+      "markdown's links to other pages. Each page's HTML names its own markdown in " +
+      '`<link rel="alternate" type="text/markdown">`.',
     "",
   );
 
