@@ -15,6 +15,7 @@ import { unpackBookPayload } from "./book-payload.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { createMarkdownIt, renderPhase } from "./render.mjs";
+import { markdownCopy, markdownCopyRel } from "./markdown-copy.mjs";
 import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
@@ -158,7 +159,8 @@ const handlers = {
     const items = _pendingFlush.shift() ?? [];
     let written = 0,
       offlineWritten = 0,
-      offlineMisses = 0;
+      offlineMisses = 0,
+      markdownWritten = 0;
 
     // The check rides along here rather than becoming its own task
     // because this is the one moment both trees' final HTML is already
@@ -185,6 +187,10 @@ const handlers = {
             await fsP.writeFile(path.join(ctx.destRoot + "-offline", p.destPath), p.offlineHtml, "utf8");
             offlineWritten++;
           }
+          if (p.markdown) {
+            await fsP.writeFile(path.join(ctx.destRoot, p.markdown.rel), p.markdown.text, "utf8");
+            markdownWritten++;
+          }
           offlineMisses += p.offlineMisses ?? 0;
         }
       });
@@ -194,7 +200,7 @@ const handlers = {
     const check = _checkEnv ? await runChunkCheck(items) : null;
     if (writes) await writes;
 
-    return { written, offlineWritten, offlineMisses, check };
+    return { written, offlineWritten, offlineMisses, markdownWritten, check };
   },
 
   async scssLight() {
@@ -310,15 +316,26 @@ const handlers = {
     if (!env.svgOutputs.online) for (const p of chunk) if (p.html !== undefined) p.html = env.asPng(p.html);
 
     // Stash writable pages for the matching flush:i (FIFO; one batch per
-    // render:i, drained by exactly one flush:i on the same worker).
+    // render:i, drained by exactly one flush:i on the same worker), each with
+    // its markdown copy, which goes beside it in the online tree alone.
     const batch = [];
     for (const p of chunk) {
       if (p.html !== undefined) {
+        const markdownRel = markdownCopyRel(p);
+        let markdown;
+        if (markdownRel !== null) {
+          try {
+            markdown = { rel: markdownRel, text: markdownCopy(p, env.site.markdown) };
+          } catch (err) {
+            throw new Error(`${p.srcRel}: its markdown copy: ${err.message}`);
+          }
+        }
         batch.push({
           destPath: p.destPath,
           html: p.html,
           offlineHtml: p.offlineHtml,
           offlineMisses: p.offlineMisses,
+          markdown,
         });
       }
     }

@@ -21,6 +21,7 @@ import { compressHtml } from "./compress.mjs";
 import { stripHtml } from "./seo.mjs";
 import { absoluteUrl, relativeUrl } from "./url.mjs";
 import { escapeMarkupAndQuotes } from "./escape.mjs";
+import { markdownCopyUrl } from "./markdown-copy.mjs";
 import { formatDate } from "./strftime.mjs";
 
 export async function templatePhase(pages, site, initData) {
@@ -167,10 +168,16 @@ function renderHead(page, site, init) {
   // the frame's window.name instead, as `tbdocs:<theme>:<1 for pane>`, which
   // a navigation inside the frame keeps; it is written only by a page given
   // either parameter, and read only when storage throws.
+  // The page's markdown copy (markdown-copy.mjs) is named right after the charset, where an
+  // agent that reads only the start of the file finds it.
   const bu = String(site.config.baseurl ?? "");
+  const markdownUrl = markdownCopyUrl(page);
   return (
     `<head>\n` +
     `  <meta charset="UTF-8">\n` +
+    (markdownUrl
+      ? `  <link rel="alternate" type="text/markdown" href="${escapeMarkupAndQuotes(relativeUrl(markdownUrl, bu))}">\n`
+      : "") +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
     `    (function () { var q = /[?&]theme=(light|dark)(?:&|$)/.exec(location.search), a = /[?&]pane=1(?:&|$)/.test(location.search), p = a, t = null, n = /^tbdocs:(light|dark)?:(1)?$/.exec(window.name);\n` +
     `    try { if (q) sessionStorage.setItem('theme', q[1]); t = sessionStorage.getItem('theme') || localStorage.getItem('theme');\n` +

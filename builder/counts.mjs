@@ -246,11 +246,11 @@ export function countPlugin(md, ctx) {
         if (t.type === "image") {
           // The default renderer builds the alt from the children, but
           // `content` carries it too and other code reads that.
-          t.content = substitute(t.content, counts);
+          t.content = substituteCounts(t.content, counts);
           continue;
         }
         if (t.type !== "text" || !t.content.includes("{{tbdocs:")) continue;
-        t.content = substitute(t.content, counts);
+        t.content = substituteCounts(t.content, counts);
       }
     };
 
@@ -260,7 +260,12 @@ export function countPlugin(md, ctx) {
   });
 }
 
-function substitute(text, counts) {
+/**
+ * Each count placeholder in `text` replaced by its value; any other placeholder is left as
+ * written. Exported for the page's markdown copy (markdown-copy.mjs), which calls it on source
+ * masked of code.
+ */
+export function substituteCounts(text, counts) {
   return text.replace(PLACEHOLDER_RE, (whole, name, arg) =>
     arg === undefined && Object.hasOwn(counts, name) ? String(counts[name]) : whole,
   );

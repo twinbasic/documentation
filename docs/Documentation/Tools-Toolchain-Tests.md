@@ -77,6 +77,8 @@ The admonition probes test the mirror fault, which the region comparison cannot 
 
 Probes hold the rewrites over every page's rendered HTML, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. A `<pre>` or `<code>` written as raw HTML must come through as written, and a match outside it must still be rewritten.
 
+Each page's [markdown copy](Building#markdown-for-agents) is compared with its source the same way. The gate makes the copy with a link resolver of its own that rewrites every link the copy's scan finds, so a link found inside code shows as an altered region. Probes hold both directions on shapes no page has: a comment, a link and a placeholder inside a fence, a code span or an indented code block stay, and the ones beside them are rewritten.
+
 The gate also covers `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules that tell the tools what in a page is code and where its frontmatter ends. On every page the sweep checks that `blockRegions`, which parses blocks only, finds exactly the fences, code blocks and HTML blocks of a full parse. More probes check that:
 
 - the rewrite chain leaves alone a fence that only the site's parser finds, and an admonition written inside one;

@@ -15,10 +15,12 @@
 
 // Aux files the online tree receives after the pages are written. The symbol
 // index is the online tree's alone: the IDE help add-in fetches it from the
-// site, and the offline tree has no reader for it yet.
+// site, and the offline tree has no reader for it yet. llms.txt is for agents
+// reading the site, and links to the markdown copies, which only it has.
 const ONLINE_AUX = [
   "sitemap.xml",
   "robots.txt",
+  "llms.txt",
   "assets/js/search-data.json",
   "assets/js/search-index.json",
   "tB/symbols.json",
@@ -32,7 +34,8 @@ const OFFLINE_AUX = ["assets/js/search-index.js", "assets/js/nav.js"];
 // Every relative path a tree receives. `which` is "online" or "offline";
 // the PDF tree's contents come from writePdf, which knows them exactly.
 // `onlineOnlyRels` are files the online tree receives and the offline one
-// does not: the help add-in's project file.
+// does not: the help add-in's project file, the package test projects and the
+// pages' markdown copies.
 export function deriveTreeRels(
   which,
   { pages, staticFiles, stubs, themeAssetRels, excludePatterns, onlineOnlyRels = [] },

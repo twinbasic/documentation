@@ -465,15 +465,16 @@ Writes the help add-in's project file, the download [Help Add-In](../../tB/IDE/A
 ### `writeAux` (main)
 
 ```js
-writeAux.expected = ["writeAssets", "searchData", "flushJoin", "deriveRedirects", "deriveSitemap"]
+writeAux.expected = ["writeAssets", "searchData", "flushJoin", "renderJoin", "deriveRedirects", "deriveSitemap"]
 ```
 
 In parallel:
 
 - `writeRedirects(state.pages, state.site, destRoot, stubs)` from `redirects.mjs` --- one HTML stub per `redirect_from:` entry, each with `<script>location=…</script>`, `<meta http-equiv="refresh">`, `<link rel="canonical">` and a noscript `<a>` fallback.
 - `writeSitemap(state.pages, state.site, destRoot, urls)` from `sitemap.mjs` --- `sitemap.xml` and `robots.txt` with a `Sitemap:` reference.
+- `writeLlmsTxt(state.pages, state.site, destRoot)` from `llms-txt.mjs` --- `llms.txt`, from the nav tree and each listed page's `renderedContent`.
 
-Returns `{ redirectStats, sitemapStats, searchStats }` (the search stats come from the `searchData` input).
+Returns `{ redirectStats, sitemapStats, llmsStats, searchStats }` (the search stats come from the `searchData` input).
 
 ### `writeOffline` (main)
 

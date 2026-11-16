@@ -498,6 +498,10 @@ export function createMarkdownIt(ctx) {
   // What the pre-render rewrites expand {{tbdocs:size:...}} and {{tbdocs:packageTestRows}}
   // from (counts.mjs); none in a caller that has no downloads, which leaves them unexpanded.
   md.downloads = ctx.downloads ?? null;
+  // What a page's markdown copy (markdown-copy.mjs) needs to read its source as this instance
+  // renders it: the counts countPlugin substitutes, and the links relativeLinksPlugin resolves.
+  md.counts = ctx.counts ?? null;
+  md.resolveHref = (value, page) => resolveHref(value, page, ctx);
 
   return md;
 }
@@ -1711,6 +1715,7 @@ function putOnce(map, key, value) {
 }
 
 function resolveLink(href, tables, baseurl) {
+  if (!tables) return null; // a tool rendering without the site's pages
   let path;
   try {
     path = decodeURIComponent(href);
@@ -1734,45 +1739,53 @@ function relativeLinksPlugin(md, ctx) {
 
       const idx = token.attrIndex(attrName);
       if (idx < 0) return;
-      const value = token.attrs[idx][1];
-      // `tb:<Name>[#fragment]`: the page whose front matter says `shortcut: <Name>`.
-      // Before the scheme test, which would pass it through as a URL.
-      if (/^tb:/i.test(value)) {
-        if (!ctx.linkTables) return; // a tool rendering without the site's pages
-        const [name, frag] = splitFragment(value.slice(3));
-        const target = ctx.linkTables.byShortcut?.get(name);
-        if (attrName !== "href") throw new Error(`${fromPage.srcRel}: ${value} is a page shortcut, not an image`);
-        if (!target) {
-          throw new Error(
-            `${fromPage.srcRel}: no page has the shortcut in ${value}; ` +
-              "a page names its shortcut with `shortcut: <Name>` in its front matter",
-          );
-        }
-        const url = `${ctx.baseurl}${target.permalink}`;
-        token.attrs[idx][1] = frag ? `${url}#${frag}` : url;
-        return;
-      }
-      if (/^([a-z][a-z0-9+.\-]*:|#|\/\/)/i.test(value)) return;
-
-      const [pathPart, fragPart] = splitFragment(value);
-      let resolved;
-      if (value.startsWith("/")) {
-        // Root-absolute (`/tB/Packages/VB/Label`). jekyll-relative-links
-        // still resolves these against the page tables, picking up the
-        // canonical permalink form (with trailing slash for folder-
-        // style index pages). Strip leading slash and look up directly.
-        resolved = pathPart.replace(/^\//, "");
-      } else {
-        const fromDir = fromPage.srcRel.replace(/[^/]+$/, "");
-        resolved = resolveBelowRoot(fromDir, pathPart);
-        if (resolved === null) return;
-      }
-      const newValue = resolveAsset(resolved, ctx) ?? resolveLink(resolved, ctx.linkTables, ctx.baseurl);
-      if (newValue) {
-        token.attrs[idx][1] = fragPart ? `${newValue}#${fragPart}` : newValue;
-      }
+      const newValue = resolveHref(token.attrs[idx][1], fromPage, ctx, { image: attrName === "src" });
+      if (newValue !== null) token.attrs[idx][1] = newValue;
     });
   });
+}
+
+/**
+ * What the destination `value` of a link (or, with `image`, of an image) on `fromPage` becomes
+ * in the page's HTML, or null when it stays as written. Exported for the page's markdown copy
+ * (markdown-copy.mjs), which must resolve its links as the HTML does; `ctx` is what
+ * createMarkdownIt was given.
+ */
+export function resolveHref(value, fromPage, ctx, { image = false } = {}) {
+  // `tb:<Name>[#fragment]`: the page whose front matter says `shortcut: <Name>`.
+  // Before the scheme test, which would pass it through as a URL.
+  if (/^tb:/i.test(value)) {
+    if (!ctx.linkTables) return null; // a tool rendering without the site's pages
+    const [name, frag] = splitFragment(value.slice(3));
+    const target = ctx.linkTables.byShortcut?.get(name);
+    if (image) throw new Error(`${fromPage.srcRel}: ${value} is a page shortcut, not an image`);
+    if (!target) {
+      throw new Error(
+        `${fromPage.srcRel}: no page has the shortcut in ${value}; ` +
+          "a page names its shortcut with `shortcut: <Name>` in its front matter",
+      );
+    }
+    const url = `${ctx.baseurl}${target.permalink}`;
+    return frag ? `${url}#${frag}` : url;
+  }
+  if (/^([a-z][a-z0-9+.\-]*:|#|\/\/)/i.test(value)) return null;
+
+  const [pathPart, fragPart] = splitFragment(value);
+  let resolved;
+  if (value.startsWith("/")) {
+    // Root-absolute (`/tB/Packages/VB/Label`). jekyll-relative-links
+    // still resolves these against the page tables, picking up the
+    // canonical permalink form (with trailing slash for folder-
+    // style index pages). Strip leading slash and look up directly.
+    resolved = pathPart.replace(/^\//, "");
+  } else {
+    const fromDir = fromPage.srcRel.replace(/[^/]+$/, "");
+    resolved = resolveBelowRoot(fromDir, pathPart);
+    if (resolved === null) return null;
+  }
+  const newValue = resolveAsset(resolved, ctx) ?? resolveLink(resolved, ctx.linkTables, ctx.baseurl);
+  if (!newValue) return null;
+  return fragPart ? `${newValue}#${fragPart}` : newValue;
 }
 
 // Static assets aren't in the page-permalink tables; resolve them as

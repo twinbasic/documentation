@@ -490,6 +490,41 @@ written by the templates, not by markdown, so it stays: the `Begin/End Jekyll SE
 (`offline-rewrite.mjs` finds the block by it) and the two icon licences in `template.mjs`. A rule
 that needs a marker in a page's output uses an element or an attribute, never a comment.
 
+The pages' markdown copies (`builder/markdown-copy.mjs`) keep the rule: `withoutComments` takes
+every comment out of the source with code masked, fences, code spans and indented code blocks
+alike, so a comment a sample shows stays and a maintainer's note does not reach `<page>.md`.
+
+### Markdown copies and llms.txt
+
+Each page's source is published beside its HTML in the online tree as `<page>.md` (`index.md` for
+a URL ending in `/`), named by `<link rel="alternate" type="text/markdown">` directly after the
+page's `<meta charset>`, and `/llms.txt` lists them by the nav tree's top level. Both are for
+agents: the footer's "Edit this page on GitHub" link is at the end of a long file, and goes to
+GitHub's HTML view of the source.
+
+The copies are on the site rather than on `raw.githubusercontent.com` (owner) because the sources'
+links are written against the page's URL, not the file's: `[Option](../../Core/Option)` on
+`Reference/Default/VBA/Strings/InStr.md` resolves from `/tB/Modules/Strings/InStr` and 404s from
+the raw file. A copy in the page's own folder resolves every such link as the page does. The links
+the build itself resolves --- `tb:` shortcuts and paths from the source file's folder --- the copy
+resolves through `resolveHref`, the function `relativeLinksPlugin` calls, so the two cannot drift.
+When the copies were introduced (2026-11-16), every page's copy, rendered as that page, gave the
+page's own link URLs: 29,446 links on 1,538 pages. The link scan finds `](dest)` and
+`[label]: dest`; markdown-it finds the same links on every page but those inside comments, which
+the copy drops first. A destination with white space in it is not looked for, since no page has
+one; `encodeSpacesInMediaUrls` would be the model if one appears.
+
+The copies cost about 13 MB in the online tree and nothing in the offline tree or the help archive:
+an offline page's `<link>` goes to the website's copy, by the general rule for a file only the
+website holds (`computeWebsiteUrl`), which the offline check excuses (`isWebsiteOnlyLink`). The
+recheck of the page the Gantt chart is injected into builds the same exemption
+(`websiteOnlyExemption` in `tbdocs.mjs`), since `BuildInfo.html` now has such a link too.
+
+`llms.txt`'s note for a page is the first sentence of its introduction, the part above its first
+`<h2>`, from `renderedContent`: the Glossary's first paragraph defines its first term, and is no
+summary of the page. A page whose introduction has no summary sentence gets a link with no note;
+the fix is the sentence the authoring rules ask for under the H1, not a rule here.
+
 ### The book refuses a stale source tree
 
 Testing only that `docs\_site-pdf\book.html` **exists** is not enough: edit a
