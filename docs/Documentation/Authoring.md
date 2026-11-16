@@ -196,7 +196,7 @@ reference index pages do.
 
 ## Page skeleton
 
-A reference page has the title, a one-line summary, the syntax, the parameters, any remarks, then an example and the related links. Parameters use a definition list --- a term line, then a `:` line beneath it:
+A reference page has the title, a one-line summary, the syntax, the parameters, any remarks, then an example and the related links. The summary's first sentence is also the page's `<meta name="description">`, which search engines show, and its note in `/llms.txt`: the build takes the first sentence of the first paragraph above the page's first `##` heading, and a page without one has neither. Parameters use a definition list --- a term line, then a `:` line beneath it:
 
     # MyFunction
     {: .no_toc }

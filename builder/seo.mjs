@@ -56,7 +56,8 @@ export function computeSiteSeo(config, markdown) {
   return { seoSiteTitle, seoLogoUrl };
 }
 
-// Per-page SEO fields: seoTitle / seoFullTitle / seoCanonical / seoIsHome.
+// Per-page SEO fields: seoTitle / seoFullTitle / seoCanonical / seoIsHome /
+// seoDescription (pageSummary, below; renderedContent is set by then).
 // Mutates pages in place. Called on each render worker between renderPhase
 // and templatePhase so the values never cross the postMessage boundary.
 export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
@@ -76,7 +77,61 @@ export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
     const canonicalInput = url.replace(/\/index\.html$/, "/").replace(/\.html$/, "");
     page.seoCanonical = absoluteUrl(canonicalInput, config);
     page.seoIsHome = HOMEPAGE_URLS.has(url);
+    page.seoDescription = pageSummary(page);
   }
+}
+
+// ── a page's summary ────────────────────────────────────────────────────
+
+// A summary longer than this is cut at a word and ends in an ellipsis.
+const SUMMARY_MAX = 240;
+const PARAGRAPH = /<p\b[^>]*>([\s\S]*?)<\/p>/g;
+const ENTITY = /&(#x[0-9a-f]+|#[0-9]+|amp|lt|gt|quot|apos|nbsp);/gi;
+const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/**
+ * A page's summary, as plain text, from its renderedContent: the first sentence of its
+ * introduction, which the documentation's own rule puts directly under the heading (WIP.md,
+ * Plain-English prose); or "" when it has none, or one that only repeats the title. Its
+ * `<meta name="description">` (template.mjs) and its note in /llms.txt (llms-txt.mjs).
+ */
+export function pageSummary(page) {
+  const summary = firstSentence(page.renderedContent);
+  const title = String(page.frontmatter?.title ?? "").toLowerCase();
+  return summary.replace(/[.:]$/, "").toLowerCase() === title ? "" : summary;
+}
+
+/**
+ * The first sentence of the first paragraph with text in a page's introduction, the part above
+ * its first level-2 heading, as plain text; or "" when the introduction has none, as the
+ * Glossary's has not, whose first paragraph defines its first term. A sentence ends at `.`, `!`
+ * or `?` before white space and a capital letter, or at the paragraph's end.
+ */
+export function firstSentence(html) {
+  const page = String(html ?? "");
+  const h2 = page.search(/<h2[\s>]/);
+  for (const m of (h2 < 0 ? page : page.slice(0, h2)).matchAll(PARAGRAPH)) {
+    const text = decodeEntities(stripHtml(m[1])).replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const end = /[.!?](?=\s+[A-Z])/.exec(text);
+    return shorten(end ? text.slice(0, end.index + 1) : text);
+  }
+  return "";
+}
+
+function shorten(text) {
+  if (text.length <= SUMMARY_MAX) return text;
+  const cut = text.lastIndexOf(" ", SUMMARY_MAX - 1);
+  return `${text.slice(0, cut > 0 ? cut : SUMMARY_MAX - 1).replace(/[\s,;:]+$/, "")}\u{2026}`;
+}
+
+function decodeEntities(s) {
+  return s.replace(ENTITY, (_, e) => {
+    const k = e.toLowerCase();
+    if (k.startsWith("#x")) return String.fromCodePoint(parseInt(k.slice(2), 16));
+    if (k.startsWith("#")) return String.fromCodePoint(parseInt(k.slice(1), 10));
+    return NAMED[k];
+  });
 }
 
 // `text | markdownify | strip_html | normalize_whitespace | escape_once`,

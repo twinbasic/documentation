@@ -531,9 +531,52 @@ recheck of the page the Gantt chart is injected into builds the same exemption
 (`websiteOnlyExemption` in `tbdocs.mjs`), since `BuildInfo.html` now has such a link too.
 
 `llms.txt`'s note for a page is the first sentence of its introduction, the part above its first
-`<h2>`, from `renderedContent`: the Glossary's first paragraph defines its first term, and is no
-summary of the page. A page whose introduction has no summary sentence gets a link with no note;
-the fix is the sentence the authoring rules ask for under the H1, not a rule here.
+`<h2>`, from `renderedContent` (`pageSummary`, `seo.mjs`), which is also the page's
+`<meta name="description">`: the Glossary's first paragraph defines its first term, and is no
+summary of the page. A page whose introduction has no summary sentence gets a link with no note
+and no description; the fix is the sentence the authoring rules ask for under the H1, not a rule
+here. `llms.txt` also names `tB/symbols.json`, the lookup an agent needs (the site's search runs
+in the browser, on a 55 MB index), and `nav.html`.
+
+### The nav: a part on each page, the whole in one file
+
+Measured on 2026-11-16, before the change: an online page held the whole nav tree, 223 KB of
+`InStr.html`'s 247 KB (19 of its 25 KB gzipped, 1,539 links), and before `<main>`, which began at
+byte 236,127. Agents' fetch tools ignore `<link rel="alternate">`, convert the HTML and cut it at a
+budget, so they saw the nav and not the page. The offline tree already held only each page's part
+(37 KB, `<main>` at byte 25,700), with `nav.js` filling in the rest. Now the online page does too:
+`InStr.html` is 38 KB (7 KB gzipped), `<main>` at byte 27,522, and the link check reads 195,476
+link occurrences in the online tree where it read 2,463,234.
+
+The online tree's whole tree is `nav.html`, a page of its own, by the owner's choice, not `nav.js`
+as offline:
+
+- **A reader without JavaScript keeps the whole tree,** one link away: the "Contents" link after
+  each page's nav opens `nav.html`, every branch shown (its expanders hidden by its own style,
+  since nothing could expand one). That was the reason the online pages had carried the whole
+  tree. It is also a list of every page for an agent, which `llms.txt` names.
+- **Nothing blocks the page.** `nav.js` is a 241 KB script loaded before the page's own; online,
+  `nav-tree.js` is deferred and fetches `nav.html` when the browser is idle, or when an entry is
+  expanded first. The part each page holds is exactly what shows when it opens (an entry off the
+  path keeps its expander, not its branch), so the graft adds only hidden branches, and nothing
+  moves. It appends to the page's own nodes rather than swapping the list, which would undo what
+  just-the-docs did at load: the current page's mark (`activateNav`, which also takes the link's
+  `href` away) and the scroll (`scrollNav`). just-the-docs expands an entry from a click handler on
+  the document, so a grafted entry expands like any other, and one expanded before the tree came
+  shows its branch when it comes (checked in a browser with `fetch` slowed by 2 s).
+- **A stale `nav.html` is never grafted in the wrong place.** The two trees are walked side by side
+  and the walk stops where an entry's title differs (a cached file from before a deploy, or a deploy
+  between the page and the fetch); the page also asks for its own build's file, `nav.html?v=<hash
+  of the tree>` (`navTreeVersion`), which GitHub Pages serves as `nav.html` and a browser caches
+  apart.
+- **An `<iframe>` was ruled out:** the frame cannot know the page it is in, so it could not mark the
+  current page or open its branch, and the theme, the mobile menu and focus would need bridging.
+
+`withOnlineNav` runs after the offline page is derived from the templated HTML, which still holds
+the whole tree, so `withPartialNav` and the offline tree are unchanged; both cut through `trimNav`.
+`nav.html` is checked by `linkJoin` with the online tree's redirect stubs, since nothing else would
+read its links; it has no canonical link and is in neither the sitemap nor the search index. The
+help add-in's pane hides the nav, and `nav-tree.js` fetches nothing there.
 
 ### The book refuses a stale source tree
 

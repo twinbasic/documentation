@@ -16,7 +16,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { createMarkdownIt, renderPhase } from "./render.mjs";
 import { markdownCopy, markdownCopyRel } from "./markdown-copy.mjs";
-import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
+import { navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
 import { writeSearchIndex } from "./search-index.mjs";
@@ -294,14 +294,17 @@ const handlers = {
     computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown);
     await templatePhase(chunk, env.site, env.initData);
 
+    // A page in either tree holds only its part of the nav tree, which each
+    // tree's own way fills in (template.mjs: withPartialNav, withOnlineNav).
+    env.fullNav ??= renderFullNav(env.site);
+    env.navVersion ??= navTreeVersion(env.fullNav);
+
     if (env.offlineBase) {
       const offlineState = {
         ...env.offlineBase,
         caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
       };
 
-      // An offline page holds only its part of the nav tree (withPartialNav).
-      env.fullNav ??= renderFullNav(env.site);
       const writable = chunk.filter((p) => p.html !== undefined);
       for (const p of writable) {
         const source = env.svgOutputs.offline ? p.html : env.asPng(p.html);
@@ -313,7 +316,11 @@ const handlers = {
     }
 
     // The online page, once the offline one is taken from the HTML as rendered.
-    if (!env.svgOutputs.online) for (const p of chunk) if (p.html !== undefined) p.html = env.asPng(p.html);
+    for (const p of chunk) {
+      if (p.html === undefined) continue;
+      p.html = withOnlineNav(p.html, p, env.site, env.fullNav, env.navVersion);
+      if (!env.svgOutputs.online) p.html = env.asPng(p.html);
+    }
 
     // Stash writable pages for the matching flush:i (FIFO; one batch per
     // render:i, drained by exactly one flush:i on the same worker), each with

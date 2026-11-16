@@ -17,10 +17,13 @@
 // index is the online tree's alone: the IDE help add-in fetches it from the
 // site, and the offline tree has no reader for it yet. llms.txt is for agents
 // reading the site, and links to the markdown copies, which only it has.
+// nav.html is the whole nav tree, which only an online page fetches; an
+// offline page has it from nav.js.
 const ONLINE_AUX = [
   "sitemap.xml",
   "robots.txt",
   "llms.txt",
+  "nav.html",
   "assets/js/search-data.json",
   "assets/js/search-index.json",
   "tB/symbols.json",

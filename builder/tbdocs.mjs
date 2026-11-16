@@ -75,7 +75,14 @@ import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables }
 import { assignPackageVersions } from "../lib/callout-labels.mjs";
 import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
-import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
+import {
+  NAV_SCRIPT_REL,
+  NAV_TREE_REL,
+  buildInitConfig,
+  renderFullNav,
+  renderNavTreePage,
+  renderSidebar,
+} from "./template.mjs";
 import {
   writePhase,
   destinationTrees,
@@ -805,8 +812,8 @@ const TASKS = {
           config: state.site.config,
           seoSiteTitle: state.site.seoSiteTitle,
           seoLogoUrl: state.site.seoLogoUrl,
-          // The offline pages' part of the nav tree is cut from it.
-          ...(skipOffline ? {} : { navTree: state.site.navTree }),
+          // Each page's part of the nav tree is cut from it, in both trees.
+          navTree: state.site.navTree,
         },
         initData: { ...initData, sidebar },
         buildInfo,
@@ -1190,21 +1197,26 @@ const TASKS = {
     },
   },
 
-  // Write redirect stubs + sitemap/robots + llms.txt. Waits for writeAssets
-  // (theme on disk), searchData, deriveRedirects, and deriveSitemap; and for
-  // renderJoin, since llms.txt takes each page's note from its renderedContent.
-  // Passes searchStats through, for the summary line and the link check.
+  // Write redirect stubs + sitemap/robots + llms.txt + nav.html. Waits for
+  // writeAssets (theme on disk), searchData, deriveRedirects, and
+  // deriveSitemap; and for renderJoin, since llms.txt takes each page's note
+  // from its renderedContent. Passes searchStats through, for the summary line
+  // and the link check, and nav.html's text, which linkJoin checks.
   writeAux: {
     expected: ["writeAssets", "searchData", "flushJoin", "renderJoin", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
     async execute({ searchData: searchStats, deriveRedirects: { stubs }, deriveSitemap: { urls } }, ctx, state) {
-      if (ctx.opts.dryRun) return { redirectStats: null, sitemapStats: null, llmsStats: null, searchStats };
+      if (ctx.opts.dryRun) {
+        return { redirectStats: null, sitemapStats: null, llmsStats: null, navTree: null, searchStats };
+      }
+      const navTree = renderNavTreePage(state.site, renderFullNav(state.site));
       const [redirectStats, sitemapStats, llmsStats] = await Promise.all([
         writeRedirects(state.pages, state.site, ctx.destRoot, stubs),
         writeSitemap(state.pages, state.site, ctx.destRoot, urls),
         writeLlmsTxt(state.pages, state.site, ctx.destRoot),
+        writeFileMkdirp(path.join(ctx.destRoot, NAV_TREE_REL), navTree),
       ]);
-      return { redirectStats, sitemapStats, llmsStats, searchStats };
+      return { redirectStats, sitemapStats, llmsStats, navTree, searchStats };
     },
     submit() {},
   },
@@ -1292,8 +1304,10 @@ const TASKS = {
       // Redirect stubs never went through flush -- writeRedirects and
       // writeOfflineRedirects emit them -- so they are one extra chunk
       // per tree, checked here on main. 290 tiny files.
+      // nav.html rides along with the online tree's stubs: like them it is
+      // written on main, and nothing else would check its links.
       const stubHtml = {
-        online: stubs,
+        online: [...stubs, ...(writeAux?.navTree ? [{ destPath: NAV_TREE_REL, html: writeAux.navTree }] : [])],
         offline: offlineResult?.checkStubs ?? [],
       };
 

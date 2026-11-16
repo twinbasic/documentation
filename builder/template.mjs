@@ -16,6 +16,7 @@
 // _layouts/default.html outer wrap. Activation CSS ports
 // _includes/css/activation.scss.liquid.
 
+import { createHash } from "node:crypto";
 import { replaceOutsideCode } from "./code-guard.mjs";
 import { compressHtml } from "./compress.mjs";
 import { stripHtml } from "./seo.mjs";
@@ -225,6 +226,7 @@ function headSeoBlock(page, site) {
     `<meta name="generator" content="Jekyll v4.4.1" />\n` +
     `<meta property="og:title" content="${page.seoTitle ?? ""}" />\n` +
     `<meta property="og:locale" content="en_US" />\n` +
+    descriptionMeta(page.seoDescription) +
     `<link rel="canonical" href="${escapeMarkupAndQuotes(page.seoCanonical ?? "")}" />\n` +
     `<meta property="og:url" content="${escapeMarkupAndQuotes(page.seoCanonical ?? "")}" />\n` +
     `<meta property="og:site_name" content="${site.seoSiteTitle ?? ""}" />\n` +
@@ -232,20 +234,38 @@ function headSeoBlock(page, site) {
     `<meta name="twitter:card" content="summary" />\n` +
     `<meta property="twitter:title" content="${page.seoTitle ?? ""}" />\n` +
     `<script type="application/ld+json">\n` +
-    jsonLd(page, site) +
+    // A summary is plain text, and `</` in it would end the script element.
+    jsonLd(page, site).replaceAll("</", "<\\/") +
     `</script>\n` +
     `<!-- End Jekyll SEO tag -->\n`
   );
 }
 
+// The page's summary (seo.mjs, pageSummary), where it has one, in the three
+// tags and the place jekyll-seo-tag gives a page's `description`. Search
+// engines show it, and so do the tools an agent fetches a page with.
+function descriptionMeta(description) {
+  if (!description) return "";
+  const d = escapeMarkupAndQuotes(description);
+  return (
+    `<meta name="description" content="${d}" />\n` +
+    `<meta property="og:description" content="${d}" />\n` +
+    `<meta property="twitter:description" content="${d}" />\n`
+  );
+}
+
 // JSON.stringify matches Liquid's `| jsonify` -- compact, no extra
 // whitespace, double-quoted keys. Two variants: WebSite for the
-// homepage / about pages, WebPage for everything else.
+// homepage / about pages, WebPage for everything else. `description`
+// comes after `@type`, where jekyll-seo-tag puts it, and only when the
+// page has a summary.
 function jsonLd(page, site) {
+  const description = page.seoDescription ? { description: page.seoDescription } : {};
   if (page.seoIsHome) {
     return JSON.stringify({
       "@context": "https://schema.org",
       "@type": "WebSite",
+      ...description,
       headline: page.seoTitle,
       name: site.seoSiteTitle,
       publisher: {
@@ -258,6 +278,7 @@ function jsonLd(page, site) {
   return JSON.stringify({
     "@context": "https://schema.org",
     "@type": "WebPage",
+    ...description,
     headline: page.seoTitle,
     publisher: {
       "@type": "Organization",
@@ -416,21 +437,43 @@ function renderSidebar(site) {
   );
 }
 
-// The offline tree's nav. An online page holds the whole tree, so the nav
-// works without JavaScript. An offline page holds only the part of it that
-// shows when the page opens: the top level, and the children of the page and
-// of each of its ancestors. The whole tree is in the offline tree's
-// /assets/js/nav.js (`navScript`), loaded right after the nav, which puts it
-// in place before the page's scripts run. The part keeps every sibling of the
-// expanded path, so the nth-child selectors of `navActivationCss` find the
-// same items in both.
+// The nav. The template gives a page the whole tree, and neither tree keeps
+// it: a page holds only the part that shows when it opens, the top level and
+// the children of the page and of each of its ancestors. The whole tree is 90%
+// of a page's bytes, and ahead of its content, where a reader that cuts a
+// fetched page short (an agent) would see nothing else. The part keeps every
+// sibling of the expanded path, and a node off it keeps its expander, so the
+// nth-child selectors of `navActivationCss` find the same items in both.
+//
+// The rest of the tree comes from one file, a different one in each tree:
+//
+//   * online, /nav.html (`renderNavTreePage`), a page of its own with the
+//     whole tree, which /assets/js/nav-tree.js fetches once the page has
+//     loaded, or when an entry is expanded, and grafts each branch the page
+//     lacks under its entry, leaving what the page shows as it is. A
+//     "Contents" link after the tree goes to nav.html, the whole tree for a
+//     reader without JavaScript (`withOnlineNav`);
+//   * offline, /assets/js/nav.js (`navScript`), loaded right after the nav,
+//     which puts the whole tree in place before the page's scripts run, since
+//     a page opened from a file cannot fetch one (`withPartialNav`).
 
 export const NAV_SCRIPT_REL = "assets/js/nav.js";
+export const NAV_TREE_REL = "nav.html";
+const NAV_TREE_SCRIPT = "/assets/js/nav-tree.js";
 const NAV_OPEN = `<nav aria-label="Main" id="site-nav" class="site-nav">`;
 
 /** The whole nav tree's first list, compressed as a page is. */
 export function renderFullNav(site) {
   return compressHtml(renderNavTree(site.navTree, [], String(site.config.baseurl ?? "")).replace(/\n$/, ""));
+}
+
+/**
+ * What a page asks nav.html for, so that a browser holding the file from an
+ * earlier build fetches it again: a hash of the whole tree (`fullNav`).
+ * nav-tree.js puts it in the URL's query, which the server ignores.
+ */
+export function navTreeVersion(fullNav) {
+  return createHash("sha256").update(fullNav).digest("hex").slice(0, 12);
 }
 
 /**
@@ -440,6 +483,30 @@ export function renderFullNav(site) {
  * whole tree is returned as it is.
  */
 export function withPartialNav(html, page, site, fullNav) {
+  const baseurl = String(site.config.baseurl ?? "");
+  const script = `<script src="${escapeMarkupAndQuotes(relativeUrl(`/${NAV_SCRIPT_REL}`, baseurl))}"></script> `;
+  return trimNav(html, page, site, fullNav, "", script);
+}
+
+/**
+ * A templated page's HTML as the online tree has it: its part of the nav, a
+ * "Contents" link to nav.html after it, and nav-tree.js, which grafts the rest
+ * of the tree in from nav.html, `version` (`navTreeVersion`) naming the one
+ * this page was built with. A page without the whole tree is returned as it is.
+ */
+export function withOnlineNav(html, page, site, fullNav, version) {
+  const baseurl = String(site.config.baseurl ?? "");
+  const contents =
+    `<ul class="nav-list"><li class="nav-list-item">` +
+    `<a href="${escapeMarkupAndQuotes(relativeUrl(`/${NAV_TREE_REL}`, baseurl))}" class="nav-list-link" id="nav-contents" data-version="${version}">Contents</a>` +
+    `</li></ul>`;
+  const script = `<script src="${escapeMarkupAndQuotes(relativeUrl(NAV_TREE_SCRIPT, baseurl))}" defer></script> `;
+  return trimNav(html, page, site, fullNav, contents, script);
+}
+
+// The page with its whole tree swapped for its part, `afterTree` right after
+// the part, inside the nav, and `afterNav` after the nav's end tag.
+function trimNav(html, page, site, fullNav, afterTree, afterNav) {
   const navAt = html.indexOf(NAV_OPEN + fullNav);
   if (navAt === -1) return html;
   const treeAt = navAt + NAV_OPEN.length;
@@ -448,9 +515,53 @@ export function withPartialNav(html, page, site, fullNav) {
   const baseurl = String(site.config.baseurl ?? "");
   const open = page.navLevels ? page.navLevels.slice(1) : [];
   const part = compressHtml(renderNavTree(site.navTree, [], baseurl, open).replace(/\n$/, ""));
-  const script = `<script src="${escapeMarkupAndQuotes(relativeUrl(`/${NAV_SCRIPT_REL}`, baseurl))}"></script> `;
-  const afterNav = closeAt + "</nav> ".length;
-  return html.slice(0, treeAt) + part + html.slice(treeAt + fullNav.length, afterNav) + script + html.slice(afterNav);
+  const navEnd = closeAt + "</nav> ".length;
+  return (
+    html.slice(0, treeAt) +
+    part +
+    afterTree +
+    html.slice(treeAt + fullNav.length, navEnd) +
+    afterNav +
+    html.slice(navEnd)
+  );
+}
+
+/**
+ * The online tree's /nav.html: the whole nav tree as a page of its own. A
+ * page's nav-tree.js takes its branches from it, and the "Contents" link after
+ * a page's nav opens it, so a reader without JavaScript has the whole tree one
+ * link away; it lists every page for an agent, too. Each entry is shown, its
+ * expander hidden: without the site's script nothing could expand one. It
+ * loads no stylesheet or script of the site's.
+ */
+export function renderNavTreePage(site, fullNav) {
+  const config = site.config;
+  const baseurl = String(config.baseurl ?? "");
+  const title = String(config.title ?? "");
+  const lang = escapeMarkupAndQuotes(String(config.lang ?? "en-US"));
+  return (
+    `<!DOCTYPE html>\n` +
+    `<html lang="${lang}">\n` +
+    `<head>\n` +
+    `<meta charset="UTF-8">\n` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">\n` +
+    `<title>Contents | ${escapeMarkupAndQuotes(title)}</title>\n` +
+    `<meta name="description" content="Every page of ${escapeMarkupAndQuotes(title)}, in the order of its navigation.">\n` +
+    `<style>\n` +
+    `:root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.5; }\n` +
+    `body { max-width: 60rem; margin: 0 auto; padding: 1rem; }\n` +
+    `.nav-list-expander { display: none; }\n` +
+    `</style>\n` +
+    `</head>\n` +
+    `<body>\n` +
+    `<main>\n` +
+    `<h1>Contents</h1>\n` +
+    `<p>Every page of <a href="${escapeMarkupAndQuotes(relativeUrl("/", baseurl))}">${escapeMarkupAndQuotes(title)}</a>, in the order of its navigation.</p>\n` +
+    `${NAV_OPEN}${fullNav}</nav>\n` +
+    `</main>\n` +
+    `</body>\n` +
+    `</html>\n`
+  );
 }
 
 /**

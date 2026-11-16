@@ -45,6 +45,7 @@ Every task shares three pieces of mutable state: the `pages[]` array, the `stati
 | `seoTitle` | `render:i` (`computeChunkSeo`) | `string` | HTML-stripped, whitespace-collapsed page title for `<title>` and `og:title`. |
 | `seoFullTitle` | `render:i` (`computeChunkSeo`) | `string` | `"<seoTitle> \| <siteTitle>"` for non-home pages; equals `seoTitle` on the home page. |
 | `seoCanonical` | `render:i` (`computeChunkSeo`) | `string` | Absolute canonical URL. |
+| `seoDescription` | `render:i` (`computeChunkSeo`) | `string` | The page's summary (`pageSummary`), its `<meta name="description">`; `""` writes none. |
 | `seoIsHome` | `render:i` (`computeChunkSeo`) | `boolean` | `true` when the page's permalink is a known home-page URL. |
 | `html` | `render:i` (`templatePhase`) | `string` | Complete HTML document, ready to write to disk. Absent on `layout: book-combined` pages, which `writePdf` owns. |
 | `offlineHtml` | `render:i` (`deriveOfflinePage`) | `string\|undefined` | Pre-computed offline HTML for the page, with every absolute URL rewritten to a page-relative path. Set after `templatePhase` when `!skipOffline`. |
@@ -337,8 +338,8 @@ Handler (`render` in `cpu-worker.mjs`):
 2. `await renderPhase(chunk, env.site)` --- markdown-it body render.
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
-5. When `env.offlineBase` is set: for each writable page, call `withPartialNav` to cut the page's nav down to its part of the tree, then `deriveOfflinePage`.
-6. Store `{ destPath, html, offlineHtml, offlineMisses }` on the worker's `_pendingFlush` FIFO for the matching `flush:i`.
+5. When `env.offlineBase` is set: for each writable page, call `withPartialNav` to cut the page's nav down to its part of the tree, then `deriveOfflinePage`. Then, for each writable page, `withOnlineNav` cuts the online page's nav down to its part, with the "Contents" link and `nav-tree.js` after it.
+6. Store `{ destPath, html, offlineHtml, offlineMisses, markdown }` on the worker's `_pendingFlush` FIFO for the matching `flush:i`, `markdown` being the page's markdown copy and its path.
 7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries, with any [index entries](Authoring#index-entries-for-the-site-search) the page's frontmatter or headings name. Remove `sourcePage` and the chunk-local `i` before returning (main assigns global indices).
 
 Returns `{ pages, searchEntries }`. The `submit()` callback (registered by `dispatch.submit`) merges `renderedContent` / `offlineMisses` into the master `Page` objects via `state.pageByDest`, and writes `searchEntries` into `state.searchChunks[i]`.
@@ -473,8 +474,9 @@ In parallel:
 - `writeRedirects(state.pages, state.site, destRoot, stubs)` from `redirects.mjs` --- one HTML stub per `redirect_from:` entry, each with `<script>location=…</script>`, `<meta http-equiv="refresh">`, `<link rel="canonical">` and a noscript `<a>` fallback.
 - `writeSitemap(state.pages, state.site, destRoot, urls)` from `sitemap.mjs` --- `sitemap.xml` and `robots.txt` with a `Sitemap:` reference.
 - `writeLlmsTxt(state.pages, state.site, destRoot)` from `llms-txt.mjs` --- `llms.txt`, from the nav tree and each listed page's `renderedContent`.
+- `renderNavTreePage(state.site, renderFullNav(state.site))` from `template.mjs`, written as `nav.html` --- the whole nav tree, which an online page's `nav-tree.js` grafts in and its "Contents" link opens.
 
-Returns `{ redirectStats, sitemapStats, llmsStats, searchStats }` (the search stats come from the `searchData` input).
+Returns `{ redirectStats, sitemapStats, llmsStats, navTree, searchStats }` (the search stats come from the `searchData` input; `navTree` is `nav.html`'s text, which `linkJoin` checks with the online tree's redirect stubs).
 
 ### `writeOffline` (main)
 
@@ -668,7 +670,8 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `computeSiteSeo` | `(config, markdown) → { seoSiteTitle, seoLogoUrl }` | Site-level SEO constants. Called by `markdownInit` on main; needs a built markdown-it instance. |
-| `computeChunkSeo` | `(pages, seoSiteTitle, config, markdown) → void` | Per-page SEO (`seoTitle` / `seoFullTitle` / `seoCanonical` / `seoIsHome`), set in place. Called by each render worker between `renderPhase` and `templatePhase`. |
+| `computeChunkSeo` | `(pages, seoSiteTitle, config, markdown) → void` | Per-page SEO (`seoTitle` / `seoFullTitle` / `seoCanonical` / `seoIsHome` / `seoDescription`), set in place. Called by each render worker between `renderPhase` and `templatePhase`. |
+| `pageSummary` | `(page) → string` | The first sentence of the page's introduction (above its first `<h2>`), as plain text, cut at 240 characters; `""` when there is none, or it only repeats the title. A page's `<meta name="description">` and its note in `llms.txt`. |
 | `renderTitle` | `(text, markdown) → string` | Runs one title through `markdownify → strip_html → normalize_whitespace → escape_once`. |
 | `stripHtml` | `(s) → string` | Drops `<script>` / `<style>` / HTML comments, then strips remaining tag delimiters. Re-exported for `search.mjs`. |
 
@@ -852,6 +855,9 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; `dispatch` adds the output to the shared payload. |
 | `renderFullNav` | `(site) → string` | The whole nav tree's list, compressed as a page is. |
 | `withPartialNav` | `(html, page, site, fullNav) → string` | An offline page's HTML before its rewrite: the whole nav tree swapped for the page's part of it, and `nav.js` loaded after the nav. |
+| `withOnlineNav` | `(html, page, site, fullNav, version) → string` | An online page's HTML: the whole nav tree swapped for the page's part of it, a "Contents" link to `nav.html` after the part, and `nav-tree.js` loaded after the nav, which grafts the rest of the tree in from `nav.html`. |
+| `navTreeVersion` | `(fullNav) → string` | A hash of the whole tree, which an online page puts in the query of the `nav.html` it fetches, so that a browser holding an earlier build's file fetches it again. |
+| `renderNavTreePage` | `(site, fullNav) → string` | The online tree's `nav.html`: the whole tree as a page of its own, every branch shown, with no script or stylesheet of the site's. |
 | `navScript` | `(navHtml) → string` | The text of the offline tree's `assets/js/nav.js`, which puts the whole tree in place of a page's part of it. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
 | `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id` outside `<code>` and `<pre>`, and pushes each heading onto `headingsOut`. The icon is `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
