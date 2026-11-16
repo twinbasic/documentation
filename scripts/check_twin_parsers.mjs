@@ -22,6 +22,8 @@
 //   - scanText (scripts/lib/census-scan.mjs), the census's scanner: which
 //     bracket groups it counts as attributes. A bracket group alone on its line
 //     in an Enum body is a member, not an attribute.
+//   - declareParts (twin-api.mjs), which reads a Declare's library, entry point,
+//     convention and parameters from the signature parseTwin records.
 //   - parseTargets (scripts/lib/attributes-doc.mjs), which turns an
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
 //   - wrapProbe (scripts/lib/tb-probe.mjs), which moves a tbrun probe's
@@ -37,7 +39,7 @@ import { scanText } from "./lib/census-scan.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
 import { IDE_FLAG, SENTINEL, sentinelIndex, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
-import { logicalLinesRaw, parseTwin, stripComments } from "./lib/twin-api.mjs";
+import { declareParts, logicalLinesRaw, parseTwin, stripComments } from "./lib/twin-api.mjs";
 import { MODIFIERS, declarationKind } from "./lib/twin-declarations.mjs";
 
 exitOnCrash();
@@ -466,6 +468,162 @@ for (const [what, src, want, opts] of [
     logicalLinesRaw("z = Foo(1) /* a\nb */ + 3\n").filter((l) => l.text.trim()).length === 2,
     "",
   );
+}
+
+// declareParts reads a Declare's library, entry point, convention and parameters from the
+// signature parseTwin records, in each shape that a tool scanning tbKMode's source itself once
+// missed: an attribute on the same line, CDecl and a block
+// comment between the name and Lib, an Alias, no parameters, an attribute before a parameter with a
+// comma inside it, an escaped name, a branch of an #If, and FastCall with an Alias and DeclareWide
+// (tbKMode 0.3.0.5).
+{
+  const src = probe(
+    [
+      '[UseGetLastError(False)] Public Declare PtrSafe Function ZwOpenKey Lib "ntoskrnl.exe" (KeyHandle As LongPtr, [TypeHint(REGSAM, GenericRights)] ByVal DesiredAccess As Long, ObjectAttributes As OBJECT_ATTRIBUTES) As NTSTATUS',
+      'Public Declare PtrSafe Function wcsstr CDecl Lib "ntoskrnl.exe" (ByVal s As LongPtr, ByVal f As LongPtr) As LongPtr',
+      'Public Declare PtrSafe Sub ExReleaseResourceLite /* FastCall */ Lib "ntoskrnl.exe" (Resource As ERESOURCE)',
+      'Public Declare PtrSafe Sub CopyMemory Lib "ntoskrnl.exe" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As LongPtr)',
+      'Public Declare PtrSafe Function KeGetCurrentIrql Lib "ntoskrnl.exe" () As Byte',
+      'Public Declare PtrSafe Function [Chr$] Lib "k.dll" (ByVal c As Long) As String',
+      "#If Win64 Then",
+      'Public Declare PtrSafe Function Pop Lib "ntoskrnl.exe" Alias "ExpInterlockedPopEntrySList" (ByVal ListHead As LongPtr) As LongPtr',
+      "#Else",
+      'Public Declare PtrSafe Function Pop Lib "ntoskrnl.exe" (ByVal ListHead As LongPtr) As LongPtr',
+      "#End If",
+      'Public Declare PtrSafe Function ObDereferenceObject FastCall Lib "ntoskrnl.exe" Alias "ObfDereferenceObject" (ByVal Object As LongPtr) As LongPtr',
+      'Public DeclareWide PtrSafe Function RtlDuplicateUnicodeString Lib "ntdll" (ByVal Flags As Long, StringIn As UNICODE_STRING, StringOut As UNICODE_STRING) As Long',
+    ].join("\n"),
+  );
+  const members = parseTwin(src, "probe.twin").types.find((t) => t.name === "Probe")?.members ?? [];
+  // parseTwin gives each branch of an #If as a member of its own, with its `cond`; the
+  // snapshot gathers them into `signatures`.
+  const parts = (name, i) => {
+    const all = members.filter((x) => x.name === name);
+    return declareParts(all[i ?? 0]?.signature);
+  };
+  for (const [name, i, want] of [
+    [
+      "ZwOpenKey",
+      undefined,
+      {
+        name: "ZwOpenKey",
+        lib: "ntoskrnl.exe",
+        entry: "ZwOpenKey",
+        cdecl: false,
+        fastcall: false,
+        params: ["KeyHandle As LongPtr", "ByVal DesiredAccess As Long", "ObjectAttributes As OBJECT_ATTRIBUTES"],
+      },
+    ],
+    [
+      "wcsstr",
+      undefined,
+      {
+        name: "wcsstr",
+        lib: "ntoskrnl.exe",
+        entry: "wcsstr",
+        cdecl: true,
+        fastcall: false,
+        params: ["ByVal s As LongPtr", "ByVal f As LongPtr"],
+      },
+    ],
+    [
+      "ExReleaseResourceLite",
+      undefined,
+      {
+        name: "ExReleaseResourceLite",
+        lib: "ntoskrnl.exe",
+        entry: "ExReleaseResourceLite",
+        cdecl: false,
+        fastcall: false,
+        params: ["Resource As ERESOURCE"],
+      },
+    ],
+    [
+      "CopyMemory",
+      undefined,
+      {
+        name: "CopyMemory",
+        lib: "ntoskrnl.exe",
+        entry: "RtlMoveMemory",
+        cdecl: false,
+        fastcall: false,
+        params: ["Destination As Any", "Source As Any", "ByVal Length As LongPtr"],
+      },
+    ],
+    [
+      "KeGetCurrentIrql",
+      undefined,
+      {
+        name: "KeGetCurrentIrql",
+        lib: "ntoskrnl.exe",
+        entry: "KeGetCurrentIrql",
+        cdecl: false,
+        fastcall: false,
+        params: [],
+      },
+    ],
+    [
+      "Chr$",
+      undefined,
+      { name: "Chr$", lib: "k.dll", entry: "Chr$", cdecl: false, fastcall: false, params: ["ByVal c As Long"] },
+    ],
+    [
+      "Pop",
+      0,
+      {
+        name: "Pop",
+        lib: "ntoskrnl.exe",
+        entry: "ExpInterlockedPopEntrySList",
+        cdecl: false,
+        fastcall: false,
+        params: ["ByVal ListHead As LongPtr"],
+      },
+    ],
+    [
+      "Pop",
+      1,
+      {
+        name: "Pop",
+        lib: "ntoskrnl.exe",
+        entry: "Pop",
+        cdecl: false,
+        fastcall: false,
+        params: ["ByVal ListHead As LongPtr"],
+      },
+    ],
+    [
+      "ObDereferenceObject",
+      undefined,
+      {
+        name: "ObDereferenceObject",
+        lib: "ntoskrnl.exe",
+        entry: "ObfDereferenceObject",
+        cdecl: false,
+        fastcall: true,
+        params: ["ByVal Object As LongPtr"],
+      },
+    ],
+    [
+      "RtlDuplicateUnicodeString",
+      undefined,
+      {
+        name: "RtlDuplicateUnicodeString",
+        lib: "ntdll",
+        entry: "RtlDuplicateUnicodeString",
+        cdecl: false,
+        fastcall: false,
+        params: ["ByVal Flags As Long", "StringIn As UNICODE_STRING", "StringOut As UNICODE_STRING"],
+      },
+    ],
+  ]) {
+    const got = parts(name, i);
+    check(
+      `declareParts: ${name}${i === undefined ? "" : ` (branch ${i})`}`,
+      show(got) === show(want),
+      show({ got, want }),
+    );
+  }
+  check("declareParts: no Declare gives null", declareParts("Public Sub P(ByVal x As Long)") === null, "");
 }
 
 process.exit(report());
