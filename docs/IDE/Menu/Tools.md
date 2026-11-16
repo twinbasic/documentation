@@ -10,6 +10,8 @@ redirect_from:
 
 # Tools Menu
 
+The Tools menu opens the IDE's options, restarts the compiler and clears the LLVM compiler cache.
+
 ![The Tools menu open with no project loaded: IDE Options beside a sliders icon, then, below a separator, the greyed-out Restart the compiler and Flush the LLVM compiler cache.](Images/Menu_Tools.png){:width="218" height="113"}
 
 - **IDE Options...** --- opens the **IDE Options** dialog, which holds the IDE's 32 options. The command has no default key. [IDE Options](../../Customising/IDE-Options) describes the dialog, with its picture, and every option.

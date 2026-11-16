@@ -130,16 +130,16 @@ which would write the snapshots of another build.
 
 ## Decisions of the owner
 
-- **Snapshots are committed only for the documented packages**: 14 files, 3.2 MB
-  (about 360 KB compressed). The contributed packages and the extra CEF builds are indexed into
+- **Snapshots are committed only for the documented packages**, default, built-in and
+  contributed. The packages no section documents and the extra CEF builds are indexed into
   the store and left out of the repository. A package joins when its section does; `sync`
   copies a snapshot for a documented package it indexed in that run, and gives a documented
   package with none the store's `api.json` when that is of its `indexed_from` version
   (`adoptSnapshots`): a package is usually synced before its section exists, and a later
   sync finds its store current and indexes nothing.
-- **They are taken from the build the reference was last indexed against, BETA 1010**
-  (`beta-x-1010`), not from a newer one, so that the pages and the baseline agree and
-  `analyze` of a newer build shows the real distance.
+- **They are taken from the build each section's `indexed_from` names**, not from a newer
+  one, so that the pages and the baseline agree and `analyze` of a newer build shows the real
+  distance.
 - **The twinBASIC "install" is the release zip unzipped.** Its `packages/<folder>/package.twinproj`
   files are the zip's, so either gives the same sources and the same `api.json`, byte for byte.
   The local install is therefore the default source and `--release` exists only for a machine
@@ -147,7 +147,7 @@ which would write the snapshots of another build.
 - **`analyze` covers the documented packages by default**; `--all` takes everything in the
   store, and `--package` and `--packages` name any. A package no section documents is audited
   against no pages, so every public symbol of it is work: the report would otherwise be mostly
-  the contributed packages and the two spare CEF builds.
+  the undocumented packages and the two spare CEF builds.
 - **The group of a package is a constant, not something the install says.** `DEFAULT_PACKAGES`
   in `twin-index.mjs` (`VBA`, `VBRUN`, `VB`: the three every project loads) are `default`;
   everything else in the install is `built-in`, and everything from TWINSERV `contributed`. A
@@ -204,8 +204,8 @@ cache.
   section exactly. Every rule in
   `draft-plan.mjs` is a majority over the section's own pages.
 - **How well it places, checked by leaving each symbol out** of every section with a store
-  package (the thirteen built-in and default ones, and the nine contributed ones of the
-  `contributed-packages` branch) and planning it again: 994 of 998 members land on the file
+  package (the thirteen built-in and default ones, and nine contributed ones) and planning
+  it again: 994 of 998 members land on the file
   the section has them on, with its parent and permalink; 138 of 156 types; and the landing
   page of each contributed section, planned from the other eight, matches in all nine. The 18
   types that miss are layout choices no API shows: six that are the only type of their kind
@@ -220,8 +220,7 @@ cache.
   eight others that the sections keep at their roots.
 - **A new section borrows its model pages from its group.** Its pages have no sibling of
   their kind to follow, so the plan of the first package drafted into a new section would
-  give every task `model: null`, and the agents would invent a page
-  layout. A page of a kind its section lacks takes a model from the group's largest
+  give every task `model: null`, and the agents would invent a page layout. A page of a kind its section lacks takes a model from the group's largest
   section that has one, of the same shape: a folder's `index.md` for a class that gets a
   folder, never a one-page class.
 - **A permalink is computed only where the rule holds for every existing page** of the
@@ -249,9 +248,8 @@ cache.
   Draft agents only list doubts: they run concurrently, so none of them compiles. The Lists
   agent reads a new package's README through read-only `gh` and lists the README's claims
   as doubts as well.
-- **The agents are Sonnet**, as the content agents of the contributed packages were; the
-  drafts are read against the sources before they are committed, which no model choice
-  replaces.
+- **The agents are Sonnet**; the drafts are read against the sources before they are
+  committed, which no model choice replaces.
 - **A batch of 28 pages in 5 batches takes about 7 agents, 7 minutes and 0.96 M subagent
   tokens** (tbRegExp 1.0.5.0), and its samples compile and run on the first Check. The
   review still finds what no compile finds: the drafts state only what the code says, so

@@ -6,10 +6,9 @@ What to do is in [WIP.md](WIP.md) (*Where things live*, the contributed packages
 ## What the test cases are for
 
 A contributed section's NOTEs and WARNINGs are claims about someone else's code: that a member
-raises 53, that a match is cut short, that a dialog ignores a property. Each was true of one version
-when an agent checked it, and nothing kept that evidence: the probe pages were deleted after use.
-So the claims are written down as cases that persist, run again whenever the package's version
-moves, and say which claims no longer hold. The owner wants the same cases to be usable by the
+raises 53, that a match is cut short, that a dialog ignores a property. Each is true of one version,
+and a probe page deleted after use keeps no evidence of it. So the claims are written down as cases
+that persist, run again whenever the package's version moves, and say which claims no longer hold. The owner wants the same cases to be usable by the
 package's author, which decides most of what follows.
 
 ## A case checks what is correct (owner)
@@ -89,18 +88,18 @@ their own build. The runner embeds the package from `%TEMP%\tb-twinserv` instead
 
 A compile case that expects an error is, by design, a compile error of the project it is in, and
 the compiler's test mode runs nothing in a project with errors: `tbrun --tests` reports every
-`[TestCase]` *not run*. The first package with such claims (Generics: TB5074 on `New` of a package
-generic, TB5124 on its unusable tuples) lost all its run-time cases to one line. So those cases
-go in the package folder's `compile/`, a second project that `package_tests.mjs` stages with the
+`[TestCase]` *not run*, so one such line costs every run-time case (Generics' TB5074 on `New` of a
+package generic and TB5124 on its unusable tuples would). So those cases go in the package folder's
+`compile/`, a second project that `package_tests.mjs` stages with the
 package embedded and judges with the rest. The published project stays `Sources/` alone, which
 compiles, so the author's Sub Main still runs every run-time case; the compile cases are the
 documentation's own re-check on each new build and version.
 
 "This package does not compile" is a claim of the same kind, and it is true of the package's own
 source, where no line can carry a comment of ours. So a compile case can name a row instead, with
-`package <code> <file>:<line>`, which pins the package's version as well as the build. ArrayListLib
-and WinReg stay in `PENDING` (no test project until a version compiles, owner) with `compile/`
-alone, which `check_package_tests.mjs` checks both ways: each case named by a marker, each marker
+`package <code> <file>:<line>`, which pins the package's version as well as the build. A package
+that does not compile stays in `PENDING` (no test project until a version compiles, owner) with
+`compile/` alone, which `check_package_tests.mjs` checks both ways: each case named by a marker, each marker
 naming a case. The published project, and so `Sources/`, stays out of it.
 
 A case in the IDE runs in the IDE's process, which has already started GDI+ and has no server that
@@ -124,9 +123,8 @@ cases name nothing back: a case file referring to a page and a heading would bre
 of the page. The gate checks both directions (an unmarked callout, an unnamed case) from the
 sources alone, so it runs in `test.bat` and CI, where the cases themselves cannot run.
 
-The sections were written before any project existed, so the gate starts with every section in
-`PENDING` and fails on a section that has a project and is still listed, or has none and is not:
-the list can only shrink, one package at a time.
+The gate fails on a section in `PENDING` that has a project, and on one with no project that is
+not listed: the list can only shrink, one package at a time.
 
 `none -- <reason>` exists for a callout no program can check (a fact about the IDE, a licence); it
 keeps the decision explicit and visible in review, where a missing marker would be ambiguous.

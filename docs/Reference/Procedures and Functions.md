@@ -7,6 +7,8 @@ permalink: /Reference/Procedures-and-Functions
 
 # Procedures and Functions
 
+Lists every procedure and function of the runtime library in alphabetical order, each with what it does.
+
 ## A
 
 - [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number

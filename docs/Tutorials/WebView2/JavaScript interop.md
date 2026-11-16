@@ -8,6 +8,8 @@ permalink: /Tutorials/WebView2/JavaScript-Interop
 
 # JavaScript interop
 
+This tutorial passes objects, messages and calls between twinBASIC and the JavaScript of a page shown in a **WebView2** control.
+
 The [**WebView2**](../../tB/Packages/WebView2/WebView2/) control offers three complementary bridges between twinBASIC and the JavaScript running in the page:
 
 1. **Host objects** --- publish a BASIC COM object to the page so JavaScript can call its methods and read its properties as if it were any other JS object.

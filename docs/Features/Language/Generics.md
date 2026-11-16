@@ -8,6 +8,8 @@ index: TB5124
 
 # Generics
 
+A generic procedure, class or type takes type parameters, so that one definition serves many types.
+
 > [!IMPORTANT]
 > Generics are syntactic sugar for copy-pasting code followed by a search-and-replace of type names.
 >

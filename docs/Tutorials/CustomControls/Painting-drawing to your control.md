@@ -9,6 +9,8 @@ redirect_from:
 
 # Painting / Drawing to Your Control
 
+This tutorial explains how a CustomControl draws itself, in its **ICustomControl.Paint** method, which the form engine calls with a canvas to draw on.
+
 ## The ICustomControl.Paint method
 This is by far the most important method of a CustomControl.  It tells the form engine exactly how you want it to render your control. See the [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint) reference for the host-side contract.
 

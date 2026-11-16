@@ -83,7 +83,7 @@ Two details:
   records the lane a task *completed* on, not the one that claimed it.
 
 [builder/PLAN-checks.md](builder/PLAN-checks.md) designs folding `check.bat`'s
-gates into the task graph. The link checker is in: extraction runs inside
+gates into the task graph. The link checker runs there: extraction runs inside
 `flush`, where both trees' final HTML is already in worker memory, so the build
 never writes ~270 MB out only to read it back and re-parse it. The
 `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are not
@@ -230,7 +230,7 @@ that are individually true. Mine this file for cases: it is substantially a cata
 
 **The split is by what a gate interrogates, not by what it happens to open.** `check_axe_patch_equiv.mjs` loads a built page, but only because its probe needs some document to run inside --- what it tests is the axe source patch, and it would be worth running against an empty `docs/`. That is the test: a new gate belongs in `test.bat` if it would still mean something with no documentation in the tree.
 
-Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` in `check.bat`. Both are in `test.bat`.
+`check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` are in `test.bat`, whatever a note under `builder/PLAN-*.md` says.
 
 **Both CI workflows run every one of these scripts as its own step, unconditionally** --- CI never invokes the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
@@ -431,8 +431,8 @@ inside an admonition takes its markers with it into the stash. It asks
 `blockRegions`, with the same parser, which lines are code instead.
 
 It also reads the label, the rest of the `[!TYPE]` line (`lib/callout-labels.mjs`),
-and throws on one it cannot parse: it used to drop that text silently, which is
-how a typo in a label would vanish. A package version in a label is checked against
+and throws on one it cannot parse, because dropping that text silently would let
+a typo in a label vanish. A package version in a label is checked against
 `page.packageVersion`, the section's `indexed_from`, which the main thread stamps
 on every page before the render chunks go to the workers, since a chunk need not
 hold the section's landing page. The code-region gate calls the chain with no
@@ -489,6 +489,94 @@ tightness. **Nothing downstream reads a comment from rendered HTML**: `check_pac
 written by the templates, not by markdown, so it stays: the `Begin/End Jekyll SEO tag` pair
 (`offline-rewrite.mjs` finds the block by it) and the two icon licences in `template.mjs`. A rule
 that needs a marker in a page's output uses an element or an attribute, never a comment.
+
+The pages' markdown copies (`builder/markdown-copy.mjs`) keep the rule: `withoutComments` takes
+every comment out of the source with code masked, fences, code spans and indented code blocks
+alike, so a comment a sample shows stays and a maintainer's note does not reach `<page>.md`.
+
+### Markdown copies and llms.txt
+
+Each page's source is published beside its HTML in the online tree as `<page>.md` (`index.md` for
+a URL ending in `/`), named by `<link rel="alternate" type="text/markdown">` directly after the
+page's `<meta charset>`, and `/llms.txt` lists them by the nav tree's top level. Both are for
+agents: the footer's "Edit this page on GitHub" link is at the end of a long file, and goes to
+GitHub's HTML view of the source.
+
+The copies are on the site rather than on `raw.githubusercontent.com` (owner) because the sources'
+links are written against the page's URL, not the file's: `[Option](../../Core/Option)` on
+`Reference/Default/VBA/Strings/InStr.md` resolves from `/tB/Modules/Strings/InStr` and 404s from
+the raw file.
+
+**A copy's link to a page goes to that page's copy** (owner), root-absolute with the baseurl and
+the link's fragment, so an agent following links stays in markdown. Which page is the HTML's
+answer, never the copy's own: `resolveTarget` (render.mjs, the function `relativeLinksPlugin`
+calls through `resolveHref`) for a `tb:` shortcut and a path from the source file's folder, and
+for a link the HTML keeps as written, the URL API resolving it against the page's permalink, as a
+browser does, then `pageAtSitePath`: a page's URL, its `redirect_from:` alias, or `/`, which
+`byUrl` leaves out (its key would be "", which `resolveLink` must not match). A link table entry
+carries its page's copy across to the workers (`serializeLinkTables`: `[key, permalink,
+markdownUrl]`). A link to a file is the HTML's URL; a pure fragment stays, since the copy is the
+same document. When the links were moved to the copies (2026-11-16), markdown-it's links in each
+copy, against those of the same copy with its links as written, gave on 1,538 pages: 19,783 to the
+copy of the page the HTML reaches, 9,358 to where the HTML's go (in-page fragments, other sites,
+484 files), none wrong. The link scan finds `](dest)` and `[label]: dest`, not a footnote's
+`[^1]: text`; markdown-it finds the same links on every page but those inside comments, which the
+copy drops first. A destination with white space in it is not looked for, since no page has one;
+`encodeSpacesInMediaUrls` would be the model if one appears.
+
+The copies cost about 13 MB in the online tree and nothing in the offline tree or the help archive:
+an offline page's `<link>` goes to the website's copy, by the general rule for a file only the
+website holds (`computeWebsiteUrl`), which the offline check excuses (`isWebsiteOnlyLink`). The
+recheck of the page the Gantt chart is injected into builds the same exemption
+(`websiteOnlyExemption` in `tbdocs.mjs`), since `BuildInfo.html` now has such a link too.
+
+`llms.txt`'s note for a page is the first sentence of its introduction, the part above its first
+`<h2>`, from `renderedContent` (`pageSummary`, `seo.mjs`), which is also the page's
+`<meta name="description">`: the Glossary's first paragraph defines its first term, and is no
+summary of the page. A page whose introduction has no summary sentence gets a link with no note
+and no description; the fix is the sentence the authoring rules ask for under the H1, not a rule
+here. `llms.txt` also names `tB/symbols.json`, the lookup an agent needs (the site's search runs
+in the browser, on a 55 MB index), and `nav.html`.
+
+### The nav: a part on each page, the whole in one file
+
+Measured on 2026-11-16, before the change: an online page held the whole nav tree, 223 KB of
+`InStr.html`'s 247 KB (19 of its 25 KB gzipped, 1,539 links), and before `<main>`, which began at
+byte 236,127. Agents' fetch tools ignore `<link rel="alternate">`, convert the HTML and cut it at a
+budget, so they saw the nav and not the page. The offline tree already held only each page's part
+(37 KB, `<main>` at byte 25,700), with `nav.js` filling in the rest. Now the online page does too:
+`InStr.html` is 38 KB (7 KB gzipped), `<main>` at byte 27,522, and the link check reads 195,476
+link occurrences in the online tree where it read 2,463,234.
+
+The online tree's whole tree is `nav.html`, a page of its own, by the owner's choice, not `nav.js`
+as offline:
+
+- **A reader without JavaScript keeps the whole tree,** one link away: the "Contents" link after
+  each page's nav opens `nav.html`, every branch shown (its expanders hidden by its own style,
+  since nothing could expand one). That was the reason the online pages had carried the whole
+  tree. It is also a list of every page for an agent, which `llms.txt` names.
+- **Nothing blocks the page.** `nav.js` is a 241 KB script loaded before the page's own; online,
+  `nav-tree.js` is deferred and fetches `nav.html` when the browser is idle, or when an entry is
+  expanded first. The part each page holds is exactly what shows when it opens (an entry off the
+  path keeps its expander, not its branch), so the graft adds only hidden branches, and nothing
+  moves. It appends to the page's own nodes rather than swapping the list, which would undo what
+  just-the-docs did at load: the current page's mark (`activateNav`, which also takes the link's
+  `href` away) and the scroll (`scrollNav`). just-the-docs expands an entry from a click handler on
+  the document, so a grafted entry expands like any other, and one expanded before the tree came
+  shows its branch when it comes (checked in a browser with `fetch` slowed by 2 s).
+- **A stale `nav.html` is never grafted in the wrong place.** The two trees are walked side by side
+  and the walk stops where an entry's title differs (a cached file from before a deploy, or a deploy
+  between the page and the fetch); the page also asks for its own build's file, `nav.html?v=<hash
+  of the tree>` (`navTreeVersion`), which GitHub Pages serves as `nav.html` and a browser caches
+  apart.
+- **An `<iframe>` was ruled out:** the frame cannot know the page it is in, so it could not mark the
+  current page or open its branch, and the theme, the mobile menu and focus would need bridging.
+
+`withOnlineNav` runs after the offline page is derived from the templated HTML, which still holds
+the whole tree, so `withPartialNav` and the offline tree are unchanged; both cut through `trimNav`.
+`nav.html` is checked by `linkJoin` with the online tree's redirect stubs, since nothing else would
+read its links; it has no canonical link and is in neither the sitemap nor the search index. The
+help add-in's pane hides the nav, and `nav-tree.js` fetches nothing there.
 
 ### The book refuses a stale source tree
 
@@ -793,7 +881,7 @@ The decisions, each with what it rules out:
 
 - **What goes in is `git ls-files` of `add-in/`, read from the working folder.** A plain
   walk of the folder packs whatever lies there: a stale `Resources/HELP/site.zip`
-  (gitignored, ~26 MB, from some earlier build), a `Build/` folder an IDE wrote, a
+  (gitignored, from some earlier build), a `Build/` folder an IDE wrote, a
   scratch module. Reading git's blobs instead would leave a local build's download one
   commit behind the add-in being edited. `Resources/HELP/` is also refused by name, in
   case it is ever added. A file git does not track is named in the build's output.
@@ -872,8 +960,8 @@ The decisions, each with what it rules out:
 discovered. Design: [builder/PLAN-counts.md](builder/PLAN-counts.md);
 code: [builder/counts.mjs](builder/counts.mjs); documented for
 contributors at [Authoring
-Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Twelve names
-are live, and most of the prose is still hand-written.
+Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). The names are
+those `counts.mjs` defines, and most of the prose is still hand-written.
 
 `enumerations` counts the bullets in `Reference/Enumerations.md`'s alphabetical index
 --- the `attributeAnchors` shape, a scan of one page's `rawContent`, legitimate because
@@ -1052,7 +1140,7 @@ Three implementation details are essential:
 
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Classification probes, both directions:
-  the regexes this repo has shipped (including the incomplete fix),
+  the two exponential shapes above (the narrowed name class included),
   `^(a+)+$`, and some that must *not* be flagged --- plus the fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
@@ -1074,7 +1162,7 @@ Three implementation details are essential:
   identically, so the fallback is slower, not weaker.
 
 Limitation: a regex recheck cannot decide comes back `unknown`, and an unknown is
-an *unchecked* regex rather than a passing one (currently 0; `--census` prints them).
+an *unchecked* regex rather than a passing one (`--census` prints them).
 
 #### It reads constructed regexes too
 

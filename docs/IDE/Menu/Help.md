@@ -10,6 +10,8 @@ redirect_from:
 
 # Help Menu
 
+The Help menu holds the commands that show the IDE's version and licence agreement, set error reporting, open the support channels, and buy or enter a licence.
+
 ![The Help menu open with every entry available, each beside its own icon: About twinBASIC, Licence Agreement and Automatic IDE Error Reporting; the Discord, GitHub and Twitter support links; Purchase A Licence, Enter Licence Key and Buy us a Coffee; and a closing status line reading Compiler services TRACE mode: Disabled.](Images/Menu_Help.png){:width="269" height="294"}
 
 ## About twinBASIC...

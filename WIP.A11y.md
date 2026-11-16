@@ -36,7 +36,7 @@ Four details of that script matter and are easy to break:
 
 The theme toggle therefore gets an inset ring (`outline-offset: -2px` on `#theme-toggle`, in `custom/custom.scss`), which needs an id selector to out-rank the dark compilation's `html[data-theme=dark] .btn-reset:focus-visible` at (0,3,1).
 
-**Chrome's UA `outline: auto` does not rescue a link in there either.** At 1280x900 in both themes, the nav's box is top 0 / bottom 59 and the "twinBASIC Home" link's is identical, so the UA ring's `+1px` offset puts its top and bottom segments outside the clip box exactly as the toggle's did; only the left and right bars survive, because the link starts 50px inboard of the nav's left edge. It takes an author ring at `outline-offset: -2px` too (`.aux-nav a.site-button:focus-visible`), with a dark-mode colour override -- the link is not a `.btn-reset`, so nothing in either compilation competes with it.
+**Chrome's UA `outline: auto` does not rescue a link in there either.** At 1280x900 in both themes, the nav's box is top 0 / bottom 59 and the "twinBASIC Home" link's is identical, so the UA ring's `+1px` offset puts its top and bottom segments outside the clip box exactly as an outset ring on the toggle does; only the left and right bars survive, because the link starts 50px inboard of the nav's left edge. It takes an author ring at `outline-offset: -2px` too (`.aux-nav a.site-button:focus-visible`), with a dark-mode colour override -- the link is not a `.btn-reset`, so nothing in either compilation competes with it.
 
 ## Heading permalinks
 

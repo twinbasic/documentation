@@ -77,6 +77,8 @@ The admonition probes test the mirror fault, which the region comparison cannot 
 
 Probes hold the rewrites over every page's rendered HTML, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. A `<pre>` or `<code>` written as raw HTML must come through as written, and a match outside it must still be rewritten.
 
+Each page's [markdown copy](Building#markdown-for-agents) is compared with its source the same way. The gate makes the copy with a link resolver of its own that rewrites every link the copy's scan finds, so a link found inside code shows as an altered region. Probes hold both directions on shapes no page has: a comment, a link and a placeholder inside a fence, a code span or an indented code block stay, and the ones beside them are rewritten.
+
 The gate also covers `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules that tell the tools what in a page is code and where its frontmatter ends. On every page the sweep checks that `blockRegions`, which parses blocks only, finds exactly the fences, code blocks and HTML blocks of a full parse. More probes check that:
 
 - the rewrite chain leaves alone a fence that only the site's parser finds, and an admonition written inside one;
@@ -143,7 +145,7 @@ Exit codes: **0** both workflows run every gate the wrappers run, and its own pr
     node scripts/check_lint.mjs
     node scripts/check_lint.mjs --staged
 
-Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. No browser, no built tree, a fraction of a second.
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/`, `test/` and the site's scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. No browser, no built tree, a fraction of a second.
 
 The lint rules are Biome's correctness and suspicious groups, which find defects; none is about style. `biome.jsonc` names the few it turns off and the one it adds, `noUndeclaredVariables`, each with its reason. It declares the page globals --- `axe`, `Paged` --- only for the files whose code runs in that page.
 
@@ -203,6 +205,8 @@ They cover the ellipsis plugin, which keeps the dots past the third in a run suc
 - a link the offline tree holds becomes page-relative;
 - a link only the online tree holds becomes the website's absolute URL (with the base path, and encoded) and is not counted as unresolved;
 - a link in neither tree stays as written and is counted.
+
+And they cover the links of a page's [markdown copy](Building#markdown-for-agents): a `tb:` shortcut, a path from the source file's folder, a path from the page's URL, a `redirect_from:` alias, a folder-style page, the home page and a reference definition each go to the copy of the page they reach, with their fragment; an image, a fragment of the page itself, another site, a path that is no page and a footnote's text stay as the HTML has them. Each runs twice: with the main thread's link tables, which hold the pages, and with a worker's, which hold the stubs `serializeLinkTables` ships.
 
 No browser, no built tree, well under a second.
 

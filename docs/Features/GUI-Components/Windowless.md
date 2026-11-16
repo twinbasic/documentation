@@ -10,6 +10,8 @@ redirect_from:
 
 # Windowless Controls vs. Normal (Windowed) Controls
 
+Compares windowless controls, which have no window handle and draw on their container's device context, with normal controls, which each have a window of their own.
+
 | Feature | **Windowless Controls** | **Normal Controls** |
 | --- | --- | --- |
 | **Window Handle (hWnd)** | No hWnd; drawn directly on container's Device Context (DC) | Each has its own hWnd |

@@ -8,6 +8,8 @@ permalink: /Tutorials/CEF/JavaScript-Interop
 
 # JavaScript interop
 
+This tutorial passes messages and calls between twinBASIC and the JavaScript of a page shown in a **CefBrowser** control.
+
 The [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control offers two complementary bridges between twinBASIC and the JavaScript running in the page:
 
 1. **Messages** --- push a value (string, number, …) in either direction and listen for it on the other side.

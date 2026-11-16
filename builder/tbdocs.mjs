@@ -75,7 +75,14 @@ import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables }
 import { assignPackageVersions } from "../lib/callout-labels.mjs";
 import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
-import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
+import {
+  NAV_SCRIPT_REL,
+  NAV_TREE_REL,
+  buildInitConfig,
+  renderFullNav,
+  renderNavTreePage,
+  renderSidebar,
+} from "./template.mjs";
 import {
   writePhase,
   destinationTrees,
@@ -86,9 +93,11 @@ import {
 } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
+import { writeLlmsTxt } from "./llms-txt.mjs";
+import { markdownCopyRel } from "./markdown-copy.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
-import { buildSitePathsSync, deriveOfflineCss } from "./offline-rewrite.mjs";
+import { buildSitePathsSync, deriveOfflineCss, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 // Only the index derivation is a static import: it runs inside dispatch,
 // on the render fan-out's critical path, and check-tree.mjs pulls
@@ -429,7 +438,8 @@ const TASKS = {
     execute(inputs) {
       let written = 0,
         offlineWritten = 0,
-        offlineMisses = 0;
+        offlineMisses = 0,
+        markdownWritten = 0;
       for (const [name, r] of Object.entries(inputs)) {
         // Asserted, not defaulted. A flush result that never arrived
         // would otherwise contribute zero and the totals would simply
@@ -441,8 +451,9 @@ const TASKS = {
         written += r.written;
         offlineWritten += r.offlineWritten ?? 0;
         offlineMisses += r.offlineMisses ?? 0;
+        markdownWritten += r.markdownWritten ?? 0;
       }
-      return { written, offlineWritten, offlineMisses };
+      return { written, offlineWritten, offlineMisses, markdownWritten };
     },
     submit() {},
   },
@@ -712,6 +723,9 @@ const TASKS = {
       const addin = addinProjectOf(state.site.config);
       // The package test projects, which the packageTests task writes, likewise.
       const packageTestFiles = packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot));
+      // And each page's markdown copy, which the render lanes write beside the page
+      // (markdown-copy.mjs). The publish allowlist refuses a .md file anywhere else.
+      const markdownCopies = state.pages.map(markdownCopyRel).filter((rel) => rel !== null);
       const themeAssetRels = [
         ...enumerateVendoredThemeAssets(),
         "assets/css/tb-highlight.css",
@@ -735,7 +749,7 @@ const TASKS = {
         stubs,
         themeAssetRels,
         excludePatterns,
-        onlineOnlyRels: [...(addin ? [addin.dest] : []), ...packageTestFiles],
+        onlineOnlyRels: [...(addin ? [addin.dest] : []), ...packageTestFiles, ...markdownCopies],
       };
       const treeNames = skipOffline ? ["online"] : ["online", "offline"];
       const treeRels = new Map(treeNames.map((w) => [w, deriveTreeRels(w, common)]));
@@ -751,7 +765,7 @@ const TASKS = {
       // search-data.json) are all minted by the build, not found in docs/.
       // Runs unconditionally, not under --check: a build with checks off
       // is exactly when nothing else is watching.
-      const policy = publishPolicyFor(state.site.config, { generated: packageTestFiles });
+      const policy = publishPolicyFor(state.site.config, { generated: [...packageTestFiles, ...markdownCopies] });
       for (const [which, rels] of treeRels) {
         const strays = unpublishableTreePaths(rels, policy);
         if (strays.length) {
@@ -798,8 +812,8 @@ const TASKS = {
           config: state.site.config,
           seoSiteTitle: state.site.seoSiteTitle,
           seoLogoUrl: state.site.seoLogoUrl,
-          // The offline pages' part of the nav tree is cut from it.
-          ...(skipOffline ? {} : { navTree: state.site.navTree }),
+          // Each page's part of the nav tree is cut from it, in both trees.
+          navTree: state.site.navTree,
         },
         initData: { ...initData, sidebar },
         buildInfo,
@@ -1183,19 +1197,26 @@ const TASKS = {
     },
   },
 
-  // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
-  // disk), searchData, deriveRedirects, and deriveSitemap.
-  // Passes searchStats through, for the summary line and the link check.
+  // Write redirect stubs + sitemap/robots + llms.txt + nav.html. Waits for
+  // writeAssets (theme on disk), searchData, deriveRedirects, and
+  // deriveSitemap; and for renderJoin, since llms.txt takes each page's note
+  // from its renderedContent. Passes searchStats through, for the summary line
+  // and the link check, and nav.html's text, which linkJoin checks.
   writeAux: {
-    expected: ["writeAssets", "searchData", "flushJoin", "deriveRedirects", "deriveSitemap"],
+    expected: ["writeAssets", "searchData", "flushJoin", "renderJoin", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
     async execute({ searchData: searchStats, deriveRedirects: { stubs }, deriveSitemap: { urls } }, ctx, state) {
-      if (ctx.opts.dryRun) return { redirectStats: null, sitemapStats: null, searchStats };
-      const [redirectStats, sitemapStats] = await Promise.all([
+      if (ctx.opts.dryRun) {
+        return { redirectStats: null, sitemapStats: null, llmsStats: null, navTree: null, searchStats };
+      }
+      const navTree = renderNavTreePage(state.site, renderFullNav(state.site));
+      const [redirectStats, sitemapStats, llmsStats] = await Promise.all([
         writeRedirects(state.pages, state.site, ctx.destRoot, stubs),
         writeSitemap(state.pages, state.site, ctx.destRoot, urls),
+        writeLlmsTxt(state.pages, state.site, ctx.destRoot),
+        writeFileMkdirp(path.join(ctx.destRoot, NAV_TREE_REL), navTree),
       ]);
-      return { redirectStats, sitemapStats, searchStats };
+      return { redirectStats, sitemapStats, llmsStats, navTree, searchStats };
     },
     submit() {},
   },
@@ -1283,8 +1304,10 @@ const TASKS = {
       // Redirect stubs never went through flush -- writeRedirects and
       // writeOfflineRedirects emit them -- so they are one extra chunk
       // per tree, checked here on main. 290 tiny files.
+      // nav.html rides along with the online tree's stubs: like them it is
+      // written on main, and nothing else would check its links.
       const stubHtml = {
-        online: stubs,
+        online: [...stubs, ...(writeAux?.navTree ? [{ destPath: NAV_TREE_REL, html: writeAux.navTree }] : [])],
         offline: offlineResult?.checkStubs ?? [],
       };
 
@@ -1509,6 +1532,9 @@ async function recheckInjected(injected, linkResults, state, destRoot) {
       tree: TREES[which],
       basePath: normBase(treeCfg.baseurl),
       index: treeIndexFor(root, treeCfg.rels),
+      // As the render lanes check the offline tree (cpu-worker.mjs, renderEnvInit): a link
+      // there to a file only the website holds, such as the page's markdown copy, is allowed.
+      ...(which === "offline" ? { forbidExempt: websiteOnlyExemption(state) } : {}),
     };
 
     let now;
@@ -1561,6 +1587,17 @@ async function recheckInjected(injected, linkResults, state, destRoot) {
     }
   }
   return { text: out.join(""), failed };
+}
+
+// The offline check's exemption for a link to a file only the website holds, from what dispatch
+// derived: the render lanes build the same one from its broadcast.
+function websiteOnlyExemption(state) {
+  const base = {
+    sitePaths: state.sitePaths,
+    website: websiteOf(state.site.config, state.onlineSitePaths),
+    baseurl: normalizeBaseurl(String(state.site.config.baseurl ?? "")),
+  };
+  return (url) => isWebsiteOnlyLink(url, base);
 }
 
 // ── Build entry point ─────────────────────────────────────────────────────────
@@ -1644,14 +1681,15 @@ export async function runBuild(opts) {
   );
   console.log(`  ${pc.bold("wrote:")} -> ${pc.cyan(destRoot)}`);
   console.log(
-    `         ${flushStats.written} pages, ` +
+    `         ${flushStats.written} pages, ${flushStats.markdownWritten} markdown copies, ` +
       `${assetStats.theme.copied} theme assets, ${assetStats.staticFiles.copied} static files`,
   );
   if (auxResult?.redirectStats) {
     console.log(
       `  ${pc.bold("aux:")}   ${auxResult.redirectStats.written} redirect stubs, ` +
         `${auxResult.sitemapStats.entries} sitemap entries, ` +
-        `${auxResult.searchStats.entries} search-index entries`,
+        `${auxResult.searchStats.entries} search-index entries, ` +
+        `llms.txt with ${auxResult.llmsStats.links} links`,
     );
   }
   const searchIndexStats = results.get("searchIndex");

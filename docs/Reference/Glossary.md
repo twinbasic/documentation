@@ -6,6 +6,10 @@ permalink: /tB/Gloss
 vba_attribution: true
 ---
 
+# Glossary
+
+Defines the technical terms that the documentation uses.
+
 ## accelerator key
 
 A single character used as a shortcut for selecting an object. Pressing the ALT key followed by the accelerator key gives focus to the object and initiates one or more events associated with the object. The specific event or events initiated varies from one object to another. If code is associated with an event, it is processed when the event is initiated. Also called *keyboard accelerator*, *shortcut key*, *keyboard shortcut*, or *access key*.

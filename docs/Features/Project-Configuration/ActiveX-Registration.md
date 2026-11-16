@@ -12,6 +12,8 @@ index:
 
 # ActiveX Registration Options
 
+An ActiveX build can be registered for all users or for the current user only, and need not be registered when it is built.
+
 ## Registration Location
 
 Register ActiveX builds to `HKEY_LOCAL_MACHINE` or `HKEY_CURRENT_USER` option. While modern applications use `HKEY_CURRENT_USER`, for VBx compatibility components must be registered to `HKEY_LOCAL_MACHINE`. Note that this requires running as admin when registering.

@@ -81,6 +81,9 @@ offline_exclude:
   - book.html
   - assets/js/search-data.json
   - assets/js/search-index.json
+  # The online pages' nav script, which fetches nav.html; an offline page has
+  # the whole nav tree from assets/js/nav.js instead (builder/template.mjs).
+  - assets/js/nav-tree.js
 
 # Files and patterns that tbdocs's discover phase excludes from the source
 # tree. Uses fast-glob syntax: ** crosses directory separators, * stays
@@ -128,6 +131,21 @@ package_tests:
   src: ../test/package-tests
   templates: ../test/example-projects
   dest: tB/Packages/Contributed
+
+# /llms.txt, the index for language models (llmstxt.org), which the build writes into the
+# online tree from the nav tree -- see builder/llms-txt.mjs. `summary` is its blockquote, under
+# the site's title. Each top-level page with children is a section of links to its pages'
+# markdown copies; the top-level pages named in `optional` go under `## Optional` instead, which
+# a reader short of room may skip. A name there that is no top-level page's title fails the
+# build.
+llms_txt:
+  summary: >-
+    twinBASIC is a BASIC language and development environment that aims at full backward
+    compatibility with VB6 and VBA, and adds modern language features: generics, native
+    Interface and CoClass declarations, attributes and a package system. This is its
+    documentation: tutorials, the features it adds, the IDE, the LLVM back end, and the
+    reference for the language, its runtime library and its packages.
+  optional: [Challenges, Videos, Documentation Development]
 
 # Search index granularity and generic-section folding. See WIP.Search.md's
 # "Design" §1 for why: splitting at h3 instead of h2 finds API members

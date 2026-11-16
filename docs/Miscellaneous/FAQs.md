@@ -6,6 +6,8 @@ permalink: /FAQ
 
 # Frequently Asked Questions
 
+Answers common questions about twinBASIC: what it is, where it stands and what it costs, how to install it, and how to bring VB6 projects and controls to it.
+
 **[General](#general)** - **[Installation](#install-section)** - **[Using twinBASIC](#using-twinbasic)**
 
 ## General

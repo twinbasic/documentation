@@ -72,7 +72,7 @@ Almost every `.twin` declares one or two `Public Interface I<X>V1 Extends stdole
 
 **Versioning is conveyed by interface chains.** Two cases visible in the source:
 
-- `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText(ReadTextFlags)`). The `File` CoClass declares `[Default] Interface IFileV2`. Document the V2 surface as the canonical `File` page; do not split V1 vs V2. (Mention in passing that `ReadText` is V2-only and consequently won't bind against very early IDE builds — though in practice every shipping IDE is V2+.)
+- `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText(ReadTextFlags)`). The `File` CoClass declares `[Default] Interface IFileV2`. Document the V2 surface as the canonical `File` page; do not split V1 vs V2.
 - `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which [Attributes](docs/Reference/Attributes.md#allowunpopulatedvtableentry) describes as marking a prototype that a class implementing the interface need not supply. Do not write that the attribute lets a newer addin "still load against an older IDE". Nothing measured it, and the loader works the other way (P14): the linker stamps every addin's entry point `_v3`, and an IDE whose loader does not know a DLL's stamp refuses it. The BETA 1010 loader knows `_v3`, so the claim cannot be tested either way.
 
 Document all `Host` events together on the `Host.md` page (the per-version split is a compatibility detail, not a user-facing concept).

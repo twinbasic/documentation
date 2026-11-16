@@ -10,6 +10,8 @@ vba_attribution: true
 {: .no_toc }
 {: #date-top }
 
+Returns or sets the current system date: **Date** as a **Variant** (**Date**), **Date$** as a **String**.
+
 > [!NOTE]
 >
 > In twinBASIC, **Date** and **Date$** are implemented as module-level properties, not as functions/statements like they were in VBx. This has no impact on their behavior. These properties still have the syntax and semantics of the Date and Date$ functions and statements in VBx.

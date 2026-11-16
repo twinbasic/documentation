@@ -10,6 +10,8 @@ vba_attribution: true
 {: .no_toc }
 {: #time-top }
 
+Returns or sets the current system time: **Time** as a **Variant** (**Date**), **Time$** as a **String**.
+
 > [!NOTE]
 >
 > In twinBASIC, **Time** and **Time$** are implemented as module-level properties, not as functions/statements like they were in VBx. This has no impact on their behavior. These properties still have the syntax and semantics of the Time and Time$ functions and statements in VBx.

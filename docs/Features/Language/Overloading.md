@@ -7,6 +7,8 @@ permalink: /Features/Language/Overloading
 
 # Overloading
 
+Several procedures can share one name when their arguments differ in type or in number.
+
 twinBASIC supports overloading in two ways:
 
 ## Overloading by Type of Argument

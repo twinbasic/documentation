@@ -7,7 +7,9 @@
 // boxes linking or not (builder/inline-diagram.mjs), on what Graphviz itself
 // writes; and for a callout's label, `> [!WARNING] BETA 1005`
 // (lib/callout-labels.mjs); and for a page shortcut, `tb:Errors#error-5`
-// (relativeLinksPlugin, buildLinkTables).
+// (relativeLinksPlugin, buildLinkTables); and for the links in a page's markdown
+// copy, which go to the copies of the pages the HTML's links reach
+// (builder/markdown-copy.mjs, copyHref).
 //
 // The build compares whole pages, so a plugin that goes wrong only on input
 // the corpus does not hold passes it: kramdownEllipsisPlugin shortened every
@@ -24,7 +26,9 @@ import { describe, test } from "node:test";
 import { Graphviz } from "@hpcc-js/wasm-graphviz";
 import { stripXmlPrologue } from "../builder/dot.mjs";
 import { inlineDiagram } from "../builder/inline-diagram.mjs";
+import { markdownCopy } from "../builder/markdown-copy.mjs";
 import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
+import { permalinkToDestPath } from "../builder/paths.mjs";
 import { assignPackageVersions, calloutLabelsOf, parseCalloutLabel } from "../lib/callout-labels.mjs";
 import {
   applyPreRenderRewrites,
@@ -271,7 +275,13 @@ describe("rewriteHtml with a website behind the offline tree", () => {
 // A page shortcut: `tb:Errors#error-5` links to the page whose front matter says
 // `shortcut: Errors`, its fragment kept; an unknown or doubled name fails the build.
 describe("page shortcuts (tb:<Name>)", () => {
-  const page = (srcRel, permalink, frontmatter = {}) => ({ srcRel, permalink, frontmatter });
+  const page = (srcRel, permalink, frontmatter = {}) => ({
+    srcRel,
+    permalink,
+    frontmatter,
+    ext: ".md",
+    destPath: permalinkToDestPath(permalink),
+  });
   const tables = buildLinkTables([
     page("Reference/Run-time-Errors.md", "/Reference/Run-time-Errors", { shortcut: "Errors" }),
     page("Reference/Other.md", "/Reference/Other"),
@@ -303,9 +313,73 @@ describe("page shortcuts (tb:<Name>)", () => {
     assert.throws(() => buildLinkTables([page("A.md", "/A", { shortcut: "a b" })]), /A\.md: shortcut: must be a name/);
   });
 
-  test("the shortcuts cross to the workers with the other tables", () => {
-    assert.deepEqual(serializeLinkTables(tables).byShortcut, [["Errors", "/Reference/Run-time-Errors"]]);
+  test("the shortcuts cross to the workers with the other tables, each with its page's copy", () => {
+    assert.deepEqual(serializeLinkTables(tables).byShortcut, [
+      ["Errors", "/Reference/Run-time-Errors", "/Reference/Run-time-Errors.md"],
+    ]);
   });
+});
+
+// A page's markdown copy links to the copies of the pages its HTML links to: the build's answer
+// for a shortcut or a path from the source file's folder, the browser's, against the page's
+// URL, for a link the HTML keeps as written. On the main thread a link table holds the pages; a
+// worker's holds stubs that carry their copy's URL, as serializeLinkTables ships them.
+describe("a page's markdown copy: its links", () => {
+  const page = (srcRel, permalink, frontmatter = {}) => ({
+    srcRel,
+    permalink,
+    frontmatter,
+    ext: ".md",
+    destPath: permalinkToDestPath(permalink),
+  });
+  const pages = [
+    page("Reference/Run-time-Errors.md", "/Reference/Run-time-Errors", { shortcut: "Errors" }),
+    page("Reference/Core/Dim.md", "/tB/Core/Dim", { redirect_from: ["/tB/Core/Dimension"] }),
+    page("Reference/VB/index.md", "/tB/Packages/VB/"),
+    page("index.md", "/"),
+  ];
+  const from = page("Reference/Core/ReDim.md", "/tB/Core/ReDim", { title: "ReDim" });
+  const instance = (linkTables) =>
+    createMarkdownIt({
+      highlighter: null,
+      linkTables,
+      baseurl: "/b",
+      staticFiles: new Set(["Reference/Core/Images/x.png"]),
+    });
+  const onMain = instance(buildLinkTables(pages));
+  const s = serializeLinkTables(buildLinkTables(pages));
+  const stubs = (entries) => new Map(entries.map(([k, permalink, markdownUrl]) => [k, { permalink, markdownUrl }]));
+  const onWorker = instance({
+    byPath: stubs(s.byPath),
+    byUrl: stubs(s.byUrl),
+    byRedirect: stubs(s.byRedirect),
+    byShortcut: stubs(s.byShortcut),
+  });
+  // biome-ignore format: a table, one link per line
+  const LINKS = [
+    ["a shortcut", "[5](tb:Errors#5)", "[5](/b/Reference/Run-time-Errors.md#5)"],
+    ["a path from the source file's folder", "[Dim](Dim.md#syntax)", "[Dim](/b/tB/Core/Dim.md#syntax)"],
+    ["a path from the page's URL", "[Dim](Dim)", "[Dim](/b/tB/Core/Dim.md)"],
+    ["a page's redirect_from: alias", "[old](Dimension#a)", "[old](/b/tB/Core/Dim.md#a)"],
+    ["a folder-style page", "[VB](../Packages/VB/)", "[VB](/b/tB/Packages/VB/index.md)"],
+    ["the home page", "[home](../../)", "[home](/b/index.md)"],
+    ["a reference definition", "[d]: ../Core/Dim", "[d]: /b/tB/Core/Dim.md"],
+    ["an image beside the source", "![x](Images/x.png)", "![x](/b/Reference/Core/Images/x.png)"],
+    ["a fragment of the page itself", "[s](#syntax)", "[s](#syntax)"],
+    ["another site", "[w](https://example.com/Dim)", "[w](https://example.com/Dim)"],
+    ["no page", "[n](Nothing)", "[n](Nothing)"],
+    ["a footnote's text", "x[^1]\n\n[^1]: Dim is a note", "x[^1]\n\n[^1]: Dim is a note"],
+  ];
+  for (const [where, md] of [
+    ["the main thread", onMain],
+    ["a worker", onWorker],
+  ]) {
+    for (const [name, src, want] of LINKS) {
+      test(`${name}, on ${where}`, () => {
+        assert.equal(markdownCopy({ ...from, rawContent: `# ReDim\n\n${src}\n` }, md), `# ReDim\n\n${want}\n`);
+      });
+    }
+  }
 });
 
 // A picture in two themes: the page names X.png, and the build writes the light picture and

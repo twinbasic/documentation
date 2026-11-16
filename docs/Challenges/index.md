@@ -6,6 +6,8 @@ permalink: /Challenges
 
 # Challenges
 
+The monthly twinBASIC challenges, which began in January 2026: a program to write each month, and a £100 account credit towards twinBASIC licences to win.
+
 From **#general** on Discord:
 
 [From Wayne](https://discord.com/channels/927638153546829845/927638154192748606/1457062373465788671) in Discord:

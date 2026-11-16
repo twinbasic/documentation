@@ -6,6 +6,8 @@ permalink: /Videos/tB
 
 # Videos
 
+Videos that show twinBASIC: its introduction, setup guides, new compiler features, debugging, and previews of features in development.
+
 ### twinBASIC For Applications (Proof Of Concept)
 
 22 Jul 2024

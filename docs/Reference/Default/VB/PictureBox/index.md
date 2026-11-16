@@ -8,7 +8,7 @@ has_toc: false
 # PictureBox class
 {: .no_toc }
 
-A **PictureBox** is a Win32 native control that combines three roles in one:
+A **PictureBox** is a Win32 native control that shows a picture, can be drawn on, and can hold other controls. It combines these three roles in one:
 
 1. A **picture display** --- it can show a bitmap, GIF, JPEG, icon, cursor, or metafile loaded into its [**Picture**](#picture) property.
 2. A **drawing surface** --- it exposes the VB6 graphics methods ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**Print**](#print), [**PaintPicture**](#paintpicture), …) that write into the control's device context.

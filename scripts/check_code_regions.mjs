@@ -86,6 +86,7 @@ import deflist from "markdown-it-deflist";
 import { checkPlaceholders, formatSize, validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
+import { markdownCopy } from "../builder/markdown-copy.mjs";
 import { injectAnchorHeadings } from "../builder/template.mjs";
 import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
@@ -131,8 +132,10 @@ const siteMd = createMarkdownIt({ highlighter: null, linkTables: null, baseurl: 
 const applyRewrites = (src) => applyPreRenderRewrites(src, siteMd);
 
 function compare(src) {
-  const before = codeRegions(src);
-  const after = codeRegions(applyRewrites(src));
+  return compareRegions(codeRegions(src), codeRegions(applyRewrites(src)));
+}
+
+function compareRegions(before, after) {
   const findings = [];
   const n = Math.max(before.length, after.length);
   for (let i = 0; i < n; i++) {
@@ -242,6 +245,47 @@ const POST_RENDER_PROBES = [
   ["a heading inside a raw <pre>", (html) => injectAnchorHeadings(html),
     "<pre><h2>a</h2></pre><h2>b</h2>",
     "<pre><h2>a</h2></pre><h2> b </h2>"],
+];
+
+// A page's markdown copy (builder/markdown-copy.mjs) rewrites its source outside code: it
+// strips HTML comments, expands placeholders and resolves links. The sweep below holds every
+// page's copy to the source's code regions, with a resolver that rewrites every link it is
+// asked about, so a link the scan wrongly finds inside code shows as an altered region. These
+// probes hold both directions on shapes no page has: the copy, with that resolver, of a source
+// whose code is left alone and whose prose beside it is rewritten.
+const copyResolver = (value) => `/resolved/${value}`;
+const copyMd = createMarkdownIt({
+  highlighter: null,
+  linkTables: null,
+  baseurl: "",
+  staticFiles: new Set(),
+  counts: { pages: 7 },
+});
+const copyOf = (src, frontmatter = { title: "T" }) =>
+  markdownCopy({ rawContent: src, frontmatter }, copyMd, { href: copyResolver });
+// biome-ignore format: a table, one entry per line
+const COPY_PROBES = [
+  ["a comment and a link inside a fence, and beside it",
+    "# T\n\n```tb\n<!-- kept -->\n[a](b)\n```\n\n<!-- gone -->\n\n[c](d)\n",
+    "# T\n\n```tb\n<!-- kept -->\n[a](b)\n```\n\n[c](/resolved/d)\n"],
+  ["a comment and a link inside an indented code block, and beside it",
+    "# T\n\nx\n\n    <!-- kept --> [a](b)\n\ny <!-- gone --> [c](d)\n",
+    "# T\n\nx\n\n    <!-- kept --> [a](b)\n\ny [c](/resolved/d)\n"],
+  ["a comment, a link and a definition inside code spans",
+    "# T\n\n`<!-- kept -->` and `[a](b)` and [c](d)\n\n`[e]: f`\n\n[g]: h\n",
+    "# T\n\n`<!-- kept -->` and `[a](b)` and [c](/resolved/d)\n\n`[e]: f`\n\n[g]: /resolved/h\n"],
+  ["a footnote's text is no link destination; a definition's is",
+    "# T\n\nx[^1]\n\n[^1]: Dim is a note\n\n[g]: h\n",
+    "# T\n\nx[^1]\n\n[^1]: Dim is a note\n\n[g]: /resolved/h\n"],
+  ["a link whose destination holds a code span is left as written",
+    "# T\n\n[a](`b`) and [c](d)\n",
+    "# T\n\n[a](`b`) and [c](/resolved/d)\n"],
+  ["a comment in a fence inside an alert, and a comment line beside it",
+    "# T\n\n<!-- test: x -->\n> [!NOTE]\n> ```tb\n> <!-- kept -->\n> ```\n",
+    "# T\n\n> [!NOTE]\n> ```tb\n> <!-- kept -->\n> ```\n"],
+  ["a placeholder in a code span stays, one beside it is expanded; the page gets its title",
+    "Some `{{tbdocs:pages}}` text, {{tbdocs:pages}} pages.\n",
+    "# T\n\nSome `{{tbdocs:pages}}` text, 7 pages.\n"],
 ];
 
 // The dash normaliser: a source, what the tool must make of it, and how many
@@ -676,6 +720,19 @@ async function main(argv) {
     console.log(`        want ${JSON.stringify(want)}`);
     console.log(`        got  ${JSON.stringify(got)}`);
   }
+  for (const [name, src, want] of COPY_PROBES) {
+    let got;
+    try {
+      got = copyOf(src);
+    } catch (err) {
+      got = `threw ${err.message}`;
+    }
+    if (got === want && compareRegions(codeRegions(src), codeRegions(got)).length === 0) continue;
+    failed++;
+    console.log(`FAIL  probe: ${name}`);
+    console.log(`        want ${JSON.stringify(want)}`);
+    console.log(`        got  ${JSON.stringify(got)}`);
+  }
   for (const [name, src, want, counts] of DASH_PROBES) {
     const r = convertText(src, siteMd);
     const got = `${r.sep}/${r.em}/${r.en}`;
@@ -715,6 +772,7 @@ async function main(argv) {
       `ok    ${POST_RENDER_PROBES.length} probes: the rewrites over rendered HTML leave a raw <pre> or <code> alone`,
     );
     console.log(`ok    ${DASH_PROBES.length} probes: the dash normaliser converts prose and nothing else`);
+    console.log(`ok    ${COPY_PROBES.length} probes: a page's markdown copy rewrites prose beside code and no code`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");
     console.log("ok    1 probe: the download placeholders are expanded outside code and validated");
@@ -739,14 +797,25 @@ async function main(argv) {
       }
     }
     const findings = compare(src);
-    if (!findings.length) continue;
+    // The page's markdown copy, whose links all go through a resolver that rewrites them.
+    const page = parseFrontmatter(src);
+    const copyFindings = page
+      ? compareRegions(codeRegions(page.content), codeRegions(copyOf(page.content, page.data)))
+      : [];
+    if (!findings.length && !copyFindings.length) continue;
     touched++;
     failed++;
-    console.log(`FAIL  ${rel}: ${findings.length} code region(s) altered by a pre-render rewrite`);
-    if (verbose) {
-      for (const f of findings.slice(0, 3)) {
-        console.log(`        before ${JSON.stringify(f.before?.slice(0, 120))}`);
-        console.log(`        after  ${JSON.stringify(f.after?.slice(0, 120))}`);
+    for (const [what, found] of [
+      ["a pre-render rewrite", findings],
+      ["its markdown copy", copyFindings],
+    ]) {
+      if (!found.length) continue;
+      console.log(`FAIL  ${rel}: ${found.length} code region(s) altered by ${what}`);
+      if (verbose) {
+        for (const f of found.slice(0, 3)) {
+          console.log(`        before ${JSON.stringify(f.before?.slice(0, 120))}`);
+          console.log(`        after  ${JSON.stringify(f.after?.slice(0, 120))}`);
+        }
       }
     }
   }

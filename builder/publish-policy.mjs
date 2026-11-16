@@ -83,7 +83,9 @@ export const EXTENSIONLESS_FILENAMES = new Set(["CNAME"]);
 //
 // `generated` adds the other files the build writes itself: the contributed
 // packages' test projects (package-tests.mjs), whose paths the build works out
-// from test/package-tests/, so a config alone cannot name them.
+// from test/package-tests/, so a config alone cannot name them; and each page's
+// markdown copy (markdown-copy.mjs), beside the page's HTML. Those are exempt by
+// path, so a .md file anywhere else in a tree is still refused.
 export function publishPolicyFor(config, { generated: more = [] } = {}) {
   const declared = new Set();
   for (const entry of config?.bundle_extra ?? []) {

@@ -7,6 +7,8 @@ permalink: /Features/Language/Comments
 
 # New Comment Syntax
 
+twinBASIC adds block and inline comments, written between `/*` and `*/`, to the comments of VBx.
+
 ## Block and Inline Comments
 
 You can now use `/* */` syntax. For example, `Sub Foo(bar As Long /* out */)` or:

@@ -56,7 +56,8 @@ export function computeSiteSeo(config, markdown) {
   return { seoSiteTitle, seoLogoUrl };
 }
 
-// Per-page SEO fields: seoTitle / seoFullTitle / seoCanonical / seoIsHome.
+// Per-page SEO fields: seoTitle / seoFullTitle / seoCanonical / seoIsHome /
+// seoDescription (pageSummary, below; renderedContent is set by then).
 // Mutates pages in place. Called on each render worker between renderPhase
 // and templatePhase so the values never cross the postMessage boundary.
 export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
@@ -76,7 +77,95 @@ export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
     const canonicalInput = url.replace(/\/index\.html$/, "/").replace(/\.html$/, "");
     page.seoCanonical = absoluteUrl(canonicalInput, config);
     page.seoIsHome = HOMEPAGE_URLS.has(url);
+    page.seoDescription = pageSummary(page);
   }
+}
+
+// ── a page's summary ────────────────────────────────────────────────────
+
+// A summary longer than this is cut at a word and ends in an ellipsis.
+const SUMMARY_MAX = 240;
+const PARAGRAPH = /<p\b[^>]*>([\s\S]*?)<\/p>/g;
+const ENTITY = /&(#x[0-9a-f]+|#[0-9]+|amp|lt|gt|quot|apos|nbsp);/gi;
+const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/**
+ * A page's summary, as plain text, from its renderedContent: the first sentence of its
+ * introduction, which the documentation's own rule puts directly under the heading (WIP.md,
+ * Plain-English prose); or "" when it has none. Its `<meta name="description">` (template.mjs)
+ * and its note in /llms.txt (llms-txt.mjs).
+ */
+export function pageSummary(page) {
+  return firstSentence(page.renderedContent, page.frontmatter?.title);
+}
+
+/**
+ * The first sentence of the first paragraph with text in a page's introduction, the part above
+ * its first level-2 heading, as plain text; or "" when the introduction has none, as the
+ * Glossary's has not, whose first paragraph defines its first term. A sentence ends at `.`, `!`
+ * or `?` before white space and a capital letter, or at the paragraph's end.
+ *
+ * Three kinds of paragraph are passed over, being no summary of the page: one inside a callout
+ * (`> [!NOTE]`), whose first paragraph is its title, "Note"; one that opens with a field, a
+ * bold label ending in a colon, as the `**Author:** ... **Version:** ...` line that opens a
+ * contributed package's landing page (WIP.md) does; and one that only repeats `title`, the
+ * page's, as a subtitle in bold under a numbered heading does (a challenge's).
+ */
+export function firstSentence(html, title = "") {
+  const page = String(html ?? "");
+  const h2 = page.search(/<h2[\s>]/);
+  const intro = h2 < 0 ? page : page.slice(0, h2);
+  const callouts = calloutRanges(intro);
+  const name = String(title ?? "").toLowerCase();
+  for (const m of intro.matchAll(PARAGRAPH)) {
+    if (callouts.some(([from, to]) => m.index >= from && m.index < to)) continue;
+    if (FIELD.test(m[1])) continue;
+    const text = decodeEntities(stripHtml(m[1])).replace(/\s+/g, " ").trim();
+    if (!text || (name && text.replace(/[.:]$/, "").toLowerCase() === name)) continue;
+    const end = /[.!?](?=\s+[A-Z])/.exec(text);
+    return shorten(end ? text.slice(0, end.index + 1) : text);
+  }
+  return "";
+}
+
+const FIELD = /^\s*<strong>[^<]*:<\/strong>/;
+const CALLOUT_OPEN = /<div class="markdown-alert\b/g;
+const DIV_TAG = /<(\/?)div\b[^>]*>/g;
+
+// Where each callout is in `html`, as [start, end) offsets: from its `<div class="markdown-alert
+// ...">` to the `</div>` that closes it, counting the divs inside it (a code block is one).
+function calloutRanges(html) {
+  const out = [];
+  for (const open of html.matchAll(CALLOUT_OPEN)) {
+    if (out.length && open.index < out[out.length - 1][1]) continue;
+    let depth = 0;
+    let end = html.length;
+    DIV_TAG.lastIndex = open.index;
+    for (let tag = DIV_TAG.exec(html); tag; tag = DIV_TAG.exec(html)) {
+      depth += tag[1] ? -1 : 1;
+      if (depth === 0) {
+        end = tag.index + tag[0].length;
+        break;
+      }
+    }
+    out.push([open.index, end]);
+  }
+  return out;
+}
+
+function shorten(text) {
+  if (text.length <= SUMMARY_MAX) return text;
+  const cut = text.lastIndexOf(" ", SUMMARY_MAX - 1);
+  return `${text.slice(0, cut > 0 ? cut : SUMMARY_MAX - 1).replace(/[\s,;:]+$/, "")}\u{2026}`;
+}
+
+function decodeEntities(s) {
+  return s.replace(ENTITY, (_, e) => {
+    const k = e.toLowerCase();
+    if (k.startsWith("#x")) return String.fromCodePoint(parseInt(k.slice(2), 16));
+    if (k.startsWith("#")) return String.fromCodePoint(parseInt(k.slice(1), 10));
+    return NAMED[k];
+  });
 }
 
 // `text | markdownify | strip_html | normalize_whitespace | escape_once`,
