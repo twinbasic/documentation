@@ -383,22 +383,25 @@ A parameter that C declares optional, and that is a structure passed by referenc
 > - **ZwDuplicateObject** lacks the routine's third parameter, *TargetProcessHandle*. The routine takes the address meant for *TargetHandle* as *TargetProcessHandle*, each later argument as the parameter before the one it is meant for, and its last parameter, *Options*, from whatever follows.
 > - **ZwMapViewOfSection** lacks the routine's eighth parameter, *InheritDisposition*, between *ViewSize* and *AllocationType*. The routine takes *AllocationType* as the disposition, *Win32Protect* as the allocation type, and its protection from whatever follows.
 
-<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2, KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel, probe ordinal -->
+<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2, KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel, probe ordinal, probe x86exports -->
 > [!NOTE] 0.3.0.5
 > The 64-bit kernel of Windows 10 version 22H2 does not export these routines: **KeQuerySystemTime**, **RtlAcquirePebLock**, **RtlAllocateAndInitializeSid**, **RtlCheckBit**, **RtlCreateServiceSid**, **RtlDefaultNpAcl**, **RtlEqualPrefixSid**, **RtlFreeSid**, **RtlGetCurrentPeb**, **RtlReleasePebLock**, **RtlUniform**, **ZwCompactKeys**, **ZwCompressKey**, **ZwFreezeRegistry**, **ZwInitializeRegistry**, **ZwLoadKey2**, **ZwLoadKey3**, **ZwLockRegistryKey**, **ZwNotifyChangeMultipleKeys**, **ZwQueryMultipleValueKey**, **ZwQueryOpenSubKeys**, **ZwQueryOpenSubKeysEx**, **ZwResumeProcess**, **ZwSaveMergedKeys**, **ZwSuspendProcess** and **ZwThawRegistry**. **RtlDuplicateUnicodeString**, which the kernel exports, is declared in the user-mode `ntdll`, which the kernel does not load for a driver. A driver imports only the routines that it calls, so a driver that calls none of them is not affected; one that calls any of them does not load.
 >
 > The same kernel exports **ZwCreateUserProcess** with no name, as ordinal 2, so the package's declaration, which imports it by name, does not load either. A driver that declares it with `Alias "#2"` imports it by ordinal. **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says: a driver that calls it does not load on Windows 10.
+>
+> A 32-bit driver has more of them. The 32-bit `ntoskrnl.exe` does not export **ExAcquireFastMutex**, **ExReleaseFastMutex**, **ExTryToAcquireFastMutex**, **KeGetCurrentIrql**, **KeRaiseIrqlToDpcLevel**, **KeReleaseSpinLock** and **KfRaiseIrql**, which the 32-bit `hal.dll` exports, and neither file exports `KeAcquireSpinLockRaiseToDpc`, which **KeAcquireSpinLock** names, or **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx**. A 32-bit driver that calls any of them does not load. A driver declares a routine of `hal.dll` itself, with `Lib "hal.dll"`. The 64-bit kernel exports all of them.
 
-<!-- test: KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ObCloseHandle_PassesTheHandle -->
+<!-- test: KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ObCloseHandle_PassesTheHandle, KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments -->
 > [!WARNING] 0.3.0.5
 > In a 32-bit driver, these routines take their arguments in registers, as `__fastcall` routines, but the package declares them without `FastCall` and calls them as `__stdcall` routines, which push the arguments on the stack:
 >
 > - **ExAcquireFastMutex**, **ExReleaseFastMutex** and **ExTryToAcquireFastMutex**
+> - **ExInterlockedAddUlong**
 > - **ExReleaseResourceAndLeaveCriticalRegion**
 > - **InterlockedPopEntrySList**
 > - **IofCallDriver**, which [**IoCallDriver**](#IoCallDriver) calls
 >
-> Each routine receives other values than its arguments, and the call leaves the stack 4 bytes off, 8 for **IofCallDriver**. **ObCloseHandle** is the other way round: the package declares it `FastCall`, but the kernel's routine is `__stdcall` and reads its arguments from the stack, so it receives other values than its arguments, and the call leaves the stack 8 bytes off. A 64-bit driver is not affected. The 32-bit [**InterlockedIncrement**](#InterlockedIncrement) has a warning of its own.
+> Each routine receives other values than its arguments, and the call leaves the stack 4 bytes off, 8 for **ExInterlockedAddUlong** and **IofCallDriver**. **ObCloseHandle** is the other way round: the package declares it `FastCall`, but the kernel's routine is `__stdcall` and reads its arguments from the stack, so it receives other values than its arguments, and the call leaves the stack 8 bytes off. A 64-bit driver is not affected. The 32-bit [**InterlockedIncrement**](#InterlockedIncrement) has a warning of its own.
 
 ## Types
 

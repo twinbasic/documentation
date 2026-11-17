@@ -599,4 +599,20 @@ Module KernelHelperTests
         Expect.Done
     End Sub
 
+    ' ExInterlockedAddUlong is __fastcall in the x86 kernel (wdm.h: FASTCALL), and reads Addend from
+    ' ECX and Value from EDX; the stand-in records them there.
+    [TestCase]
+    Public Sub ExInterlockedAddUlong_PassesTheArguments()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        FakeKernel_ResetCall
+        Dim addend As Long = 5
+        Dim spinLock As LongPtr
+        Dim old As Long = ExInterlockedAddUlong(addend, 3, spinLock)
+        Expect.AreEqual "ExInterlockedAddUlong", LastCall(), "the routine called"
+        Expect.AreEqual "the argument", Got(0, VarPtr(addend)), "the Addend ExInterlockedAddUlong received"
+        Expect.AreEqual "the argument", Got(1, 3), "the Value ExInterlockedAddUlong received (3)"
+        Expect.Done
+    End Sub
+
 End Module

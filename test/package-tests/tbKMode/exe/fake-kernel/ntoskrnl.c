@@ -140,14 +140,6 @@ static LONG lockHeldAtEntry = -1;
 
 static void recordLock(const ULONG_PTR *lock) { lockHeldAtEntry = lock && *lock ? 1 : 0; }
 
-/* __fastcall, as the x86 kernel's is (wdm.h: FASTCALL); an x64 build has one convention. */
-ULONG __fastcall ExInterlockedAddUlong(ULONG *addend, ULONG value, ULONG_PTR *lock) {
-  recordLock(lock);
-  ULONG old = *addend;
-  *addend = old + value;
-  return old;
-}
-
 /* --- the routines that the x86 kernel exports as __fastcall (wdm.h: FASTCALL): each records its
    name and its arguments, and returns a value the cases know. In an x64 build __fastcall is the
    one convention, so there they are what the x64 kernel's are. --- */
@@ -248,6 +240,16 @@ __declspec(naked) void ExAllocatePool2(void) {
   }
 }
 
+/* ExInterlockedAddUlong is __fastcall in the x86 kernel (wdm.h: FASTCALL): Addend in ECX, Value in
+   EDX and the lock on the stack, which it pops (4 bytes). The package declares it without FastCall
+   (tbKMode 0.3.0.5), whose call pushes all three, 12 bytes: this records ECX and EDX, where the
+   kernel's routine reads Addend and Value, adds nothing, since ECX is no address the case gave, and
+   pops the 12 bytes pushed, so that the exe goes on. Once the package declares it FastCall, this
+   must pop 4 (`ret 4`), and may do the addition and record the lock as the x64 version does. */
+static const char nm_ExInterlockedAddUlong[] = "ExInterlockedAddUlong";
+
+FASTCALL_RECORD(ExInterlockedAddUlong, nm_ExInterlockedAddUlong, 0, 12)
+
 /* Records ECX and increments what it points at, when that is an address. */
 __declspec(naked) void fake_InterlockedIncrement(void) {
   __asm {
@@ -262,6 +264,15 @@ __declspec(naked) void fake_InterlockedIncrement(void) {
 }
 
 #else
+
+/* x64: records the lock it was given, and Addend and Value, and adds as the kernel's does. */
+ULONG __fastcall ExInterlockedAddUlong(ULONG *addend, ULONG value, ULONG_PTR *lock) {
+  recordLock(lock);
+  record("ExInterlockedAddUlong", (ULONG_PTR)addend, value);
+  ULONG old = *addend;
+  *addend = old + value;
+  return old;
+}
 
 LONG __fastcall IofCallDriver(void *device, void *irp) {
   record("IofCallDriver", (ULONG_PTR)device, (ULONG_PTR)irp);

@@ -287,6 +287,12 @@
     },
     "KernelHelperTests.RtlFindLongestRunClear_ReturnsTheStartingIndex": {
       "fails": "1 of 1 checks failed: the starting index RtlFindLongestRunClear wrote: expected 5, got 0"
+    },
+    "KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments": {
+      "win32": {
+        "fails": "2 of 3 checks failed: the Addend ExInterlockedAddUlong received: expected \"the argument\", got \"something else\"; the Value ExInterlockedAddUlong received (3): expected \"the argument\", got \"something else\""
+      },
+      "win64": "pass"
     }
   }
 }

@@ -20,8 +20,9 @@ node test/package-tests/tbKMode/probe/probe.mjs --package-settings suggested
 
 Each scenario is built in both architectures (`--arch` names one), about 15 s a build. Each
 driver is judged by the verifier's `imports` check (`../verifier/`, its README says how): a line
-`PASS <id> <arch>` means the driver imports from no user-mode DLL, and, in a 64-bit build, that
-every routine it imports is exported in each Windows version of the verifier's database; `FAIL`
+`PASS <id> <arch>` means the driver imports from no user-mode DLL, and that every routine it
+imports is exported by the file it names: by each Windows version of the verifier's database in a
+64-bit build, and by WDK 10.0.22621's x86 import libraries in a 32-bit one; `FAIL`
 means it cannot load, and the problems follow. The DLLs and routines follow each line. Exit 0
 every driver passed, 1 one failed, 2 the probe could not run.
 
@@ -41,8 +42,11 @@ embedded from the store, and `src/<id>.twin` as its one module, built with `tbbu
 | `stack` | `IoGetNextIrpStackLocation` and `IoSkipCurrentIrpStackLocation`, procedures of the package that call no routine of the kernel |
 | `copied` | the same two procedures copied into the driver's own module under other names |
 | `ordinal` | `ZwCreateUserProcess` through a Declare of the driver's own with `Alias "#2"`, which the 64-bit kernel exports with no name; the driver imports `#2` |
+| `x86exports` | Declares of the package that name routines the 32-bit `ntoskrnl.exe` does not export: the fast mutexes, `KeGetCurrentIrql`, `KeRaiseIrqlToDpcLevel`, `KfRaiseIrql` and `KeReleaseSpinLock`, which the 32-bit `hal.dll` exports, and `KeAcquireSpinLock` (`KeAcquireSpinLockRaiseToDpc`) and the `Rtl...BitsEx` routines, which neither exports |
 
 The twinBASIC compiler compiles a package's code with the package's own settings, not the
 project's. In 0.3.0.5 the package's `Settings` set none of a driver's, so its procedures are
 compiled as user-mode code: on BETA 1042, `interlocked` (64-bit) and `stack` fail with the
-published settings, and every scenario passes with the suggested ones.
+published settings, and every scenario but one passes with the suggested ones. `x86exports` fails
+in a 32-bit build with either: its imports are the package's Declares, which name the wrong file
+or a routine the 32-bit kernel lacks, whatever the settings.
