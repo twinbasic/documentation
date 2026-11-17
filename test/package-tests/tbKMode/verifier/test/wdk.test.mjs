@@ -230,6 +230,9 @@ test("a twinBASIC literal is as wide as its type", () => {
   assert.equal(evalExpr("&H80000000", "x86", model), -2147483648n);
   assert.equal(evalExpr("&HFFFFFFFFFFFFFFFF^", "x86", model), -1n);
   assert.equal(evalExpr("(1 << 4) + 2 * 3", "x86", model), 22n);
+  // A shift keeps its left operand's width: an Integer shifted by 24 is 0.
+  assert.equal(evalExpr("(&Hff << 24)", "x86", model), 0n);
+  assert.equal(evalExpr("(&Hff& << 24)", "x86", model), -16777216n);
 });
 
 // ------------------------------------------------------------------ headers.mjs

@@ -162,7 +162,11 @@ export function cValue(db, name, arch) {
   return { kind, value: BigInt(v) };
 }
 
-const hex = (v) => (v < 0n ? `-&H${(-v).toString(16).toUpperCase()}` : `&H${v.toString(16).toUpperCase()}`);
+// A value in hex as twinBASIC writes it: a negative one as the bits of a Long, or of a LongLong.
+const hex = (v) => {
+  const bits = v < 0n ? (v >= -(2n ** 31n) ? 32 : 64) : 0;
+  return `&H${(bits ? BigInt.asUintN(bits, v) : v).toString(16).toUpperCase()}`;
+};
 const num = (v) => (v >= -9999n && v <= 9999n ? `${v}` : `${v} (${hex(v)})`);
 
 /** One kit's findings: [{module, name, line, arch, severity, key, message}]. */

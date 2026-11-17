@@ -95,28 +95,46 @@ export function packageValue(name, arch, model) {
   return null;
 }
 
-/** A twinBASIC number literal's value, or null: 10, &H1F, &O17, with a type character or not. */
+// The bits of an integer type, for a constant's width.
+const WIDTH = { byte: 16, integer: 16, long: 32, longlong: 64, longptr: 64 };
+
+/**
+ * A twinBASIC number literal: `{v, w}`, its value and its type's width in bits, or null: 10, &H1F,
+ * &O17, with a type character or not.
+ */
 function literal(t) {
+  const suffix = (c) => (c === "%" ? 16 : c === "&" ? 32 : c === "^" ? 64 : 0);
   const m = /^&H([0-9A-F]+)([%&^]?)$/i.exec(t);
   if (m) {
     // A hex literal is as wide as its type, two's complement: &HFFFF is Integer -1, &HFFFF& Long
     // 65535; with no type character, up to 4 digits is an Integer, up to 8 a Long.
     const digits = m[1].replace(/^0+(?=.)/, "").length;
-    const bits = m[2] === "%" ? 16 : m[2] === "&" ? 32 : m[2] === "^" ? 64 : digits <= 4 ? 16 : digits <= 8 ? 32 : 64;
-    return BigInt.asIntN(bits, BigInt(`0x${m[1]}`));
+    const w = suffix(m[2]) || (digits <= 4 ? 16 : digits <= 8 ? 32 : 64);
+    return { v: BigInt.asIntN(w, BigInt(`0x${m[1]}`)), w };
   }
-  const o = /^&O([0-7]+)[%&^]?$/i.exec(t);
-  if (o) return BigInt(`0o${o[1]}`);
-  const d = /^(\d+)[%&^]?$/.exec(t);
-  return d ? BigInt(d[1]) : null;
+  const o = /^&O([0-7]+)([%&^]?)$/i.exec(t);
+  if (o) return { v: BigInt(`0o${o[1]}`), w: suffix(o[2]) || 32 };
+  const d = /^(\d+)([%&^]?)$/.exec(t);
+  if (!d) return null;
+  const v = BigInt(d[1]);
+  return { v, w: suffix(d[2]) || (v <= 32767n ? 16 : v <= 2147483647n ? 32 : 64) };
 }
 
 /**
  * The value of a constant expression for an arch, as a BigInt, or null: numbers, the package's
- * constants and enumeration members, + - * \ Mod And Or Xor Not, parentheses. A constant declared
- * under #If takes the branch for the arch.
+ * constants and enumeration members, + - * \ Mod And Or Xor Not << >>, parentheses. A constant
+ * declared under #If takes the branch for the arch.
  */
 export function evalExpr(text, arch, model, depth = 0) {
+  return evalTyped(text, arch, model, depth)?.v ?? null;
+}
+
+/**
+ * evalExpr's value with the width of its type, `{v, w}`: an operation is as wide as its wider
+ * operand, as twinBASIC types it, and a shift keeps its left operand's width, so `&Hff << 24` is an
+ * Integer shifted out to 0.
+ */
+function evalTyped(text, arch, model, depth = 0) {
   if (depth > 40) return null;
   const toks = String(text).match(/&[HO][0-9A-F]+[%&^]?|\d+[%&^]?|[A-Za-z_][\w.]*|<<|>>|<>|<=|>=|[-+*\\/()=<>]/gi);
   if (!toks) return null;
@@ -125,20 +143,23 @@ export function evalExpr(text, arch, model, depth = 0) {
     const c = model.consts.get(lc(n.replace(/^.*\./, "")));
     if (!c) return null;
     if (c.value) {
-      // An enumeration member: its own value, or the one before it plus one.
+      // An enumeration member, a Long: its own value, or the one before it plus one.
       let v = -1n;
       for (const x of enumValuesOf(c.enumOf)) {
         if (evaluate(x.cond, envOf(model, arch, c.enumOf.file)) === false) continue;
         const m = /=\s*(.+)$/.exec(x.signature ?? "");
         v = m ? evalExpr(m[1], arch, model, depth + 1) : v === null ? null : v + 1n;
-        if (x === c.value) return v;
+        if (x === c.value) return v === null ? null : { v, w: 32 };
       }
       return null;
     }
     for (const b of c.branches) {
       if (evaluate(b.cond, envOf(model, arch, b.file)) !== true) continue;
-      const m = /=\s*(.+)$/.exec(b.signature ?? "");
-      return m ? evalExpr(m[1], arch, model, depth + 1) : null;
+      const m = /(?:\bAs\s+(\w+)\s*)?=\s*(.+)$/i.exec(b.signature ?? "");
+      if (!m) return null;
+      const r = evalTyped(m[2], arch, model, depth + 1);
+      const w = WIDTH[lc(m[1] ?? "")];
+      return r && w ? { v: r.v, w } : r;
     }
     return null;
   };
@@ -146,44 +167,45 @@ export function evalExpr(text, arch, model, depth = 0) {
     const t = toks[i++];
     if (t === undefined) return null;
     if (t === "(") {
-      const v = expr();
+      const r = expr();
       i++;
-      return v;
+      return r;
     }
     if (t === "-") {
-      const v = primary();
-      return v === null ? null : -v;
+      const r = primary();
+      return r && { v: -r.v, w: r.w };
     }
     if (lc(t) === "not") {
-      const v = primary();
-      return v === null ? null : ~v;
+      const r = primary();
+      return r && { v: ~r.v, w: r.w };
     }
     // LenB(Of T) and Len(Of T): the size of a type.
     if ((lc(t) === "lenb" || lc(t) === "len") && toks[i] === "(" && lc(toks[i + 1] ?? "") === "of") {
       const info = typeInfo(toks[i + 2] ?? "", arch, model);
       i += 4;
-      return info.error ? null : BigInt(info.size);
+      return info.error ? null : { v: BigInt(info.size), w: 32 };
     }
     return literal(t) ?? name(t);
   };
   const binary = (next, ops, apply) => () => {
-    let v = next();
+    let r = next();
     while (i < toks.length && ops.includes(lc(toks[i]))) {
       const op = lc(toks[i++]);
-      const r = next();
-      v = v === null || r === null ? null : apply(op, v, r);
+      const s = next();
+      const v = r === null || s === null ? null : apply(op, r.v, s.v, r.w);
+      r = v === null ? null : { v, w: op === "<<" || op === ">>" ? r.w : Math.max(r.w, s.w) };
     }
-    return v;
+    return r;
   };
   const mul = binary(primary, ["*", "\\", "/", "mod"], (op, a, b) =>
     op === "*" ? a * b : b === 0n ? null : op === "mod" ? a % b : a / b,
   );
   const add = binary(mul, ["+", "-"], (op, a, b) => (op === "+" ? a + b : a - b));
-  const shift = binary(add, ["<<", ">>"], (op, a, b) => (op === "<<" ? a << b : a >> b));
+  const shift = binary(add, ["<<", ">>"], (op, a, b, w) => BigInt.asIntN(w, op === "<<" ? a << b : a >> b));
   const and = binary(shift, ["and"], (_, a, b) => a & b);
   const expr = binary(and, ["or", "xor"], (op, a, b) => (op === "or" ? a | b : a ^ b));
-  const v = expr();
-  return i === toks.length ? v : null;
+  const r = expr();
+  return i === toks.length ? r : null;
 }
 
 /**
