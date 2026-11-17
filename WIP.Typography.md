@@ -1,12 +1,63 @@
 # twinBASIC Documentation --- Typography and Diagrams
 
 Why the type system is built the way it is, and why every diagram is Graphviz
-DOT measured with Inter's own widths. [WIP.md](WIP.md) keeps the three faces,
-the hard rules and the gate under [Typography](WIP.md#typography).
+DOT measured with Inter's own widths. The three faces are under
+[The three faces](#the-three-faces), and the hard rules and the gate under
+[Rules](#rules); [WIP.md](WIP.md#typography) names the faces and points here.
 
-Two neighbours: [WIP.Fonts.md](WIP.Fonts.md) is how the six subset `.woff2`
+Two neighbours: [WIP.Fonts.md](WIP.Fonts.md) is how the subset `.woff2`
 files are produced, and [WIP.A11y.md](WIP.A11y.md) is the scan that a change in
 type metrics can move.
+
+## The three faces
+
+All SIL OFL 1.1, all committed as subset `.woff2` under
+[docs/assets/fonts/](docs/assets/fonts/) alongside their licence files.
+
+| Face | Where | Variable axes | Subset size |
+|------|-------|---------------|-------------|
+| **Inter** | all web text; PDF headings, running heads and captions; DOT diagram labels | `wght 100-900` | 152 KB + 166 KB italic |
+| **Cascadia Mono** | all code, inline and block, web and PDF | `wght 200-700` | 67 KB + 77 KB italic |
+| **Source Serif 4** | PDF body text only | `wght 200-900` | 138 KB + 109 KB italic |
+
+Inter is the brand face: twinbasic.com names it first in its own stack. Cascadia Mono is the
+**ligature-free** cut of Microsoft's terminal font --- in a *language* reference
+the literal characters are the subject matter, so a face that draws `->` as one
+mark is working against the text, and any replacement must be ligature-free too.
+Source Serif is the book's body face and nothing else's; no web stylesheet
+references it, so no reader ever downloads it.
+
+Reader cost is 219 KB cold (both roman faces, preloaded), 166 KB more the first
+time a page sets italic text and 77 KB beyond that only if the italic is code
+--- against the search index with its entries (10 MB gzipped) a reader downloads on the
+first keystroke in the search box.
+
+## Rules
+
+### Regenerating the fonts
+
+How the `.woff2` files are produced --- the generator, the Unicode coverage, why
+`opsz` is pinned and `wght` is not, and why the generator is not JavaScript --- lives in
+[WIP.Fonts.md](WIP.Fonts.md).
+Two things from it touch this file: **regenerating Inter means
+regenerating `builder/inter-metrics.json` too** (see [Teaching Graphviz what Inter
+measures](#teaching-graphviz-what-inter-measures)), and the generator is Python for a
+reason that is documented there and should be read before anyone tries to port it.
+
+### Diagrams, and the rest of the type system
+
+Every diagram is Graphviz DOT --- sources under `docs/assets/images/dot/` for
+shared diagrams, `Images/` beside a page for one that belongs to it. The `.svg`
+is a build artifact.
+
+- **Edit the `.dot`, never the `.svg`**, and never set a diagram's `font-family` anywhere else: a Don't in [WIP.md](WIP.md#donts), with its reason. Graphviz's WASM build has no font machinery at all --- it falls back to Times for any face it does not know.
+- `node scripts/check_dot_fit.mjs` is the gate on exactly that, and runs inside `check.bat`. Run it after touching any diagram.
+- **A diagram whose boxes link** (a `URL` on a node or cluster, relative to the page's rendered URL, which the browser resolves it against: a markdown link on the same page is first looked up against the source file's folder, so the two can be written differently, as on `Documentation/index.md`) declares its nodes in reading order and sets `outputorder=nodesfirst`: that order is the Tab order. Each linked box has a `tooltip`, a sentence or two on what it links to; without one the hover text is the raw label. `builder/inline-diagram.mjs` makes it a group of links when it is inlined; `Tools-Groups.dot` is the example.
+- **Scale a diagram whole, or not at all.** Stretching an SVG up inflates its labels; shrinking the text alone unmoors the labels from their boxes.
+- **A `@font-face` added to [docs/_sass/custom/_fonts.scss](docs/_sass/custom/_fonts.scss) needs its stack added to [docs/_sass/modules-dark.scss](docs/_sass/modules-dark.scss) as well**, and must stay inside the `emit-font-faces` mixin: a Don't in [WIP.md](WIP.md#donts), with its reason.
+- **Run the full a11y sweep after any change that moves type metrics.** An inline element's measured height is its font's content area, so `target-size` results move with the face. The sample can stay clean while the full sweep regresses ([why](#why-this-is-not-only-a-cosmetic-change)).
+
+Two generators produce committed artifacts rather than build output: `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. Neither runs during a build, and neither is needed for one.
 
 ## Why this is not only a cosmetic change
 
@@ -34,9 +85,9 @@ centre far enough to intersect a neighbour. The link is sized outright
 (`display: inline-block; min-width/min-height: 24px`) rather than relying on the
 clearance.
 
-Two rules follow. **Run the full sweep after any change that moves type
-metrics**: the sixteen-page sample stays clean through such a change and would
-ship the regression. And **treat a target that passes only on the spacing
+Two rules follow: run the full sweep after any change that moves type metrics
+([Rules](#rules)), since the sample stays clean through such a change and would
+ship the regression; and **treat a target that passes only on the spacing
 exception as unfixed**: the result depends on the font, the surrounding layout
 and the viewport at once, and any of the three can move.
 
@@ -66,7 +117,7 @@ and the viewport at once, and any of the three can move.
   as `url("../fonts/...")` into the sparse `_site-pdf/` tree, reading the
   list from print.css itself.
 
-Two rules that are easy to get wrong:
+Two rules:
 
 1. **`@font-face` is emitted exactly once, from the light compilation.** That is
    why `_fonts.scss` exposes a mixin rather than bare CSS: the dark entry point
@@ -84,9 +135,7 @@ Two rules that are easy to get wrong:
 Inline SVG inherits the page's font environment, so the self-hosted faces apply
 to diagram labels too --- `figure.js` and `figurePlugin` put the SVG in the DOM rather than
 behind an `<img src>`, which would isolate it from the document's `@font-face`
-rules. The DOT sources --- `docs/assets/images/dot/` for shared diagrams,
-`Images/` beside a page for one that belongs to it --- and `builder/gantt.mjs`
-name the Inter stack directly.
+rules. The DOT sources and `builder/gantt.mjs` name the Inter stack directly.
 
 **Every diagram is Graphviz DOT, and it measures with a font it has never seen.**
 A committed export is only correct for the metrics the layout was computed with,
@@ -102,16 +151,10 @@ per 1000 em against 557 --- so every box comes out about 11% too small and
 labels are painted outside their boxes.
 
 axe does not evaluate SVG `<text>` geometry, so no accessibility scan reports
-this. [builder/dot-metrics.mjs](builder/dot-metrics.mjs) fixes the cause. See
-[Teaching Graphviz what Inter measures](#teaching-graphviz-what-inter-measures)
-below for the mechanism, and run the gate after touching any of it:
-
-```sh
-node scripts/check_dot_fit.mjs           # also runs inside check.bat
-```
-
-It renders every committed diagram with the real webface and fails if a label
-sits outside the box Graphviz drew for it. With the metrics installed, the
+this. [builder/dot-metrics.mjs](builder/dot-metrics.mjs) fixes the cause
+([Teaching Graphviz what Inter measures](#teaching-graphviz-what-inter-measures)).
+The gate, `node scripts/check_dot_fit.mjs` ([Rules](#rules)), renders every committed
+diagram with the real webface and fails if a label sits outside the box Graphviz drew for it. With the metrics installed, the
 worst off-centre across all five diagrams is 1.1 units; with them reverted, the
 check reports the CEF diagram's three longest labels overflowing by 8.5 to 15.7.
 
@@ -205,9 +248,7 @@ at `fontsize=12` in a space where one user unit is one point, and sizes the root
 geometry and labels together, so wide diagrams stay small-but-aligned; the Zoom
 control is what covers reading them. The Gantt chart (which has no `width`
 attribute) does not collapse, and at mobile every diagram is capped anyway.
-
-The rule: **scale the whole SVG or nothing.** Stretching it up inflates the
-labels; shrinking the text alone unmoors them from their boxes.
+Scale the whole SVG or nothing ([Rules](#rules)).
 
 A diagram narrower than the column is also **centred**, in both stylesheets: an
 `<svg>` is inline-level by default, so it would sit against the left margin with
@@ -289,8 +330,7 @@ route through `serializeWithFonts` in
 [docs/assets/js/figure.js](docs/assets/js/figure.js), which embeds the
 faces the diagram paints with as `data:` URIs in an inline `@font-face`.
 
-This is necessary because **an exported diagram is cut off from the page's
-`@font-face` rules**. An SVG handed to `new Image()` renders in the browser's
+**An exported diagram is cut off from the page's `@font-face` rules**. An SVG handed to `new Image()` renders in the browser's
 "secure static mode", which fetches no external resource at all, and a
 downloaded `.svg` opened somewhere else has no access to this site's
 stylesheet either. Both fall back to whatever the viewer has installed. On a
@@ -328,7 +368,7 @@ PNG* cannot work on such a diagram at all, and the throw lands inside an
 nothing. Graphviz emits plain `<text>`, which is why all four buttons work on all
 five diagrams. This is a property of the *format*, not of the export code.
 
-Mermaid emits it, and **the obvious workaround does not work**: `flowchart: { htmlLabels: false }` moves only the edge labels to `<text>`
+Mermaid emits it, and **`flowchart: { htmlLabels: false }` does not help**: it moves only the edge labels to `<text>`
 and keeps node labels in `foreignObject` regardless (Mermaid 11). Mermaid is not
 wired up --- no dependency, no script emitted, only `code.language-mermaid`
 rules left in the vendored theme CSS --- so a `mermaid` fence renders as a code

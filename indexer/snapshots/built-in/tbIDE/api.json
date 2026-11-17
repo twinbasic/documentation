@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "tbIDE",
   "project": "tbIDE",
   "version": "beta-x-1042",
@@ -26,8 +26,8 @@
         {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
         {"name":"Enabled","kind":"field","vis":"public","signature":"Public Enabled As Boolean"},
         {"name":"Interval","kind":"field","vis":"public","signature":"Public Interval As Long"},
-        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As LongPtr","returnType":"LongPtr"},
-        {"name":"SetTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As LongPtr","lib":"user32","entry":"KillTimer","params":["ByVal hWnd As LongPtr","ByVal uIDEvent As LongPtr"],"returnType":"LongPtr"},
+        {"name":"SetTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr","lib":"user32","entry":"SetTimer","params":["ByVal hWnd As LongPtr","ByVal nIDEvent As LongPtr","ByVal uElapse As Long","ByVal lpTimerFunc As LongPtr"],"returnType":"LongPtr"},
         {"name":"Timer","kind":"event","vis":"public","signature":"Public Event Timer()"},
         {"name":"TimerCallback","kind":"sub","vis":"private","signature":"Private Sub TimerCallback(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal TimerID As Long, ByVal Tick As Long)"},
         {"name":"TimerHandle","kind":"field","vis":"private","signature":"Private TimerHandle As LongPtr"}

@@ -2,13 +2,13 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-The **addin SDK** — a type-only compiler package. Every public symbol is an interface or a CoClass; the actual implementations live in the IDE binary, and an addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time. Twenty-three public CoClasses + one concrete `Class` (`AddinTimer`) + one interface-only declaration; no `Private` plumbing.
+The **addin SDK** — a type-only compiler package. Every public symbol is an interface or a CoClass; the actual implementations live in the IDE binary, and an addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time. Its public symbols are CoClasses, one concrete `Class` (`AddinTimer`) and one interface-only declaration; no `Private` plumbing.
 
 The package's own `CHANGELOG.md` is a leftover copy-paste from a different package ("twinBASIC WinNativeForms") and is **not** about tbIDE.
 
 ## How an addin is built and loaded
 
-From any of the six sample `Settings` files (the structure is identical across them):
+From the samples' `Settings` files, identical in structure:
 
 - `project.buildType`: **Standard DLL** — addins are not packages, they are DLLs that the IDE loads.
 - `project.buildPath`: `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` — the build output drops directly into `<IDE>\addins\Win32\` or `<IDE>\addins\Win64\`. The IDE scans this folder on startup, and the same two under `%APPDATA%\twinBASIC\addins\` (P6 in [WIP.HelpAddin.md](WIP.HelpAddin.md)).
@@ -27,14 +27,14 @@ End Module
 
 The returned object must implement the [`AddIn`](#public-user-facing-surface) interface (a single read-only `Name` property, declared in `Addin.twin`). Every sample uses this exact `tbCreateCompilerAddin` skeleton. Show it on the index landing as the canonical entry point.
 
-Two facts about loading were measured on BETA 1010 (P9 and P14 in [WIP.HelpAddin.md](WIP.HelpAddin.md)), and the index page states both:
+Measured on BETA 1010 (P9 and P14 in [WIP.HelpAddin.md](WIP.HelpAddin.md)); the index page states both:
 
 - **The linker exports `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3`**, and under no other name. The IDE's loader accepts `tbCreateCompilerAddin`, `_v2` and `_v3`, calls each the same way, and refuses a DLL with none of them as *compiled for a newer version of the twinBASIC IDE*. The suffix is a version stamp, not a different signature.
 - **A compiler restart does not release the object; it kills it.** The addin lives in the compiler's process. The page ends that process with `taskkill /F` (`forceTerminate` in `main.js`) on every compiler restart (the restart button, a switch of build target, a crash). So `Class_Terminate` does not run, and a new instance is loaded from the DLL on disk. Closing the project calls `forceTerminate` as well *(read, not measured)*. Never write that the object is released "when the addin is disabled or the IDE shuts down": the Add-Ins menu's items cannot disable an add-in *(reported)*.
 
 ## Public user-facing surface
 
-Twenty-four files declaring twenty-three public CoClasses + one concrete `Class` + one interface-only declaration:
+Public symbols, by file:
 
 | File                         | Public symbols                                                        | Role                                                                                                              |
 |------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
@@ -66,11 +66,11 @@ Twenty-four files declaring twenty-three public CoClasses + one concrete `Class`
 
 ## The interface/CoClass split — what it means for the doc layout
 
-Almost every `.twin` declares one or two `Public Interface I<X>V1 Extends stdole.IUnknown` followed by `Public CoClass <X>` with `[Default] Interface I<X>V1` (and optionally `[Default, Source] Interface I<X>EventsV1`). The pattern is the standard COM idiom for late-binding-friendly extensibility — the IDE implements the interfaces, the addin holds references typed at the CoClass.
+Almost every `.twin` declares one or two `Public Interface I<X>V1 Extends stdole.IUnknown` followed by `Public CoClass <X>` with `[Default] Interface I<X>V1` (and optionally `[Default, Source] Interface I<X>EventsV1`): the IDE implements the interfaces, the addin holds references typed at the CoClass.
 
 **The interfaces themselves get no doc page.** Users type their variables `As Host` / `As Button` / `As ToolWindow` (the CoClass), not `As IHostV1`. Fold the interface's members onto the CoClass's page; do not list both. Same convention CustomControls uses for its `_…` default interfaces.
 
-**Versioning is conveyed by interface chains.** Two cases visible in the source:
+**Versioning is conveyed by interface chains:**
 
 - `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText(ReadTextFlags)`). The `File` CoClass declares `[Default] Interface IFileV2`. Document the V2 surface as the canonical `File` page; do not split V1 vs V2.
 - `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which [Attributes](docs/Reference/Attributes.md#allowunpopulatedvtableentry) describes as marking a prototype that a class implementing the interface need not supply. Do not write that the attribute lets a newer addin "still load against an older IDE". Nothing measured it, and the loader works the other way (P14): the linker stamps every addin's entry point `_v3`, and an IDE whose loader does not know a DLL's stamp refuses it. The BETA 1010 loader knows `_v3`, so the claim cannot be tested either way.
@@ -79,9 +79,9 @@ Document all `Host` events together on the `Host.md` page (the per-version split
 
 ## `AddinTimer` is the only user-instantiable class
 
-Every other public symbol is a CoClass the IDE exposes *to* the addin: the addin receives instances via `Host` and never constructs them. `AddinTimer` is the exception. It is a concrete `Class AddinTimer` (not a CoClass), and the addin instantiates it with `New AddinTimer`. Internally it wraps `SetTimer` / `KillTimer` with a private `TimerCallback`, exposes `Interval` (ms) + `Enabled`, and fires a `Timer` event.
+Every other public symbol is a CoClass the IDE exposes *to* the addin, which receives instances via `Host` and never constructs them. `AddinTimer` is a concrete `Class` (not a CoClass), instantiated with `New AddinTimer`. It wraps `SetTimer` / `KillTimer` with a private `TimerCallback`, exposes `Interval` (ms) + `Enabled`, and fires a `Timer` event.
 
-Sample 11's CPU-monitor demonstrates the typical pattern:
+Sample 11's CPU monitor shows the typical pattern:
 
 ```tb
 Private WithEvents Timer As AddinTimer
@@ -104,31 +104,31 @@ The class uses the `Handles` syntax internally (`Private Sub Changed() Handles E
 
 ## The HTML / DOM surface
 
-Tool windows are rendered as HTML inside the IDE (the same browser surface the IDE uses for its own panes). The `HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` quartet is the addin's keyhole into the DOM.
+Tool windows are rendered as HTML inside the IDE (the same browser surface the IDE uses for its own panes). The `HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` classes are the addin's access to the DOM.
 
-Three things make this surface unusual and have to be surfaced on the docs:
+What the docs must say about this surface:
 
-1. **`[COMExtensible(True)]` on `HtmlElementProperties` / `HtmlElementProperty` / `HtmlEventProperties` / `HtmlEventProperty`.** The attribute opts the interface into IDispatch dynamic-member resolution, which is what makes `.style.display = "flex"` work — at compile time the right-hand `.style.display` resolves to `Item("style").Item("display").Value = "flex"` (the default-member dance), and the IDE resolves the names against the live DOM at run time. No member named `style` is *declared* on `IHtmlElementPropertiesV1`. Surface this on each of the four pages with a `> [!IMPORTANT]` callout: the property names accepted are **every DOM property of the underlying tag** (standard HTML attributes, CSS-style properties under `.style.…`, plus any custom-element-specific surface like `.chart.data.datasets(0).borderWidth` on a `chartjs` element or `.editor.setOption(...)` on a `monaco` element). The docs cannot enumerate them — refer the reader to the relevant DOM / library reference.
-2. **The custom-element tags.** `HtmlElements.Add(id, tagName)` accepts standard HTML tags (`"div"`, `"input"`, `"span"`, `"h1"`, …) AND four IDE-specific widget tags: `"chartjs"` (Chart.js wrapper — surfaces a `.chart` property), `"monaco"` (the Monaco editor — surfaces a `.editor` property), `"listview"` (the IDE's listview widget — surfaces a `.listview` property with `addItem` / `removeItem` / etc.), and `"virtuallistview"` (the same with `setItemCount` + the `onAsyncGetItemHTML` event). All four are demonstrated in samples 11–14. Surface as *"the tag name is forwarded to the IDE's tool-window renderer, which understands the standard HTML tags plus the custom widget tags … see sample 11 / 12 / 13 / 14"*.
+1. **`[COMExtensible(True)]` on `HtmlElementProperties` / `HtmlElementProperty` / `HtmlEventProperties` / `HtmlEventProperty`.** The attribute opts the interface into IDispatch dynamic-member resolution, which makes `.style.display = "flex"` work: at compile time `.style.display` resolves to `Item("style").Item("display").Value = "flex"` through the default members, and the IDE resolves the names against the live DOM at run time. No member named `style` is *declared* on `IHtmlElementPropertiesV1`. Surface this on each of the four pages with a `> [!IMPORTANT]` callout: the property names accepted are **every DOM property of the underlying tag** (standard HTML attributes, CSS-style properties under `.style.…`, plus any custom-element-specific surface like `.chart.data.datasets(0).borderWidth` on a `chartjs` element or `.editor.setOption(...)` on a `monaco` element). The docs cannot enumerate them — refer the reader to the relevant DOM / library reference.
+2. **The custom-element tags.** `HtmlElements.Add(id, tagName)` accepts standard HTML tags (`"div"`, `"input"`, `"span"`, `"h1"`, …) AND the IDE-specific widget tags: `"chartjs"` (Chart.js wrapper — surfaces a `.chart` property), `"monaco"` (the Monaco editor — surfaces a `.editor` property), `"listview"` (the IDE's listview widget — surfaces a `.listview` property with `addItem` / `removeItem` / etc.), and `"virtuallistview"` (the same with `setItemCount` + the `onAsyncGetItemHTML` event), each demonstrated in samples 11–14. Surface as *"the tag name is forwarded to the IDE's tool-window renderer, which understands the standard HTML tags plus the custom widget tags … see sample 11 / 12 / 13 / 14"*.
 3. **`AddEventListener(DomEventName As String, CallbackFunc As LongPtr, Optional Data As Variant)`.** The callback is passed as `AddressOf SomeSub`, and `SomeSub` must have the signature `Sub(ByVal eventInfo As HtmlEventProperties)`. The `eventInfo` parameter is the IDE-marshalled equivalent of the JavaScript `Event` object — `eventInfo.key` / `eventInfo.target.value` / `eventInfo.target.id` are the usual fields, but again the property names are resolved against the *actual* event object at run time, not declared statically. Sample 13 also demonstrates **custom event names raised from inline HTML** via the IDE-side `raiseEvent("name", event, stopPropagation, …customData)` JavaScript helper; the custom-data values become `eventInfo.customData0`, `eventInfo.customData1`, … and are demonstrated in sample 15's `ClickedMatch` handler. Sample 14 demonstrates **async events** via `eventInfo.setAsyncResult("<html>")` (the listener returns the requested HTML asynchronously back into the virtual list view's render cycle).
 
 **`raiseEvent` is narrower than item 3 suggests** (P12 in [WIP.HelpAddin.md](WIP.HelpAddin.md), measured on BETA 1010): it works only inside a `listview` / `virtuallistview` or an `AddMonacoWidget` widget, and from plain tool-window HTML it throws a `TypeError` in the IDE's page. P4 measured the rest of this surface: `innerHTML`'s inline handlers run as the IDE page's own script, and a property whose name starts with `on` is dropped without an error. The HtmlElement and HtmlElementProperties pages say all three; the ToolWindow page says that showing a window resets its root's `display`.
 
-Document the four `Html*` classes as the *contract* (`Item` default member, the `Value` accessor, the `Properties` chaining) and use the samples to illustrate the dynamic-resolution mechanism. Do not try to enumerate the resolved property surface — it's open-ended.
+Document the `Html*` classes as the *contract* (`Item` default member, the `Value` accessor, the `Properties` chaining) and use the samples to illustrate the dynamic resolution. Do not enumerate the resolved property surface: it is open-ended.
 
-The `HtmlEvent*` half of the quartet declares `Value` as **read-only Get** (vs `HtmlElementProperty`'s `Value` which has Get + Let) — that's the contract distinction between an inbound event payload and an outbound DOM property setter. Note this on each page.
+The `HtmlEvent*` classes declare `Value` as **read-only Get** (`HtmlElementProperty`'s `Value` has Get + Let): an inbound event payload against an outbound DOM property setter. Note this on each page.
 
 ## ToolWindow as a jQuery-style selector
 
-`ToolWindow` is the *root* of a tool window's DOM and **also doubles as a member-by-ID accessor**: `myToolWindow("#dataEntry").Value` (see sample 13) returns the `Value` of the child element whose `id` is `dataEntry`. There is no explicit member on `IToolWindowV1` that takes a string argument — the source-side `RootDomElement` carries `[DefaultMember]`, so `myToolWindow("#dataEntry")` resolves to `RootDomElement.Properties.Item("#dataEntry")`, which the dynamic resolver then interprets as a CSS-style selector against the rendered DOM. Surface this as *"the tool window's default member is `RootDomElement`, which is COM-extensible — string indexing accepts CSS selectors"* and call out the `#id` (single element by ID) form as the most common case.
+`ToolWindow` is the *root* of a tool window's DOM and **also a member-by-ID accessor**: `myToolWindow("#dataEntry").Value` (sample 13) returns the `Value` of the child element whose `id` is `dataEntry`. No member of `IToolWindowV1` takes a string: `RootDomElement` carries `[DefaultMember]`, so `myToolWindow("#dataEntry")` resolves to `RootDomElement.Properties.Item("#dataEntry")`, which the dynamic resolver interprets as a CSS-style selector against the rendered DOM. Surface this as *"the tool window's default member is `RootDomElement`, which is COM-extensible — string indexing accepts CSS selectors"* and call out the `#id` (single element by ID) form as the most common case.
 
 `ApplyCss(styles As String)` injects a `<style>` element scoped to the tool window. Samples 13 / 14 / 15 load CSS from an embedded resource via `StrConv(LoadResDataInternal("styles.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)` and pass it through — surface that pattern on `ToolWindow.ApplyCss`.
 
-`.RootDomElement.Properties.suggestedWidth = "350px"` and `.suggestedHeight = "600px"` are *one-shot* hints — they're used the **first time** the tool window opens as a floating window, then the IDE persists the user's resize. The source-side comments make this explicit (*"used on first opening as a floating tool window"*) — surface as a `> [!NOTE]` on the `ToolWindow.md` page.
+`.RootDomElement.Properties.suggestedWidth = "350px"` and `.suggestedHeight = "600px"` are *one-shot* hints, used the **first time** the tool window opens as a floating window; after that the IDE persists the user's resize (source comment: *"used on first opening as a floating tool window"*). Surface as a `> [!NOTE]` on the `ToolWindow.md` page.
 
 ## `Project.Evaluate` — the debug-console hook
 
-`Project.Evaluate(EvalString, Options)` runs an arbitrary expression in the project's context, as if the user typed it into the DEBUG CONSOLE. The `Options` parameter is `DebuggerEvaluateOptions` — currently a single-value enum (`NONE = 0`) declared on `IHostV1` itself, not on `IProjectV1`, which is an oddity worth noting. The return is `Variant`. Sample 10's `CurrentProjectKeyUp` handler shows it in action — entering `10.5 * 4` in a textbox and pressing Enter passes the string to `Evaluate` and pops up the result in a message box. Surface as *"this is the same engine that powers the DEBUG CONSOLE; it can call any `Public` symbol the user can see at run time"*.
+`Project.Evaluate(EvalString, Options)` runs an arbitrary expression in the project's context, as if the user typed it into the DEBUG CONSOLE. The `Options` parameter is `DebuggerEvaluateOptions`, a single-value enum (`NONE = 0`) declared on `IHostV1`, not on `IProjectV1`. The return is `Variant`. In sample 10's `CurrentProjectKeyUp` handler, entering `10.5 * 4` in a textbox and pressing Enter passes the string to `Evaluate` and shows the result in a message box. Surface as *"this is the same engine that powers the DEBUG CONSOLE; it can call any `Public` symbol the user can see at run time"*.
 
 `DebuggerEvaluateOptions` on `IHostV1` rather than `IProjectV1` looks like a source-side oversight (the only consumer is `IProjectV1.Evaluate`). Document the enum on the `Host.md` page (where it is declared) and link to it from the `Project.Evaluate` entry; do not rationalise the layout.
 
@@ -140,7 +140,7 @@ Per-addin persistent key/value storage inside the `.twinproj` file. `LoadMetaDat
 
 Both are on `IHostV1`.
 
-- `ShowMessageBox(Prompt, Buttons, Title) As Long` — modal. `Buttons` is a single string with button captions delimited by `|`, e.g. `"OK"` or `"Yes|No|Cancel"`. Return is the zero-based index of the pressed button, or `-1` if the box was closed without picking one. Sample 10's `ShowMessageBoxClick` demonstrates the three-button case and the `-1` close path together — surface as the canonical example.
+- `ShowMessageBox(Prompt, Buttons, Title) As Long` — modal. `Buttons` is a single string with button captions delimited by `|`, e.g. `"OK"` or `"Yes|No|Cancel"`. Return is the zero-based index of the pressed button, or `-1` if the box was closed without picking one. Sample 10's `ShowMessageBoxClick` shows the three-button case and the `-1` close path: surface it as the canonical example.
 - `ShowNotification(Prompt)` — non-modal, "discreet" toast-style notification.
 
 The convention is that `ShowMessageBox` is for "user must answer something" and `ShowNotification` is for "user should know but doesn't need to react".
@@ -170,7 +170,7 @@ Next
 
 ## `File.ReadText` flags
 
-`IFileV2.ReadText(Options As ReadTextFlags) As String` — the V2-only "text view of the file, with options" accessor. Currently one flag: `CommentsToWhitespace` (replace every byte that's part of a comment with a space, preserving line numbers + column positions). Sample 15 uses it for the "exclude comments" search option. Surface as *"call `ReadText(0)` for raw text, `ReadText(ReadTextFlags.CommentsToWhitespace)` to mask comments out — the line/column positions of every non-comment character are preserved, which makes the flag suitable for indexers"*.
+`IFileV2.ReadText(Options As ReadTextFlags) As String` --- the V2-only text of the file, with options. One flag: `CommentsToWhitespace` (replace every byte that's part of a comment with a space, preserving line numbers + column positions). Sample 15 uses it for the "exclude comments" search option. Surface as *"call `ReadText(0)` for raw text, `ReadText(ReadTextFlags.CommentsToWhitespace)` to mask comments out — the line/column positions of every non-comment character are preserved, which makes the flag suitable for indexers"*.
 
 `Text` and `Data` (on `IFileV1`) have `Property Let` declarations tagged `[Unimplemented]` — flag with the usual `> [!NOTE]` on each, pointing out that the file system is currently read-only from the addin's perspective.
 
@@ -188,7 +188,7 @@ Next
 
 ## `CodeEditor.AddMonacoWidget` and `ExecuteMonacoCommand`
 
-`CodeEditor` is the editor-pane subtype; the source-side comment on `IEditorV1` says *"Castable to CodeEditor etc."* — i.e. an `Editor` returned from `Host.ActiveEditors(0)` is actually a `CodeEditor` for code panes, and `Dim ce As CodeEditor = activeEditor` (or `TypeOf editor Is CodeEditor`) is the cast pattern. Sample 15's `GetActiveCodeEditorSelectedText` demonstrates the guarded cast:
+`CodeEditor` is the editor-pane subtype (the source comment on `IEditorV1`: *"Castable to CodeEditor etc."*): an `Editor` returned from `Host.ActiveEditors(0)` is a `CodeEditor` for code panes, and `Dim ce As CodeEditor = activeEditor` (or `TypeOf editor Is CodeEditor`) is the cast. Sample 15's `GetActiveCodeEditorSelectedText` shows the guarded cast:
 
 ```tb
 If Host.ActiveEditors.Count > 0 Then
@@ -205,7 +205,7 @@ Surface as the canonical safe-cast pattern on `CodeEditor.md`.
 
 `AddMonacoWidget(LineNumber, ColumnNumber, Html, Optional Css) As HtmlElement` attaches an inline HTML overlay to a line of code; if `ColumnNumber` is zero, the widget is rendered below the line and the editor scrolls to make room rather than overlapping the next line. The return value is a normal `HtmlElement` — the same `Properties` / `ChildDomElements` / `AddEventListener` surface applies. Surface as *"the same DOM surface as a tool-window's elements; the widget lives inside the code editor but otherwise behaves identically"*.
 
-`CodeEditor.SelectedText` (Get + Let), `Text` (Get + Let), `GetSelectionInfo(ByRef StartLine, ByRef StartColumn, ByRef EndLine, ByRef EndColumn)`, `SetSelectionInfo(...)`, `RevealRange(... SmoothScroll, Area As RevealArea)` — all straightforward. The `RevealArea` enum is nested on `ICodeEditorV1` itself (six values: `Any` / `Top` / `Center` / `CenterIfNotVisible` / `NearTop` / `NearTopIfNotVisible`) — fold onto the `CodeEditor.md` page rather than spinning off a separate enum file.
+`CodeEditor.SelectedText` (Get + Let), `Text` (Get + Let), `GetSelectionInfo(ByRef StartLine, ByRef StartColumn, ByRef EndLine, ByRef EndColumn)`, `SetSelectionInfo(...)`, `RevealRange(... SmoothScroll, Area As RevealArea)` — all straightforward. The `RevealArea` enum is nested on `ICodeEditorV1` itself (`Any` / `Top` / `Center` / `CenterIfNotVisible` / `NearTop` / `NearTopIfNotVisible`) — fold onto the `CodeEditor.md` page rather than spinning off a separate enum file.
 
 ## `KeyboardShortcuts.Add` callback signature
 
@@ -223,14 +223,14 @@ The `Host` event `OnChangedTheme(ThemeName As String)` fires when the user picks
 
 ## Sample-by-sample idioms to surface
 
-Each sample exercises a different slice. Pick which idioms surface where:
+Where each sample's idioms surface:
 
 - **Sample 10 (kitchen sink)** — the canonical "Hello, World" structure: `Private WithEvents Host As Host` + a `Host_OnProjectLoaded` handler that sets up the toolbar via `Host.Toolbars(0).AddSplitter()` + `.AddButton(...)`. **Every** sample uses this. Surface as the canonical addin-startup pattern on `Host.md` (and on the index landing).
-- **Sample 10 (DOM walkthrough)** — the bulk of the file is a single `Button_OnClick` that builds a vertical-flex tool window populated with 22 styled "buttons" (each one a `div` with click handlers), exercising `.style.display = "flex"`, `.style.flexDirection = "column"`, `.style.gap`, `.style.backgroundImage` with a linear-gradient, `.style.borderRadius`, `.style.cursor = "pointer"`, etc. Surface as a *cross-link* from `HtmlElement.md` / `HtmlElementProperties.md` / `ToolWindow.md` rather than as primary content — the file is too long to inline.
+- **Sample 10 (DOM walkthrough)** — the bulk of the file is a single `Button_OnClick` that builds a vertical-flex tool window of styled "buttons" (each a `div` with click handlers), exercising `.style.display = "flex"`, `.style.flexDirection = "column"`, `.style.gap`, `.style.backgroundImage` with a linear-gradient, `.style.borderRadius`, `.style.cursor = "pointer"`, etc. Surface as a *cross-link* from `HtmlElement.md` / `HtmlElementProperties.md` / `ToolWindow.md` rather than as primary content — the file is too long to inline.
 - **Sample 11 (AddinTimer + chartjs)** — the canonical `AddinTimer` example AND the canonical custom-element example. Surface on `AddinTimer.md` as the timer example; cross-link to `HtmlElement.md` for the `"chartjs"` custom-element note.
 - **Sample 12 (monaco editor)** — the in-window Monaco editor example. Surface the *"add event handlers to the editor, not the DOM element"* fact (`.editor.AddEventListener("onDidChangeModelContent", …)` not `monacoDivElement.AddEventListener(…)`) as a `> [!IMPORTANT]` on `HtmlElement.AddEventListener`. Cross-link to `CodeEditor.md` so the reader understands the two ways Monaco surfaces: built-in code editor via `CodeEditor`, embedded user-controlled editor via a `"monaco"` tag.
 - **Sample 13 (listview + raiseEvent)** — surface as the canonical `ApplyCss` + `myToolWindow("#dataEntry")`-selector example. The inline HTML `raiseEvent("dataEntryKeyDown", event, true)` JS-side helper is what brings custom event names to the addin via `AddEventListener` — surface as a cross-link from `HtmlElement.AddEventListener` to a brief explanation on the `HtmlEventProperties` page. The IDE-side JS helper is documented as *"available to inline HTML inside an addin's tool window: `raiseEvent(eventName, event, stopPropagation, …customData)`"* — it has no twinBASIC declaration.
 - **Sample 14 (virtual listview)** — the canonical async-event example. `onAsyncGetItemHTML` fires with `eventInfo.asyncArgument` (the row index the IDE wants HTML for) and the handler responds via `eventInfo.setAsyncResult("<html>")`. `listview.notifyChangedItem(idx)` invalidates the IDE's internal cache so the next render calls `onAsyncGetItemHTML` again. Surface on `HtmlEventProperties.md` as the asynchronous-event-handler pattern.
 - **Sample 15 (Global Search addin)** — the canonical end-to-end addin: FS traversal (`Folder` for-each + `TypeOf … Is Folder` recursion), text reading with comment-stripping (`File.ReadText(ReadTextFlags.CommentsToWhitespace)`), editor navigation (`Host.ActiveEditors.Open(path, line, col)` + `.Item(0).SetFocus`), persistent options (registry-side via `GetSetting` / `SaveSetting`, **not** via `Project.SaveMetaData` — flag the difference). The dwell-time pattern (`SetTimer` / `KillTimer` directly from Win32 to debounce keystrokes) is a *"could have used `AddinTimer`"* alternative — surface both options on `AddinTimer.md`.
 
-Layout note: flat, one page per CoClass / Class — no `Enumerations/` sub-folder. The six nested enums (`RevealArea`, `EditorOpenOptions`, `ReadTextFlags`, `FileSystemItemType`, `VbBuildType`, `DebuggerEvaluateOptions`) each live on their declaring class's page.
+Layout: flat, one page per CoClass / Class, no `Enumerations/` sub-folder. The nested enums (`RevealArea`, `EditorOpenOptions`, `ReadTextFlags`, `FileSystemItemType`, `VbBuildType`, `DebuggerEvaluateOptions`) each live on their declaring class's page.

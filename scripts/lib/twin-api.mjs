@@ -1216,6 +1216,65 @@ function returnTypeOf(text, raw) {
   return collapse(type.slice(0, end), raw.slice(start, start + end)) || null;
 }
 
+// The head of a Declare, up to the parenthesis that opens its parameter list.
+// A bracketed name is an escaped identifier (`Function [Chr$] Lib ...`, way 5);
+// an unbracketed one may end in a type-declaration character, which is not part
+// of it. VB's and VBA's packages declare Property Gets (`DeclareWide PtrSafe
+// Property Get FormsGetCount Lib "<hiddenmodule>" Alias "#100" ()`). The library
+// is a string or the name of a constant (`Lib DETOURS`, DetoursLib).
+const DECLARE_HEAD =
+  /\bDeclare(Wide)?\s+(?:PtrSafe\s+)?(?:Function|Sub|Property\s+(?:Get|Let|Set))\s+(\[[^\]]+\]|\w+[%&!#@$^]?)(?:\s+(CDecl|FastCall))?\s+Lib\s+(?:"([^"]*)"|(\w+))(?:\s+Alias\s+"([^"]*)")?\s*\(/i;
+
+/**
+ * What a Declare says about the routine it binds, read from its signature as
+ * parseTwin records it (comments gone, the line joined): the library (`lib`, or
+ * `libConst` when the Declare names a constant that holds it), the entry
+ * point (its `Alias`, else its name), whether it is `CDecl` or `FastCall`,
+ * whether it is a `DeclareWide` (whose String arguments are passed as they are,
+ * not converted to ANSI), and its parameters as written, each without the
+ * attributes before it (`[TypeHint(...)]`). The list ends at its own closing
+ * parenthesis, so the `As` clause after it, a parenthesised type included, is
+ * no parameter. `name` is the name as parseTwin gives it: no brackets, and no
+ * type-declaration character on an unbracketed name.
+ *
+ * @param {string} signature  one Declare's signature, a member's `signature`
+ *   or one of its `signatures[].signature`
+ * @returns {{name: string, lib: string|null, libConst: string|null, entry: string,
+ *   cdecl: boolean, fastcall: boolean, wide: boolean, params: string[]} | null}
+ *   null when the signature is no Declare; one of `lib` and `libConst` is null
+ */
+export function declareParts(signature) {
+  const head = DECLARE_HEAD.exec(signature ?? "");
+  if (!head) return null;
+  const open = head.index + head[0].length;
+  let depth = 1;
+  let k = open;
+  for (; k < signature.length && depth > 0; k++) {
+    if (signature[k] === "(") depth++;
+    else if (signature[k] === ")") depth--;
+  }
+  const list = signature.slice(open, depth === 0 ? k - 1 : k);
+  const params = topLevelPieces(list).map(([from, to]) =>
+    list
+      .slice(from, to)
+      .replace(/^\s*(?:\[[^\]]*\]\s*)+/, "")
+      .trim(),
+  );
+  const raw = head[2];
+  const name = raw.startsWith("[") ? raw.slice(1, -1) : raw.replace(/[%&!#@$^]$/, "");
+  const convention = head[3]?.toLowerCase();
+  return {
+    name,
+    lib: head[4] ?? null,
+    libConst: head[5] ?? null,
+    entry: head[6] ?? name,
+    cdecl: convention === "cdecl",
+    fastcall: convention === "fastcall",
+    wide: head[1] !== undefined,
+    params,
+  };
+}
+
 // ----------------------------------------------------------------- packages
 
 /**

@@ -2,7 +2,7 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-Three sibling modules — `Exact`, `Strict`, `Permissive` — that expose the **same 15-member API**; only the comparison semantics differ:
+Sibling modules — `Exact`, `Strict`, `Permissive` — that expose the **same API**; only the comparison semantics differ:
 
 | Module        | String comparisons | Other comparisons                                                              |
 |---------------|--------------------|--------------------------------------------------------------------------------|
@@ -10,9 +10,9 @@ Three sibling modules — `Exact`, `Strict`, `Permissive` — that expose the **
 | `Strict`      | case-sensitive     | evaluated as if written directly in twinBASIC; object default members **not** evaluated |
 | `Permissive`  | case-insensitive   | evaluated as if written directly in twinBASIC                                  |
 
-`Null` is never equal to anything (not even itself) under any of the three flavours — use `IsNull` / `IsNotNull` to test for it.
+`Null` is never equal to anything (not even itself) in any module — use `IsNull` / `IsNotNull` to test for it.
 
-The 15 members per module (identical signatures across all three):
+The members of each module (identical signatures in all of them):
 
 | Member                                          | Purpose                                                          |
 |-------------------------------------------------|------------------------------------------------------------------|
@@ -34,4 +34,4 @@ The 15 members per module (identical signatures across all three):
 
 Show each member as an ordinary `Sub` (e.g. `Sub AreEqual(Expected, Actual, [Message])`). The source-side `Lib "<assert{exact,strict,permissive}>"` / `Alias "#N"` / `PreserveSig` / `DeclareWide` decoration is internal pseudo-DLL plumbing and is **not** shown. Call out `[DebugOnly(True)]` (assertions compile out of release builds) and `[MustBeQualified(True)]` (callers must write the module name, e.g. `Strict.IsTrue(x)`).
 
-Layout: one page per module, listing all 15 members inline under `## <Member>` headings (deep-linkable as `…/Strict#areequal`). Forty-five near-duplicate pages (15 × 3) would add noise without value.
+Layout: one page per module, listing every member inline under `## <Member>` headings (deep-linkable as `…/Strict#areequal`). A page per member of each module would be near-duplicates of each other: noise without value.

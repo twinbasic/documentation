@@ -15,6 +15,12 @@ const SOURCE_EXTS = new Set([".twin", ...Object.keys(CONTAINER_MAP)]);
 const FINGERPRINT_FILE = "indexer.json";
 const SETTINGS_FILE = "Settings";
 
+// The packages downloaded from TWINSERV, kept by version so that moving a package
+// between its pin and a newer version downloads nothing twice. They are a cache,
+// not a record: the store's history leaves them out.
+const DOWNLOADS_DIR = "downloads";
+const STORE_GITIGNORE = `/${DOWNLOADS_DIR}/\n`;
+
 async function git(cwd, ...args) {
   const { stdout } = await execFileP("git", args, { cwd });
   return stdout.trim();
@@ -39,13 +45,16 @@ async function ensureStore(storePath, snapshotsPath) {
 
   // Some of the sources have names of over a hundred characters, which with the
   // store's own path is more than Windows lets git open unless it is told to
-  // use long paths. A store made before this was set gets it too.
+  // use long paths. A store made before this was set gets it too, and the
+  // .gitignore that keeps the downloads out of its history.
   if (!needsInit) {
     await git(storePath, "config", "core.longpaths", "true");
+    await writeStoreGitignore(storePath);
     return;
   }
 
   await fs.mkdir(storePath, { recursive: true });
+  await writeStoreGitignore(storePath);
   await git(storePath, "init");
   await git(storePath, "config", "user.name", "indexer");
   await git(storePath, "config", "user.email", "indexer@local");
@@ -85,6 +94,34 @@ async function ensureStore(storePath, snapshotsPath) {
   }
 }
 
+async function writeStoreGitignore(storePath) {
+  const file = path.join(storePath, ".gitignore");
+  const text = await fs.readFile(file, "utf-8").catch(() => "");
+  if (!text.split(/\r?\n/).includes(STORE_GITIGNORE.trim())) await fs.writeFile(file, text + STORE_GITIGNORE);
+}
+
+/** Where a downloaded package of one version is kept: `downloads/<package>/<version>.twinpack`. */
+function downloadPath(storePath, symbol, version) {
+  return path.join(storePath, DOWNLOADS_DIR, symbol, `${version}.twinpack`);
+}
+
+/** A package's `.twinpack` of one version as an earlier sync downloaded it, or null. */
+async function cachedDownload(storePath, symbol, version) {
+  return fs.readFile(downloadPath(storePath, symbol, version)).catch(() => null);
+}
+
+/** Keeps a downloaded `.twinpack` for `cachedDownload`. */
+async function cacheDownload(storePath, symbol, version, buffer) {
+  const file = downloadPath(storePath, symbol, version);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, buffer);
+}
+
+/** The version of a package the store holds, as its api.json says, or null when it holds none. */
+async function storedVersion(storePath, group, symbol) {
+  return (await apiHeadOf(path.join(storePath, group, symbol, "api.json")))?.version ?? null;
+}
+
 async function commitStore(storePath, message) {
   await git(storePath, "add", "-A");
   const status = await git(storePath, "status", "--porcelain");
@@ -119,21 +156,26 @@ async function copyToSnapshots(storePath, snapshotsPath, packages) {
 }
 
 /**
- * Copies to the snapshots the api.json of each documented package that has none
- * there, when the store holds the version its section was indexed from: a sync
- * run before the section existed brought the store up to date, so no later sync
- * indexes the package and copies it. `documented` is `documentedPackages`'s map.
- * Returns the packages written, as `copyToSnapshots` does.
+ * Makes the snapshot of each documented package the store's api.json, when the
+ * store holds the version the package's section names in `indexed_from:`, its
+ * pin, as `storeStatus` finds it current, and the two differ. So a snapshot is only ever of the pinned version: one
+ * written by an older scanner is written again once the store is indexed again,
+ * a section started after its package was synced gets the store's, and a
+ * package moved past its pin by `sync --upgrade` keeps its snapshot until
+ * `indexed_from:` names the new version. `documented` is `documentedPackages`'s
+ * map; `names`, when given, limits it to those packages. Returns the packages
+ * written, as `copyToSnapshots` does.
  */
-async function adoptSnapshots(storePath, snapshotsPath, documented) {
-  const adopt = [];
+async function syncSnapshots(storePath, snapshotsPath, documented, names = null) {
+  const pinned = [];
   for (const [key, section] of documented) {
     const [group, pkg] = key.split("/");
-    if (await fs.stat(path.join(snapshotsPath, group, pkg, "api.json")).catch(() => null)) continue;
-    const head = await apiHeadOf(path.join(storePath, group, pkg, "api.json"));
-    if (head?.version && head.version === section.indexedFrom) adopt.push({ group, package: pkg });
+    if (names && !names.includes(pkg)) continue;
+    if (!section.indexedFrom) continue;
+    // Held whole, of the pinned version, and indexed by this checkout's scanner.
+    if ((await storeStatus(storePath, group, pkg, section.indexedFrom)) === null) pinned.push({ group, package: pkg });
   }
-  return copyToSnapshots(storePath, snapshotsPath, adopt);
+  return copyToSnapshots(storePath, snapshotsPath, pinned);
 }
 
 /**
@@ -260,20 +302,33 @@ async function writeToStore(storePath, group, symbol, rawFiles, apiJson) {
   const sourcesDir = path.join(pkgDir, "sources");
   await fs.rm(sourcesDir, { recursive: true, force: true });
   await fs.rm(path.join(pkgDir, SETTINGS_FILE), { force: true });
+  for (const [rel, content] of keptFiles(rawFiles)) {
+    const dest =
+      rel === SETTINGS_FILE ? path.join(pkgDir, SETTINGS_FILE) : path.join(sourcesDir, rel.slice("Sources/".length));
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.writeFile(dest, content);
+  }
+  await writeIndex(pkgDir, apiJson);
+}
+
+/**
+ * The files of a package the store keeps, as a Map from the path `readStoredFiles`
+ * gives each (`Sources/<rel>`, and `Settings`) to its content: the Settings file
+ * and the sources, `Sources/` added to a source outside that folder. So the files
+ * of a package and those the store holds of it compare path for path.
+ */
+function keptFiles(rawFiles) {
+  const kept = new Map();
   for (const f of rawFiles) {
     if (f.relativePath.toLowerCase() === SETTINGS_FILE.toLowerCase()) {
-      await fs.mkdir(pkgDir, { recursive: true });
-      await fs.writeFile(path.join(pkgDir, SETTINGS_FILE), f.content);
+      kept.set(SETTINGS_FILE, f.content);
       continue;
     }
     if (!SOURCE_EXTS.has(path.extname(f.relativePath).toLowerCase())) continue;
-    let rel = f.relativePath;
-    if (rel.startsWith("Sources/")) rel = rel.slice("Sources/".length);
-    const dest = path.join(sourcesDir, rel);
-    await fs.mkdir(path.dirname(dest), { recursive: true });
-    await fs.writeFile(dest, f.content);
+    const rel = f.relativePath.startsWith("Sources/") ? f.relativePath.slice("Sources/".length) : f.relativePath;
+    kept.set(`Sources/${rel}`, f.content);
   }
-  await writeIndex(pkgDir, apiJson);
+  return kept;
 }
 
 async function writeIndex(pkgDir, apiJson) {
@@ -327,16 +382,20 @@ async function reindexStored(storePath, group, symbol) {
 
 export {
   STORE_PROBLEMS,
-  adoptSnapshots,
   apiHeadOf,
+  cacheDownload,
+  cachedDownload,
   commitStore,
   copyToSnapshots,
   ensureStore,
+  keptFiles,
   manifestPath,
   recordedFingerprint,
   reindexStored,
   readStoredFiles,
   storedPackages,
+  storedVersion,
   storeStatus,
+  syncSnapshots,
   writeToStore,
 };

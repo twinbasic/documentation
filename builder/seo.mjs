@@ -91,8 +91,8 @@ const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
 /**
  * A page's summary, as plain text, from its renderedContent: the first sentence of its
- * introduction, which the documentation's own rule puts directly under the heading (WIP.md,
- * Plain-English prose); or "" when it has none. Its `<meta name="description">` (template.mjs)
+ * introduction, which the documentation's own rule puts directly under the heading
+ * (WIP.Authoring.md, Plain-English prose); or "" when it has none. Its `<meta name="description">` (template.mjs)
  * and its note in /llms.txt (llms-txt.mjs).
  */
 export function pageSummary(page) {
@@ -108,7 +108,7 @@ export function pageSummary(page) {
  * Three kinds of paragraph are passed over, being no summary of the page: one inside a callout
  * (`> [!NOTE]`), whose first paragraph is its title, "Note"; one that opens with a field, a
  * bold label ending in a colon, as the `**Author:** ... **Version:** ...` line that opens a
- * contributed package's landing page (WIP.md) does; and one that only repeats `title`, the
+ * contributed package's landing page (WIP.Contributed.md) does; and one that only repeats `title`, the
  * page's, as a subtitle in bold under a numbered heading does (a challenge's).
  */
 export function firstSentence(html, title = "") {

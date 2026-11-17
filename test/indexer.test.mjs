@@ -24,7 +24,7 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { importProject } from "../scripts/impexp.mjs";
 import { API_FORMAT, buildApi, qualified, renderApi } from "../indexer/lib/api-model.mjs";
-import { compareInstallManifest } from "../indexer/lib/builtin-sync.mjs";
+import { compareInstallManifest, installOfBeta } from "../indexer/lib/builtin-sync.mjs";
 import { auditCoverage, diffApi, flattenSymbols } from "../indexer/lib/differ.mjs";
 import {
   documentedPackages,
@@ -47,17 +47,23 @@ import {
 import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib/fingerprint.mjs";
 import { derivePackageApi } from "../indexer/lib/package-api.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
+import { heldBack, pinnedBuild, pinsOf, planBuiltin, planContributed, wantedVersion } from "../indexer/lib/pins.mjs";
 import {
-  adoptSnapshots,
   apiHeadOf,
+  cacheDownload,
+  cachedDownload,
   copyToSnapshots,
+  keptFiles,
   manifestPath,
   readStoredFiles,
   reindexStored,
   storedPackages,
+  storedVersion,
   storeStatus,
+  syncSnapshots,
   writeToStore,
 } from "../indexer/lib/store.mjs";
+import { compareBuilds, describeComparison, queryContributed } from "../indexer/lib/query.mjs";
 import { latestVersion, versionString } from "../indexer/lib/sync.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "../indexer/lib/vb6-preprocess.mjs";
 
@@ -257,8 +263,8 @@ describe("buildApi on a hand-made package", () => {
 
   test("names the package, its project and its version, in the format the README describes", () => {
     const { api, json, stats } = build();
-    assert.equal(API_FORMAT, 3);
-    assert.equal(api.format, 3);
+    assert.equal(API_FORMAT, 4);
+    assert.equal(api.format, 4);
     assert.equal(api.package, "DemoPkg");
     assert.equal(api.project, "Demo");
     assert.equal(api.version, "1.2");
@@ -690,6 +696,9 @@ describe("the alternatives of an #If are one member", () => {
         kind: "function",
         vis: "public",
         declare: true,
+        lib: "user32",
+        entry: "Win",
+        params: [],
         description: "Window handle",
         signatures: [
           {
@@ -704,7 +713,7 @@ describe("the alternatives of an #If are one member", () => {
     assert.equal(json.split("\n").filter((l) => l.includes('"signatures"')).length, 1);
   });
 
-  test("a declaration under a condition alone, overloads under one condition, and the same name in two #If blocks stay as they are", () => {
+  test("a declaration under a condition alone, overloads under one condition, and the same name in two #If blocks stay as they are, each with its condition", () => {
     const { api } = build(
       "Module M",
       "#If A Then",
@@ -720,14 +729,22 @@ describe("the alternatives of an #If are one member", () => {
       "#End If",
       "End Module",
     );
-    assert.deepEqual(members(api, "One"), [{ name: "One", kind: "sub", vis: "public", signature: "Public Sub One()" }]);
+    assert.deepEqual(members(api, "One"), [
+      { name: "One", kind: "sub", vis: "public", cond: "A", signature: "Public Sub One()" },
+    ]);
     assert.deepEqual(
-      members(api, "Two").map((x) => x.signature),
-      ["Public Sub Two()", "Public Sub Two(a)"],
+      members(api, "Two").map((x) => [x.cond, x.signature]),
+      [
+        ["A", "Public Sub Two()"],
+        ["A", "Public Sub Two(a)"],
+      ],
     );
     assert.deepEqual(
-      members(api, "Same").map((x) => x.signature),
-      ["Public Sub Same()", "Public Sub Same(a)"],
+      members(api, "Same").map((x) => [x.cond, x.signature]),
+      [
+        ["B", "Public Sub Same()"],
+        ["C", "Public Sub Same(a)"],
+      ],
     );
     assert.ok([...members(api, "Two"), ...members(api, "Same")].every((x) => x.signatures === undefined));
   });
@@ -774,6 +791,131 @@ describe("the alternatives of an #If are one member", () => {
     );
     assert.equal(members(api, "F").length, 2);
     assert.ok(members(api, "F").every((x) => x.signatures === undefined));
+    assert.deepEqual(
+      members(api, "F").map((x) => [x.cond, x.declare]),
+      [
+        ["A", true],
+        ["Not (A)", undefined],
+      ],
+    );
+  });
+
+  test("a Declare records what it binds, and the alternatives of an #If write once what they have alike", () => {
+    const { api, json } = build(
+      "Module M",
+      '    Public Declare PtrSafe Function Plain Lib "kernel32" (ByVal a As Long, [TypeHint(X)] b As Any) As Long',
+      '    Public DeclareWide PtrSafe Function W CDecl Lib "msvcrt" Alias "wcslen" (ByVal s As String) As LongPtr',
+      "#If Win64 Then",
+      '    Public Declare PtrSafe Function Pop Lib "ntoskrnl.exe" Alias "ExpInterlockedPopEntrySList" (ByVal h As LongPtr) As LongPtr',
+      "#Else",
+      '    Public Declare PtrSafe Function Pop FastCall Lib "ntoskrnl.exe" (ByVal h As LongPtr) As LongPtr',
+      "#End If",
+      "End Module",
+    );
+    const { signature: _1, ...plain } = members(api, "Plain")[0];
+    assert.deepEqual(plain, {
+      name: "Plain",
+      kind: "function",
+      vis: "public",
+      declare: true,
+      lib: "kernel32",
+      entry: "Plain",
+      params: ["ByVal a As Long", "b As Any"],
+      returnType: "Long",
+    });
+    const { signature: _2, ...wide } = members(api, "W")[0];
+    assert.deepEqual(wide, {
+      name: "W",
+      kind: "function",
+      vis: "public",
+      declare: true,
+      lib: "msvcrt",
+      entry: "wcslen",
+      cdecl: true,
+      wide: true,
+      params: ["ByVal s As String"],
+      returnType: "LongPtr",
+    });
+    const [pop] = members(api, "Pop");
+    assert.deepEqual(
+      [pop.lib, pop.params, pop.entry, pop.fastcall],
+      ["ntoskrnl.exe", ["ByVal h As LongPtr"], undefined, undefined],
+    );
+    assert.deepEqual(
+      pop.signatures.map(({ cond, entry, fastcall }) => ({ cond, entry, fastcall })),
+      [
+        { cond: "Win64", entry: "ExpInterlockedPopEntrySList", fastcall: undefined },
+        { cond: "Not (Win64)", entry: "Pop", fastcall: true },
+      ],
+    );
+    assert.deepEqual(api.problems, []);
+    assert.equal(json.split("\n").filter((l) => l.includes('"signatures"')).length, 1);
+  });
+
+  test("a Declare whose library is a constant names the constant", () => {
+    const { api } = build(
+      "Module M",
+      '    Private Const DETOURS = "SlimDetours.dll"',
+      "    Public Declare PtrSafe Function Hook Lib DETOURS (ByVal e As Long) As Long",
+      "End Module",
+    );
+    const [hook] = members(api, "Hook");
+    assert.deepEqual([hook.lib, hook.libConst, hook.entry], [undefined, "DETOURS", "Hook"]);
+    assert.deepEqual(api.problems, []);
+  });
+
+  test("a Declare whose library cannot be read is listed in problems", () => {
+    const { api } = build(
+      "Module M",
+      "    Public Declare PtrSafe Function Odd Lib (ByVal a As Long) As Long",
+      "End Module",
+    );
+    assert.equal(members(api, "Odd")[0].declare, true);
+    assert.equal(members(api, "Odd")[0].lib, undefined);
+    assert.deepEqual(
+      api.problems.map((p) => p.why),
+      ["a Declare whose library is not read: Odd"],
+    );
+  });
+
+  test("a field and an enumeration value keep their place, with the condition each is declared under", () => {
+    const { api } = build(
+      "Module M",
+      "    Public Type T",
+      "        A As Long",
+      "#If Win64 Then",
+      "        Pad As Long",
+      "#End If",
+      "        B As Long",
+      "    End Type",
+      "    Public Enum E",
+      "        One",
+      "#If X Then",
+      "        Two",
+      "#Else",
+      "        Deux",
+      "#End If",
+      "    End Enum",
+      "End Module",
+    );
+    const t = api.types.find((x) => x.name === "T");
+    assert.deepEqual(
+      t.fields.map((f) => [f.name, f.cond]),
+      [
+        ["A", undefined],
+        ["Pad", "Win64"],
+        ["B", undefined],
+      ],
+    );
+    const e = api.types.find((x) => x.name === "E");
+    assert.deepEqual(
+      e.values.map((v) => [v.name, v.cond]),
+      [
+        ["One", undefined],
+        ["Two", "X"],
+        ["Deux", "Not (X)"],
+      ],
+    );
   });
 
   test("a nested #If and an #ElseIf are alternatives of one block; the member is as visible as its most visible, and an item says when it is not", () => {
@@ -1135,6 +1277,16 @@ describe("a member holding the alternatives of an #If", () => {
       ["signature"],
       1,
     ]);
+  });
+
+  test("a member declared under an #If on its own has its condition in front, and a change of it modifies the symbol", () => {
+    const lone = (cond) => ({ ...m("Lone", "sub", "Public Sub Lone()"), ...(cond ? { cond } : {}) });
+    assert.equal(flattenSymbols(apiWith(lone("Win64")))[1].signature, "#If Win64 Then Public Sub Lone()");
+    const r = diffApi(apiWith(lone("Win64")), apiWith(lone(null)));
+    assert.deepEqual(
+      r.modified.map((x) => x.changes.join()),
+      ["signature"],
+    );
   });
 
   test("a plain declaration that gains an alternative under an #If is modified, not added or removed", () => {
@@ -1534,27 +1686,346 @@ describe("copyToSnapshots", () => {
   });
 });
 
-describe("adoptSnapshots", () => {
-  const store = mkdtempSync(path.join(tmp, "adopt-store-"));
-  const snapshots = mkdtempSync(path.join(tmp, "adopt-snapshots-"));
+describe("syncSnapshots", () => {
+  const store = mkdtempSync(path.join(tmp, "pin-store-"));
+  const snapshots = mkdtempSync(path.join(tmp, "pin-snapshots-"));
+  const snapshot = (group, name) => path.join(snapshots, group, name, "api.json");
+  const putSnapshot = (group, name, text) => {
+    mkdirSync(path.dirname(snapshot(group, name)), { recursive: true });
+    writeFileSync(snapshot(group, name), text);
+  };
   putPackage(store, "contributed", "New", { api: apiText("1.0.5.0") });
-  putPackage(store, "contributed", "Newer", { api: apiText("2.0.0.0") });
-  putPackage(store, "built-in", "Kept", { api: apiText("beta-x-1005") });
-  mkdirSync(path.join(snapshots, "built-in", "Kept"), { recursive: true });
-  writeFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), apiText("beta-x-0997"));
+  putPackage(store, "contributed", "Upgraded", { api: apiText("2.0.0.0") });
+  putPackage(store, "contributed", "Unpinned", { api: apiText("1.0.0.0") });
+  putPackage(store, "contributed", "Stale", { api: apiText("1.0.0.0"), fingerprint: "0".repeat(64) });
+  putPackage(store, "built-in", "Rescanned", { api: apiText("beta-x-1005", { problems: [] }) });
+  putPackage(store, "built-in", "Other", { api: apiText("beta-x-1005") });
+  putSnapshot("contributed", "Upgraded", apiText("1.0.0.0"));
+  putSnapshot("contributed", "Stale", apiText("1.0.0.0", { project: "Old" }));
+  // As a snapshot written by another version of the scanner looks: other bytes, the same version.
+  putSnapshot("built-in", "Rescanned", apiText("beta-x-1005", { project: "Old" }));
   const documented = new Map([
     ["contributed/New", { indexedFrom: "1.0.5.0" }],
-    ["contributed/Newer", { indexedFrom: "1.0.0.0" }],
+    ["contributed/Upgraded", { indexedFrom: "1.0.0.0" }],
+    ["contributed/Unpinned", { indexedFrom: null }],
+    ["contributed/Stale", { indexedFrom: "1.0.0.0" }],
     ["contributed/Unsynced", { indexedFrom: "1.0.0.0" }],
-    ["built-in/Kept", { indexedFrom: "beta-x-1005" }],
+    ["built-in/Rescanned", { indexedFrom: "beta-x-1005" }],
+    ["built-in/Other", { indexedFrom: "beta-x-1005" }],
   ]);
 
-  test("gives a documented package with no snapshot the store's, only at the version its section names", async () => {
-    assert.deepEqual(await adoptSnapshots(store, snapshots, documented), [{ group: "contributed", package: "New" }]);
-    assert.equal(readFileSync(path.join(snapshots, "contributed", "New", "api.json"), "utf-8"), apiText("1.0.5.0"));
-    assert.throws(() => readFileSync(path.join(snapshots, "contributed", "Newer", "api.json")), { code: "ENOENT" });
-    // A snapshot there is the baseline, whatever the store holds.
-    assert.equal(readFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), "utf-8"), apiText("beta-x-0997"));
+  test("a name limits it to that package", async () => {
+    assert.deepEqual(await syncSnapshots(store, snapshots, documented, ["Other"]), [
+      { group: "built-in", package: "Other" },
+    ]);
+    assert.throws(() => readFileSync(snapshot("contributed", "New")), { code: "ENOENT" });
+  });
+
+  test("writes the store's api.json of each package held at its pin, whether it had a snapshot or not", async () => {
+    assert.deepEqual(await syncSnapshots(store, snapshots, documented), [
+      { group: "contributed", package: "New" },
+      { group: "built-in", package: "Rescanned" },
+    ]);
+    assert.equal(readFileSync(snapshot("contributed", "New"), "utf-8"), apiText("1.0.5.0"));
+    assert.equal(readFileSync(snapshot("built-in", "Rescanned"), "utf-8"), apiText("beta-x-1005", { problems: [] }));
+  });
+
+  test("leaves a package past its pin, one with no pin and one indexed by another scanner as they are", () => {
+    assert.equal(readFileSync(snapshot("contributed", "Upgraded"), "utf-8"), apiText("1.0.0.0"));
+    assert.throws(() => readFileSync(snapshot("contributed", "Unpinned")), { code: "ENOENT" });
+    assert.equal(readFileSync(snapshot("contributed", "Stale"), "utf-8"), apiText("1.0.0.0", { project: "Old" }));
+  });
+
+  test("writes nothing the second time", async () => {
+    assert.deepEqual(await syncSnapshots(store, snapshots, documented), []);
+  });
+});
+
+describe("the downloads a store keeps", () => {
+  test("a package's .twinpack is kept by version, and one never downloaded is not there", async () => {
+    const store = mkdtempSync(path.join(tmp, "downloads-"));
+    assert.equal(await cachedDownload(store, "Pkg", "1.0.0.0"), null);
+    await cacheDownload(store, "Pkg", "1.0.0.0", Buffer.from("one"));
+    await cacheDownload(store, "Pkg", "1.1.0.0", Buffer.from("two"));
+    assert.equal((await cachedDownload(store, "Pkg", "1.0.0.0")).toString(), "one");
+    assert.equal((await cachedDownload(store, "Pkg", "1.1.0.0")).toString(), "two");
+    // Outside every group folder, so analyze never takes it for a package.
+    assert.deepEqual(await storedPackages(store, { documented: new Map(), all: true }), { list: [], skipped: 0 });
+  });
+
+  test("storedVersion is the version of the store's api.json, or null", async () => {
+    const store = mkdtempSync(path.join(tmp, "held-"));
+    putPackage(store, "contributed", "Pkg", { api: apiText("1.2.0.0") });
+    assert.equal(await storedVersion(store, "contributed", "Pkg"), "1.2.0.0");
+    assert.equal(await storedVersion(store, "contributed", "Missing"), null);
+  });
+});
+
+// ------------------------------------------------------- pinning
+
+describe("pinning a package at the version its section documents", () => {
+  const pins = pinsOf(
+    new Map([
+      ["contributed/Pinned", { indexedFrom: "1.0.0.0" }],
+      ["contributed/Gone", { indexedFrom: "3.0.0.0" }],
+      ["contributed/NoPin", { indexedFrom: null }],
+      ["default/VB", { indexedFrom: "beta-x-1034" }],
+      ["built-in/tbIDE", { indexedFrom: "beta-x-1042" }],
+      ["built-in/Dropped", { indexedFrom: "beta-x-1034" }],
+    ]),
+  );
+  const v = (s, symbol = "x") => {
+    const [versionMajor, versionMinor, versionRevision, versionBuild] = s.split(".").map(Number);
+    return { symbol, versionMajor, versionMinor, versionRevision, versionBuild };
+  };
+  const listed = (id, symbol, versions) => ({
+    projectId: id,
+    publisher: "someone",
+    versions: versions.map((s) => v(s, symbol)),
+  });
+  const listing = [
+    listed("{1}", "Pinned", ["1.1.0.0", "1.0.0.0", "0.9.0.0"]),
+    listed("{2}", "Free", ["2.0.0.0", "1.0.0.0"]),
+    listed("{3}", "Delisted", ["1.0.0.0"]),
+  ];
+  // Delisted's pin is a version TWINSERV no longer lists.
+  const delistedPins = new Map([...pins, ["contributed/Delisted", "0.5.0.0"]]);
+  const wants = (items) => Object.fromEntries(items.map((i) => [i.symbol, i.want]));
+
+  test("the pins are the indexed_from of each section that has one", () => {
+    assert.deepEqual(
+      [...pins],
+      [
+        ["contributed/Pinned", "1.0.0.0"],
+        ["contributed/Gone", "3.0.0.0"],
+        ["default/VB", "beta-x-1034"],
+        ["built-in/tbIDE", "beta-x-1042"],
+        ["built-in/Dropped", "beta-x-1034"],
+      ],
+    );
+  });
+
+  test("a pinned package is wanted at its pin, the others at the newest, and --upgrade wants the newest of each", () => {
+    assert.equal(wantedVersion({ pin: "1.0", newest: "1.1", upgrade: false }), "1.0");
+    assert.equal(wantedVersion({ pin: "1.0", newest: "1.1", upgrade: true }), "1.1");
+    assert.equal(wantedVersion({ pin: null, newest: "1.1", upgrade: false }), "1.1");
+    const { items } = planContributed(listing, { pins });
+    assert.deepEqual(wants(items), { Pinned: "1.0.0.0", Free: "2.0.0.0", Delisted: "1.0.0.0" });
+    assert.deepEqual(wants(planContributed(listing, { pins, upgrade: true }).items), {
+      Pinned: "1.1.0.0",
+      Free: "2.0.0.0",
+      Delisted: "1.0.0.0",
+    });
+  });
+
+  test("each item carries TWINSERV's record of the wanted version, and null when TWINSERV no longer lists it", () => {
+    const { items } = planContributed(listing, { pins: delistedPins });
+    const pinned = items.find((i) => i.symbol === "Pinned");
+    assert.deepEqual(
+      { id: pinned.id, newest: pinned.newest, pin: pinned.pin, publisher: pinned.publisher },
+      { id: "{1}", newest: "1.1.0.0", pin: "1.0.0.0", publisher: "someone" },
+    );
+    assert.equal(versionString(pinned.version), "1.0.0.0");
+    assert.equal(items.find((i) => i.symbol === "Delisted").version, null);
+  });
+
+  test("a pinned package TWINSERV does not list at all is still wanted, at its pin, from the store", () => {
+    assert.deepEqual(planContributed(listing, { pins }).unlisted, [
+      { symbol: "Gone", pin: "3.0.0.0", want: "3.0.0.0" },
+    ]);
+    assert.deepEqual(planContributed(listing, { pins, filter: ["Pinned"] }).unlisted, []);
+  });
+
+  test("--package limits the plan to the packages it names", () => {
+    const { items } = planContributed(listing, { pins, filter: ["Free"], upgrade: true });
+    assert.deepEqual(wants(items), { Free: "2.0.0.0" });
+  });
+
+  test("a built-in package is wanted at its pin's build, and a documented one the newest build dropped too", () => {
+    const groupOf = (s) => (s === "VB" ? "default" : "built-in");
+    const items = planBuiltin(["VB", "tbIDE", "cefPackage49"], { newestTag: "beta-x-1042", groupOf, pins });
+    assert.deepEqual(
+      items.map(({ group, symbol, newest, pin, want }) => [group, symbol, newest, pin, want]),
+      [
+        ["default", "VB", "beta-x-1042", "beta-x-1034", "beta-x-1034"],
+        ["built-in", "tbIDE", "beta-x-1042", "beta-x-1042", "beta-x-1042"],
+        ["built-in", "cefPackage49", "beta-x-1042", null, "beta-x-1042"],
+        ["built-in", "Dropped", null, "beta-x-1034", "beta-x-1034"],
+      ],
+    );
+    const upgraded = planBuiltin(["VB"], { newestTag: "beta-x-1042", groupOf, pins, filter: ["VB"], upgrade: true });
+    assert.deepEqual(wants(upgraded), { VB: "beta-x-1042" });
+  });
+
+  test("heldBack lists the packages kept at a pin while a newer version exists", () => {
+    const groupOf = (s) => (s === "VB" ? "default" : "built-in");
+    const items = [
+      ...planContributed(listing, { pins }).items,
+      ...planBuiltin(["VB", "tbIDE"], { newestTag: "beta-x-1042", groupOf, pins }),
+    ];
+    assert.deepEqual(heldBack(items), [
+      { symbol: "Pinned", pin: "1.0.0.0", newest: "1.1.0.0" },
+      { symbol: "VB", pin: "beta-x-1034", newest: "beta-x-1042" },
+    ]);
+    assert.deepEqual(heldBack(planContributed(listing, { pins, upgrade: true }).items), []);
+  });
+
+  test("pinnedBuild is the one build the built-in and default sections are pinned at, and refuses two", () => {
+    assert.equal(pinnedBuild(new Map([["contributed/X", "1.0.0.0"]])), null);
+    assert.equal(
+      pinnedBuild(
+        new Map([
+          ["default/VB", "beta-x-1042"],
+          ["built-in/tbIDE", "beta-x-1042"],
+          ["contributed/X", "1.0.0.0"],
+        ]),
+      ),
+      "beta-x-1042",
+    );
+    assert.throws(() => pinnedBuild(pins), /more than one build: beta-x-1034 \(VB, Dropped\); beta-x-1042 \(tbIDE\)/);
+  });
+
+  test("installOfBeta takes the first install of that BETA by its build.js, an exe or a folder", () => {
+    const desktop = mkdtempSync(path.join(tmp, "installs-"));
+    const install = (folder, beta) => {
+      const root = path.join(desktop, folder);
+      mkdirSync(path.join(root, "packages"), { recursive: true });
+      mkdirSync(path.join(root, "ide"), { recursive: true });
+      writeFileSync(path.join(root, "ide", "build.js"), `var tbVersionInfo = 'twinBASIC IDE BETA ${beta}';`);
+      return root;
+    };
+    const misnamed = install("twinBASIC_IDE_BETA_1034", "1042");
+    const real = install("unpacked", "1034");
+    const bare = path.join(desktop, "twinBASIC_IDE_BETA_1010");
+    mkdirSync(bare);
+    const exes = [path.join(misnamed, "twinBASIC.exe"), bare, path.join(real, "twinBASIC.exe")];
+    assert.equal(installOfBeta("1034", exes), real);
+    assert.equal(installOfBeta(1042, exes), misnamed);
+    assert.equal(installOfBeta("1010", exes), null);
+  });
+});
+
+// ------------------------------------------------------- sync --query
+
+describe("what sync --query lists", () => {
+  const version = (s, symbol, publishedDate) => {
+    const [versionMajor, versionMinor, versionRevision, versionBuild] = s.split(".");
+    return { symbol, versionMajor, versionMinor, versionRevision, versionBuild, publishedDate };
+  };
+  const listed = (id, symbol, versions) => ({
+    projectId: id,
+    publisher: "someone",
+    versions: versions.map((s, i) => version(s, symbol, i === 0 ? "07-NOV-2026" : "01-JAN-2026")),
+  });
+  const listing = [
+    listed("{1}", "Pinned", ["1.1.0.0", "1.0.0.0"]),
+    listed("{2}", "Current", ["2.0.0.0"]),
+    listed("{3}", "Stored", ["3.1.0.0", "3.0.0.0"]),
+    listed("{4}", "Unseen", ["0.1.0.0"]),
+  ];
+  const pins = new Map([
+    ["contributed/Pinned", "1.0.0.0"],
+    ["contributed/Current", "2.0.0.0"],
+    ["contributed/Dropped", "4.0.0.0"],
+    ["default/VB", "beta-x-1042"],
+  ]);
+  const stored = new Map([
+    ["Pinned", "1.1.0.0"],
+    ["Stored", "3.0.0.0"],
+    ["Lamps", "1.0.0.0"],
+  ]);
+  const short = (rows) => rows.map((r) => [r.symbol, r.state, r.base, r.newest, r.documented]);
+
+  test("a contributed package is compared with its pin, else with the store's version, and is new with neither", () => {
+    const rows = queryContributed(listing, { pins, stored });
+    assert.deepEqual(short(rows), [
+      ["Current", "same", "2.0.0.0", "2.0.0.0", true],
+      ["Dropped", "gone", "4.0.0.0", null, true],
+      ["Lamps", "gone", "1.0.0.0", null, false],
+      // The pin wins over a store moved past it by --upgrade.
+      ["Pinned", "newer", "1.0.0.0", "1.1.0.0", true],
+      ["Stored", "newer", "3.0.0.0", "3.1.0.0", false],
+      ["Unseen", "new", null, "0.1.0.0", false],
+    ]);
+    assert.equal(rows.find((r) => r.symbol === "Pinned").published, "07-NOV-2026");
+  });
+
+  test("--package limits the rows, listed or gone", () => {
+    assert.deepEqual(
+      short(queryContributed(listing, { pins, stored, filter: ["Stored", "Dropped"] })).map((r) => r[0]),
+      ["Dropped", "Stored"],
+    );
+  });
+
+  test("a built-in package is compared by its files and its public API", () => {
+    const sources = (text) =>
+      keptFiles([
+        file("Settings", '{"project.name": "P"}'),
+        file("Sources/M.twin", text),
+        file("Resources/logo.png", "not kept"),
+      ]);
+    const api = (text) =>
+      JSON.parse(buildApi({ symbol: "P", version: "v", files: [file("Sources/M.twin", text)] }).json);
+    const one = lines("Public Module M", "    Public Sub A(): End Sub", "End Module");
+    const two = lines(
+      "Public Module M",
+      "    Public Sub A(ByVal x As Long): End Sub",
+      "    Public Sub B(): End Sub",
+      "End Module",
+    );
+    const comment = `${one}\n' a comment\n`;
+    const private_ = lines(
+      "Public Module M",
+      "    Public Sub A(): End Sub",
+      "    Private Sub Z(): End Sub",
+      "End Module",
+    );
+    const compare = (a, b) =>
+      compareBuilds({ baselineFiles: sources(a), newestFiles: sources(b), baselineApi: api(a), newestApi: api(b) });
+
+    assert.deepEqual(compare(one, one), { sources: "same", api: { added: 0, removed: 0, modified: 0 } });
+    assert.equal(describeComparison(compare(one, one)), "same sources");
+    assert.equal(describeComparison(compare(one, comment)), "sources changed, public API the same");
+    assert.equal(describeComparison(compare(one, private_)), "sources changed, public API the same");
+    assert.deepEqual(compare(one, two).api, { added: 1, removed: 0, modified: 1 });
+    assert.equal(describeComparison(compare(one, two)), "public API changed: 1 added, 1 changed");
+    assert.equal(describeComparison(compare(two, one)), "public API changed: 1 removed, 1 changed");
+  });
+
+  test("what cannot be compared is said so: no stored sources, or neither sources nor a snapshot", () => {
+    const api = JSON.parse(buildApi({ symbol: "P", version: "v", files: [] }).json);
+    const unknown = compareBuilds({ baselineFiles: null, newestFiles: new Map(), baselineApi: api, newestApi: api });
+    assert.deepEqual(unknown, { sources: null, api: { added: 0, removed: 0, modified: 0 } });
+    assert.equal(describeComparison(unknown), "public API the same (no stored sources to compare)");
+    assert.equal(
+      describeComparison(
+        compareBuilds({ baselineFiles: null, newestFiles: new Map(), baselineApi: null, newestApi: api }),
+      ),
+      "cannot be compared: no stored sources or snapshot",
+    );
+  });
+
+  test("keptFiles keeps what the store keeps, under the paths readStoredFiles gives", async () => {
+    const files = [
+      file("Settings", "{}"),
+      file("Sources/Main.twin", "a"),
+      file("Sources/Sub/Old.bas", "b"),
+      file("Other.twin", "c"),
+      file("Sources/Form1.tbform", "{}"),
+    ];
+    assert.deepEqual([...keptFiles(files).keys()].sort(), [
+      "Settings",
+      "Sources/Main.twin",
+      "Sources/Other.twin",
+      "Sources/Sub/Old.bas",
+    ]);
+    const store = mkdtempSync(path.join(tmp, "kept-"));
+    await writeToStore(store, "built-in", "P", files, "{}");
+    const back = keptFiles(await readStoredFiles(path.join(store, "built-in", "P")));
+    assert.deepEqual(
+      [...back].map(([k, v]) => [k, v.toString()]).sort(),
+      [...keptFiles(files)].map(([k, v]) => [k, v.toString()]).sort(),
+    );
   });
 });
 

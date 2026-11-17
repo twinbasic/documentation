@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "TBMANLIB_Xml",
   "project": "TBMANLIB_Xml",
   "version": "1.0.0.1",
@@ -255,10 +255,10 @@
         {"name":"ERR_INVALID_OPERATION","kind":"const","vis":"public","signature":"Public Const ERR_INVALID_OPERATION As Long = ERR_BASE + 6"},
         {"name":"ERR_INVALID_XML","kind":"const","vis":"public","signature":"Public Const ERR_INVALID_XML As Long = ERR_BASE + 1"},
         {"name":"ERR_NODE_NOT_FOUND","kind":"const","vis":"public","signature":"Public Const ERR_NODE_NOT_FOUND As Long = ERR_BASE + 3"},
-        {"name":"MultiByteToWideChar","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function MultiByteToWideChar Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long","returnType":"Long"},
+        {"name":"MultiByteToWideChar","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function MultiByteToWideChar Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long","lib":"kernel32","entry":"MultiByteToWideChar","params":["ByVal CodePage As Long","ByVal dwFlags As Long","ByVal lpMultiByteStr As LongPtr","ByVal cbMultiByte As Long","ByVal lpWideCharStr As LongPtr","ByVal cchWideChar As Long"],"returnType":"Long"},
         {"name":"StringToUTF8Bytes","kind":"function","vis":"public","signature":"Public Function StringToUTF8Bytes(ByVal str As String) As Byte()","returnType":"Byte()"},
         {"name":"UTF8BytesToString","kind":"function","vis":"public","signature":"Public Function UTF8BytesToString(ByRef utf8Bytes() As Byte) As String","returnType":"String"},
-        {"name":"WideCharToMultiByte","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function WideCharToMultiByte Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long","returnType":"Long"}
+        {"name":"WideCharToMultiByte","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function WideCharToMultiByte Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long","lib":"kernel32","entry":"WideCharToMultiByte","params":["ByVal CodePage As Long","ByVal dwFlags As Long","ByVal lpWideCharStr As LongPtr","ByVal cchWideChar As Long","ByVal lpMultiByteStr As LongPtr","ByVal cbMultiByte As Long","ByVal lpDefaultChar As LongPtr","ByVal lpUsedDefaultChar As LongPtr"],"returnType":"Long"}
       ]
     },
     {

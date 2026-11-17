@@ -39,12 +39,14 @@ const isReachable = (vis) => vis === "public" || vis === "protected";
  * The declarations a member stands for: itself, or for a member that holds the
  * alternatives of an #If (`signatures`), one for each, as if it were a member of
  * its own. The condition goes in front of the signature, as `#If Win64 Then ...`,
- * so that a change of condition is a change of signature.
+ * so that a change of condition is a change of signature; so does the condition
+ * of a member declared under an #If on its own.
  */
+const conditioned = (d) => (d.cond ? `#If ${d.cond} Then ${d.signature}` : d.signature);
 const declarationsOf = (m) =>
   m.signatures
-    ? m.signatures.map((s) => ({ ...m, ...s, signature: s.cond ? `#If ${s.cond} Then ${s.signature}` : s.signature }))
-    : [m];
+    ? m.signatures.map((s) => ({ ...m, ...s, signature: conditioned(s) }))
+    : [{ ...m, signature: conditioned(m) }];
 
 /**
  * Every symbol of an api.json, in the order the file lists them:

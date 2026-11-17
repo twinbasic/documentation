@@ -29,7 +29,8 @@
 //   * the project does not carry its own copy of Expect.twin.
 // A section listed in PENDING has no test project yet and is not checked; one listed there that
 // has one, or one not listed that has none, fails the gate. A package joins it only when the newest
-// version of it does not compile on the newest BETA (WIP.md), and its compile/ folder then says so.
+// version of it does not compile on the newest BETA (WIP.Contributed.md), and its compile/ folder
+// then says so.
 //
 // Probes of the gate's own reading (markers, RunAll, expect.json, verdicts) run first, on inputs
 // built here, so the gate means the same against a tree with no test project at all.

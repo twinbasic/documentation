@@ -675,11 +675,11 @@ The rule applies to every tool under `builder/`, `scripts/`, `book/`, `eval/` an
 - **The wrapper** it belongs in (`check.bat` or `test.bat`), at the position its assumptions need, with a comment saying what the gate protects against. Each step is followed by `if errorlevel 1 goto :fail`.
 - **`.github/actions/run-gates/action.yml`**, the one list of gates both CI workflows run, so a gate goes into CI once. Give it a step named after the gate, with the same arguments and in the same order as the wrapper.
 - **[Tools and Scripts](Tools)**: the gate's own entry under CLI tools (with its `{: #check-... }` anchor and its exit codes), a line in the wrapper's numbered list in [`check.bat`](Tools#checkbat) or [`test.bat`](Tools#testbat), the step count that section states, and the POSIX command block under the list.
-- **`WIP.md`**, the maintainers' file: the gate's row in its table of gates, and the wrapper's bullet under Build / preview.
+- **`WIP.Build.md`**, the maintainers' notes on the build: the gate's row in its gate roster.
 
 A gate left out of CI is listed with its reason in `check_ci_workflows.mjs`'s allowed differences: `check_tree_fresh.mjs` is left out because CI builds in the same job and cannot have a stale tree.
 
-Two checks enforce the registration; neither reads the POSIX command blocks or `WIP.md`, so take care with those. [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so a gate added without the entry fails `test.bat`. It also fails on a gate count stated in prose in `README.md` or any page under `docs/Documentation/`: do not write one. [`check_ci_workflows.mjs`](Tools-Toolchain-Tests#check-ci-workflows) checks that both workflows, read through the action, run every wrapper gate with the same arguments and in the same order, apart from its list of allowed differences.
+Two checks enforce the registration; neither reads the POSIX command blocks or the maintainers' files, so take care with those. [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so a gate added without the entry fails `test.bat`. It also fails on a gate count stated in prose in `README.md` or any page under `docs/Documentation/`: do not write one. [`check_ci_workflows.mjs`](Tools-Toolchain-Tests#check-ci-workflows) checks that both workflows, read through the action, run every wrapper gate with the same arguments and in the same order, apart from its list of allowed differences.
 
 ### It must be able to fail
 

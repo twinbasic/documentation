@@ -97,7 +97,7 @@ button.copy-code { display: none; }
    did not move -- by up to 15.6px, the worst misalignment of any
    diagram in the book, against 1.4px without it.  It is the same defect
    as letting Graphviz measure with the wrong font, arriving from the
-   stylesheet instead: see WIP.md, "Diagrams".
+   stylesheet instead: see WIP.Typography.md, "Diagrams".
 
    The `zoom` below is that lever, applied properly.  Graphviz authors labels
    at 12pt, and on the web that is exactly the 16px body size, so a diagram at

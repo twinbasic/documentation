@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "tsJson",
   "project": "tsJson",
   "version": "1.0.15.0",
@@ -161,10 +161,10 @@
         {"name":"ERR_ENC","kind":"const","vis":"private","signature":"Private Const ERR_ENC As String = \"InvalidEncoding\""},
         {"name":"EncodeUtf8","kind":"function","vis":"public","signature":"Public Function EncodeUtf8(ByVal text As String, ByVal includesBom As Boolean) As Byte()","returnType":"Byte()","description":"Encodes `text` as UTF-8, optionally with a BOM."},
         {"name":"MB_ERR_INVALID_CHARS","kind":"const","vis":"private","signature":"Private Const MB_ERR_INVALID_CHARS As Long = 8"},
-        {"name":"MultiByteToWideChar","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function MultiByteToWideChar Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long","returnType":"Long"},
+        {"name":"MultiByteToWideChar","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function MultiByteToWideChar Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long","lib":"kernel32","entry":"MultiByteToWideChar","params":["ByVal CodePage As Long","ByVal dwFlags As Long","ByVal lpMultiByteStr As LongPtr","ByVal cbMultiByte As Long","ByVal lpWideCharStr As LongPtr","ByVal cchWideChar As Long"],"returnType":"Long"},
         {"name":"Utf8Length","kind":"function","vis":"public","signature":"Public Function Utf8Length(ByVal text As String) As Long","returnType":"Long"},
         {"name":"WC_ERR_INVALID_CHARS","kind":"const","vis":"private","signature":"Private Const WC_ERR_INVALID_CHARS As Long = &H80&"},
-        {"name":"WideCharToMultiByte","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function WideCharToMultiByte Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long","returnType":"Long"}
+        {"name":"WideCharToMultiByte","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function WideCharToMultiByte Lib \"kernel32\" ( ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long","lib":"kernel32","entry":"WideCharToMultiByte","params":["ByVal CodePage As Long","ByVal dwFlags As Long","ByVal lpWideCharStr As LongPtr","ByVal cchWideChar As Long","ByVal lpMultiByteStr As LongPtr","ByVal cbMultiByte As Long","ByVal lpDefaultChar As LongPtr","ByVal lpUsedDefaultChar As LongPtr"],"returnType":"Long"}
       ]
     },
     {
@@ -348,7 +348,7 @@
         {"name":"ParseDate","kind":"function","vis":"public","signature":"Public Function ParseDate(ByVal text As String) As Date","returnType":"Date","description":"Parses ISO-8601. Missing zone is local; Z or offset is converted to local `Date`."},
         {"name":"ParseDigits","kind":"function","vis":"private","signature":"Private Function ParseDigits(ByVal text As String, ByVal startPos As Long, ByVal length As Long, ByRef value As Long) As Boolean","returnType":"Boolean"},
         {"name":"SystemTimeToDate","kind":"function","vis":"private","signature":"Private Function SystemTimeToDate(ByRef st As SYSTEMTIME) As Date","returnType":"Date"},
-        {"name":"SystemTimeToTzSpecificLocalTime","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SystemTimeToTzSpecificLocalTime Lib \"kernel32\" ( ByVal lpTimeZoneInformation As LongPtr, ByRef lpUniversalTime As SYSTEMTIME, ByRef lpLocalTime As SYSTEMTIME) As Long","returnType":"Long"},
+        {"name":"SystemTimeToTzSpecificLocalTime","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SystemTimeToTzSpecificLocalTime Lib \"kernel32\" ( ByVal lpTimeZoneInformation As LongPtr, ByRef lpUniversalTime As SYSTEMTIME, ByRef lpLocalTime As SYSTEMTIME) As Long","lib":"kernel32","entry":"SystemTimeToTzSpecificLocalTime","params":["ByVal lpTimeZoneInformation As LongPtr","ByRef lpUniversalTime As SYSTEMTIME","ByRef lpLocalTime As SYSTEMTIME"],"returnType":"Long"},
         {"name":"ToLocal","kind":"function","vis":"private","signature":"Private Function ToLocal(ByVal wall As Date, ByVal offsetMin As Long) As Date","returnType":"Date"},
         {"name":"mQuiet","kind":"field","vis":"private","signature":"Private mQuiet As Boolean"},
         {"name":"mQuietFail","kind":"field","vis":"private","signature":"Private mQuietFail As Boolean"}

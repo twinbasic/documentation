@@ -52,6 +52,21 @@ function installBeta(root) {
 }
 
 /**
+ * The folder of the first install among `exes` (each a `twinBASIC.exe`, or an
+ * install's folder) that is of BETA `beta` and holds its packages, or null. The
+ * BETA is read as `installBeta` reads it, so a folder named for one build and
+ * holding another is not taken for the first.
+ */
+function installOfBeta(beta, exes) {
+  for (const exe of exes) {
+    const root = /\.exe$/i.test(exe) ? path.dirname(exe) : exe;
+    if (!existsSync(path.join(root, "packages"))) continue;
+    if (installBeta(root) === String(beta)) return root;
+  }
+  return null;
+}
+
+/**
  * Compares the latest GitHub release with the manifest of the last sync. The
  * result is the release (`tag`, `assetUrl`, `publishedAt`), the `manifest`, and
  * whether the packages need reading again: another tag, or a manifest written
@@ -136,6 +151,7 @@ export {
   compareInstallManifest,
   extractBuiltinPackages,
   installBeta,
+  installOfBeta,
   listInstalledPackages,
   readInstalledPackages,
   tagForBeta,

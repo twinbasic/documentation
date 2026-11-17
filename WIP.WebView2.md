@@ -2,7 +2,7 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-The user-facing surface is the `WebView2` control plus a small set of wrapper classes plus the `wv2…` enumerations.
+The public surface is the `WebView2` control, its wrapper classes and the `wv2…` enumerations.
 
 | Class                       | Role                                                                                                  |
 |-----------------------------|-------------------------------------------------------------------------------------------------------|
@@ -14,11 +14,11 @@ The user-facing surface is the `WebView2` control plus a small set of wrapper cl
 | `WebView2Response`          | response side of a `WebResourceRequested` event — StatusCode, ReasonPhrase, Headers, ContentBytes…   |
 | `WebView2ResponseHeaders`   | mutable response-header collection                                                                    |
 
-`WebView2EnvironmentOptions` is declared `Private Class`, **but** the `WebView2` control exposes it via `Public EnvironmentOptions As WebView2EnvironmentOptions = New WebView2EnvironmentOptions`. It is documented as a sub-page of the `WebView2` control class. Its `Public` fields (`BrowserExecutableFolder`, `UserDataFolder`, `AdditionalBrowserArguments`, `Language`, `TargetCompatibleBrowserVersion`, `AllowSingleSignOnUsingOSPrimaryAccount`, `ExclusiveUserDataFolderAccess`, `EnableTrackingPrevention`) are set by the user before or during the `Create` event.
+`WebView2EnvironmentOptions` is declared `Private Class`, **but** the control exposes it via `Public EnvironmentOptions As WebView2EnvironmentOptions = New WebView2EnvironmentOptions`, so it is documented as a sub-page of the `WebView2` control class. Its `Public` fields (`BrowserExecutableFolder`, `UserDataFolder`, `AdditionalBrowserArguments`, `Language`, `TargetCompatibleBrowserVersion`, `AllowSingleSignOnUsingOSPrimaryAccount`, `ExclusiveUserDataFolderAccess`, `EnableTrackingPrevention`) are set by the user before or during the `Create` event.
 
 The `WebView2` control class uses the **folder-style** layout (`WebView2/index.md`), because of its size and to host the `EnvironmentOptions` sub-page.
 
-Enumerations (ten: `wv2PermissionKind`, `wv2PermissionState`, `wv2ErrorStatus`, `wv2KeyEventKind`, `wv2WebResourceContext`, `wv2ProcessFailedKind`, `wv2ScriptDialogKind`, `wv2HostResourceAccessKind`, `wv2PrintOrientation`, `wv2DefaultDownloadCornerAlign`) live under `WebView2/Enumerations/`. `COREWEBVIEW2_PHYSICAL_KEY_STATUS` is a public `Type` (used in the `AcceleratorKeyPressed` event arguments) and lives under `WebView2/Types/`.
+Enumerations (`wv2PermissionKind`, `wv2PermissionState`, `wv2ErrorStatus`, `wv2KeyEventKind`, `wv2WebResourceContext`, `wv2ProcessFailedKind`, `wv2ScriptDialogKind`, `wv2HostResourceAccessKind`, `wv2PrintOrientation`, `wv2DefaultDownloadCornerAlign`) live under `WebView2/Enumerations/`. `COREWEBVIEW2_PHYSICAL_KEY_STATUS` is a public `Type` (used in the `AcceleratorKeyPressed` event arguments) and lives under `WebView2/Types/`.
 
 Site cross-references:
 

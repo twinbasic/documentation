@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "tsPwGen",
   "project": "tsPwGen",
   "version": "1.0.8.0",
@@ -59,7 +59,7 @@
       "description": "Internal CNG random source. Not part of the public API.",
       "members": [
         {"name":"BCRYPT_USE_SYSTEM_PREFERRED_RNG","kind":"const","vis":"private","signature":"Private Const BCRYPT_USE_SYSTEM_PREFERRED_RNG As Long = &H2"},
-        {"name":"BCryptGenRandom","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function BCryptGenRandom Lib \"bcrypt.dll\" ( ByVal hAlgorithm As LongPtr, ByVal pbBuffer As LongPtr, ByVal cbBuffer As Long, ByVal dwFlags As Long) As Long","returnType":"Long"},
+        {"name":"BCryptGenRandom","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function BCryptGenRandom Lib \"bcrypt.dll\" ( ByVal hAlgorithm As LongPtr, ByVal pbBuffer As LongPtr, ByVal cbBuffer As Long, ByVal dwFlags As Long) As Long","lib":"bcrypt.dll","entry":"BCryptGenRandom","params":["ByVal hAlgorithm As LongPtr","ByVal pbBuffer As LongPtr","ByVal cbBuffer As Long","ByVal dwFlags As Long"],"returnType":"Long"},
         {"name":"FillBytes","kind":"function","vis":"public","signature":"Public Function FillBytes(ByRef buffer() As Byte) As Boolean","returnType":"Boolean","description":"Fills `buffer` with CNG random bytes. True on success.\nAn empty or unallocated `buffer` succeeds trivially, without calling BCrypt."},
         {"name":"Rng","kind":"function","vis":"public","signature":"Public Function Rng() As PwGenRandom","returnType":"PwGenRandom","description":"Shared internal CNG random source."},
         {"name":"STATUS_SUCCESS","kind":"const","vis":"private","signature":"Private Const STATUS_SUCCESS As Long = 0"},

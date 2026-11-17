@@ -17,8 +17,10 @@ matter, are in [WIP.Indexer.md](../WIP.Indexer.md).
 - Git (used by the package store)
 - A twinBASIC install, for the built-in and default packages: the newest
   `twinBASIC_IDE_BETA_<n>` folder on the Desktop, or the one `--ide` or
-  `TB_IDE` names. `sync --release` needs none: it downloads the latest
-  GitHub release instead.
+  `TB_IDE` names, and the `twinBASIC_IDE_BETA_<n>` folder of the build the
+  sections are [pinned](#pinned-versions) at, when that is an older one (its
+  release is downloaded when there is none). `sync --release` needs no
+  install: it downloads GitHub releases instead.
 - Internet access for the community packages (TWINSERV), and for
   `--release` (GitHub Releases)
 
@@ -40,14 +42,17 @@ This does everything on the first run:
    (`core.longpaths` on): some source names are over a hundred characters, which
    Windows refuses from a deeply nested clone otherwise.
 2. Reads the built-in and default packages from the local twinBASIC
-   install, and downloads all packages from TWINSERV (community).
+   install, and downloads all packages from TWINSERV (community): each
+   package the reference documents at the version its section is
+   [pinned](#pinned-versions) at, the others at their newest.
 3. Reads the sources of every package with the repository's shared
    twinBASIC scanner, `scripts/lib/twin-api.mjs` (the one the symbol
    index and the attribute census use too).
 4. Generates an `api.json` snapshot per package ([described below](#apijson)).
 5. Commits sources + snapshots to the store.
-6. Copies the `api.json` of each package the reference documents to
-   `indexer/snapshots/` (committed to the docs repo; [see below](#documented-packages)).
+6. Copies the `api.json` of each package the reference documents, of its
+   pinned version, to `indexer/snapshots/` (committed to the docs repo;
+   [see below](#documented-packages)).
 7. Records what it read in `indexer/.packages/manifests/` (in the store,
    not committed).
 
@@ -72,8 +77,8 @@ exit codes below.
 | Code | Meaning |
 |------|---------|
 | 0 | The command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report; `draft` placed its pages; `derive` wrote the file, or with `--check` found it up to date. |
-| 1 | A package named by `--package` or `--packages` failed to sync, or does not exist, or is not in the report (`draft`); the others were done. With `derive --check`, the file is stale. |
-| 2 | A refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), no report to draft from (run `analyze` first), packages that declare different APIs under one project name (`derive`), or a crash. |
+| 1 | A package failed to sync (a pinned version that can no longer be had included), or one named by `--package` or `--packages` does not exist, or is not in the report (`draft`); the others were done. With `derive --check`, the file is stale. |
+| 2 | A refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), no report to draft from (run `analyze` first), packages that declare different APIs under one project name (`derive`), sections pinned at more than one build (`derive` without `--ide`), or a crash. |
 
 `analyze` exits 0 whenever it writes its report, whatever the report lists:
 the list of symbols to document is its product, not a failure.
@@ -81,7 +86,8 @@ the list of symbols to document is its product, not a failure.
 ### sync
 
 ```sh
-node indexer/twin-index.mjs sync [--package <name>] [--packages <a>,<b>] [--ide <path> | --release]
+node indexer/twin-index.mjs sync [--package <name>] [--packages <a>,<b>] [--upgrade] [--ide <path> | --release]
+node indexer/twin-index.mjs sync --query [--builtin] [--package <name>] [--packages <a>,<b>] [--ide <path> | --release]
 ```
 
 Reads packages, extracts sources, generates `api.json` snapshots.
@@ -91,12 +97,64 @@ Reads packages, extracts sources, generates `api.json` snapshots.
 | `--package VBA` | Sync only VBA. |
 | `--packages VBA,ArrayListLib` | Sync multiple specific packages. |
 | _(no flag)_ | Sync everything. |
-| `--ide <path>` | Read the built-in and default packages from this twinBASIC install, given as its folder or its `twinBASIC.exe`. Without it: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop, found as the compiler harness finds it. No path is built in. |
-| `--release` | Download the built-in and default packages from the latest GitHub release instead of reading an install. Excludes `--ide`. |
+| `--upgrade` | Move the packages named, or every package, to the newest version instead of keeping each documented one at its [pin](#pinned-versions). |
+| `--query` | Write nothing; list what has changed upstream ([below](#sync---query)). Excludes `--upgrade`. |
+| `--builtin` | With `--query` only: compare the built-in and default packages too. |
+| `--ide <path>` | The twinBASIC install of the newest build, given as its folder or its `twinBASIC.exe`. Without it: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop, found as the compiler harness finds it. No path is built in. |
+| `--release` | Download the built-in and default packages from GitHub releases instead of reading an install: the latest, and the release of each older build a package is pinned at. Excludes `--ide`. |
 
 `--package` takes one name and `--packages` a comma-separated list; the two
 cannot be given together. A name that matches no package is reported and
-makes the exit code 1. `--ide` and `--release` apply to `sync` alone.
+makes the exit code 1. `--upgrade` applies to `sync` alone.
+
+#### Pinned versions
+
+A package the reference documents is pinned at the version its section's
+`indexed_from:` names (`lib/pins.mjs`), and `sync` reads it at that version,
+however new the newest is: from the store when it holds that version, else
+from TWINSERV, which lists every version of a package, or from the install of
+that build (a `twinBASIC_IDE_BETA_<n>` folder on the Desktop, `$TB_IDE` or
+`--ide`), else from its GitHub release. It ends by listing the documented
+packages that have a newer version. `--upgrade` moves the packages it is given
+to the newest version instead, and a package no section documents always
+follows the newest. A package the store holds past its pin goes back to it at
+the next `sync` without `--upgrade`; `sync` lists such packages, and says so
+when it moves one. A pinned version that TWINSERV no longer lists and the store
+does not hold cannot be read, and makes the exit code 1.
+
+Each `.twinpack` downloaded from TWINSERV is kept in the store's `downloads/`
+folder, by package and version, so that moving a package between its pin and a
+newer version downloads nothing twice. The store's `.gitignore` keeps the
+folder out of its history.
+
+The pin is what makes indexing everything again safe: after a change to the
+scanner, a plain `sync` writes each snapshot from the version its section
+describes, and no section moves to a new version until someone moves it.
+
+#### sync --query
+
+Lists what has changed upstream, and writes nothing: it does not create or
+change the store, its manifests, its downloads or the snapshots
+(`lib/query.mjs` decides, `runQuery` in `twin-index.mjs` reads and prints).
+
+- **Contributed packages**, by version: each whose newest TWINSERV version is
+  not its baseline, the pin of a documented package or the store's version of
+  any other, with the date TWINSERV says it was published; each TWINSERV lists
+  that the store does not hold; and each the store holds or the reference
+  documents that TWINSERV no longer lists.
+- **Built-in and default packages**, with `--builtin`, or when `--package` or
+  `--packages` names one: they have no version of their own, so each package of
+  the newest build (the install `sync` would read, or the latest release with
+  `--release`) is compared with its baseline build by content. Its source files
+  are compared with those the store holds (`keptFiles`, the files the store
+  keeps, under the paths `readStoredFiles` gives), and its public API with the
+  one this scanner gives the stored sources, counted as `analyze` counts it:
+  symbols added, removed and changed. Without stored sources of the baseline,
+  the committed snapshot gives the API, and the sources are not compared. A
+  package of the same build as its baseline is not compared.
+
+A run that names only built-in or default packages does not contact TWINSERV.
+Its exit code is 0, or 1 when a name matches no package.
 
 The install is looked for before anything is fetched, and one that is not
 there is refused (exit 2) with the options that would fix it. A run that
@@ -110,7 +168,7 @@ same `api.json`, byte for byte.
 A package is read again, whatever its manifest says, when its store has no
 sources or no `api.json`, holds an `api.json` in an older format than the
 indexer writes (the `format` number below), or holds one of another build or
-version than the source has now. The store is the record of what has been
+version than the one wanted: its pin, or the newest. The store is the record of what has been
 read: the manifest only says what was last fetched, so it cannot hide a package
 the store lacks, and a `sync` limited to some packages, which moves the
 manifest to the new build for all of them, leaves the others to be read again
@@ -140,21 +198,24 @@ its folder.
 | `indexer/.packages/{group}/{pkg}/Settings` | No (gitignored) | The package's Settings file, for its project name |
 | `indexer/.packages/{group}/{pkg}/api.json` | No (gitignored) | Full API snapshot |
 | `indexer/.packages/{group}/{pkg}/indexer.json` | No (gitignored) | The [fingerprint](#sync) of the code that wrote the `api.json` |
-| `indexer/.packages/manifests/contributed.json` | No (in the store) | TWINSERV sync state |
-| `indexer/.packages/manifests/built-in.json` | No (in the store) | Built-in and default sync state |
-| `indexer/snapshots/{group}/{pkg}/api.json` | Yes | Copy of the above, for the [documented packages](#documented-packages) only (survives cloning) |
+| `indexer/.packages/downloads/{pkg}/{version}.twinpack` | No (in the store, which ignores it) | Each package downloaded from TWINSERV |
+| `indexer/.packages/manifests/contributed.json` | No (in the store) | TWINSERV sync state: each package's publisher and the version the store holds |
+| `indexer/.packages/manifests/built-in.json` | No (in the store) | The newest build: where it was read from, and its packages |
+| `indexer/snapshots/{group}/{pkg}/api.json` | Yes | Copy of the above, for the [documented packages](#documented-packages) only, of their pinned versions (survives cloning) |
 
 The manifests are in the store, with the sources they describe, and not in the
 repository: a manifest that travels with git says "up to date" about a store
 that a clone does not have, or holds from another build. A clone has no store
 and so no manifests, and its first `sync` reads every package.
 
-`built-in.json` records which source the packages were read from and which
-build: `source` is `install` or `release`, `beta` the BETA number and
-`twinbasicTag` the release tag of that build, and `publishedAt` the release's
-date (null for an install). It never records the install's path, which holds a
-user name. A change of source reads the packages again even when the build is
-the same.
+`built-in.json` records the newest build, which the packages no section
+documents follow and `--upgrade` moves to: `source` is `install` or
+`release`, `beta` the BETA number and `twinbasicTag` the release tag of that
+build, `publishedAt` the release's date (null for an install), and `packages`
+the packages it holds, by GUID. A pinned package can be of another build; its
+`api.json` in the store says which. It never records the install's path, which
+holds a user name. With `--release`, the manifest's list of packages spares a
+download of a release it already describes.
 
 ### analyze
 
@@ -279,8 +340,12 @@ node indexer/twin-index.mjs derive [--check] [--out <file>] [--ide <path> | --re
 
 Writes `builder/package-api.json`, the package half of the documentation's
 symbol index ([WIP.HelpAddin.md](../WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build)),
-from every built-in and default package of the install (`--ide`, found as
-`sync` finds it) or of the latest release (`--release`). It reads and parses the
+from every built-in and default package of the build the default and
+built-in sections are [pinned](#pinned-versions) at: from its install,
+found as `sync` finds the install of a pinned build, else from its GitHub
+release, which `--release` always downloads. `--ide` names another install.
+Sections pinned at more than one build make it exit 2 unless `--ide` names
+one; with none pinned it reads the newest install. It reads and parses the
 packages as `sync` does, with `parsePackageFiles` from `lib/api-model.mjs`,
 and needs no store. The snapshots cannot stand in for the packages: they hold
 only the documented ones, and an `api.json` keeps no declaration order, which
@@ -288,20 +353,20 @@ the file keeps because the first declaration of a name gives a member its kind.
 The format and what the build takes from it are in `lib/package-api.mjs`.
 
 `--check` compares instead of writing, and exits 1 when the file is stale.
-`--out` writes elsewhere. Run it with the same install as `sync` when the
-reference moves to a new build, and commit the file with the pages and the
+`--out` writes elsewhere. Run it when the reference moves to a new build,
+once `indexed_from` names it, and commit the file with the pages and the
 snapshots.
 
 ## api.json
 
 One file for each package, written by `lib/api-model.mjs` from what
 `scripts/lib/twin-api.mjs` reads out of the package's sources. Its first key
-is `format`, which changes whenever the shape does (3 today); `sync` indexes a
+is `format`, which changes whenever the shape does (4 today); `sync` indexes a
 package again when the store holds another number.
 
 ```json
 {
-  "format": 3,
+  "format": 4,
   "package": "VBA",
   "project": "VBA",
   "version": "beta-x-1010",
@@ -337,11 +402,20 @@ package again when the store holds another number.
 | `values` | An Enum has these instead, in declaration order. |
 | `fields` | A Type or Union has these as well as `members`, in declaration order. |
 
-**A member** is `{ name, kind, vis, declare?, signature, returnType?,
-accessor?, hidden?, attrs?, description? }` (or `signatures` for `signature`, for
-the alternatives of an `#If`, described below): `kind` is `sub`, `function`,
-`property`, `event`, `delegate`, `const` or `field`; `declare` is true for a
-`Declare` statement, which is a `sub`, `function` or `property` as well;
+**A member** is `{ name, kind, vis, cond?, declare?, signature, lib?, libConst?,
+entry?, cdecl?, fastcall?, wide?, params?, returnType?, accessor?, hidden?, attrs?,
+description? }` (or `signatures` for `signature`, for the alternatives of an
+`#If`, described below): `kind` is `sub`, `function`, `property`, `event`,
+`delegate`, `const` or `field`; `cond` is the condition of the `#If` it is
+declared under, written as for an alternative below, when it is under one;
+`declare` is true for a `Declare` statement, which is a `sub`, `function` or
+`property` as well, and a Declare has what it binds, read from its signature
+by `declareParts` in `scripts/lib/twin-api.mjs`: `lib` the library, or
+`libConst` the name of the constant that holds it (`Lib DETOURS`), `entry`
+the entry point (its `Alias`, else its name), `cdecl` or `fastcall` true for
+that calling convention, `wide` true for a `DeclareWide`, and `params` its
+parameters as written, without the attributes before each (a Declare whose
+library cannot be read has none of these, and is listed in `problems`);
 `returnType` is the type after the parameter list of a Function, a Property Get
 or a Delegate Function, without the `Implements`, `Overrides` or `Handles`
 clause that may follow it, else the type the name's closing type-declaration
@@ -361,8 +435,9 @@ Property Get, a Delegate, a Declare, a variable, a field or a constant. The
 
 **A member declared in the branches of an `#If`** is one member when its
 declarations are alternatives, and holds them in `signatures`, one item for each
-in declaration order: `{ cond, vis?, signature, returnType?, hidden?, attrs?,
-description? }`. `cond` is the condition of its branch, in the source's own
+in declaration order: `{ cond, vis?, signature, lib?, libConst?, entry?, cdecl?,
+fastcall?, wide?, params?, returnType?, hidden?, attrs?, description? }`. `cond`
+is the condition of its branch, in the source's own
 words, with the branches before it negated: `Win64` and `Not (Win64)` for the
 two branches of `#If Win64 Then ... #Else ... #End If`, `Not (A) And B` for the
 `#ElseIf B` after `#If A`, `Outer And Inner` in a nested one. Declarations are
@@ -370,22 +445,23 @@ alternatives when they are in one `#If` block (a nested one with its outer
 block), of one name and kind, the same `accessor` (a Property Get is not an
 alternative of its Let) and both or neither a Declare, with more than one
 condition among them; two declarations under the same condition are overloads
-and stay members of their own, as does a declaration under a condition on its
-own. The member has `name`, `kind`, `vis` (the most accessible of the
+and stay members of their own, each with its `cond`, as does a declaration
+under a condition on its own. The member has `name`, `kind`, `vis` (the most accessible of the
 alternatives), `declare` and `accessor`, and what all the alternatives have
-alike once, as a member that is not merged has it: `returnType`, `hidden`,
-`attrs` and `description`, which an attribute list above the `#If` gives to every
-branch. Only a key that differs is on an item, and `vis` is on one only when it
+alike once, as a member that is not merged has it: what a Declare binds,
+`returnType`, `hidden`, `attrs` and `description`, which an attribute list above
+the `#If` gives to every branch. Only a key that differs is on an item, and `vis` is on one only when it
 is not the member's. A merged member has no `signature` of its own. The
 differ treats it as the members it holds: one symbol of the name and kind, a
 line in its `signature` for each alternative, `#If Win64 Then Public Declare ...`,
-so that a changed condition is a changed signature. The values of an Enum and
-the fields of a Type are not merged: their order is part of what they mean, and
-each alternative stays in it.
+so that a changed condition is a changed signature; it puts the `cond` of a
+member that is not merged in front of its signature the same way. The values of
+an Enum and the fields of a Type are not merged: their order is part of what
+they mean, and each alternative stays in it, with its `cond`.
 
-**A value** is `{ name, value?, hidden?, attrs?, description? }`, `value` the
-text after the `=`. **A field** is `{ name, vis, signature, hidden?, attrs?,
-description? }`. **An alias** is `{ name, target, vis, in?, file, signature,
+**A value** is `{ name, cond?, value?, hidden?, attrs?, description? }`, `value`
+the text after the `=`. **A field** is `{ name, vis, cond?, signature, hidden?,
+attrs?, description? }`. **An alias** is `{ name, target, vis, in?, file, signature,
 hidden?, attrs?, description? }`.
 
 *Order and layout.* Types are in code-unit order of their path
@@ -447,10 +523,12 @@ refuses it): it is listed in `problems` as a line with no field.
 `indexer/snapshots/` holds the baseline the reference is compared with, so it
 holds a package only if the reference documents it, and only that package's
 `api.json`: the sources stay in the store. `sync` copies a snapshot when the
-package has a section in the reference, and `analyze` diffs against it. A
-section started after its package was synced gets its snapshot from the next
-`sync`, which copies the store's `api.json` when it is of the version the
-section's `indexed_from` names (`adoptSnapshots`). The
+package has a section in the reference and the store holds it at its pin, the
+version the section's `indexed_from` names, indexed by this checkout's scanner,
+and `analyze` diffs against it (`syncSnapshots`). So a snapshot is only ever of
+the pinned version: a package moved past its pin by `--upgrade` keeps its
+snapshot until `indexed_from` names the new version, and a section started
+after its package was synced gets its snapshot from the next `sync`. The
 other packages are indexed into the store and left out of the repository; most
 of the contributed ones are, and so are the builds of a package that is
 documented as one.
@@ -463,7 +541,7 @@ reads it; the site's builder ignores these keys):
 | Key | Means |
 |-----|-------|
 | `package_name:` | The packages the section documents, by the names the store has, comma-separated: `CustomControls, CustomControlsPackage`. Without it the section documents the package named like its folder. It replaces that name, so the folder's own is listed too when it is a package. |
-| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-1010`: the `version` of the committed snapshots. Bump it in the commit that updates the pages, and write the new snapshots in it. |
+| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-1010`, or a contributed package's four-part version: the `version` of the committed snapshots, and the [pin](#pinned-versions) `sync` keeps the package at. Bump it in the commit that updates the pages, run `sync` to write the new snapshots, and commit them with it. |
 | `exclude_from_docs:`, `exclude_kinds:` | Types, and kinds of symbol, that are deliberately not documented, so `analyze` does not list them. |
 
 The group is the folder's: a package in `Built-In/` is a built-in one.
@@ -525,15 +603,16 @@ twinBASIC project. Everything else the install (or the release zip) holds is
 sync  -->  analyze  -->  draft  -->  write the pages  -->  verify  -->  review
 ```
 
-1. **sync** — read, extract, generate api.json, commit to store
+1. **sync** — read, extract, generate api.json, commit to store;
+   `sync --upgrade` to move past the pins to a new build or version
 2. **analyze** — diff snapshots, produce change report
 3. **draft** — place each page the report asks for: file, parent, permalink
 4. **write the pages** — the per-symbol workflow in
    [`WIP.Authoring.md`](../WIP.Authoring.md#per-symbol-workflow), by hand,
    with the `document-symbol` skill, or with the `draft/workflow.mjs`
    Claude Code workflow, from the plans; then set `indexed_from`, run
-   `derive`, and commit the new snapshots and `builder/package-api.json`
-   with the pages
+   `sync` (which writes the snapshots of the new pins) and `derive`, and
+   commit the new snapshots and `builder/package-api.json` with the pages
 5. **verify** — `build.bat`, `check.bat` (the existing builder), and
    `examples.bat` for the new samples
 6. **review** — the developer reviews and commits
@@ -548,8 +627,10 @@ indexer/
   draft/
     workflow.mjs               the doc-draft Claude Code workflow, over draft's manifest
   lib/
-    sync.mjs                   TWINSERV manifest comparison + download
-    builtin-sync.mjs           install / GitHub release manifest comparison + extraction
+    sync.mjs                   TWINSERV listing + download
+    pins.mjs                   which version of each package sync wants: its pin, or the newest
+    query.mjs                  sync --query: what changed upstream, by version or by content
+    builtin-sync.mjs           install / GitHub release manifest comparison + extraction, an install by BETA
     twinserv-client.mjs        TWINSERV HTTP client
     github-release.mjs         GitHub Releases client
     package-files.mjs          .twinpack/.twinproj -> files, by scripts/impexp.mjs's parser
@@ -568,6 +649,7 @@ indexer/
     contributed/
   .packages/                   (gitignored) local git repo with sources
     manifests/                 sync state: built-in.json, contributed.json
+    downloads/                 every .twinpack downloaded, by package and version (not in its history)
 ```
 
 Its unit tests are `test/indexer.test.mjs` (`node --test test/indexer.test.mjs`,

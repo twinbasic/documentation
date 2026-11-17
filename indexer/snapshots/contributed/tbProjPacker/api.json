@@ -1,5 +1,5 @@
 {
-  "format": 3,
+  "format": 4,
   "package": "tbProjPacker",
   "project": "tbProjPacker",
   "version": "1.1.0.0",
@@ -314,21 +314,21 @@
       "signature": "Private Module modWin32",
       "members": [
         {"name":"CREATE_ALWAYS","kind":"const","vis":"public","signature":"Public Const CREATE_ALWAYS As Long = 2"},
-        {"name":"CloseHandle","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function CloseHandle Lib \"kernel32\" (ByVal hObject As LongPtr) As BOOL","returnType":"BOOL"},
-        {"name":"CopyMemory","kind":"sub","vis":"public","declare":true,"signature":"Public Declare PtrSafe Sub CopyMemory Lib \"kernel32\" Alias \"RtlMoveMemory\" (Destination As Any, Source As Any, ByVal Length As LongPtr)"},
-        {"name":"CreateDirectoryW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function CreateDirectoryW Lib \"kernel32\" (ByVal lpPathName As LongPtr, lpSecurityAttributes As SECURITY_ATTRIBUTES) As BOOL","returnType":"BOOL"},
-        {"name":"CreateFileW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function CreateFileW Lib \"kernel32\" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr","returnType":"LongPtr"},
-        {"name":"FindClose","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function FindClose Lib \"kernel32\" (ByVal hFindFile As LongPtr) As Long","returnType":"Long"},
-        {"name":"FindFirstFileW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function FindFirstFileW Lib \"kernel32\" (ByVal lpFileName As LongPtr, ByRef lpFindFileData As WIN32_FIND_DATAW) As LongPtr","returnType":"LongPtr"},
-        {"name":"FindNextFileW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function FindNextFileW Lib \"kernel32\" (ByVal hFindFile As LongPtr, ByRef lpFindFileData As WIN32_FIND_DATAW) As Long","returnType":"Long"},
+        {"name":"CloseHandle","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function CloseHandle Lib \"kernel32\" (ByVal hObject As LongPtr) As BOOL","lib":"kernel32","entry":"CloseHandle","params":["ByVal hObject As LongPtr"],"returnType":"BOOL"},
+        {"name":"CopyMemory","kind":"sub","vis":"public","declare":true,"signature":"Public Declare PtrSafe Sub CopyMemory Lib \"kernel32\" Alias \"RtlMoveMemory\" (Destination As Any, Source As Any, ByVal Length As LongPtr)","lib":"kernel32","entry":"RtlMoveMemory","params":["Destination As Any","Source As Any","ByVal Length As LongPtr"]},
+        {"name":"CreateDirectoryW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function CreateDirectoryW Lib \"kernel32\" (ByVal lpPathName As LongPtr, lpSecurityAttributes As SECURITY_ATTRIBUTES) As BOOL","lib":"kernel32","entry":"CreateDirectoryW","params":["ByVal lpPathName As LongPtr","lpSecurityAttributes As SECURITY_ATTRIBUTES"],"returnType":"BOOL"},
+        {"name":"CreateFileW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function CreateFileW Lib \"kernel32\" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr","lib":"kernel32","entry":"CreateFileW","params":["ByVal lpFileName As LongPtr","ByVal dwDesiredAccess As Long","ByVal dwShareMode As Long","lpSecurityAttributes As SECURITY_ATTRIBUTES","ByVal dwCreationDisposition As Long","ByVal dwFlagsAndAttributes As Long","ByVal hTemplateFile As LongPtr"],"returnType":"LongPtr"},
+        {"name":"FindClose","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function FindClose Lib \"kernel32\" (ByVal hFindFile As LongPtr) As Long","lib":"kernel32","entry":"FindClose","params":["ByVal hFindFile As LongPtr"],"returnType":"Long"},
+        {"name":"FindFirstFileW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function FindFirstFileW Lib \"kernel32\" (ByVal lpFileName As LongPtr, ByRef lpFindFileData As WIN32_FIND_DATAW) As LongPtr","lib":"kernel32","entry":"FindFirstFileW","params":["ByVal lpFileName As LongPtr","ByRef lpFindFileData As WIN32_FIND_DATAW"],"returnType":"LongPtr"},
+        {"name":"FindNextFileW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function FindNextFileW Lib \"kernel32\" (ByVal hFindFile As LongPtr, ByRef lpFindFileData As WIN32_FIND_DATAW) As Long","lib":"kernel32","entry":"FindNextFileW","params":["ByVal hFindFile As LongPtr","ByRef lpFindFileData As WIN32_FIND_DATAW"],"returnType":"Long"},
         {"name":"GENERIC_WRITE","kind":"const","vis":"public","signature":"Public Const GENERIC_WRITE As Long = &H40000000"},
-        {"name":"GetFileAttributesW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function GetFileAttributesW Lib \"kernel32\" (ByVal lpFileName As LongPtr) As FILE_ATTRIBUTES","returnType":"FILE_ATTRIBUTES"},
-        {"name":"GetFullPathNameW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function GetFullPathNameW Lib \"kernel32\" (ByVal lpFileName As LongPtr, ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr, lpFilePart As LongPtr) As Long","returnType":"Long"},
+        {"name":"GetFileAttributesW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function GetFileAttributesW Lib \"kernel32\" (ByVal lpFileName As LongPtr) As FILE_ATTRIBUTES","lib":"kernel32","entry":"GetFileAttributesW","params":["ByVal lpFileName As LongPtr"],"returnType":"FILE_ATTRIBUTES"},
+        {"name":"GetFullPathNameW","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function GetFullPathNameW Lib \"kernel32\" (ByVal lpFileName As LongPtr, ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr, lpFilePart As LongPtr) As Long","lib":"kernel32","entry":"GetFullPathNameW","params":["ByVal lpFileName As LongPtr","ByVal nBufferLength As Long","ByVal lpBuffer As LongPtr","lpFilePart As LongPtr"],"returnType":"Long"},
         {"name":"INVALID_HANDLE_VALUE","kind":"const","vis":"public","signature":"Public Const INVALID_HANDLE_VALUE As LongPtr = -1&"},
         {"name":"MAX_PATH","kind":"const","vis":"public","signature":"Public Const MAX_PATH As Long = 260"},
-        {"name":"MultiByteToWideChar","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function MultiByteToWideChar Lib \"kernel32\" (ByVal CodePage As CodePageDefaults, ByVal dwFlags As MBWC_Flags, ByVal lpMultiByteStr As LongPtr, ByVal cchMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long","returnType":"Long"},
-        {"name":"WideCharToMultiByte","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function WideCharToMultiByte Lib \"kernel32\" (ByVal CodePage As CodePageDefaults, ByVal dwFlags As WCMB_Flags, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, Optional ByVal lpDefaultChar As LongPtr, Optional lpUsedDefaultChar As BOOL) As Long","returnType":"Long"},
-        {"name":"WriteFile","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function WriteFile Lib \"kernel32\" (ByVal hFile As LongPtr, lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, lpNumberOfBytesWritten As Long, lpOverlapped As OVERLAPPED) As BOOL","returnType":"BOOL"}
+        {"name":"MultiByteToWideChar","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function MultiByteToWideChar Lib \"kernel32\" (ByVal CodePage As CodePageDefaults, ByVal dwFlags As MBWC_Flags, ByVal lpMultiByteStr As LongPtr, ByVal cchMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long","lib":"kernel32","entry":"MultiByteToWideChar","params":["ByVal CodePage As CodePageDefaults","ByVal dwFlags As MBWC_Flags","ByVal lpMultiByteStr As LongPtr","ByVal cchMultiByte As Long","ByVal lpWideCharStr As LongPtr","ByVal cchWideChar As Long"],"returnType":"Long"},
+        {"name":"WideCharToMultiByte","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function WideCharToMultiByte Lib \"kernel32\" (ByVal CodePage As CodePageDefaults, ByVal dwFlags As WCMB_Flags, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, Optional ByVal lpDefaultChar As LongPtr, Optional lpUsedDefaultChar As BOOL) As Long","lib":"kernel32","entry":"WideCharToMultiByte","params":["ByVal CodePage As CodePageDefaults","ByVal dwFlags As WCMB_Flags","ByVal lpWideCharStr As LongPtr","ByVal cchWideChar As Long","ByVal lpMultiByteStr As LongPtr","ByVal cbMultiByte As Long","Optional ByVal lpDefaultChar As LongPtr","Optional lpUsedDefaultChar As BOOL"],"returnType":"Long"},
+        {"name":"WriteFile","kind":"function","vis":"public","declare":true,"signature":"Public Declare PtrSafe Function WriteFile Lib \"kernel32\" (ByVal hFile As LongPtr, lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, lpNumberOfBytesWritten As Long, lpOverlapped As OVERLAPPED) As BOOL","lib":"kernel32","entry":"WriteFile","params":["ByVal hFile As LongPtr","lpBuffer As Any","ByVal nNumberOfBytesToWrite As Long","lpNumberOfBytesWritten As Long","lpOverlapped As OVERLAPPED"],"returnType":"BOOL"}
       ]
     },
     {
@@ -454,9 +454,9 @@
       "fields": [
         {"name":"Internal","vis":"public","signature":"Internal As LongPtr"},
         {"name":"InternalHigh","vis":"public","signature":"InternalHigh As LongPtr"},
-        {"name":"OffsetsOrPtr","vis":"public","signature":"OffsetsOrPtr As LongLong"},
-        {"name":"OffsetOrPtr","vis":"public","signature":"OffsetOrPtr As Long"},
-        {"name":"OffsetHigh","vis":"public","signature":"OffsetHigh As Long"},
+        {"name":"OffsetsOrPtr","vis":"public","cond":"Win64","signature":"OffsetsOrPtr As LongLong"},
+        {"name":"OffsetOrPtr","vis":"public","cond":"Not (Win64)","signature":"OffsetOrPtr As Long"},
+        {"name":"OffsetHigh","vis":"public","cond":"Not (Win64)","signature":"OffsetHigh As Long"},
         {"name":"hEvent","vis":"public","signature":"hEvent As LongPtr"}
       ],
       "members": []

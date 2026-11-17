@@ -1,9 +1,7 @@
 # Compiling the Documentation's Code Samples
 
-See [WIP.md](WIP.md) for the maintenance guide. This file covers the tool that answers *does
-this sample actually build*.
-
-`examples.bat` runs [scripts/check_examples.mjs](scripts/check_examples.mjs).
+The tool that answers *does this sample build*. `examples.bat` runs
+[scripts/check_examples.mjs](scripts/check_examples.mjs).
 [scripts/lib/tb-fences.mjs](scripts/lib/tb-fences.mjs) holds the half that needs no
 compiler, and [test/example-projects/](test/example-projects/) holds the template trees.
 Reader-facing documentation is the [`check_examples.mjs`
@@ -30,23 +28,20 @@ twinBASIC project that line does not compile at all).
 
 ## Why this is not part of a build
 
-This is the constraint everything else bends around.
+WIP.md gives the rule (never in a wrapper or CI) and two reasons: a twinBASIC install, and
+Windows with a private desktop and a CDP-reachable WebView2. Two more:
 
-- **Cost.** An IDE cold start is 6--8 s per project and flat in project size (WIP.md,
+- **Cost.** An IDE cold start is 6--8 s per project and flat in project size (WIP.Harness.md,
   measured). A normal `build.bat` is ~4 s.
-- **`npm install` must remain sufficient** to build the docs. A twinBASIC install is not on
-  that path, and `dot.mjs`'s setup-failure behaviour exists to preserve exactly that.
-- **CI cannot run it.** The harness needs Windows, a private desktop, and a CDP-reachable
-  WebView2. None of that exists on the CI box.
+- **`npm install` must remain sufficient** to build the docs; `dot.mjs`'s setup-failure
+  behaviour exists to preserve that too.
 
-So this is a **separate on-demand tool**, never invoked from `build.bat`, `check.bat`,
-`test.bat`, or either CI workflow. A sample regression is caught when someone runs it, the
-same arrangement `sweep_a11y.mjs` (~20 min, full site) makes.
+A sample regression is caught when someone runs it, as with `sweep_a11y.mjs` (~20 min, full
+site).
 
 ## Opt-in, because the corpus says so
 
-`check_examples.mjs --census` prints the live version of the table below, so there is one
-reproducible number rather than several prose ones:
+`check_examples.mjs --census` prints the live version of this table:
 
 | slot | count | share |
 |---|---:|---:|
@@ -63,9 +58,9 @@ marking work is planned from, and it needs no compiler. It does not claim any of
 compile; only `--propose` knows that.
 
 A fence that reads as unbalanced is usually a classifier that does not know the language,
-not a sample that is incomplete. Three things a classifier must know account for most
-spurious fragments. Each is handled, with a probe in `scripts/lib/example-batches.mjs`, which `check_examples.mjs` and
-`test.bat` both run:
+not a sample that is incomplete. What a classifier must know, which accounts for most
+spurious fragments; each is handled, with a probe in `scripts/lib/example-batches.mjs`, which
+`check_examples.mjs` and `test.bat` both run:
 
 - **an `Interface` body holds prototypes.** `Sub Bar()` inside one has no `End Sub`, so
   pushing it as a block eats the `End Interface` after it.
@@ -95,10 +90,9 @@ token:
 const lang = tok.info ? tok.info.trim().split(/\s+/)[0] : "";
 ```
 
-The first whitespace-separated token is the language and the rest is discarded, so anything
-after `tb` is invisible. This holds in the real pipeline (`createMarkdownIt`
+Anything after `tb` is invisible. This holds in the real pipeline (`createMarkdownIt`
 plus `initHighlighter`, not a bare markdown-it; see WIP.md's [Source
-dashes](WIP.md#source-dashes)). Four properties are probes that ride along on every run:
+dashes](WIP.md#source-dashes)). These properties are probes on every run:
 
 | property | result |
 |---|---|
@@ -143,12 +137,11 @@ misinference is self-reporting: it produces a compile error, not a silent pass, 
 reporter names the slot it used in every finding. `project` follows the page: anything under
 `Reference/Built-In/` or in a package tutorial gets the template that references every
 package, because the package a sample needs is what the page is *about*. Stating `project=`
-on 263 fences would repeat the directory name above it.
+on each of those fences would repeat the directory name above it.
 
 **A mistyped marker is a finding.** `check_bild` renders identically to no marker, so a
-sample carrying one would never be compiled and nothing would say so. This is the one
-failure mode of the design that is invisible by construction, so it is checked in every mode
-including `--census`.
+sample carrying one would never be compiled and nothing would say so. It is the design's one
+failure invisible by construction, so it is checked in every mode, `--census` included.
 
 ### `inert` is a decision, not a suppression
 
@@ -195,7 +188,7 @@ produced from the file. The JSON's shape --- which array, which field supplies t
 which supplies the value --- is checked against the code that reads it, on the page that
 documents both.
 
-Four rules, each a consequence rather than a preference:
+Rules, each a consequence rather than a preference:
 
 - **It is a file, not a sample.** Never compiled, never counted, absent from the census, and
   it cannot pass or fail. The run header says `N staged file(s)`.
@@ -206,7 +199,7 @@ Four rules, each a consequence rather than a preference:
   of its id.
 - **The path may not leave the project.** No `..`, no drive letter, no UNC. The guard must
   test for `//` *before* stripping leading slashes, or `//server/share/x.json` passes as
-  `server/share/x.json`. Eight probes cover it.
+  `server/share/x.json`. Probes cover it.
 
 ### One construct across several fences
 
@@ -215,7 +208,7 @@ Four rules, each a consequence rather than a preference:
 classifies as nothing. The joined fence keeps `concatParts`, the generated-line range each
 part occupies, and `partOf` maps a diagnostic back to its part's own page line. An
 off-by-one there would point every finding in the second part at a plausible wrong line,
-which is why four of the concat probes are nothing but line mapping.
+which is why several of the concat probes are nothing but line mapping.
 
 A fence that is one closing line short of compiling gets `' ...` and the closer (this is in
 the public authoring guide), not `inert` and not a concat group.
@@ -253,8 +246,8 @@ HTML and from everything downstream that reads the rendered string: the search i
 offline mirror, the PDF book. Verified across all three trees.
 
 It exists for fiction invented for one page (`MyServiceA` / `MyServiceB`, `ClientSession`).
-Putting it in a shared stage set would make a template read by six hundred pages carry
-declarations that serve one.
+Putting it in a shared stage set would make a template that hundreds of pages build into
+carry declarations that serve one.
 
 Rules:
 
@@ -308,7 +301,7 @@ over one of them. The table lists both, and the deltas a sample names or meets m
 | template | references | for |
 |---|---|---|
 | `console` | stdole, VB (Forms), AppGlobalClassObject | everything by default |
-| `packages` | the above plus all eleven other shipped packages | `Reference/Built-In/` and the package tutorials |
+| `packages` | the above plus every other shipped package | `Reference/Built-In/` and the package tutorials |
 | `form` | `console`, a delta | a `check_run` sample that needs a real form: drawing, `Cls`, `Print`, `Scale`, a form property. Never inferred: a fence says `project=form` |
 | `contributed-<Package>` | `console`, a delta: one `Settings` referencing one documented TWINSERV package, embedded | `Reference/Contributed/<Package>/` |
 | `wnc-form` | `packages`, a delta: `form`'s Form1 with a ListView, `ListView1`, on it | a `check_run` sample that looks at what a WinNativeCommonCtls control draws. Never inferred |
@@ -326,8 +319,7 @@ AutoCompleteGuids this way). A template commits only that `Settings`; `embeddedP
 reads the references, and `fetchEmbedded` in `check_examples.mjs` downloads each package at
 the reference's version from TWINSERV into `%TEMP%\tb-twinserv\<id>_<version>.twinpack`,
 unpacks it beside, and copies it into every batch staged from the template. The code is not
-the repository's to commit: four of the nine ship no licence file, and WinReg embeds WinDevLib,
-14 MB.
+the repository's to commit: some ship no licence file, and WinReg embeds WinDevLib, 14 MB.
 
 - **A control package's template also declares the control its samples name.**
   `contributed-xCalendar` has `Sources/tbxStageXCalendar.twin` beside its `Settings`, with
@@ -385,8 +377,7 @@ templates each have their own `tbxStageBrowser.twin`, routed by path in `default
 `FormDesignerId` attribute) and `Sources/Form1.tbform` (its designer file), and its own
 `tbxStage.twin`, which is console's less the line `Public Form1 As Form`. A form made with
 `New Form` in code has no designer file and cannot be drawn on (`Load` raises 361, `AutoRedraw`
-raises -2147467259), so the form has to be a file of the project. Four facts, all checked on
-BETA 1010:
+raises -2147467259), so the form has to be a file of the project. Checked on BETA 1010:
 
 - **An empty form has no `_children` key**, and `"_children": []` in `Form1.tbform` is
   accepted too: `Form1` loads and draws as without it.
@@ -467,8 +458,8 @@ Several samples share a generated project, and a `module`-slot sample's declarat
 **visible to every other sample in it**. So a sample can compile because an unrelated one
 defined what it referenced. Which samples share a project depends on the selection, so the
 same page can pass one run and fail the next. `Tutorials/Testing-with-Assert.md` defines
-`PadLeft` in one fence and tests it in three others: a `--propose` survey compiles all 30 of
-its fences together and passes, while the gate (marked fences only) can put the definition in a
+`PadLeft` in one fence and tests it in others: a `--propose` survey compiles all its fences
+together and passes, while the gate (marked fences only) can put the definition in a
 different project, where the tests fail on `Unrecognized symbol 'PadLeft'`.
 
 `projname=` is the answer. It is markup rather than a heuristic because the grouping is a
@@ -482,7 +473,7 @@ fact about the page that no scan recovers:
 
 A page-atomic rule (keep every page's fences together) is worse twice over: it silently
 merges samples on pages that deliberately show two versions of one class, and it still
-leaves a page passing on another page's declarations. Three probes cover the batcher, since
+leaves a page passing on another page's declarations. Probes cover the batcher, since
 a grouping that stops holding produces a green run whose samples were compiled apart.
 
 **A `projname` group puts two definitions of one procedure into one project; it cannot keep
@@ -507,13 +498,13 @@ All are forced by putting unrelated samples in one compilation unit:
 
 - **One generated `Module tbx_<hash>` per fence.** The hash covers the fence's id, so it is
   stable across runs and traceable without a lookup table.
-- **Everything generated is `Private`.** Eleven pages declare a `MyString`.
+- **Everything generated is `Private`.** Many pages declare a `MyString`.
 - **`Sub Main` comes from the template, and a fence may bring its own as well.** Two
   `Public Sub Main`s in different modules compile, so the WinServicesLib `Module Startup`
   samples build as written. (A *build* adds a rule; see [`--build` and `--llvm`](#--build-and---llvm-what-a-compile-does-not-ask).)
-- **A generated module is not named like the project.** On BETA 1010 a module named like its
-  project, in any letter case, does no harm. The tool names each project `DocSamples<n>` and
-  every module it generates `tbx...`, so the two never meet; that is only the naming scheme.
+- **A generated module is not named like the project**: projects are `DocSamples<n>`,
+  generated modules `tbx...`. That is only the naming scheme; on BETA 1010 a module named like
+  its project, in any letter case, does no harm.
 
 **What collides is narrower than it looks, and guessing it wide is expensive.** Two
 generated modules may each declare `Public Function Foo`, `Public Type Rec` and `Public Const
@@ -569,6 +560,10 @@ judged under its own id, and the summary counts it with its sample. The check th
 does not redirect, ran in the win32 copy and raised `-353703418 Unable to load DLL` in the win64
 one (BETA 1034). `--json` writes `ids.passed` and `ids.unrun`, which `recheck_callouts.mjs` judges
 a `sample` item by.
+
+### `vb6run.mjs`
+
+- `node scripts/vb6run.mjs <file | ->` and `node scripts/vb6run.mjs --docs [--only <regex>]` --- build and run VB6 code: a stand-alone file of statements or a `.bas` module, or `--docs` (below), which says for each `check_run` fence whether VB6 prints what its page says (`same`, `differs`, `not VB6`, `error`, `refused`). It has no wrapper and is outside every gate and outside CI: it needs VB6 (`--vb6`, `VB6_EXE`, or the standard install folder). It spawns `VB6.EXE` from Node with an argument array (never from a shell; WIP.md says why), and a sample that calls `MsgBox` or `InputBox` or contains `End` is refused. Its `Debug.Print` rewrite and its file translation have probes in `test/example-batches.test.mjs`, and its command-line cases are in `scripts/lib/cli-cases.mjs`; both need no VB6.
 
 ### `vb6run --docs`
 
@@ -680,7 +675,7 @@ the Form page's `True`).
   memoised for the whole run, and a silent read believed there would leave `own` empty, so
   every batch with a template-own row would bisect to single samples and blame each one.
 
-  Tested against a fake lane: an early read answered by one build; a sample that hides it,
+  The fake-lane probes cover: an early read answered by one build; a sample that hides it,
   with no errors of its own, found and named; the same sample with errors of its own taken as
   read in one build, with the note; a group with only some members failing taken as read in
   one build; the hiding sample with only the template's own row named; two that hide it only
@@ -710,7 +705,7 @@ anywhere. The sample gets **no diagnostic of its own at all**. Treated as a temp
 that row would count the sample as one that compiled, a false pass of exactly the kind this
 tool exists to end. (`WinServicesLib/index.md#1` has this shape and is unmarked.)
 
-Three parts to the handling, each forced:
+The handling, each part forced:
 
 - **An unreadable row and an unattributable one are different.** A row this cannot parse
   names no file, so no amount of splitting finds its cause; an ERROR against a file that is
@@ -794,7 +789,7 @@ LLVM refusal is isolated, and its samples reported as failing the build, as any 
   and `TMP` by `launchIde`, emptied at each launch in the slot and removed when the IDE
   ends, so that concurrent runs share nothing and a run leaves nothing behind. Each lane
   holds a slot from `tbbroker` for the whole run ([WIP.Broker.md](WIP.Broker.md)).
-- **A build adds three collision rules a compile does not have**, each checked on BETA 1010 (`--build --only` over the pages that hold such samples builds clean):
+- **A build adds collision rules a compile does not have**, each checked on BETA 1010 (`--build --only` over the pages that hold such samples builds clean):
   - **`expect-error` samples are batched apart.** A project with an error is not built, so
     one such sample (Option.md, TB5079) would leave every sample beside it unbuilt.
   - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
@@ -866,8 +861,8 @@ LLVM refusal is isolated, and its samples reported as failing the build, as any 
   **Count with the tool whose empty result is empty** (`grep -c` says 0).
 - **The shell eats backslashes** in a regex passed through `node -e` from bash, turning
   `'...symbol .(.+?).'` into a pattern that matches one character and produces a
-  plausible-looking table of single-letter "undeclared symbols". This is the heredoc trap in
-  WIP.md's Don'ts arriving through `-e`. Write the script to a file.
+  plausible-looking table of single-letter "undeclared symbols": WIP.md's heredoc trap,
+  through `-e`. Write the script to a file.
 
 ## Rules from the survey passes
 
@@ -904,7 +899,7 @@ A generated `Class` wrapper carries `[COMCreatable(False)]`: a sample declaring
 `Public Sub New(ByVal Host As Host)` (tbIDE's `Host.md`) fails with `TB5135` otherwise, a
 diagnostic about the wrapper and not the sample.
 
-Three things the base cannot rescue:
+What the base cannot rescue:
 
 - **A `Handles X.Y` clause binds to a field named `X` in the same class.** In a generated
   `Class … Inherits Form` there is no field called `Form`, so `Handles Form.Load` fails
@@ -1002,7 +997,7 @@ a reader writes.
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
   multi-page tutorial wants. Left global and documented; revisit if a collision happens.
-- **Single-page stage entries.** About a dozen control instances are used by exactly one
+- **Single-page stage entries.** Some control instances are used by exactly one
   page --- `picCanvas`, `hsbVolume`, `mfPanels`, `lblCoords`. They stay in the stage set,
   one line each, because its purpose is "the control instances the samples assume". The
   invented *classes* go in `hidden` fences, because a class is not a control instance and a

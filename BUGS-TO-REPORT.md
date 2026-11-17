@@ -87,7 +87,7 @@ then one paragraph on why the change fixes the defect; then one line on what the
 showed on a patched copy of the install. The diff is generated, never written by hand:
 `node scripts/ide_js.mjs shape bugs/<slug>/fix.js`, where `fix.js` is the fix, whole
 functions in our names, beside the reproducer ([WIP.md](WIP.md#driving-the-twinbasic-compiler),
-*Fixing the IDE itself*). The minified edits and their offsets stay out of the entry. The
+*Fixing the IDE itself*, and [WIP.Harness.md, Rules](WIP.Harness.md#rules)). The minified edits and their offsets stay out of the entry. The
 entry's HTML comment names the fix file.
 
 **An entry's paragraphs and list items are not wrapped**, one line each, unlike the rest of

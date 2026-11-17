@@ -26,7 +26,7 @@
 // Graphviz has no font machinery and would otherwise measure these labels
 // with Times; builder/dot-metrics.mjs installs Inter's real widths before
 // layout, and scripts/check_dot_fit.mjs asserts afterwards that no label
-// outgrew its box. See WIP.md, "Diagrams".
+// outgrew its box. See WIP.Typography.md, "Diagrams".
 
 digraph tools_groups {
     rankdir=TB
