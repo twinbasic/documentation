@@ -13,6 +13,15 @@ what it is, in [WIP.PackageTests.md](WIP.PackageTests.md).
 
 - `package-tests.bat` --- runs the test projects of the contributed packages named (in any case: `tbregexp`), or of every one with `--all-packages`, which is never the default and leaves out GdiPlus, run only when named (owner; `ALL_PACKAGES_SKIP` in `lib/package-tests.mjs`, which np4 in the launcher repository reads too) (`scripts/package_tests.mjs`): each project under `test/package-tests/` is staged with its package embedded and run with `tbrun --tests` as 32-bit and 64-bit, and each case is judged against `expect.json` as *documented*, *fixed* (the callout goes) or *changed* (a claim of the page is no longer true). `--update` writes `expect.json` from the run; read every entry it writes, since each is a claim that the package is defective. A case that never returns is caught and run alone. It also rewrites the generated `RunAll.twin`. Outside every gate and CI, as `examples.bat` is. The build publishes each project, referencing the package as a linked package and carrying none of its code, as `tB/Packages/Contributed/<Package>/<Package>-tests.twinproj` in the online tree (the `packageTests` task, `builder/package-tests.mjs`, `_config.yml`'s `package_tests`; the publish allowlist exempts those paths, and the offline tree's links go to the website).
 
+- **A package's own tools are run when its section is updated, never in a gate** (owner,
+  2026-11-17): they live in its folder under `test/package-tests/`, each with a README, and are in
+  no wrapper gate, not in CI and not on the developer Tools pages under `docs/Documentation/`. They
+  are documented with the package: a tool published for readers has a page in the package's
+  section, is linked from its landing page and has a card on the Downloads page, and its folder's
+  `publish.json` makes the build zip it beside the section with everything it needs
+  ([test/package-tests/README.md, Tools of one package](test/package-tests/README.md#tools-of-one-package);
+  tbKMode's verifier).
+
 ## Per package
 
 BigNumberLib's section documents its main class only. What a package's section decided, and what
@@ -34,6 +43,7 @@ is known about the package beyond its pages, is in a file of its own:
 - [TBMANLIB_ListBoxHScroll](WIP.TBMANLIB_ListBoxHScroll.md)
 - [TBMANLIB_Xml](WIP.TBMANLIB_Xml.md)
 - [tbProjPacker](WIP.tbProjPacker.md)
+- [tbKMode](WIP.tbKMode.md)
 - [tbRegExp](WIP.tbRegExp.md)
 - [tsJson](WIP.tsJson.md)
 - [tsPwGen](WIP.tsPwGen.md)
