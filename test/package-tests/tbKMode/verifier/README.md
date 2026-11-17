@@ -1,9 +1,10 @@
 # tbKMode verifier
 
 Checks the tbKMode package, and drivers built with it, against Windows itself. It needs Node.js
-and nothing else: no twinBASIC install, no Visual Studio, no WDK. It is to be released as a zip
-beside the package's test project; until then it lives here, and every file it needs is in this
-folder.
+20.11 or later and nothing else: no twinBASIC install, no Visual Studio, no WDK. The twinBASIC
+documentation publishes it as `tbKMode-verifier.zip` beside the package's section, with a page
+there, *tbKMode Verifier*; in the documentation's repository it lives in
+`test/package-tests/tbKMode/verifier/`, which `publish.json` zips.
 
 **No driver is loaded, installed, signed or started**, and no installer is run: the tool reads
 files.
@@ -95,4 +96,3 @@ only with `--refresh`. Three things in it come from how the sources work:
 - `check` against a database of the WDK (structure layouts, enumeration and constant values,
   prototypes), shipped with the zip, and the layout and value test modules written from it, which
   today's `../wdk/` tools write with Visual Studio and the WDK.
-- The zip, and its card on the Downloads page.

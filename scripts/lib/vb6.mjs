@@ -113,7 +113,7 @@ import { PROMPTS, RUN_DONE, RUN_TAG, parseRun } from "./example-run.mjs";
 import { killTree, launchOnDesktop } from "./tb-ide.mjs";
 import { logicalLines } from "./twin-api.mjs";
 import { applicationEvents, faultText, recordedFault } from "./win-fault.mjs";
-import { fileEntry, readZip, zipFiles } from "./zip.mjs";
+import { fileEntry, readZip, zipFiles } from "../../lib/zip.mjs";
 
 // ------------------------------------------------------------------- finding
 

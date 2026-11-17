@@ -71,13 +71,17 @@ const IGNORED_PATHS = new Set(["add-in/Resources/HELP", "add-in/Resources/SYMBOL
 // packed into the help add-in's project file, which the build publishes, and
 // scripts/impexp.mjs is both the module that packs it and a download the
 // build copies. test/package-tests/ and the sample templates in
-// test/example-projects/ make the package test projects the build publishes.
+// test/example-projects/ make the package test projects the build publishes,
+// and a package's published tool is zipped with a copy of the twinBASIC scanner,
+// scripts/lib/twin-api.mjs and twin-declarations.mjs.
 const DEFAULT_SOURCES = [
   "docs",
   "builder",
   "lib",
   "add-in",
   "scripts/impexp.mjs",
+  "scripts/lib/twin-api.mjs",
+  "scripts/lib/twin-declarations.mjs",
   "test/package-tests",
   "test/example-projects",
 ];

@@ -431,8 +431,11 @@ export function deriveDownloads(state, { tests = null, addinDest = null }) {
     else files.set(rel, f.size);
   }
   if (addinDest) refused.set(addinDest, HELP_ADDIN_REFUSAL);
-  const packages = (tests?.packed ?? []).map(({ pkg, rel, bytes }) => ({ pkg, rel, bytes: bytes.length }));
-  for (const t of packages) files.set(t.rel, t.bytes);
+  // Every packed file can be sized; only the test projects are rows of the table.
+  for (const { rel, bytes } of tests?.packed ?? []) files.set(rel, bytes.length);
+  const packages = (tests?.packed ?? [])
+    .filter((t) => t.kind !== "tool")
+    .map(({ pkg, rel, bytes }) => ({ pkg, rel, bytes: bytes.length }));
   return { files, refused, tests: { dest: tests?.dest ?? "", packages } };
 }
 

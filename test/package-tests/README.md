@@ -16,6 +16,8 @@ test/package-tests/
     compile/               optional: compile cases that expect an error
     exe/                   optional: cases that run in a built exe, and a server.mjs for them
     probe/                 optional: a harness for what only a built program shows
+    <tool>/                optional: a tool of this package alone (see Tools of one package)
+      publish.json         when the build publishes it as a zip
 ```
 
 A project has no `Settings` of its own: it takes the package's sample template's,
@@ -192,3 +194,25 @@ reader puts the package's file there, of the version the section documents, or a
 from Available Packages with Embedded cleared, and restarts the compiler. The IDE takes the
 version from that file, not from the reference, and nothing in the IDE downloads a missing package
 by itself (BETA 1005).
+
+## Tools of one package
+
+A tool that serves one package alone lives in that package's folder here, with a `README.md` of its
+own: tbKMode's `wdk/` (the WDK cases' generators), `exe/` and `probe/`, and `verifier/`.
+Rules (owner):
+
+- **It is run when that package's section is updated, never on every change.** It is in no wrapper
+  gate (`test.bat`, `check.bat`), not in CI, and not on the developer pages under
+  `docs/Documentation/` (the Tools pages describe the documentation's own tools). Its own tests are
+  run by hand, after a change to it (tbKMode's verifier: `node --test test/verifier.test.mjs` in its
+  folder).
+- **It is documented with the package.** Its README is its manual. A tool published for readers
+  also has a page in the package's section (`docs/Reference/Contributed/tbKMode/Verifier.md`),
+  linked from the landing page's See Also and *Test cases*, and a card on the Downloads page.
+- **A published tool needs nothing outside its zip.** Its folder's `publish.json` makes the build
+  zip it as `<zip>` beside the package's section (`builder/package-tests.mjs`): every file of the
+  folder but `publish.json`, under `<folder>/`; `rewrite` replaces a file's text, and `vendor` adds
+  a file from outside the folder (its `from` relative to the tool's folder). tbKMode's verifier is
+  given a copy of the shared twinBASIC scanner this way, so the repository keeps one scanner and
+  the zip runs on its own. Text files are zipped with LF and a fixed time, so the same files give
+  the same zip on any checkout.
