@@ -32,8 +32,10 @@ about the package beyond its pages; the rules for every contributed package are 
 its folder's `frame.md`, `names.json` and, for modWDM, `procedures.md`. Edit those, never the
 page, then run the writer; `--check` says whether a page differs. Its README says how. The landing
 page, `Verifier.md` and `Writer.md` are written by hand. The writer's sources were extracted from
-the pages as they were reviewed (2026-11-17), so the earlier per-module scripts of the gitignored
-`.claude/tbkmode-parts/` are retired.
+the pages as they were reviewed (2026-11-17); the earlier per-module scripts are deleted. **No
+gate runs `writer.mjs --check`** (owner, 2026-11-17): the package is small and the owner alone
+maintains its section. It needs only the repository's files, so it can join `test.bat` once others
+edit the section.
 
 ## The package's tools (test/package-tests/tbKMode/)
 
