@@ -34,7 +34,11 @@ node verify.mjs wdk
   offset, and a field shorter than C's), laid out as twinBASIC lays a Type out; each Enum member
   and Const against the value of its name, as a Long, or as a LongLong when the value needs 64
   bits; and each Declare against the prototype of its entry point (how many parameters, how each
-  is passed and its size, what it returns). The first kit `config/wdk.json` names decides: WDK
+  is passed and its size, what it returns). A parameter passed `ByRef` passes its variable's
+  address, so it is compared with what the routine's pointer points to: a structure where the
+  routine takes the address of a pointer is an error, and so is a variable smaller than what the
+  pointer points to (`As Any`, `void *`, a structure the headers do not define and a
+  variable-length one match anything). The first kit `config/wdk.json` names decides: WDK
   10.0.22621, the one tbKMode was written from. A difference from it is an error; a later kit's
   differences are notes, and an error a later kit does not have says so. `config/tbKMode.json`
   says what the names alone cannot: the C name of a Type named otherwise, a field the package
@@ -120,7 +124,9 @@ compiler reads them (its `comment` says how each entry is written): each structu
 its size, alignment and fields (a member of a named member as `name.member`, an anonymous
 member's members by name, a bitfield by its bits), the typedef names of structures and
 enumerations, each enumeration's members, each enumerator's and numeric or string macro's value,
-and each function's convention and the kinds of its parameters and result.
+and each function's convention and the kinds of its parameters and result. A pointer's kind names
+what it points to (`p8>s16:_UNICODE_STRING`, `p8>p8>s336:_DEVICE_OBJECT`, `p8>v0`), and a
+structure the headers name but do not define has no size (`p8>s?:_EPROCESS`).
 
 `wdk` preprocesses the headers `config/wdk.json` names and reads from that what they declare, and
 from the headers themselves their macros (`cl /d1PP` loses the name of a macro whose comment goes

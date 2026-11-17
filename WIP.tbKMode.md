@@ -66,7 +66,12 @@ package*). Each folder's README says how.
   headers come from its bundle's headers-and-libraries package (its MSI names the CAB entries); its
   SDK must be installed. `check` lays each Type out as twinBASIC does (`lib/tblayout.mjs`), a model
   that agreed with every layout check of the compiled cases (3764, BETA 1042), and its findings
-  reproduce every failing layout and value check of `expect.json`.
+  reproduce every failing layout and value check of `expect.json`. A pointer's kind names what it
+  points to (database format 2), so `check` compares a `ByRef` parameter with it: a structure where
+  C takes the address of a pointer (IoCreateDevice, SeLocateProcessImageName), or a variable
+  smaller than the pointee (ExInitializeNPagedLookasideList), is an error. It cannot find
+  CmCallbackReleaseKeyObjectIDEx: a `ByRef UNICODE_STRING` is a `PCUNICODE_STRING`, and the defect
+  is that the Get routine gives a pointer.
 
 Lessons: a case's failure message holds no address and no list longer than 100 characters; a
 compile case's record holds its line number, so new ones go at the end of a file. A field or type

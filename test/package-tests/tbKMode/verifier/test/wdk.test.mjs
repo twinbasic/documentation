@@ -10,7 +10,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { memberPaths, readDeclarations, readMacros, tokenize } from "../lib/cdecl.mjs";
 import { constantsFor, evaluate, fileConstants } from "../lib/conditions.mjs";
-import { checkHeaders, kindSize } from "../lib/headers.mjs";
+import { checkHeaders, kindSize, kindText } from "../lib/headers.mjs";
 import { decodeStreamName, msiFilePaths, readCompoundFile } from "../lib/msi.mjs";
 import { readPackage } from "../lib/package.mjs";
 import { evalExpr, layoutOf, packageModel } from "../lib/tblayout.mjs";
@@ -313,6 +313,92 @@ test("a database kind gives its size", () => {
   assert.equal(kindSize("a4:u2"), 8);
   assert.equal(kindSize("s16:_LIST_ENTRY"), 16);
   assert.equal(kindSize("a0:s8:_X"), 0);
+  assert.equal(kindSize("p8>s16:_UNICODE_STRING"), 8);
+  assert.equal(kindSize("a2:p4>v0"), 8);
+  assert.equal(kindSize("s?:_EPROCESS"), null);
+});
+
+test("a database kind in words names what a pointer points to", () => {
+  assert.equal(kindText("p8>p8>s336:_DEVICE_OBJECT"), "a pointer to a pointer to struct _DEVICE_OBJECT");
+  assert.equal(kindText("p8>v0"), "a pointer (void *)");
+  assert.equal(kindText("p4>F"), "a pointer to a function");
+  assert.equal(kindText("p8>s?:_EPROCESS"), "a pointer to struct _EPROCESS");
+  assert.equal(kindText("p8>u4"), "a pointer to a 4-byte unsigned integer");
+});
+
+const POINTERS = `Module modTest
+Public Type BIG
+    a As LongLong
+    b As LongLong
+End Type
+Public Type SMALL
+    a As Long
+End Type
+Public Declare PtrSafe Sub Ln Lib "ntoskrnl.exe" (L As LongPtr)
+Public Declare PtrSafe Sub Dn Lib "ntoskrnl.exe" (D As BIG)
+Public Declare PtrSafe Sub Sn Lib "ntoskrnl.exe" (S As Integer, T As SMALL)
+Public Declare PtrSafe Sub Kn Lib "ntoskrnl.exe" (D As LongPtr, ByVal x As LongPtr, v As Any, q As LongLong, u As BIG, e As LongPtr, f As Byte, s As SMALL)
+End Module
+`;
+
+function pointerWdk() {
+  const big = () => [
+    16,
+    8,
+    [
+      ["a", 0, "i8"],
+      ["b", 8, "i8"],
+    ],
+  ];
+  const variable = () => [
+    8,
+    4,
+    [
+      ["n", 0, "u4"],
+      ["data", 4, "a1:u4"],
+    ],
+  ];
+  const fns = {
+    Ln: "v0 p>s16:_BIG",
+    Dn: "v0 p>p>s16:_BIG",
+    Sn: "v0 p>u4 p>s16:_BIG",
+    // Each matches: a pointer for a pointer, anything for void *, 8 bytes for a union of 8, the
+    // structure for itself, anything for an undefined structure, a byte for a byte buffer, a
+    // variable-length structure for its fixed part.
+    Kn: "v0 p>p>s16:_BIG p>v0 p>v0 p>U8:_LARGE p>s16:_BIG p>s?:_EPROCESS p>u1 p>s8:_VAR",
+  };
+  const at = (sig, n) => sig.replaceAll("p>", `p${n}>`);
+  return {
+    types: {
+      _BIG: { x86: big(), x64: big() },
+      _VAR: { x86: variable(), x64: variable() },
+    },
+    aliases: { BIG: "_BIG" },
+    enums: {},
+    values: {},
+    functions: Object.fromEntries(
+      Object.entries(fns).map(([k, sig]) => [k, { x86: `stdcall ${at(sig, 4)}`, x64: `x64 ${at(sig, 8)}` }]),
+    ),
+    macros: [],
+  };
+}
+
+test("a ByRef parameter is compared with what the routine's pointer points to", () => {
+  const findings = withPackage(POINTERS, (dir) => checkHeaders(readPackage(dir), [{ kit: "first", db: pointerWdk() }]));
+  const got = findings
+    .filter((f) => f.severity !== "unchecked")
+    .map((f) => `${f.name} ${f.arch} ${f.severity}: ${f.message}`)
+    .sort();
+  assert.deepEqual(got, [
+    "Dn x64 error: parameter 1 (D) is BIG, a structure; the WDK's Dn takes a pointer to a pointer to struct _BIG there: the pointer the routine reads or writes is the structure's first bytes",
+    "Dn x86 error: parameter 1 (D) is BIG, a structure; the WDK's Dn takes a pointer to a pointer to struct _BIG there: the pointer the routine reads or writes is the structure's first bytes",
+    "Ln x64 error: parameter 1 (L) is LongPtr, 8 bytes; the WDK's Ln takes a pointer to struct _BIG (16 bytes) there: the routine reads or writes 8 bytes past the variable",
+    "Ln x86 error: parameter 1 (L) is LongPtr, 4 bytes; the WDK's Ln takes a pointer to struct _BIG (16 bytes) there: the routine reads or writes 12 bytes past the variable",
+    "Sn x64 error: parameter 1 (S) is Integer, 2 bytes; the WDK's Sn takes a pointer to a 4-byte unsigned integer (4 bytes) there: the routine reads or writes 2 bytes past the variable",
+    "Sn x64 error: parameter 2 (T) is SMALL, 4 bytes; the WDK's Sn takes a pointer to struct _BIG (16 bytes) there: the routine reads or writes 12 bytes past the variable",
+    "Sn x86 error: parameter 1 (S) is Integer, 2 bytes; the WDK's Sn takes a pointer to a 4-byte unsigned integer (4 bytes) there: the routine reads or writes 2 bytes past the variable",
+    "Sn x86 error: parameter 2 (T) is SMALL, 4 bytes; the WDK's Sn takes a pointer to struct _BIG (16 bytes) there: the routine reads or writes 12 bytes past the variable",
+  ]);
 });
 
 // ------------------------------------------------------------------ the committed databases

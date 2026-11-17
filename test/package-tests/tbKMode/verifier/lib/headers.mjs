@@ -15,8 +15,19 @@ import { ARCHES, parseParam } from "./declares.mjs";
 import { declareParts } from "./scanner.mjs";
 import { envOf, enumValuesOf, layoutOf, packageModel, typeFor, typeInfo, packageValue } from "./tblayout.mjs";
 
-/** A database kind's size in bytes, or null: i4 is 4, a4:u2 is 8, s16:_LIST_ENTRY 16. */
+/**
+ * What a database pointer kind points to: "s16:_UNICODE_STRING" for p8>s16:_UNICODE_STRING; null
+ * for any other kind, and for a pointer to a member (p8), whose target is not recorded.
+ */
+export function pointee(kind) {
+  const m = /^p\d+>(.*)$/.exec(kind ?? "");
+  return m ? m[1] : null;
+}
+
+/** A database kind's size in bytes, or null: i4 is 4, a4:u2 is 8, s16:_LIST_ENTRY 16, p8>v0 8. */
 export function kindSize(kind) {
+  const p = /^p(\d+)>/.exec(kind ?? "");
+  if (p) return Number(p[1]);
   const m = /^([A-Za-z?])(\d+)(?::(.*))?$/.exec(kind ?? "");
   if (!m) return null;
   if (m[1] === "a") {
@@ -26,8 +37,16 @@ export function kindSize(kind) {
   return Number(m[2]);
 }
 
-/** A database kind in words: "a 4-byte unsigned integer", "a pointer", "struct _LIST_ENTRY". */
+/**
+ * A database kind in words: "a 4-byte unsigned integer", "a pointer to struct _LIST_ENTRY",
+ * "struct _LIST_ENTRY".
+ */
 export function kindText(kind) {
+  const to = pointee(kind);
+  if (to !== null) return to === "v0" ? "a pointer (void *)" : `a pointer to ${kindText(to)}`;
+  if (kind === "F") return "a function";
+  const incomplete = /^([sU])\?:(.*)$/.exec(kind ?? "");
+  if (incomplete) return `${incomplete[1] === "s" ? "struct" : "union"} ${incomplete[2].replaceAll("~", " ")}`;
   const m = /^([A-Za-z?])(\d+)(?::(.*))?$/.exec(kind ?? "");
   if (!m) return kind;
   const n = Number(m[2]);
@@ -168,6 +187,61 @@ const hex = (v) => {
   return `&H${(bits ? BigInt.asUintN(bits, v) : v).toString(16).toUpperCase()}`;
 };
 const num = (v) => (v >= -9999n && v <= 9999n ? `${v}` : `${v} (${hex(v)})`);
+
+/** The tag of a structure or union the database records under a name or an alias, or null. */
+function tagOf(db, name, arch) {
+  if (db.types[name]) return name;
+  const alias = db.aliases[name];
+  return (typeof alias === "string" ? alias : alias?.[arch]) ?? null;
+}
+
+/**
+ * What is wrong with passing a parameter ByRef where C takes a pointer to `to` (a database kind),
+ * as `{is, rest}` for the message, or null. A ByRef parameter passes its variable's address, so
+ * the routine reads or writes the variable as the kind its pointer points to:
+ *
+ * - against a pointer to a pointer, the variable must be a pointer, not a structure (IoCreateDevice
+ *   writes the new device's address over a DEVICE_OBJECT's first bytes);
+ * - against a pointer to anything else of a known size, the variable must be at least that large
+ *   (a LongPtr where the routine initializes an NPAGED_LOOKASIDE_LIST).
+ *
+ * `As Any`, a String, a Variant, `void *`, a function, a structure the headers do not define and a
+ * variable-length structure match anything; a Type that is the C structure itself is left to the
+ * Type's own check.
+ */
+function byRefMismatch(db, arch, p, to, model, config) {
+  if (to === null || to === "v0" || to === "F" || /^[sU]\?:/.test(to)) return null;
+  const type = String(p.type);
+  if (/^(any|string|variant)$/i.test(type)) return null;
+  const tb = typeInfo(type, arch, model);
+  if (tb.error || tb.kind === "v") return null;
+  const ptr = arch === "x64" ? 8 : 4;
+  if (/^p\d+/.test(to)) {
+    if (tb.kind === "s")
+      return {
+        is: `is ${type}, a structure`,
+        rest: " there: the pointer the routine reads or writes is the structure's first bytes",
+      };
+    if (tb.size < ptr)
+      return { is: `is ${type}, ${tb.size} bytes`, rest: ` there: the pointer it reads or writes is ${ptr} bytes` };
+    return null;
+  }
+  const ts = kindSize(to);
+  if (ts === null || tb.size >= ts) return null;
+  if (/^[sU]\d+:/.test(to)) {
+    const tag = tagOf(db, to.slice(to.indexOf(":") + 1).replaceAll("~", " "), arch);
+    const c = tag && cStructure(db, tag, arch);
+    if (c && variableLength(c)) return null;
+    if (tb.kind === "s") {
+      const own = structureFor(db, { name: tb.type }, arch, config);
+      if (own && tagOf(db, own.name, arch) === tag) return null;
+    }
+  }
+  return {
+    is: `is ${type}, ${tb.size} bytes`,
+    rest: ` (${ts} bytes) there: the routine reads or writes ${ts - tb.size} bytes past the variable`,
+  };
+}
 
 /** One kit's findings: [{module, name, line, arch, severity, key, message}]. */
 function findingsFor(parsed, model, db, config) {
@@ -352,6 +426,10 @@ function findingsFor(parsed, model, db, config) {
             const structByAddress = /^[sU]/.test(ck) && arch === "x64" && ![1, 2, 4, 8].includes(cs);
             if (ck[0] !== "p" && !structByAddress)
               say(`is passed ByRef, an address; the WDK's ${shown} takes ${kindText(ck)} there`);
+            else if (!p.array) {
+              const m = byRefMismatch(db, arch, p, pointee(ck), model, config);
+              if (m) say(`${m.is}; the WDK's ${shown} takes ${kindText(ck)}${m.rest}`);
+            }
             continue;
           }
           const tb = typeInfo(p.type, arch, model);
