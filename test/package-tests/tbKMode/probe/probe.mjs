@@ -8,14 +8,17 @@
 // %TEMP%\tbkmode-probe\<pid>\<id>-<arch> (the contributed-tbKMode sample template's Settings with a
 // driver's settings, the package embedded from the indexer's store, the scenario as its one
 // module), packed with impexp, built with `tbbuild --build`, and the import table of the file it
-// built is printed. A scenario passes when the driver imports from ntoskrnl.exe and HAL.dll only,
-// which is all the kernel resolves for a driver.
+// built is printed and judged by the verifier's checkDriver (../verifier/lib/imports.mjs): a
+// scenario passes when the driver imports from no user-mode DLL, and each routine it imports from a
+// kernel-mode file is exported by that file in every Windows version of the verifier's
+// db/kernels.json (x64 only; an x86 driver's routines are not checked).
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { choiceOption, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../../../../lib/cli.mjs";
 import { packTree } from "../../../../scripts/lib/tb-project.mjs";
+import { checkDriver } from "../verifier/lib/imports.mjs";
 
 const USAGE = `usage: node test/package-tests/tbKMode/probe/probe.mjs [--arch win32|win64] [--package-settings published|suggested] [<id> ...] [-h, --help]
 
@@ -30,8 +33,9 @@ each driver imports. No driver is loaded.
   -h, --help            print this text and exit
 
 Exit codes:
-  0  every driver imports from ntoskrnl.exe and HAL.dll only
-  1  a driver imports from another DLL
+  0  every driver imports only what the kernel-mode files export (x64: in every Windows
+     version of the verifier's db/kernels.json)
+  1  a driver imports from a user-mode DLL, or a routine some Windows version does not export
   2  the command line was refused, the package is not in the indexer's store, a build failed,
      or the probe could not run`;
 
@@ -57,7 +61,11 @@ const SUGGESTED_PACKAGE_SETTINGS = {
   "compiler.disableFPUErrorChecks": true,
 };
 
-const KERNEL_DLLS = new Set(["ntoskrnl.exe", "hal.dll"]);
+// The exports of the kernel-mode files, by Windows version, which the verifier's `kernels` command
+// downloads and records.
+const kernels = JSON.parse(
+  readFileSync(path.join(import.meta.dirname, "..", "verifier", "db", "kernels.json"), "utf8"),
+);
 
 exitOnCrash();
 const usageError = { format: (err) => `${err.message}\n${USAGE}` };
@@ -108,46 +116,6 @@ if (!existsSync(path.join(pkg, "sources"))) {
 }
 const template = path.join(repo, "test", "example-projects", "contributed-tbKMode", "Settings");
 
-/** The imports of a PE file: [{ dll, names: [routine or #ordinal] }]. */
-function importsOf(file) {
-  const b = readFileSync(file);
-  const nt = b.readUInt32LE(0x3c);
-  if (b.readUInt32LE(nt) !== 0x4550) throw new Error(`${file} is not a PE file`);
-  const opt = nt + 24;
-  const pe64 = b.readUInt16LE(opt) === 0x20b;
-  const sections = [];
-  for (let i = 0; i < b.readUInt16LE(nt + 6); i++) {
-    const s = opt + b.readUInt16LE(nt + 20) + 40 * i;
-    sections.push({
-      va: b.readUInt32LE(s + 12),
-      size: Math.max(b.readUInt32LE(s + 8), b.readUInt32LE(s + 16)),
-      raw: b.readUInt32LE(s + 20),
-    });
-  }
-  const at = (rva) => {
-    const s = sections.find((x) => rva >= x.va && rva < x.va + x.size);
-    if (!s) throw new Error(`${file}: RVA ${rva.toString(16)} is in no section`);
-    return rva - s.va + s.raw;
-  };
-  const cstr = (off) => b.toString("latin1", off, b.indexOf(0, off));
-  const dirRva = b.readUInt32LE(opt + (pe64 ? 120 : 104));
-  const out = [];
-  if (!dirRva) return out;
-  for (let d = at(dirRva); b.readUInt32LE(d + 12) !== 0; d += 20) {
-    const dll = cstr(at(b.readUInt32LE(d + 12)));
-    const names = [];
-    const thunkRva = b.readUInt32LE(d) || b.readUInt32LE(d + 16);
-    for (let t = at(thunkRva); ; t += pe64 ? 8 : 4) {
-      const v = pe64 ? b.readBigUInt64LE(t) : BigInt(b.readUInt32LE(t));
-      if (v === 0n) break;
-      const ordinal = pe64 ? v >> 63n === 1n : v >> 31n === 1n;
-      names.push(ordinal ? `#${Number(v & 0xffffn)}` : cstr(at(Number(v & 0x7fffffffn)) + 2));
-    }
-    out.push({ dll, names });
-  }
-  return out;
-}
-
 /** Writes and packs one scenario's project; returns the .twinproj. */
 function stage(id, arch, work) {
   const tree = path.join(work, `${id}-${arch}`);
@@ -194,11 +162,12 @@ for (const arch of arches) {
       rmSync(work, { recursive: true, force: true });
       process.exit(2);
     }
-    const imports = importsOf(report.built);
-    const others = imports.filter((i) => !KERNEL_DLLS.has(i.dll.toLowerCase()));
-    if (others.length) foreign = true;
-    console.log(`${others.length ? "FAIL" : "PASS"} ${id} ${arch}`);
-    for (const i of imports) console.log(`  ${i.dll}: ${i.names.join(", ")}`);
+    const r = checkDriver(readFileSync(report.built), kernels);
+    if (!r.pass) foreign = true;
+    console.log(`${r.pass ? "PASS" : "FAIL"} ${id} ${arch}`);
+    for (const i of r.imports) console.log(`  ${i.dll}: ${i.names.join(", ")}`);
+    for (const p of r.problems) console.log(`  problem: ${p}`);
+    for (const u of r.unchecked) console.log(`  not checked: ${u}`);
   }
 }
 rmSync(work, { recursive: true, force: true });

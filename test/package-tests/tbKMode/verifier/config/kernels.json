@@ -1,0 +1,11 @@
+{
+  "comment": "The kernel-mode files whose exports db/kernels.json records, and the Windows versions they are taken from. Each version is named as Winbindex names it (`winbindex`, a name or a list of names); the newest build under those names is taken. Windows 10 21H2 and 22H2 share one kernel, build 19045, and Winbindex files its newer updates under 21H2. x64 only: Winbindex indexes no x86 files, and twinBASIC builds no arm64 code.",
+  "files": ["ntoskrnl.exe", "hal.dll", "fltmgr.sys"],
+  "windows": [
+    { "name": "Windows 10 22H2", "winbindex": ["22H2", "21H2"] },
+    { "name": "Windows 11 23H2", "winbindex": "11-23H2" },
+    { "name": "Windows 11 24H2", "winbindex": "11-24H2" },
+    { "name": "Windows 11 25H2", "winbindex": "11-25H2" },
+    { "name": "Windows 11 26H1", "winbindex": "11-26H1" }
+  ]
+}

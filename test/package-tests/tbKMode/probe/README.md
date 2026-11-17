@@ -18,11 +18,12 @@ node test/package-tests/tbKMode/probe/probe.mjs
 node test/package-tests/tbKMode/probe/probe.mjs --package-settings suggested
 ```
 
-Each scenario is built in both architectures (`--arch` names one), about 15 s a build. A line
-`PASS <id> <arch>` means the driver imports from `ntoskrnl.exe` and `HAL.dll` only, which is all
-the kernel resolves for a driver; `FAIL` means it imports from another DLL as well, and cannot
-load. The DLLs and routines follow each line. Exit 0 every driver passed, 1 one failed, 2 the
-probe could not run.
+Each scenario is built in both architectures (`--arch` names one), about 15 s a build. Each
+driver is judged by the verifier's `imports` check (`../verifier/`, its README says how): a line
+`PASS <id> <arch>` means the driver imports from no user-mode DLL, and, in a 64-bit build, that
+every routine it imports is exported in each Windows version of the verifier's database; `FAIL`
+means it cannot load, and the problems follow. The DLLs and routines follow each line. Exit 0
+every driver passed, 1 one failed, 2 the probe could not run.
 
 Each driver is the `contributed-tbKMode` sample template with a driver's settings
 (`DRIVER_SETTINGS` in `probe.mjs`: Native Subsystem, `DriverEntry` as the entry point, Runtime
