@@ -1,0 +1,35 @@
+{
+  "types": {
+    "BOOT_SECTOR": "The boot sector of a FAT12 or FAT16 volume, 512 bytes, packed to 1 byte: the BIOS parameter block (bytes per sector, sectors per cluster, root directory entries, sectors, media byte), the volume ID and label, and the signature at its end.",
+    "DEVICE_EXTENSION": "The RAM-disk driver's device extension: its own, lower and physical device objects, its Plug and Play state (**DEVICE_STATE**), its remove lock, the address of the disk image, its geometry and settings, its symbolic link, and buffers for its drive letter and DOS device name.",
+    "DIR_ENTRY": "An entry of a FAT directory, 32 bytes: the 8.3 name, the attributes, ten reserved bytes, the time and date, the first cluster and the file size. Packed to 1 byte.",
+    "DISK_INFO": "The RAM disk's settings: its size in bytes, the number of root directory entries, the sectors per cluster, and its drive letter as a **UNICODE_STRING**.",
+    "DISK_GEOMETRY": "A disk's geometry: cylinders, media type, tracks per cylinder, sectors per track and bytes per sector, as `IOCTL_DISK_GET_DRIVE_GEOMETRY` returns it. **Cylinders** is a **LongLong** where C has a **LARGE_INTEGER**.",
+    "MOUNTDEV_NAME": "A device's name for the mount manager, as `IOCTL_MOUNTDEV_QUERY_DEVICE_NAME` returns it: its length in bytes and its characters. The C structure ends in an array of any length; here **Name** holds 8 characters at most, room for `RAMDisk` and no more.",
+    "PARTITION_INFORMATION": "A partition's offset, length, hidden sectors, number, type and flags, as `IOCTL_DISK_GET_PARTITION_INFO` returns it. Its **BOOLEAN** fields are **Byte**.",
+    "RAMDISK_DRIVER_EXTENSION": "The RAM-disk driver's driver-object extension: the registry path it was started with, and whether its device has been set up."
+  },
+  "enums": {
+    "DEVICE_STATE": "The Plug and Play state the RAM-disk driver keeps in **DEVICE_EXTENSION.DevState**: **STOPPED** (0), **WORKING**, **PENDINGSTOP**, **PENDINGREMOVE**, **SURPRISEREMOVED**, **REMOVED** and **MAX_STATE** (6).",
+    "MEDIA_TYPE": "The Win32 **MEDIA_TYPE**: **Unknown** (0), the floppy formats from **F5_1Pt2_512** to **F3_32M_512** (25), **RemovableMedia** (11) and **FixedMedia** (12)."
+  },
+  "consts": {
+    "DEFAULT_DISK_SIZE": "The RAM disk's size when the registry sets none: 1 MB, a **Long**.",
+    "DEFAULT_ROOT_DIR_ENTRIES": "The number of root directory entries when the registry sets none.",
+    "DEFAULT_SECTORS_PER_CLUSTER": "The sectors per cluster when the registry sets none.",
+    "DIR_ENTRIES_PER_SECTOR": "The directory entries in one 512-byte sector.",
+    "DOS_DEVNAME_BUFFER_SIZE": "The characters of **DEVICE_EXTENSION.DosDeviceNameBuffer**: 22.",
+    "DOS_DEVNAME_LENGTH": "The same buffer's size in bytes: 44.",
+    "DRIVE_LETTER_BUFFER_SIZE": "The characters of **DEVICE_EXTENSION.DriveLetterBuffer**.",
+    "DRIVE_LETTER_LENGTH": "The same buffer's size in bytes: 20.",
+    "FLAG_LINK_CREATED": "A bit for **DEVICE_EXTENSION.Flags**: the symbolic link has been created.",
+    "RAMDISK_MEDIA_TYPE": "The media byte of the boot sector (**BOOT_SECTOR.bsMedia**): a fixed disk.",
+    "REMLOCK_HIGHWATER": "A high-water mark for the remove lock, the *HighWater* argument of [**IoInitializeRemoveLock**](modWDM#IoInitializeRemoveLock).",
+    "REMLOCK_MAXIMUM": "A limit in minutes for the remove lock, the *Maxmin* argument of **IoInitializeRemoveLock**."
+  },
+  "variables": {
+    "DEFAULT_DRIVE_LETTER": "The RAM disk's drive letter when the registry sets none, `\"Z:\"`.",
+    "RAMDISK_DRIVER_EXTENSION_KEY": "A key for the driver-object extension, **RAMDISK_DRIVER_EXTENSION**.",
+    "REMLOCK_TAG": "A tag for the remove lock. **IoInitializeRemoveLock** takes its tag as a **Long**."
+  }
+}

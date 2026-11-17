@@ -198,7 +198,8 @@ by itself (BETA 1005).
 ## Tools of one package
 
 A tool that serves one package alone lives in that package's folder here, with a `README.md` of its
-own: tbKMode's `wdk/` (the WDK cases' generators), `exe/` and `probe/`, and `verifier/`.
+own: tbKMode's `wdk/` (the WDK cases' generators), `exe/` and `probe/`, `verifier/`, and `writer/`
+(the section's module pages, from a frame and a description of each name).
 Rules (owner):
 
 - **It is run when that package's section is updated, never on every change.** It is in no wrapper

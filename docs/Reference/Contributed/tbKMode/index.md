@@ -65,6 +65,7 @@ The [Build Output Path](../../../IDE/Project-Settings#build-output-path) ends in
 ## See Also
 
 - [tbKMode Verifier](Verifier) -- checks the package's declarations, and a built driver's imports, against the Windows kernel
+- [tbKMode Writer](Writer) -- writes the module pages of this section
 - [Project Settings](../../../IDE/Project-Settings) -- the settings of a driver project
 - [Project Types](../../../../Features/Project-Configuration/Project-Types#kernel-mode-drivers) -- kernel-mode drivers in twinBASIC
 - [Experimental Packages](../../Experimental/) -- the packages from TWINSERV that are not yet ready for use in a program
