@@ -116,7 +116,6 @@ const handlers = {
       linkTablesData,
       staticFilesArr,
       baseurl,
-      buildInfo,
       sitePathsArr,
       onlineSitePathsArr,
       skipOffline,
@@ -150,7 +149,7 @@ const handlers = {
       downloads,
       termPrefixes: siteData.config.search?.term_entries ?? [],
     });
-    const site = { ...siteData, markdown, buildInfo };
+    const site = { ...siteData, markdown };
 
     let offlineBase = null;
     if (!skipOffline) {

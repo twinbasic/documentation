@@ -181,10 +181,12 @@ function failBuild() {
 
 const workerCount = os.availableParallelism();
 // How many pieces the source tree is read in, each on a lane (discoverList).
-// Two: on a four-CPU CI runner the other two lanes compile the stylesheets
-// meanwhile, and more pieces would put those, dot and packTests behind the
-// reads. On Linux two pieces took discover from about 1.0 s to under 0.3 s.
-const DISCOVER_PIECES = 2;
+// Two on a machine with fewer than eight logical CPUs: on a four-CPU CI
+// runner the other two lanes compile the stylesheets meanwhile, and more
+// pieces would put those, dot and packTests behind the reads. On Linux two
+// pieces took discover from about 1.0 s to under 0.3 s. Four from eight CPUs
+// on (owner), where four lanes reading still leave lanes for the rest.
+const discoverPieces = (cpus) => Math.max(1, Math.min(cpus >= 8 ? 4 : 2, cpus));
 
 // Register a dynamic fan-in barrier: BOTH halves of its invariant, in
 // one call, because writing one without the other is a data-loss bug
@@ -269,9 +271,12 @@ const TASKS = {
     },
   },
 
-  // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
+  // Git rev-parse / log shell-outs, for the book's title page: bookPayload
+  // waits for them, and nothing on the way to the first render does. Like the
+  // other early lane tasks it waits for discoverList, so that the first lanes
+  // up read the source tree.
   buildInfo: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "buildInfo",
     submit(out, state) {
       state.site.buildInfo = out.buildInfo;
@@ -509,14 +514,13 @@ const TASKS = {
   // first stage of its boot alone (cpu-worker.mjs), and the lane tasks that
   // would otherwise be READY before the pieces exist wait for this task, so
   // that the first lanes up are free for the pieces. The listing takes a few
-  // hundredths of a second, less than a lane takes to start. buildInfo does
-  // not wait: dispatch waits for it, and it is two git processes.
+  // hundredths of a second, less than a lane takes to start.
   discoverList: {
     expected: ["config"],
     runOnMain: true,
     async execute({ config: { config } }, ctx) {
       const listing = await listSources(ctx.srcRoot, config.exclude ?? []);
-      return cutPieces(listing, Math.min(DISCOVER_PIECES, ctx.workerCount), config.bundle_extra ?? []);
+      return cutPieces(listing, discoverPieces(ctx.workerCount), config.bundle_extra ?? []);
     },
     submit(out, _state, scheduler) {
       fanOut(scheduler, {
@@ -799,13 +803,15 @@ const TASKS = {
   // worker tasks plus a renderJoin barrier. Assembles initData from the
   // two parallel halves: nav (sidebar) + buildInit (config-only chrome).
   dispatch: {
-    expected: ["nav", "buildInit", "buildInfo", "dot", "deriveRedirects", "markdownInit"],
+    // buildInfo is not here: the book's title page alone states the commit, so
+    // bookPayload waits for it. Its two git processes take up to 0.6 s in a
+    // one-off build on Windows, and every render waited for them.
+    expected: ["nav", "buildInit", "dot", "deriveRedirects", "markdownInit"],
     runOnMain: true,
     async execute(
       {
         nav: { sidebar },
         buildInit: { initData },
-        buildInfo: { buildInfo },
         dot: _dotSignal,
         markdownInit: _markdownInitSignal,
         deriveRedirects: { stubs },
@@ -936,7 +942,6 @@ const TASKS = {
           navTree: state.site.navTree,
         },
         initData: { ...initData, sidebar },
-        buildInfo,
         linkTablesData: state.site.linkTablesSerialized,
         staticFilesArr: state.staticFiles.map((f) => f.srcRel),
         baseurl: String(state.site.config.baseurl || ""),
@@ -1510,8 +1515,9 @@ const TASKS = {
     // It holds transitively today via flush:i being lane-pinned to
     // render:i, which is not something to rely on in a list whose whole
     // job is to say what must have merged. renderJoin is DONE by this
-    // point, so it costs nothing.
-    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
+    // point, so it costs nothing. buildInfo is the commit the title page
+    // states (state.site.buildInfo), which nothing before this reads.
+    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters", "buildInfo"],
     runOnMain: true,
     execute(_, ctx, state) {
       const skip = !!ctx.opts.dryRun || skipsPdf(ctx, state);
