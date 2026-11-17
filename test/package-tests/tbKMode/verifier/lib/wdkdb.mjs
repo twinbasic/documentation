@@ -19,7 +19,7 @@ import { memberPaths, readDeclarations, readMacros, tokenize } from "./cdecl.mjs
 import { msiFilePaths, readMsi } from "./msi.mjs";
 import { inMsvc, KITS } from "./msvc.mjs";
 
-export const WDK_FORMAT = 1;
+export const WDK_FORMAT = 2;
 export const WDK_ARCHES = ["x86", "x64"];
 
 /**
@@ -81,8 +81,10 @@ function options(arch, inc) {
 //   T <typedef> <kind>
 //   V <name> <kind> <value>        (a string's value is its bytes in hex)
 //   P <name> <convention> <return kind> <parameter kinds...> [...]
-// A kind is i<n> or u<n> (an integer of n bytes, signed or not), f<n>, p<n> (a pointer), e<n>:<enum>,
-// s<n>:<struct>, U<n>:<union>, a<count>:<element kind>, or v0 (void).
+// A kind is i<n> or u<n> (an integer of n bytes, signed or not), f<n>, p<n>><kind> (a pointer to a
+// kind: p8>s16:_UNICODE_STRING, p8>p8>s336:_DEVICE_OBJECT, p8>v0), p<n> (a pointer to a member),
+// e<n>:<enum>, s<n>:<struct>, U<n>:<union>, s?:<struct> or U?:<union> (one the headers only name),
+// a<count>:<element kind>, F (a function, the kind a pointer to one points to), or v0 (void).
 const PRELUDE = String.raw`
 #include <stdio.h>
 #include <string.h>
@@ -94,16 +96,34 @@ static void tb_name(const char* n) {
   const char* s = strchr(n, ' ');
   for (s = s ? s + 1 : n; *s; s++) putchar(*s == ' ' ? '~' : *s);
 }
+// A type is complete when sizeof can be taken of it: a structure the headers only name
+// (struct _EPROCESS) is not, and neither sizeof nor typeid may be asked of it.
+template<class T, class = void> struct tb_complete : std::false_type {};
+template<class T> struct tb_complete<T, std::void_t<decltype(sizeof(T))>> : std::true_type {};
+// The name of an incomplete type, from the signature MSVC gives this function: typeid needs a
+// complete one. "void __cdecl tb_tname<struct _EPROCESS>(void)" prints _EPROCESS. The signature is
+// read once: each use of __FUNCSIG__ is a string of its own.
+template<class T> void tb_tname() {
+  const char* f = __FUNCSIG__;
+  const char* s = strchr(f, '<') + 1;
+  const char* e = strrchr(f, '>');
+  const char* sp = strchr(s, ' ');
+  if (sp && sp < e) s = sp + 1;
+  for (; s < e; s++) putchar(*s == ' ' ? '~' : *s);
+}
 template<class T> void tb_kind() {
   using U = std::remove_cv_t<T>;
   if constexpr (std::is_void_v<U>) printf("v0");
+  else if constexpr (std::is_function_v<U>) printf("F");
   else if constexpr (std::is_array_v<U> && std::extent_v<U> == 0) { printf("a0:"); tb_kind<std::remove_extent_t<U>>(); }
+  else if constexpr (!tb_complete<U>::value) { printf(std::is_union_v<U> ? "U?:" : "s?:"); tb_tname<U>(); }
   else if constexpr (std::is_array_v<U>) {
     using E = std::remove_all_extents_t<U>;
     printf("a%u:", (unsigned)(sizeof(U) / sizeof(E)));
     tb_kind<E>();
   }
-  else if constexpr (std::is_pointer_v<U> || std::is_member_pointer_v<U> || std::is_null_pointer_v<U>) printf("p%u", (unsigned)sizeof(U));
+  else if constexpr (std::is_pointer_v<U>) { printf("p%u>", (unsigned)sizeof(U)); tb_kind<std::remove_pointer_t<U>>(); }
+  else if constexpr (std::is_member_pointer_v<U> || std::is_null_pointer_v<U>) printf("p%u", (unsigned)sizeof(U));
   else if constexpr (std::is_floating_point_v<U>) printf("f%u", (unsigned)sizeof(U));
   else if constexpr (std::is_enum_v<U>) { printf("e%u:", (unsigned)sizeof(U)); tb_name(typeid(U).name()); }
   else if constexpr (std::is_integral_v<U>) printf("%c%u", std::is_signed_v<U> ? 'i' : 'u', (unsigned)sizeof(U));
@@ -474,7 +494,7 @@ function encodeKit(kit, headers, perArch, decls, macroNames) {
 }
 
 const WDK_COMMENT =
-  "What one WDK's headers declare, for x86 and x64, as the Visual C++ compiler reads them (written by verify.mjs wdk). `types`: each structure and union by its tag (or typedef name, for one with no tag), for each arch [size, alignment, fields]; a field is [path, offset, kind], a member of a named member as `name.member`, an anonymous member's members by name; a bitfield's offset is `b<first bit>+<bits>`. A kind is i<n> or u<n> (an integer of n bytes, signed or not), f<n> (floating point), p<n> (a pointer), e<n>:<enum>, s<n>:<struct>, U<n>:<union>, a<count>:<element kind>, v0 (void); a name's spaces are written ~. `aliases`: typedef names of structures, unions and enumerations, to their tags, one for both arches or one for each. `enums`: each enumeration's members. `values`: each enumerator and numeric or string macro, `<kind> <value>` (a string's bytes in hex, `s` for char and `w` for wchar_t), one value for both arches or one for each. `functions`: each function's convention and kinds, return first (`x64` on x64, where there is one convention; `...` a variable argument list), `import` when the headers declare it dllimport, `inline` when they define it. `macros`: the function-like macros, which have no value.";
+  "What one WDK's headers declare, for x86 and x64, as the Visual C++ compiler reads them (written by verify.mjs wdk). `types`: each structure and union by its tag (or typedef name, for one with no tag), for each arch [size, alignment, fields]; a field is [path, offset, kind], a member of a named member as `name.member`, an anonymous member's members by name; a bitfield's offset is `b<first bit>+<bits>`. A kind is i<n> or u<n> (an integer of n bytes, signed or not), f<n> (floating point), p<n>><kind> (a pointer of n bytes to that kind: p8>s16:_UNICODE_STRING, p8>p8>s336:_DEVICE_OBJECT, p8>v0), p<n> (a pointer to a member), e<n>:<enum>, s<n>:<struct>, U<n>:<union>, s?:<struct> or U?:<union> (one the headers name but do not define), a<count>:<element kind>, F (a function), v0 (void); a name's spaces are written ~. `aliases`: typedef names of structures, unions and enumerations, to their tags, one for both arches or one for each. `enums`: each enumeration's members. `values`: each enumerator and numeric or string macro, `<kind> <value>` (a string's bytes in hex, `s` for char and `w` for wchar_t), one value for both arches or one for each. `functions`: each function's convention and kinds, return first (`x64` on x64, where there is one convention; `...` a variable argument list), `import` when the headers declare it dllimport, `inline` when they define it. `macros`: the function-like macros, which have no value.";
 
 /** The database as JSON with one entry to a line, so that a change reads as a short diff. */
 export function wdkDatabaseText(db) {
