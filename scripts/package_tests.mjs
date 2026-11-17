@@ -37,7 +37,9 @@
 // A [TestCase] that needs a process of its own, because the IDE's has already started something it
 // tests, is in the package folder's exe/: the project is built and run with `tbrun --exe`, every
 // case in order in one process, and judged with the rest. A server.mjs there is started first,
-// prints its port, and is named to the exe by PACKAGE_TEST_PORT.
+// prints its port, and is named to the exe by PACKAGE_TEST_PORT. A prepare.mjs there is imported
+// and its default export awaited with the architecture before that; the variables it returns are
+// added to the exe's environment (tbKMode: the path of a user-mode stand-in for ntoskrnl.exe).
 //
 // RunAll.twin, which the project's Sub Main runs, is generated from the cases and expect.json:
 // the run writes it again when it is out of date, and says so.
@@ -51,6 +53,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
 import {
   choiceOption,
@@ -258,9 +261,11 @@ async function runPackage(pkg) {
     if (exeNames.length && arches.includes(arch)) {
       const runner = { name: "RunExe.twin", text: runExeText(exeProject.tests) };
       const exeTree = stageTree(`${pkg}-${EXE_DIR}`, pkg, arch, template, [...exeFiles, runner]);
+      const prepared = await prepareExe(pkg, arch);
       const server = await startServer(pkg);
       try {
-        for (const [name, o] of exeCases(exeTree, arch, exeNames, server?.port, pkg)) outcomes.get(name)[arch] = o;
+        for (const [name, o] of exeCases(exeTree, arch, exeNames, server?.port, pkg, prepared))
+          outcomes.get(name)[arch] = o;
       } finally {
         server?.child.kill();
       }
@@ -394,12 +399,22 @@ function startServer(pkg) {
   });
 }
 
+// The package's exe/prepare.mjs, when it has one: its default export, awaited with the
+// architecture, builds what the exe needs (tbKMode: a user-mode stand-in for ntoskrnl.exe) and
+// returns the variables that name it to the exe.
+async function prepareExe(pkg, arch) {
+  const file = path.join(ROOT, pkg, EXE_DIR, "prepare.mjs");
+  if (!existsSync(file)) return {};
+  const { default: prepare } = await import(pathToFileURL(file).href);
+  return (await prepare(arch)) ?? {};
+}
+
 // tbrun --exe --json on the exe project; each case's outcome, by name. Exit 6 is an exe that ended
 // badly, which leaves the cases it did not reach with no line, and the reason in their detail.
-function exeCases(tree, arch, names, port, pkg) {
+function exeCases(tree, arch, names, port, pkg, prepared = {}) {
   const args = [TBRUN, tree, "--exe", "--json", "--arch", arch, ...packageTimeoutArgs(pkg)];
   if (values.ide) args.push("--ide", values.ide);
-  const env = port ? { ...process.env, PACKAGE_TEST_PORT: port } : process.env;
+  const env = { ...process.env, ...prepared, ...(port ? { PACKAGE_TEST_PORT: port } : {}) };
   const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env });
   let run = null;
   try {

@@ -1,0 +1,12 @@
+{
+  "comment": "The build zips this folder as tB/Packages/Contributed/tbKMode/tbKMode-verifier.zip beside the package's section (builder/package-tests.mjs). The zip carries a copy of the shared twinBASIC scanner in lib/scanner/, and lib/scanner.mjs names that copy, so it needs nothing outside itself.",
+  "zip": "tbKMode-verifier.zip",
+  "folder": "tbKMode-verifier",
+  "vendor": [
+    { "from": "../../../../scripts/lib/twin-api.mjs", "to": "lib/scanner/twin-api.mjs" },
+    { "from": "../../../../scripts/lib/twin-declarations.mjs", "to": "lib/scanner/twin-declarations.mjs" }
+  ],
+  "rewrite": {
+    "lib/scanner.mjs": "// The twinBASIC scanner the verifier reads a package with: a copy, in lib/scanner/, of the one the\n// twinBASIC documentation's tools share (scripts/lib/twin-api.mjs in its repository), where a\n// declaration it misreads is fixed.\nexport { declareParts, parseSources } from \"./scanner/twin-api.mjs\";\n"
+  }
+}

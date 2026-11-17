@@ -1,0 +1,49 @@
+[TestFixture]
+Module DiskTests
+
+    ' The sizes of modDisk's structures against their C definitions. A structure of the wrong
+    ' size is read or written past its end by Windows or by a driver.
+
+    [TestCase]
+    Public Sub DISK_GEOMETRY_Size()
+        Expect.Begin
+        Dim g As DISK_GEOMETRY
+        Expect.AreEqual 24, LenB(g), "LenB of DISK_GEOMETRY (winioctl.h: LARGE_INTEGER, MEDIA_TYPE, 3 DWORD)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PARTITION_INFORMATION_Size()
+        Expect.Begin
+        Dim p As PARTITION_INFORMATION
+        Expect.AreEqual 32, LenB(p), "LenB of PARTITION_INFORMATION (winioctl.h: 2 LARGE_INTEGER, 2 DWORD, BYTE, 3 BOOLEAN)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BOOT_SECTOR_Size()
+        Expect.Begin
+        Dim b As BOOT_SECTOR
+        Expect.AreEqual 512, LenB(b), "LenB of BOOT_SECTOR (one 512-byte sector)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DIR_ENTRY_Size()
+        Expect.Begin
+        Dim d As DIR_ENTRY
+        Expect.AreEqual 32, LenB(d), "LenB of DIR_ENTRY (a FAT directory entry is 32 bytes: DIR_ENTRIES_PER_SECTOR is 16 of a 512-byte sector)"
+        Expect.AreEqual 512, LenB(d) * DIR_ENTRIES_PER_SECTOR, "LenB of DIR_ENTRY times DIR_ENTRIES_PER_SECTOR"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MEDIA_TYPE_Values()
+        Expect.Begin
+        Expect.AreEqual 11, CLng(RemovableMedia), "RemovableMedia (winioctl.h)"
+        Expect.AreEqual 12, CLng(FixedMedia), "FixedMedia (winioctl.h)"
+        Expect.AreEqual 25, CLng(F3_32M_512), "F3_32M_512 (winioctl.h)"
+        Expect.Done
+    End Sub
+
+End Module

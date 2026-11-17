@@ -1,0 +1,11 @@
+' Calls IoGetNextIrpStackLocation and IoSkipCurrentIrpStackLocation, procedures of the package that
+' call no routine of the kernel.
+Module Driver
+    Private mIrp As IRP
+
+    Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
+        Dim p As LongPtr = IoGetNextIrpStackLocation(mIrp)
+        IoSkipCurrentIrpStackLocation mIrp
+        Return STATUS_SUCCESS
+    End Function
+End Module

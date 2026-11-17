@@ -18,7 +18,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSyn
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { comparePngs, composeComparison, decodePng, encodePng } from "./png.mjs";
-import { fileEntry } from "./zip.mjs";
+import { fileEntry } from "../../lib/zip.mjs";
 
 /** The environment variable the capture modules read the folder from. */
 export const IMAGES_ENV = "BUGREPRO_IMAGES";

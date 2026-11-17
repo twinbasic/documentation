@@ -39,6 +39,11 @@ given code (`die`), and makes a crash exit 2 (`exitOnCrash`).
 `scripts/check_cli.mjs` carries its probes and the tools' recorded
 command-line cases.
 
+[zip.mjs](zip.mjs) writes and reads a deflated zip with `node:zlib` alone
+(`zipFiles`, `readZip`, `fileEntry`): `scripts/bug_repro.mjs` zips a
+reproducer with it, and the build a contributed package's published tool
+(`builder/package-tests.mjs`).
+
 [sse.mjs](sse.mjs) is a channel of server-sent events (`createSseChannel`):
 it answers a page's `EventSource` request, keeps the stream open, and writes
 each event to every page holding it. `builder/serve.mjs` sends its

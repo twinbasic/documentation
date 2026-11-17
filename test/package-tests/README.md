@@ -16,6 +16,8 @@ test/package-tests/
     compile/               optional: compile cases that expect an error
     exe/                   optional: cases that run in a built exe, and a server.mjs for them
     probe/                 optional: a harness for what only a built program shows
+    <tool>/                optional: a tool of this package alone (see Tools of one package)
+      publish.json         when the build publishes it as a zip
 ```
 
 A project has no `Settings` of its own: it takes the package's sample template's,
@@ -83,9 +85,14 @@ End Module
   markers (GdiPlus: the IDE has already started GDI+). `Debug.Print` writes nothing there. A
   `server.mjs` in the folder is started first, prints its port on its first line, and the exe finds
   the port in `PACKAGE_TEST_PORT` (TBMANLIB: an HTTPS server whose certificate fails every check).
-  It is not published, and it needs no `RunAll`.
+  A `prepare.mjs` there is imported before that, and its default export awaited with the
+  architecture: it builds what the exe needs and returns the variables that name it to the exe
+  (tbKMode: a user-mode stand-in for `ntoskrnl.exe`, which the cases load by its full path before
+  they call a helper, so that the package's `Lib "ntoskrnl.exe"` Declares never reach the kernel).
+  The `exe/` folder is not published, and `RunAll` does not run its cases.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
-  TBMANLIB_Dialog's and xCalendar's do.
+  TBMANLIB_Dialog's and xCalendar's do, and so does one about what a program built with the package
+  holds (tbKMode's builds small drivers and reads their import tables).
 
 ## Tying the pages to the cases
 
@@ -187,3 +194,26 @@ reader puts the package's file there, of the version the section documents, or a
 from Available Packages with Embedded cleared, and restarts the compiler. The IDE takes the
 version from that file, not from the reference, and nothing in the IDE downloads a missing package
 by itself (BETA 1005).
+
+## Tools of one package
+
+A tool that serves one package alone lives in that package's folder here, with a `README.md` of its
+own: tbKMode's `wdk/` (the WDK cases' generators), `exe/` and `probe/`, `verifier/`, and `writer/`
+(the section's module pages, from a frame and a description of each name).
+Rules (owner):
+
+- **It is run when that package's section is updated, never on every change.** It is in no wrapper
+  gate (`test.bat`, `check.bat`), not in CI, and not on the developer pages under
+  `docs/Documentation/` (the Tools pages describe the documentation's own tools). Its own tests are
+  run by hand, after a change to it (tbKMode's verifier: `node --test test/verifier.test.mjs` in its
+  folder).
+- **It is documented with the package.** Its README is its manual. A tool published for readers
+  also has a page in the package's section (`docs/Reference/Contributed/tbKMode/Verifier.md`),
+  linked from the landing page's See Also and *Test cases*, and a card on the Downloads page.
+- **A published tool needs nothing outside its zip.** Its folder's `publish.json` makes the build
+  zip it as `<zip>` beside the package's section (`builder/package-tests.mjs`): every file of the
+  folder but `publish.json`, under `<folder>/`; `rewrite` replaces a file's text, and `vendor` adds
+  a file from outside the folder (its `from` relative to the tool's folder). tbKMode's verifier is
+  given a copy of the shared twinBASIC scanner this way, so the repository keeps one scanner and
+  the zip runs on its own. Text files are zipped with LF and a fixed time, so the same files give
+  the same zip on any checkout.

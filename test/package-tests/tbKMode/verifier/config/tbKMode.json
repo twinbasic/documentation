@@ -1,0 +1,118 @@
+{
+  "comment": "What the names alone cannot say when the verifier's check, and the test cases wdk/wdkcheck.mjs writes, compare tbKMode with the WDK's headers. `fixtures`: each module's prefix of its generated test modules (<fixture>LayoutTests, <fixture>ValueTests). `ctypes`: the C structure of a Type named otherwise, which may reach into one (FLT_PARAMETERS.Create, a member of a union). `fields`: { \"Type.field\": \"C path\" } where the names differ, or where the package flattens a C union or nested structure. `skipType`, `skipField` (\"Type.field\"), `skipName` (an enum member or constant): not compared. `noSize`: Types whose size is not compared (a C structure that ends in an array of one element is found without it). `sizes` and `values`: what to assert instead of the headers' (a version the package chose, or a value no kernel header declares). `comments`: why, by module.",
+  "fixtures": {
+    "modWDM": "WDM",
+    "modFltMgr": "FltMgr",
+    "modSysInfo": "SysInfo",
+    "modImage": "Image"
+  },
+  "ctypes": {
+    "GENERAL_LOOKASIDE_LAYOUT": "GENERAL_LOOKASIDE",
+    "_GENERAL_LOOKASIDE": "GENERAL_LOOKASIDE",
+    "FLT_PARAMETERS_Create": "FLT_PARAMETERS.Create",
+    "FLT_PARAMETERS_Read": "FLT_PARAMETERS.Read",
+    "FLT_PARAMETERS_Write": "FLT_PARAMETERS.Write",
+    "FLT_PARAMETERS_SetFileInformation": "FLT_PARAMETERS.SetFileInformation",
+    "FLT_PARAMETERS_SetVolumeInformation": "FLT_PARAMETERS.SetVolumeInformation",
+    "FLT_PARAMETERS_DeviceIoControl_Buffered": "FLT_PARAMETERS.DeviceIoControl.Buffered",
+    "FLT_PARAMETERS_FsControl_Common": "FLT_PARAMETERS.FileSystemControl.Common",
+    "FLT_PARAMETERS_Others": "FLT_PARAMETERS.Others",
+    "FILE_DISPOSITION_INFO_EX": "FILE_DISPOSITION_INFORMATION_EX",
+    "FILE_RENAME_INFORMATION_EX": "FILE_RENAME_INFORMATION",
+    "FILE_LINK_INFORMATION_EX": "FILE_LINK_INFORMATION"
+  },
+  "fields": {
+    "IRP.SystemBuffer": "AssociatedIrp.SystemBuffer",
+    "IRP.DriverContext": "Tail.Overlay.DriverContext",
+    "IRP.Thread": "Tail.Overlay.Thread",
+    "IRP.AuxiliaryBuffer": "Tail.Overlay.AuxiliaryBuffer",
+    "IRP.ListEntry": "Tail.Overlay.ListEntry",
+    "IRP.CurrentStackLocation": "Tail.Overlay.CurrentStackLocation",
+    "IRP.OriginalFileObject": "Tail.Overlay.OriginalFileObject",
+    "IO_STACK_LOCATION.DeviceIoControl": "Parameters.DeviceIoControl",
+    "DEVICE_OBJECT.AlignRequirement": "AlignmentRequirement",
+    "DEVICE_OBJECT.DeviceObjExtension": "DeviceObjectExtension",
+    "ERESOURCE.Reserved2": "MiscFlags",
+    "ERESOURCE.AddressOrCreatorBTIdx": "Address",
+    "OWNER_ENTRY.TableSizeOrFlags": "TableSize",
+    "LUID.lowPart": "LowPart",
+    "LUID.highPart": "HighPart",
+    "LUID_AND_ATTRIBUTES.pLuid": "Luid",
+    "OB_POST_OPERATION_PARAMETERS.GrantedAccess": "CreateHandleInformation.GrantedAccess",
+    "OB_PRE_OPERATION_INFORMATION.KernelHandle": "Flags",
+    "OB_POST_OPERATION_INFORMATION.KernelHandle": "Flags",
+    "KUSER_SHARED_DATA.NXSupportPolicy": "MitigationPolicies",
+    "KUSER_SHARED_DATA.TraceLogging": "SharedDataFlags",
+    "GENERAL_LOOKASIDE_LAYOUT.AllocateMissesHits": "AllocateMisses",
+    "GENERAL_LOOKASIDE_LAYOUT.FreeMissesHits": "FreeMisses",
+    "GENERAL_LOOKASIDE_LAYOUT.LastAllocateMissesHits": "LastAllocateMisses",
+    "FLT_CALLBACK_DATA.FilterCtxOrQueueLnkCtx": "FilterContext",
+    "FLT_PARAMETERS_SetFileInformation.union": "DeleteHandle",
+    "FILE_DIRECTORY_INFORMATION.FileName1": "FileName",
+    "FILE_MEMORY_PARTITION_INFORMATION.AllFlags": "Flags.AllFlags",
+    "FILE_OBJECTID_INFORMATION.IdOrInfo": "ExtendedInfo",
+    "TOKEN_OWNER.psid": "Owner",
+    "TOKEN_PRIMARY_GROUP.psid": "PrimaryGroup"
+  },
+  "skipType": [],
+  "skipField": [
+    "IRP.Pad",
+    "KUSER_SHARED_DATA.Pad",
+    "NPAGED_LOOKASIDE_LIST.align",
+    "NPAGED_LOOKASIDE_LIST.Lock__ObsoleteButDoNotDelete",
+    "_GENERAL_LOOKASIDE.L",
+    "_GENERAL_LOOKASIDE.align",
+    "_SLIST_HEADER.Alignment",
+    "KEY_VALUE_LAYER_INFORMATION.IsTombstone",
+    "IO_DRIVER_CREATE_CONTEXT.SiloContext",
+    "KUSER_SHARED_DATA.SystemCallReturn",
+    "FLT_REGISTRATION.SectionNotificationCallback"
+  ],
+  "skipName": [
+    "MDL_MAPPING_FLAGS",
+    "MaximumWaitReason",
+    "FLT_SECTION_CONTEXT",
+    "FileMaximumInformation",
+    "FileFsMaximumInformation",
+    "MaxProcessInfoClass",
+    "MaxTokenInfoClass",
+    "MaxSystemInfoClass",
+    "COMPRESSION_FORMAT_MAX",
+    "CHAR_MIN",
+    "CHAR_MAX"
+  ],
+  "noSize": [
+    "GENERAL_LOOKASIDE_LAYOUT",
+    "KEY_VALUE_FULL_INFORMATION",
+    "FILE_QUOTA_INFORMATION",
+    "FILE_ALL_INFORMATION",
+    "FILE_LINKS_INFORMATION"
+  ],
+  "sizes": {
+    "SE_SID": {
+      "x64": 68,
+      "x86": 68
+    },
+    "FLT_REGISTRATION": {
+      "x64": 104,
+      "x86": 56
+    },
+    "FILE_IO_PRIORITY_HINT_INFORMATION": {
+      "x64": 8,
+      "x86": 8
+    }
+  },
+  "values": {
+    "MAXWORD": 65535,
+    "PS_ATTRIBUTE_NUMBER_MASK": 65535,
+    "FLT_REGISTRATION_VERSION": 514,
+    "FLT_ALL_CONTEXTS": 63,
+    "UNWIND_HISTORY_TABLE_SIZE": 12
+  },
+  "comments": {
+    "modWDM": "The fields are the package's names for C fields of other names, or for a member of a C union or nested structure that it flattens (IRP's Tail.Overlay, IO_STACK_LOCATION's Parameters). The skipped fields are padding, a wrapper (_GENERAL_LOOKASIDE.L holds the layout C spells out in place) or a bitfield (IsTombstone); the KernelHandle bitfields are checked as the Flags they share with. GENERAL_LOOKASIDE_LAYOUT is a macro in wdm.h, the body of GENERAL_LOOKASIDE, whose size includes the cache-line alignment the package puts in _GENERAL_LOOKASIDE. MDL_MAPPING_FLAGS is an enum member named like the C enum type, which has no value. IO_DRIVER_CREATE_CONTEXT.SiloContext is declared under #If NTDDI_VERSION >= NTDDI_WIN10_RS1, and the package never defines NTDDI_VERSION, so the field is never there: its size case says so. KUSER_SHARED_DATA.SystemCallReturn has no counterpart in KUSER_SHARED_DATA (its place is inside QpcFrequency). MaximumWaitReason ends its enumeration and grows with each SDK. KEY_VALUE_FULL_INFORMATION has no Name field: the name follows its last field, where C's Name[1] starts, and C's size counts that one character and its padding. The values are those of headers the kernel's do not include: MAXWORD of winnt.h (0xffff) and PS_ATTRIBUTE_NUMBER_MASK of the Native API's headers (0x0000ffff). SE_SID is a union of a SID and a buffer of SECURITY_MAX_SID_SIZE bytes, 68, which ends in an array but is no variable-length structure: its size is asserted. CHAR_MIN and CHAR_MAX are not compared: the package takes char as unsigned, as a Byte is and its page says (C with /J), where limits.h, without /J, has -128 and 127 (owner, 2026-11-17).",
+    "modFltMgr": "The package builds without FLT_MGR_WIN8: FLT_REGISTRATION of version 0x0202, no section context, where the headers, for the kit's newest Windows, declare version 0x0203.",
+    "modSysInfo": "The skipped names end their enumerations and grow with each SDK. The noSize types end in a SID or a nested variable-length structure. The three ctypes are the WDK names of the package's _EX structures: FILE_RENAME_INFORMATION and FILE_LINK_INFORMATION hold the Flags of the Ex classes in a union with ReplaceIfExists. The fields are the package's names for C fields of other names; its padding field (Pad) has none. FILE_IO_PRIORITY_HINT_INFORMATION is 8 bytes as phnt declares it (DECLSPEC_ALIGN(8)), where wdm.h's is 4, and the kernel takes any length from 4 up for FileIoPriorityHintInformation, query and set, and writes 4 (Windows 10 22H2, 32-bit and 64-bit callers). POLICY_AUDIT_SUBCATEGORY_COUNT is 59 in WDK 10.0.22621, which decides and which the module matches, and 60 from 10.0.26100 on: a note.",
+    "modImage": "UNWIND_HISTORY_TABLE_SIZE is winnt.h's (and rtlsupportapi.h's), which no kernel header declares."
+  }
+}

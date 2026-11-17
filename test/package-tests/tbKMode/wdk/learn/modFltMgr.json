@@ -1,0 +1,655 @@
+[
+ {
+  "kind": "Declare",
+  "name": "FltAllocateContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltallocatecontext",
+  "syntax": "NTSTATUS FLTAPI FltAllocateContext(\n  [in]  PFLT_FILTER      Filter,\n  [in]  FLT_CONTEXT_TYPE ContextType,\n  [in]  SIZE_T           ContextSize,\n  [in]  POOL_TYPE        PoolType,\n  [out] PFLT_CONTEXT     *ReturnedContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltAllocatePoolAlignedWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltallocatepoolalignedwithtag",
+  "syntax": "PVOID FLTAPI FltAllocatePoolAlignedWithTag(\n  [in] PFLT_INSTANCE Instance,\n  [in] POOL_TYPE     PoolType,\n  [in] SIZE_T        NumberOfBytes,\n  [in] ULONG         Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltBuildDefaultSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltbuilddefaultsecuritydescriptor",
+  "syntax": "NTSTATUS FLTAPI FltBuildDefaultSecurityDescriptor(\n  [out] PSECURITY_DESCRIPTOR *SecurityDescriptor,\n  [in]  ACCESS_MASK          DesiredAccess\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCancelFileOpen",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcancelfileopen",
+  "syntax": "VOID FLTAPI FltCancelFileOpen(\n  [in] PFLT_INSTANCE Instance,\n  [in] PFILE_OBJECT  FileObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCancelIo",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcancelio",
+  "syntax": "BOOLEAN FLTAPI FltCancelIo(\n  [in] PFLT_CALLBACK_DATA CallbackData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltClearCancelCompletion",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltclearcancelcompletion",
+  "syntax": "NTSTATUS FLTAPI FltClearCancelCompletion(\n  [in] PFLT_CALLBACK_DATA CallbackData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltClose",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltclose",
+  "syntax": "NTSTATUS FLTAPI FltClose(\n  [in] HANDLE FileHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCloseClientPort",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcloseclientport",
+  "syntax": "VOID FLTAPI FltCloseClientPort(\n  [in]  PFLT_FILTER Filter,\n  [out] PFLT_PORT   *ClientPort\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCloseCommunicationPort",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltclosecommunicationport",
+  "syntax": "VOID FLTAPI FltCloseCommunicationPort(\n  [in] PFLT_PORT ServerPort\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCompareInstanceAltitudes",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcompareinstancealtitudes",
+  "syntax": "LONG FLTAPI FltCompareInstanceAltitudes(\n  [in] PFLT_INSTANCE Instance1,\n  [in] PFLT_INSTANCE Instance2\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCreateCommunicationPort",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcreatecommunicationport",
+  "syntax": "NTSTATUS FLTAPI FltCreateCommunicationPort(\n  PFLT_FILTER            Filter,\n  PFLT_PORT              *ServerPort,\n  POBJECT_ATTRIBUTES     ObjectAttributes,\n  PVOID                  ServerPortCookie,\n  PFLT_CONNECT_NOTIFY    ConnectNotifyCallback,\n  PFLT_DISCONNECT_NOTIFY DisconnectNotifyCallback,\n  PFLT_MESSAGE_NOTIFY    MessageNotifyCallback,\n  LONG                   MaxConnections\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCreateFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcreatefile",
+  "syntax": "NTSTATUS FLTAPI FltCreateFile(\n  [in]           PFLT_FILTER        Filter,\n  [in, optional] PFLT_INSTANCE      Instance,\n  [out]          PHANDLE            FileHandle,\n  [in]           ACCESS_MASK        DesiredAccess,\n  [in]           POBJECT_ATTRIBUTES ObjectAttributes,\n  [out]          PIO_STATUS_BLOCK   IoStatusBlock,\n  [in, optional] PLARGE_INTEGER     AllocationSize,\n  [in]           ULONG              FileAttributes,\n  [in]           ULONG              ShareAccess,\n  [in]           ULONG              CreateDisposition,\n  [in]           ULONG              CreateOptions,\n  [in, optional] PVOID              EaBuffer,\n  [in]           ULONG              EaLength,\n  [in]           ULONG              Flags\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCreateFileEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcreatefileex",
+  "syntax": "NTSTATUS FLTAPI FltCreateFileEx(\n  [in]           PFLT_FILTER        Filter,\n  [in, optional] PFLT_INSTANCE      Instance,\n  [out]          PHANDLE            FileHandle,\n  [out]          PFILE_OBJECT       *FileObject,\n  [in]           ACCESS_MASK        DesiredAccess,\n  [in]           POBJECT_ATTRIBUTES ObjectAttributes,\n  [out]          PIO_STATUS_BLOCK   IoStatusBlock,\n  [in, optional] PLARGE_INTEGER     AllocationSize,\n  [in]           ULONG              FileAttributes,\n  [in]           ULONG              ShareAccess,\n  [in]           ULONG              CreateDisposition,\n  [in]           ULONG              CreateOptions,\n  [in, optional] PVOID              EaBuffer,\n  [in]           ULONG              EaLength,\n  [in]           ULONG              Flags\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltCreateFileEx2",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcreatefileex2",
+  "syntax": "NTSTATUS FLTAPI FltCreateFileEx2(\n  [in]            PFLT_FILTER               Filter,\n  [in, optional]  PFLT_INSTANCE             Instance,\n  [out]           PHANDLE                   FileHandle,\n  [out, optional] PFILE_OBJECT              *FileObject,\n  [in]            ACCESS_MASK               DesiredAccess,\n  [in]            POBJECT_ATTRIBUTES        ObjectAttributes,\n  [out]           PIO_STATUS_BLOCK          IoStatusBlock,\n  [in, optional]  PLARGE_INTEGER            AllocationSize,\n  [in]            ULONG                     FileAttributes,\n  [in]            ULONG                     ShareAccess,\n  [in]            ULONG                     CreateDisposition,\n  [in]            ULONG                     CreateOptions,\n  [in, optional]  PVOID                     EaBuffer,\n  [in]            ULONG                     EaLength,\n  [in]            ULONG                     Flags,\n  [in, optional]  PIO_DRIVER_CREATE_CONTEXT DriverContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltDeleteContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltdeletecontext",
+  "syntax": "VOID FLTAPI FltDeleteContext(\n  [in] PFLT_CONTEXT Context\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltFlushBuffers",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltflushbuffers",
+  "syntax": "NTSTATUS FLTAPI FltFlushBuffers(\n  [in] PFLT_INSTANCE Instance,\n  [in] PFILE_OBJECT  FileObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltFreeCallbackData",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltfreecallbackdata",
+  "syntax": "VOID FLTAPI FltFreeCallbackData(\n  [in] PFLT_CALLBACK_DATA CallbackData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltFreePoolAlignedWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltfreepoolalignedwithtag",
+  "syntax": "VOID FLTAPI FltFreePoolAlignedWithTag(\n  [in] PFLT_INSTANCE Instance,\n  [in] PVOID         Buffer,\n  [in] ULONG         Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltFreeSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltfreesecuritydescriptor",
+  "syntax": "VOID FLTAPI FltFreeSecurityDescriptor(\n  [in] PSECURITY_DESCRIPTOR SecurityDescriptor\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetBottomInstance",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetbottominstance",
+  "syntax": "NTSTATUS FLTAPI FltGetBottomInstance(\n  [in]  PFLT_VOLUME   Volume,\n  [out] PFLT_INSTANCE *Instance\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetContexts",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetcontexts",
+  "syntax": "VOID FLTAPI FltGetContexts(\n  PCFLT_RELATED_OBJECTS FltObjects,\n  FLT_CONTEXT_TYPE      DesiredContexts,\n  PFLT_RELATED_CONTEXTS Contexts\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetDeviceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetdeviceobject",
+  "syntax": "NTSTATUS FLTAPI FltGetDeviceObject(\n  [in]  PFLT_VOLUME    Volume,\n  [out] PDEVICE_OBJECT *DeviceObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetDiskDeviceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetdiskdeviceobject",
+  "syntax": "NTSTATUS FLTAPI FltGetDiskDeviceObject(\n  [in]  PFLT_VOLUME    Volume,\n  [out] PDEVICE_OBJECT *DiskDeviceObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetFileContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetfilecontext",
+  "syntax": "NTSTATUS FLTAPI FltGetFileContext(\n  [in]  PFLT_INSTANCE Instance,\n  [in]  PFILE_OBJECT  FileObject,\n  [out] PFLT_CONTEXT  *Context\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetFileNameInformation",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetfilenameinformation",
+  "syntax": "NTSTATUS FLTAPI FltGetFileNameInformation(\n  [in]  PFLT_CALLBACK_DATA         CallbackData,\n  [in]  FLT_FILE_NAME_OPTIONS      NameOptions,\n  [out] PFLT_FILE_NAME_INFORMATION *FileNameInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetFileNameInformationUnsafe",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetfilenameinformationunsafe",
+  "syntax": "NTSTATUS FLTAPI FltGetFileNameInformationUnsafe(\n  [in]           PFILE_OBJECT               FileObject,\n  [in, optional] PFLT_INSTANCE              Instance,\n  [in]           FLT_FILE_NAME_OPTIONS      NameOptions,\n  [out]          PFLT_FILE_NAME_INFORMATION *FileNameInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetFilterFromInstance",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetfilterfrominstance",
+  "syntax": "NTSTATUS FLTAPI FltGetFilterFromInstance(\n  [in]  PFLT_INSTANCE Instance,\n  [out] PFLT_FILTER   *RetFilter\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetIrpName",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetirpname",
+  "syntax": "PCHAR FLTAPI FltGetIrpName(\n  [in] UCHAR IrpMajorCode\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetLowerInstance",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetlowerinstance",
+  "syntax": "NTSTATUS FLTAPI FltGetLowerInstance(\n  [in]  PFLT_INSTANCE CurrentInstance,\n  [out] PFLT_INSTANCE *LowerInstance\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetRequestorProcessId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetrequestorprocessid",
+  "syntax": "ULONG FLTAPI FltGetRequestorProcessId(\n  [in] PFLT_CALLBACK_DATA CallbackData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetRequestorProcessIdEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetrequestorprocessidex",
+  "syntax": "HANDLE FLTAPI FltGetRequestorProcessIdEx(\n  [in] PFLT_CALLBACK_DATA CallbackData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetRoutineAddress",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetroutineaddress",
+  "syntax": "PVOID FLTAPI FltGetRoutineAddress(\n  [in] PCSTR FltMgrRoutineName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetStreamContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetstreamcontext",
+  "syntax": "NTSTATUS FLTAPI FltGetStreamContext(\n  [in]  PFLT_INSTANCE Instance,\n  [in]  PFILE_OBJECT  FileObject,\n  [out] PFLT_CONTEXT  *Context\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetStreamHandleContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetstreamhandlecontext",
+  "syntax": "NTSTATUS FLTAPI FltGetStreamHandleContext(\n  [in]  PFLT_INSTANCE Instance,\n  [in]  PFILE_OBJECT  FileObject,\n  [out] PFLT_CONTEXT  *Context\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetTopInstance",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgettopinstance",
+  "syntax": "NTSTATUS FLTAPI FltGetTopInstance(\n  [in]  PFLT_VOLUME   Volume,\n  [out] PFLT_INSTANCE *Instance\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetUpperInstance",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetupperinstance",
+  "syntax": "NTSTATUS FLTAPI FltGetUpperInstance(\n  [in]  PFLT_INSTANCE CurrentInstance,\n  [out] PFLT_INSTANCE *UpperInstance\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetVolumeFromDeviceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetvolumefromdeviceobject",
+  "syntax": "NTSTATUS FLTAPI FltGetVolumeFromDeviceObject(\n  [in]  PFLT_FILTER    Filter,\n  [in]  PDEVICE_OBJECT DeviceObject,\n  [out] PFLT_VOLUME    *RetVolume\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetVolumeFromFileObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetvolumefromfileobject",
+  "syntax": "NTSTATUS FLTAPI FltGetVolumeFromFileObject(\n  [in]  PFLT_FILTER  Filter,\n  [in]  PFILE_OBJECT FileObject,\n  [out] PFLT_VOLUME  *RetVolume\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetVolumeFromInstance",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetvolumefrominstance",
+  "syntax": "NTSTATUS FLTAPI FltGetVolumeFromInstance(\n  [in]  PFLT_INSTANCE Instance,\n  [out] PFLT_VOLUME   *RetVolume\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetVolumeName",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetvolumename",
+  "syntax": "NTSTATUS FLTAPI FltGetVolumeName(\n  [in]                PFLT_VOLUME     Volume,\n  [in, out, optional] PUNICODE_STRING VolumeName,\n  [out, optional]     PULONG          BufferSizeNeeded\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltGetVolumeProperties",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltgetvolumeproperties",
+  "syntax": "NTSTATUS FLTAPI FltGetVolumeProperties(\n  [in]  PFLT_VOLUME            Volume,\n  [out] PFLT_VOLUME_PROPERTIES VolumeProperties,\n        ULONG                  VolumePropertiesLength,\n  [out] PULONG                 LengthReturned\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltIsDirectory",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltisdirectory",
+  "syntax": "NTSTATUS FLTAPI FltIsDirectory(\n  [in]  PFILE_OBJECT  FileObject,\n  [in]  PFLT_INSTANCE Instance,\n  [out] PBOOLEAN      IsDirectory\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltIsFltMgrVolumeDeviceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltisfltmgrvolumedeviceobject",
+  "syntax": "BOOLEAN FLTAPI FltIsFltMgrVolumeDeviceObject(\n  [in] PDEVICE_OBJECT DeviceObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltIsIoCanceled",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltisiocanceled",
+  "syntax": "BOOLEAN FLTAPI FltIsIoCanceled(\n  [in] PFLT_CALLBACK_DATA CallbackData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltObjectDereference",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltobjectdereference",
+  "syntax": "VOID FLTAPI FltObjectDereference(\n  [in, out] PVOID FltObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltObjectReference",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltobjectreference",
+  "syntax": "NTSTATUS FLTAPI FltObjectReference(\n  [in, out] PVOID FltObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltOpenVolume",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltopenvolume",
+  "syntax": "NTSTATUS FLTAPI FltOpenVolume(\n  [in]  PFLT_INSTANCE Instance,\n  [out] PHANDLE       VolumeHandle,\n  [out] PFILE_OBJECT  *VolumeFileObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltParseFileNameInformation",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltparsefilenameinformation",
+  "syntax": "NTSTATUS FLTAPI FltParseFileNameInformation(\n  [in, out] PFLT_FILE_NAME_INFORMATION FileNameInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltQueryInformationFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltqueryinformationfile",
+  "syntax": "NTSTATUS FLTAPI FltQueryInformationFile(\n  [in]            PFLT_INSTANCE          Instance,\n  [in]            PFILE_OBJECT           FileObject,\n  [out]           PVOID                  FileInformation,\n  [in]            ULONG                  Length,\n  [in]            FILE_INFORMATION_CLASS FileInformationClass,\n  [out, optional] PULONG                 LengthReturned\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltReadFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltreadfile",
+  "syntax": "NTSTATUS FLTAPI FltReadFile(\n  [in]            PFLT_INSTANCE                    InitiatingInstance,\n  [in]            PFILE_OBJECT                     FileObject,\n  [in, optional]  PLARGE_INTEGER                   ByteOffset,\n  [in]            ULONG                            Length,\n  [out]           PVOID                            Buffer,\n  [in]            FLT_IO_OPERATION_FLAGS           Flags,\n  [out, optional] PULONG                           BytesRead,\n  [in, optional]  PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine,\n  [in, optional]  PVOID                            CallbackContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltReadFileEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltreadfileex",
+  "syntax": "NTSTATUS FLTAPI FltReadFileEx(\n  [in]            PFLT_INSTANCE                    InitiatingInstance,\n  [in]            PFILE_OBJECT                     FileObject,\n  [in, optional]  PLARGE_INTEGER                   ByteOffset,\n  [in]            ULONG                            Length,\n  [out]           PVOID                            Buffer,\n  [in]            FLT_IO_OPERATION_FLAGS           Flags,\n  [out, optional] PULONG                           BytesRead,\n  [in, optional]  PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine,\n  [in, optional]  PVOID                            CallbackContext,\n  [in, optional]  PULONG                           Key,\n  [in, optional]  PMDL                             Mdl\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltReferenceContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltreferencecontext",
+  "syntax": "VOID FLTAPI FltReferenceContext(\n  [in] PFLT_CONTEXT Context\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltRegisterFilter",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltregisterfilter",
+  "syntax": "NTSTATUS FLTAPI FltRegisterFilter(\n  [in]  PDRIVER_OBJECT         Driver,\n  [in]  const FLT_REGISTRATION *Registration,\n  [out] PFLT_FILTER            *RetFilter\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltReleaseContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltreleasecontext",
+  "syntax": "VOID FLTAPI FltReleaseContext(\n  [in] PFLT_CONTEXT Context\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltReleaseContexts",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltreleasecontexts",
+  "syntax": "VOID FLTAPI FltReleaseContexts(\n  [in] PFLT_RELATED_CONTEXTS Contexts\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltReleaseFileNameInformation",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltreleasefilenameinformation",
+  "syntax": "VOID FLTAPI FltReleaseFileNameInformation(\n  [in] PFLT_FILE_NAME_INFORMATION FileNameInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltSendMessage",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltsendmessage",
+  "syntax": "NTSTATUS FLTAPI FltSendMessage(\n  [in]            PFLT_FILTER    Filter,\n  [in]            PFLT_PORT      *ClientPort,\n  [in]            PVOID          SenderBuffer,\n  [in]            ULONG          SenderBufferLength,\n  [out, optional] PVOID          ReplyBuffer,\n  [in, out]       PULONG         ReplyLength,\n  [in, optional]  PLARGE_INTEGER Timeout\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltSetCancelCompletion",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltsetcancelcompletion",
+  "syntax": "NTSTATUS FLTAPI FltSetCancelCompletion(\n  [in] PFLT_CALLBACK_DATA              CallbackData,\n  [in] PFLT_COMPLETE_CANCELED_CALLBACK CanceledCallback\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltSetFileContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltsetfilecontext",
+  "syntax": "NTSTATUS FLTAPI FltSetFileContext(\n  [in]  PFLT_INSTANCE             Instance,\n  [in]  PFILE_OBJECT              FileObject,\n  [in]  FLT_SET_CONTEXT_OPERATION Operation,\n  [in]  PFLT_CONTEXT              NewContext,\n  [out] PFLT_CONTEXT              *OldContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltSetInformationFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltsetinformationfile",
+  "syntax": "NTSTATUS FLTAPI FltSetInformationFile(\n  [in] PFLT_INSTANCE          Instance,\n  [in] PFILE_OBJECT           FileObject,\n  [in] PVOID                  FileInformation,\n  [in] ULONG                  Length,\n  [in] FILE_INFORMATION_CLASS FileInformationClass\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltSetStreamContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltsetstreamcontext",
+  "syntax": "NTSTATUS FLTAPI FltSetStreamContext(\n  [in]  PFLT_INSTANCE             Instance,\n  [in]  PFILE_OBJECT              FileObject,\n  [in]  FLT_SET_CONTEXT_OPERATION Operation,\n  [in]  PFLT_CONTEXT              NewContext,\n  [out] PFLT_CONTEXT              *OldContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltSetStreamHandleContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltsetstreamhandlecontext",
+  "syntax": "NTSTATUS FLTAPI FltSetStreamHandleContext(\n  [in]            PFLT_INSTANCE             Instance,\n  [in]            PFILE_OBJECT              FileObject,\n  [in]            FLT_SET_CONTEXT_OPERATION Operation,\n  [in]            PFLT_CONTEXT              NewContext,\n  [out, optional] PFLT_CONTEXT              *OldContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltStartFiltering",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltstartfiltering",
+  "syntax": "NTSTATUS FLTAPI FltStartFiltering(\n  [in] PFLT_FILTER Filter\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltTagFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-flttagfile",
+  "syntax": "NTSTATUS FLTAPI FltTagFile(\n  [in]           PFLT_INSTANCE InitiatingInstance,\n  [in]           PFILE_OBJECT  FileObject,\n  [in]           ULONG         FileTag,\n  [in, optional] GUID          *Guid,\n  [in]           PVOID         DataBuffer,\n  [in]           USHORT        DataBufferLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltTagFileEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-flttagfileex",
+  "syntax": "NTSTATUS FLTAPI FltTagFileEx(\n  PFLT_INSTANCE InitiatingInstance,\n  PFILE_OBJECT  FileObject,\n  ULONG         FileTag,\n  GUID          *Guid,\n  PVOID         DataBuffer,\n  USHORT        DataBufferLength,\n  ULONG         ExistingFileTag,\n  GUID          *ExistingGuid,\n  ULONG         Flags\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltUnregisterFilter",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltunregisterfilter",
+  "syntax": "VOID FLTAPI FltUnregisterFilter(\n  [in] PFLT_FILTER Filter\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltUntagFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltuntagfile",
+  "syntax": "NTSTATUS FLTAPI FltUntagFile(\n  [in]           PFLT_INSTANCE InitiatingInstance,\n  [in]           PFILE_OBJECT  FileObject,\n  [in]           ULONG         FileTag,\n  [in, optional] GUID          *Guid\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltWriteFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltwritefile",
+  "syntax": "NTSTATUS FLTAPI FltWriteFile(\n  [in]            PFLT_INSTANCE                    InitiatingInstance,\n  [in]            PFILE_OBJECT                     FileObject,\n  [in, optional]  PLARGE_INTEGER                   ByteOffset,\n  [in]            ULONG                            Length,\n  [in]            PVOID                            Buffer,\n  [in]            FLT_IO_OPERATION_FLAGS           Flags,\n  [out, optional] PULONG                           BytesWritten,\n  [in, optional]  PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine,\n  [in, optional]  PVOID                            CallbackContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FltWriteFileEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltwritefileex",
+  "syntax": "NTSTATUS FLTAPI FltWriteFileEx(\n  [in]            PFLT_INSTANCE                    InitiatingInstance,\n  [in]            PFILE_OBJECT                     FileObject,\n  [in, optional]  PLARGE_INTEGER                   ByteOffset,\n  [in]            ULONG                            Length,\n  [in]            PVOID                            Buffer,\n  [in]            FLT_IO_OPERATION_FLAGS           Flags,\n  [out, optional] PULONG                           BytesWritten,\n  [in, optional]  PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine,\n  [in, optional]  PVOID                            CallbackContext,\n  [in, optional]  PULONG                           Key,\n  [in, optional]  PMDL                             Mdl\n);"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_CALLBACK_DATA",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_callback_data",
+  "syntax": "typedef struct _FLT_CALLBACK_DATA {\n  FLT_CALLBACK_DATA_FLAGS     Flags;\n  PETHREAD                    Thread;\n  PFLT_IO_PARAMETER_BLOCK     Iopb;\n  IO_STATUS_BLOCK             IoStatus;\n  struct _FLT_TAG_DATA_BUFFER *TagData;\n  union {\n    struct {\n      LIST_ENTRY QueueLinks;\n      PVOID      QueueContext[2];\n    };\n    PVOID FilterContext[4];\n  };\n  KPROCESSOR_MODE             RequestorMode;\n} FLT_CALLBACK_DATA, *PFLT_CALLBACK_DATA;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_CONTEXT_REGISTRATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_context_registration",
+  "syntax": "typedef struct _FLT_CONTEXT_REGISTRATION {\n  FLT_CONTEXT_TYPE               ContextType;\n  FLT_CONTEXT_REGISTRATION_FLAGS Flags;\n  PFLT_CONTEXT_CLEANUP_CALLBACK  ContextCleanupCallback;\n  SIZE_T                         Size;\n  ULONG                          PoolTag;\n  PFLT_CONTEXT_ALLOCATE_CALLBACK ContextAllocateCallback;\n  PFLT_CONTEXT_FREE_CALLBACK     ContextFreeCallback;\n  PVOID                          Reserved1;\n} FLT_CONTEXT_REGISTRATION, *PFLT_CONTEXT_REGISTRATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_FILE_NAME_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_file_name_information",
+  "syntax": "typedef struct _FLT_FILE_NAME_INFORMATION {\n  USHORT                     Size;\n  FLT_FILE_NAME_PARSED_FLAGS NamesParsed;\n  FLT_FILE_NAME_OPTIONS      Format;\n  UNICODE_STRING             Name;\n  UNICODE_STRING             Volume;\n  UNICODE_STRING             Share;\n  UNICODE_STRING             Extension;\n  UNICODE_STRING             Stream;\n  UNICODE_STRING             FinalComponent;\n  UNICODE_STRING             ParentDir;\n} FLT_FILE_NAME_INFORMATION, *PFLT_FILE_NAME_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_IO_PARAMETER_BLOCK",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_io_parameter_block",
+  "syntax": "typedef struct _FLT_IO_PARAMETER_BLOCK {\n  ULONG          IrpFlags;\n  UCHAR          MajorFunction;\n  UCHAR          MinorFunction;\n  UCHAR          OperationFlags;\n  UCHAR          Reserved;\n  PFILE_OBJECT   TargetFileObject;\n  PFLT_INSTANCE  TargetInstance;\n  FLT_PARAMETERS Parameters;\n} FLT_IO_PARAMETER_BLOCK, *PFLT_IO_PARAMETER_BLOCK;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_OPERATION_REGISTRATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_operation_registration",
+  "syntax": "typedef struct _FLT_OPERATION_REGISTRATION {\n  UCHAR                            MajorFunction;\n  FLT_OPERATION_REGISTRATION_FLAGS Flags;\n  PFLT_PRE_OPERATION_CALLBACK      PreOperation;\n  PFLT_POST_OPERATION_CALLBACK     PostOperation;\n  PVOID                            Reserved1;\n} FLT_OPERATION_REGISTRATION, *PFLT_OPERATION_REGISTRATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_Create",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_DeviceIoControl_Buffered",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_FsControl_Common",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_Others",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_Read",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_SetFileInformation",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_SetVolumeInformation",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_PARAMETERS_Write",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_REGISTRATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_registration",
+  "syntax": "typedef struct _FLT_REGISTRATION {\n  USHORT                                      Size;\n  USHORT                                      Version;\n  FLT_REGISTRATION_FLAGS                      Flags;\n  const FLT_CONTEXT_REGISTRATION              *ContextRegistration;\n  const FLT_OPERATION_REGISTRATION            *OperationRegistration;\n  PFLT_FILTER_UNLOAD_CALLBACK                 FilterUnloadCallback;\n  PFLT_INSTANCE_SETUP_CALLBACK                InstanceSetupCallback;\n  PFLT_INSTANCE_QUERY_TEARDOWN_CALLBACK       InstanceQueryTeardownCallback;\n  PFLT_INSTANCE_TEARDOWN_CALLBACK             InstanceTeardownStartCallback;\n  PFLT_INSTANCE_TEARDOWN_CALLBACK             InstanceTeardownCompleteCallback;\n  PFLT_GENERATE_FILE_NAME                     GenerateFileNameCallback;\n  PFLT_NORMALIZE_NAME_COMPONENT               NormalizeNameComponentCallback;\n  PFLT_NORMALIZE_CONTEXT_CLEANUP              NormalizeContextCleanupCallback;\n  PFLT_TRANSACTION_NOTIFICATION_CALLBACK      TransactionNotificationCallback;\n  PFLT_NORMALIZE_NAME_COMPONENT_EX            NormalizeNameComponentExCallback;\n  PFLT_SECTION_CONFLICT_NOTIFICATION_CALLBACK SectionNotificationCallback;\n} FLT_REGISTRATION, *PFLT_REGISTRATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_RELATED_CONTEXTS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_related_contexts",
+  "syntax": "typedef struct _FLT_RELATED_CONTEXTS {\n  PFLT_CONTEXT VolumeContext;\n  PFLT_CONTEXT InstanceContext;\n  PFLT_CONTEXT FileContext;\n  PFLT_CONTEXT StreamContext;\n  PFLT_CONTEXT StreamHandleContext;\n  PFLT_CONTEXT TransactionContext;\n} FLT_RELATED_CONTEXTS, *PFLT_RELATED_CONTEXTS;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_RELATED_CONTEXTS_EX",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_related_contexts_ex",
+  "syntax": "typedef struct _FLT_RELATED_CONTEXTS_EX {\n  PFLT_CONTEXT VolumeContext;\n  PFLT_CONTEXT InstanceContext;\n  PFLT_CONTEXT FileContext;\n  PFLT_CONTEXT StreamContext;\n  PFLT_CONTEXT StreamHandleContext;\n  PFLT_CONTEXT TransactionContext;\n  PFLT_CONTEXT SectionContext;\n} FLT_RELATED_CONTEXTS_EX, *PFLT_RELATED_CONTEXTS_EX;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_RELATED_OBJECTS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_related_objects",
+  "syntax": "typedef struct _FLT_RELATED_OBJECTS {\n  USHORT        Size;\n  USHORT        TransactionContext;\n  PFLT_FILTER   Filter;\n  PFLT_VOLUME   Volume;\n  PFLT_INSTANCE Instance;\n  PFILE_OBJECT  FileObject;\n  PKTRANSACTION Transaction;\n} FLT_RELATED_OBJECTS, *PFLT_RELATED_OBJECTS;"
+ },
+ {
+  "kind": "Type",
+  "name": "FLT_VOLUME_PROPERTIES",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_volume_properties",
+  "syntax": "typedef struct _FLT_VOLUME_PROPERTIES {\n  DEVICE_TYPE    DeviceType;\n  ULONG          DeviceCharacteristics;\n  ULONG          DeviceObjectFlags;\n  ULONG          AlignmentRequirement;\n  USHORT         SectorSize;\n  USHORT         Flags;\n  UNICODE_STRING FileSystemDriverName;\n  UNICODE_STRING FileSystemDeviceName;\n  UNICODE_STRING RealDeviceName;\n} FLT_VOLUME_PROPERTIES, *PFLT_VOLUME_PROPERTIES;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_ALLOCATE_CALLBACK_DATA_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_CALLBACK_DATA_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_CONTEXT_REGISTRATION_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_CONTEXT_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_FILESYSTEM_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltuserstructures/ne-fltuserstructures-_flt_filesystem_type",
+  "syntax": "typedef enum _FLT_FILESYSTEM_TYPE {\n  FLT_FSTYPE_UNKNOWN,\n  FLT_FSTYPE_RAW,\n  FLT_FSTYPE_NTFS,\n  FLT_FSTYPE_FAT,\n  FLT_FSTYPE_CDFS,\n  FLT_FSTYPE_UDFS,\n  FLT_FSTYPE_LANMAN,\n  FLT_FSTYPE_WEBDAV,\n  FLT_FSTYPE_RDPDR,\n  FLT_FSTYPE_NFS,\n  FLT_FSTYPE_MS_NETWARE,\n  FLT_FSTYPE_NETWARE,\n  FLT_FSTYPE_BSUDF,\n  FLT_FSTYPE_MUP,\n  FLT_FSTYPE_RSFX,\n  FLT_FSTYPE_ROXIO_UDF1,\n  FLT_FSTYPE_ROXIO_UDF2,\n  FLT_FSTYPE_ROXIO_UDF3,\n  FLT_FSTYPE_TACIT,\n  FLT_FSTYPE_FS_REC,\n  FLT_FSTYPE_INCD,\n  FLT_FSTYPE_INCD_FAT,\n  FLT_FSTYPE_EXFAT,\n  FLT_FSTYPE_PSFS,\n  FLT_FSTYPE_GPFS,\n  FLT_FSTYPE_NPFS,\n  FLT_FSTYPE_MSFS,\n  FLT_FSTYPE_CSVFS,\n  FLT_FSTYPE_REFS,\n  FLT_FSTYPE_OPENAFS,\n  FLT_FSTYPE_CIMFS\n} FLT_FILESYSTEM_TYPE, *PFLT_FILESYSTEM_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_FILE_NAME_OPTIONS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/flt-file-name-options",
+  "syntax": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_FILE_NAME_PARSED_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_FILTER_UNLOAD_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_INSTANCE_QUERY_TEARDOWN_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_INSTANCE_SETUP_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_IO_OPERATION_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_POSTOP_CALLBACK_STATUS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_POST_OPERATION_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_PREOP_CALLBACK_STATUS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_REGISTRATION_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FLT_SET_CONTEXT_OPERATION",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FltPortAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FltVolumePropertyFlags",
+  "url": null
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_COMPLETED_ASYNC_IO_CALLBACK",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_completed_async_io_callback",
+  "syntax": "PFLT_COMPLETED_ASYNC_IO_CALLBACK PfltCompletedAsyncIoCallback;\n\nVOID PfltCompletedAsyncIoCallback(\n  [in] PFLT_CALLBACK_DATA CallbackData,\n  [in] PFLT_CONTEXT Context\n)\n{...}"
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_COMPLETE_CANCELED_CALLBACK",
+  "url": null
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_CONNECT_NOTIFY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_connect_notify",
+  "syntax": "PFLT_CONNECT_NOTIFY PfltConnectNotify;\n\nNTSTATUS PfltConnectNotify(\n  PFLT_PORT ClientPort,\n  PVOID ServerPortCookie,\n  PVOID ConnectionContext,\n  ULONG SizeOfContext,\n  PVOID *ConnectionPortCookie\n)\n{...}"
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_CONTEXT_ALLOCATE_CALLBACK",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_context_allocate_callback",
+  "syntax": "PFLT_CONTEXT_ALLOCATE_CALLBACK PfltContextAllocateCallback;\n\nPVOID PfltContextAllocateCallback(\n  [in] POOL_TYPE PoolType,\n  [in] SIZE_T Size,\n  [in] FLT_CONTEXT_TYPE ContextType\n)\n{...}"
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_CONTEXT_CLEANUP_CALLBACK",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_context_cleanup_callback",
+  "syntax": "PFLT_CONTEXT_CLEANUP_CALLBACK PfltContextCleanupCallback;\n\nVOID PfltContextCleanupCallback(\n  [in] PFLT_CONTEXT Context,\n  [in] FLT_CONTEXT_TYPE ContextType\n)\n{...}"
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_CONTEXT_FREE_CALLBACK",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_context_free_callback",
+  "syntax": "PFLT_CONTEXT_FREE_CALLBACK PfltContextFreeCallback;\n\nVOID PfltContextFreeCallback(\n  [in] PVOID Pool,\n  [in] FLT_CONTEXT_TYPE ContextType\n)\n{...}"
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_DISCONNECT_NOTIFY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_disconnect_notify",
+  "syntax": "PFLT_DISCONNECT_NOTIFY PfltDisconnectNotify;\n\nVOID PfltDisconnectNotify(\n  PVOID ConnectionCookie\n)\n{...}"
+ },
+ {
+  "kind": "Delegate",
+  "name": "FLT_MESSAGE_NOTIFY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/nc-fltkernel-pflt_message_notify",
+  "syntax": "PFLT_MESSAGE_NOTIFY PfltMessageNotify;\n\nNTSTATUS PfltMessageNotify(\n  PVOID PortCookie,\n  PVOID InputBuffer,\n  ULONG InputBufferLength,\n  PVOID OutputBuffer,\n  ULONG OutputBufferLength,\n  PULONG ReturnOutputBufferLength\n)\n{...}"
+ }
+]

@@ -1,0 +1,172 @@
+[TestFixture]
+Module WDMHelperTests
+
+    ' modWDM's procedures that call nothing in the kernel, run as they are. Each case checks what
+    ' the WDK's macro or routine of the same name gives; the values are the WDK's (10.0.28000.0).
+    ' The procedures that call the kernel are checked in exe/KernelHelperTests.twin.
+
+    [TestCase]
+    Public Sub NT_SUCCESS_SuccessAndInformationalAreSuccess()
+        Expect.Begin
+        Expect.IsTrue NT_SUCCESS(0), "NT_SUCCESS(STATUS_SUCCESS)"
+        Expect.IsTrue NT_SUCCESS(&H40000018), "NT_SUCCESS of an informational status"
+        Expect.IsFalse NT_SUCCESS(&H80000005), "NT_SUCCESS of a warning status (STATUS_BUFFER_OVERFLOW)"
+        Expect.IsFalse NT_SUCCESS(&HC0000022), "NT_SUCCESS of an error status (STATUS_ACCESS_DENIED)"
+        Expect.Done
+    End Sub
+
+    ' NT_ERROR is true for the error statuses, &HC0000000 to &HFFFFFFFF, and for no other.
+    [TestCase]
+    Public Sub NT_ERROR_IsTrueForErrorStatusesOnly()
+        Expect.Begin
+        Expect.IsTrue NT_ERROR(&HC0000022), "NT_ERROR of STATUS_ACCESS_DENIED (&HC0000022)"
+        Expect.IsTrue NT_ERROR(&HC0000001), "NT_ERROR of STATUS_UNSUCCESSFUL (&HC0000001)"
+        Expect.IsFalse NT_ERROR(&H80000005), "NT_ERROR of the warning STATUS_BUFFER_OVERFLOW (&H80000005)"
+        Expect.IsFalse NT_ERROR(0), "NT_ERROR of STATUS_SUCCESS"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CTL_CODE_MakesTheWdkCode()
+        Expect.Begin
+        Expect.AreEqual &H70000, CTL_CODE(7, 0, 0, 0), "CTL_CODE(FILE_DEVICE_DISK, 0, METHOD_BUFFERED, FILE_ANY_ACCESS)"
+        Expect.AreEqual &H7C018, CTL_CODE(7, 6, 0, 3), "CTL_CODE(FILE_DEVICE_DISK, 6, METHOD_BUFFERED, FILE_READ_ACCESS Or FILE_WRITE_ACCESS)"
+        Expect.Done
+    End Sub
+
+    ' A device type of &H8000 or more is one a vendor defines: its code has the high bit set.
+    [TestCase]
+    Public Sub CTL_CODE_VendorDeviceType_MakesTheWdkCode()
+        Expect.Begin
+        On Error Resume Next
+        Dim a As Long = CTL_CODE(&H8000&, &H800, 0, 0)
+        Expect.AreEqual 0, Err.Number, "an error from CTL_CODE(&H8000, &H800, METHOD_BUFFERED, FILE_ANY_ACCESS)"
+        Err.Clear
+        Dim b As Long = CTL_CODE(&HFFFF&, &HFFF, 3, 3)
+        Expect.AreEqual 0, Err.Number, "an error from CTL_CODE(&HFFFF, &HFFF, 3, 3)"
+        On Error GoTo 0
+        Expect.AreEqual &H80002000, a, "CTL_CODE(&H8000, &H800, METHOD_BUFFERED, FILE_ANY_ACCESS)"
+        Expect.AreEqual &HFFFFFFFF, b, "CTL_CODE(&HFFFF, &HFFF, 3, 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitIOCTLs_SetsTheDiskCodes()
+        Expect.Begin
+        InitIOCTLs
+        Expect.AreEqual &H70000, IOCTL_DISK_GET_DRIVE_GEOMETRY, "IOCTL_DISK_GET_DRIVE_GEOMETRY"
+        Expect.AreEqual &H74004, IOCTL_DISK_GET_PARTITION_INFO, "IOCTL_DISK_GET_PARTITION_INFO"
+        Expect.AreEqual &H70024, IOCTL_DISK_IS_WRITABLE, "IOCTL_DISK_IS_WRITABLE"
+        Expect.AreEqual &H70C00, IOCTL_DISK_GET_MEDIA_TYPES, "IOCTL_DISK_GET_MEDIA_TYPES"
+        Expect.AreEqual &H74800, IOCTL_DISK_CHECK_VERIFY, "IOCTL_DISK_CHECK_VERIFY"
+        Expect.AreEqual &H7C008, IOCTL_DISK_SET_PARTITION_INFO, "IOCTL_DISK_SET_PARTITION_INFO"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitIOCTLs_SetsTheMountCodes()
+        Expect.Begin
+        InitIOCTLs
+        Expect.AreEqual &H6D0008, IOCTL_MOUNTMGR_QUERY_POINTS, "IOCTL_MOUNTMGR_QUERY_POINTS"
+        Expect.AreEqual &H4D0008, IOCTL_MOUNTDEV_QUERY_DEVICE_NAME, "IOCTL_MOUNTDEV_QUERY_DEVICE_NAME"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitIOCTLs_SetsFormatTracks()
+        Expect.Begin
+        InitIOCTLs
+        Expect.AreEqual &H7C018, IOCTL_DISK_FORMAT_TRACKS, "IOCTL_DISK_FORMAT_TRACKS"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IoGetCurrentIrpStackLocation_ReturnsTheCurrentLocation()
+        Expect.Begin
+        Dim stack(0 To 1) As IO_STACK_LOCATION
+        Dim rp As IRP
+        rp.CurrentStackLocation = VarPtr(stack(1))
+        Expect.AreEqual VarPtr(stack(1)), IoGetCurrentIrpStackLocation(rp), "the current location"
+        Expect.Done
+    End Sub
+
+    ' The next location is the IO_STACK_LOCATION below the current one.
+    [TestCase]
+    Public Sub IoGetNextIrpStackLocation_ReturnsTheLocationBelow()
+        Expect.Begin
+        Dim stack(0 To 1) As IO_STACK_LOCATION
+        Dim rp As IRP
+        rp.CurrentStackLocation = VarPtr(stack(1))
+        ' Reported as the offset from stack(0), the same in every run.
+        Expect.AreEqual 0, CLng(IoGetNextIrpStackLocation(rp) - VarPtr(stack(0))), "the next location's offset from stack(0) (one IO_STACK_LOCATION below the current one)"
+        Expect.Done
+    End Sub
+
+    ' Skipping moves the current location one IO_STACK_LOCATION up, and the location number by one.
+    [TestCase]
+    Public Sub IoSkipCurrentIrpStackLocation_MovesUpOneLocation()
+        Expect.Begin
+        Dim stack(0 To 2) As IO_STACK_LOCATION
+        Dim rp As IRP
+        rp.CurrentStackLocation = VarPtr(stack(1))
+        rp.CurrentLocation = 2
+        IoSkipCurrentIrpStackLocation rp
+        Expect.AreEqual 3, CLng(rp.CurrentLocation), "CurrentLocation"
+        Expect.AreEqual CLng(VarPtr(stack(2)) - VarPtr(stack(0))), CLng(rp.CurrentStackLocation - VarPtr(stack(0))), "CurrentStackLocation's offset from stack(0) (one IO_STACK_LOCATION above stack(1))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitializeListHead_MakesAnEmptyList()
+        Expect.Begin
+        Dim head As LIST_ENTRY
+        InitializeListHead head
+        Expect.AreEqual VarPtr(head), head.Flink, "Flink of an empty list"
+        Expect.AreEqual VarPtr(head), head.Blink, "Blink of an empty list"
+        Expect.AreEqual 1, CLng(IsListEmpty(head)), "IsListEmpty of an empty list"
+        Dim other As LIST_ENTRY
+        head.Flink = VarPtr(other)
+        Expect.AreEqual 0, CLng(IsListEmpty(head)), "IsListEmpty of a list with an entry"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitializeObjectAttributes_FillsTheStructure()
+        Expect.Begin
+        Dim oa As OBJECT_ATTRIBUTES
+        Dim name As UNICODE_STRING
+        oa.SecurityQualityOfService = 99
+        InitializeObjectAttributes oa, VarPtr(name), OBJ_KERNEL_HANDLE Or OBJ_CASE_INSENSITIVE, 12, 34
+        Expect.AreEqual CLng(LenB(oa)), CLng(oa.Length), "Length"
+        Expect.AreEqual VarPtr(name), oa.ObjectName, "ObjectName"
+        Expect.AreEqual CLng(OBJ_KERNEL_HANDLE Or OBJ_CASE_INSENSITIVE), CLng(oa.Attributes), "Attributes"
+        Expect.AreEqual CLngPtr(12), oa.RootDirectory, "RootDirectory"
+        Expect.AreEqual CLngPtr(34), oa.SecurityDescriptor, "SecurityDescriptor"
+        Expect.AreEqual CLngPtr(0), oa.SecurityQualityOfService, "SecurityQualityOfService"
+        Expect.Done
+    End Sub
+
+    ' An unsigned add: crossing from the top of the signed range raises no overflow.
+    [TestCase]
+    Public Sub PointerAdd_AddsUnsigned()
+        Expect.Begin
+        #If Win64 Then
+            Expect.AreEqual &H8000000000000000^, PointerAdd(&H7FFFFFFFFFFFFFFF^, 1), "PointerAdd(&H7FFFFFFFFFFFFFFF, 1)"
+            Expect.AreEqual &H8000000000001000^, PointerAdd(&H8000000000000000^, &H1000), "PointerAdd(&H8000000000000000, &H1000)"
+        #Else
+            Expect.AreEqual &H80000000, PointerAdd(&H7FFFFFFF, 1), "PointerAdd(&H7FFFFFFF, 1)"
+            Expect.AreEqual &H80001000, PointerAdd(&H80000000, &H1000), "PointerAdd(&H80000000, &H1000)"
+        #End If
+        Expect.AreEqual CLngPtr(&H2000), PointerAdd(&H1000, &H1000), "PointerAdd(&H1000, &H1000)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinMax_ReturnTheSmallerAndTheLarger()
+        Expect.Begin
+        Expect.AreEqual -5, min(-5, 3), "min(-5, 3)"
+        Expect.AreEqual 3, max(-5, 3), "max(-5, 3)"
+        Expect.Done
+    End Sub
+
+End Module

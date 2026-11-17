@@ -75,6 +75,25 @@ Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).
   raises -2147467262 at the grid's first property. BETA 1042, the samples' template project.
   May be twinBASIC's implicit form instance rather than the package.
 
+### tbKMode
+
+tbKMode 0.3.0.5, BETA 1042, met while moving its section to that version. Neither is checked.
+
+- **Are the 16-bit limits a defect at all?** **MAXUINT16**, **MAXUSHORT**, **MAXWORD**,
+  **USHRT_MAX** and **_UI16_MAX** are `&HFFFF`, an Integer literal, so -1 where C has 65535;
+  **MINSHORT** is -32768 where C's `&H8000` is the int 32768. modWDM's constants NOTE states
+  them as wrong, with failing checks in `WDMValueTests.Constants_Values` (the five through
+  `values` in `wdk/modWDM.json`). But the package declares a USHORT field as an Integer, and -1
+  equals such a field that holds 65535, so the Integer values may be the right ones for the
+  package and C's the wrong expectation; MINSHORT's -32768 is the real minimum of a SHORT.
+  **Page affected** if they are not defects: the NOTE's bullets, the `values` entries and the
+  generated expectations change.
+- **SE_SELF_RELATIVE** (`SECURITY_DESCRIPTOR_CONTROL`, modWDM.twin line 4724) is `&H8000&`, a
+  Long 32768, which an Integer cannot hold: **SECURITY_DESCRIPTOR.Control** (line 233) and the
+  *Control* of RtlGetControlSecurityDescriptor and RtlSetControlSecurityDescriptor (lines
+  4949-4950) are Integers, so assigning the flag to one may raise overflow, and comparing one with
+  it is never true. Not run.
+
 ### User-defined types (from the GdiPlus work)
 
 Seen on BETA 1005, 32-bit, by the agents documenting GdiPlus; not seen again since. Check on

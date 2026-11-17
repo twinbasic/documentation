@@ -1,0 +1,111 @@
+[TestFixture]
+Module SysInfoArrayTests
+
+    ' The structures whose C definitions end in an array of one element, held inline: the data a
+    ' routine returns follows the fixed fields. The first two are the WDK's (ntifs.h); the others
+    ' are not in the WDK, and their C definitions are those of the NT headers they come from (phnt). A twinBASIC dynamic array is a pointer to a
+    ' SAFEARRAY instead, so it has no element until ReDim, and none at the C array's place.
+
+    [TestCase]
+    Public Sub FILE_TRACKING_INFORMATION_ObjectInformationIsInline()
+        Expect.Begin
+        Dim t As FILE_TRACKING_INFORMATION
+        Dim p As LongPtr
+        On Error Resume Next
+        p = VarPtr(t.ObjectInformation(0))
+        Expect.AreEqual 0, Err.Number, "VarPtr(ObjectInformation(0)) of a new FILE_TRACKING_INFORMATION (C: UCHAR ObjectInformation[1], inline)"
+        On Error GoTo 0
+        #If Win64 Then
+            If p Then Expect.AreEqual 12, CLng(p - VarPtr(t)), "offset of FILE_TRACKING_INFORMATION.ObjectInformation"
+        #Else
+            If p Then Expect.AreEqual 8, CLng(p - VarPtr(t)), "offset of FILE_TRACKING_INFORMATION.ObjectInformation"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FILE_PROCESS_IDS_USING_FILE_INFORMATION_ProcessIdListIsInline()
+        Expect.Begin
+        Dim t As FILE_PROCESS_IDS_USING_FILE_INFORMATION
+        Dim p As LongPtr
+        On Error Resume Next
+        p = VarPtr(t.ProcessIdList(0))
+        Expect.AreEqual 0, Err.Number, "VarPtr(ProcessIdList(0)) of a new FILE_PROCESS_IDS_USING_FILE_INFORMATION (C: ULONG_PTR ProcessIdList[1], inline)"
+        On Error GoTo 0
+        #If Win64 Then
+            If p Then Expect.AreEqual 8, CLng(p - VarPtr(t)), "offset of FILE_PROCESS_IDS_USING_FILE_INFORMATION.ProcessIdList"
+        #Else
+            If p Then Expect.AreEqual 4, CLng(p - VarPtr(t)), "offset of FILE_PROCESS_IDS_USING_FILE_INFORMATION.ProcessIdList"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RTL_PROCESS_MODULES_ModulesIsInline()
+        Expect.Begin
+        Dim t As RTL_PROCESS_MODULES
+        Dim p As LongPtr
+        On Error Resume Next
+        p = VarPtr(t.Modules(0))
+        Expect.AreEqual 0, Err.Number, "VarPtr(Modules(0)) of a new RTL_PROCESS_MODULES (C: RTL_PROCESS_MODULE_INFORMATION Modules[1], inline)"
+        On Error GoTo 0
+        #If Win64 Then
+            If p Then Expect.AreEqual 8, CLng(p - VarPtr(t)), "offset of RTL_PROCESS_MODULES.Modules"
+        #Else
+            If p Then Expect.AreEqual 4, CLng(p - VarPtr(t)), "offset of RTL_PROCESS_MODULES.Modules"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RTL_PROCESS_LOCKS_LocksIsInline()
+        Expect.Begin
+        Dim t As RTL_PROCESS_LOCKS
+        Dim p As LongPtr
+        On Error Resume Next
+        p = VarPtr(t.Locks(0))
+        Expect.AreEqual 0, Err.Number, "VarPtr(Locks(0)) of a new RTL_PROCESS_LOCKS (C: RTL_PROCESS_LOCK_INFORMATION Locks[1], inline)"
+        On Error GoTo 0
+        #If Win64 Then
+            If p Then Expect.AreEqual 8, CLng(p - VarPtr(t)), "offset of RTL_PROCESS_LOCKS.Locks"
+        #Else
+            If p Then Expect.AreEqual 4, CLng(p - VarPtr(t)), "offset of RTL_PROCESS_LOCKS.Locks"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RTL_PROCESS_BACKTRACES_BackTracesIsInline()
+        Expect.Begin
+        Dim t As RTL_PROCESS_BACKTRACES
+        Dim p As LongPtr
+        On Error Resume Next
+        p = VarPtr(t.BackTraces(0))
+        Expect.AreEqual 0, Err.Number, "VarPtr(BackTraces(0)) of a new RTL_PROCESS_BACKTRACES (C: RTL_PROCESS_BACKTRACE_INFORMATION BackTraces[1], inline)"
+        On Error GoTo 0
+        #If Win64 Then
+            If p Then Expect.AreEqual 16, CLng(p - VarPtr(t)), "offset of RTL_PROCESS_BACKTRACES.BackTraces"
+        #Else
+            If p Then Expect.AreEqual 16, CLng(p - VarPtr(t)), "offset of RTL_PROCESS_BACKTRACES.BackTraces"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SYSTEM_HANDLE_INFORMATION_HandlesIsInline()
+        Expect.Begin
+        Dim t As SYSTEM_HANDLE_INFORMATION
+        Dim p As LongPtr
+        On Error Resume Next
+        p = VarPtr(t.Handles(0))
+        Expect.AreEqual 0, Err.Number, "VarPtr(Handles(0)) of a new SYSTEM_HANDLE_INFORMATION (C: SYSTEM_HANDLE_TABLE_ENTRY_INFO Handles[1], inline)"
+        On Error GoTo 0
+        #If Win64 Then
+            If p Then Expect.AreEqual 8, CLng(p - VarPtr(t)), "offset of SYSTEM_HANDLE_INFORMATION.Handles"
+        #Else
+            If p Then Expect.AreEqual 4, CLng(p - VarPtr(t)), "offset of SYSTEM_HANDLE_INFORMATION.Handles"
+        #End If
+        Expect.Done
+    End Sub
+
+End Module

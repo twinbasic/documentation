@@ -1,0 +1,30 @@
+' Calls the Declares of the package that name routines the 32-bit ntoskrnl.exe does not export:
+' those the 32-bit hal.dll exports (the fast mutexes, the IRQL routines, KeReleaseSpinLock), and
+' those no 32-bit file exports (KeAcquireSpinLockRaiseToDpc, which KeAcquireSpinLock names, and the
+' Rtl...BitsEx routines). The 64-bit kernel exports each of them. KfLowerIrql, which the package
+' declares in a 32-bit build only and marks [Unimplemented], is left out.
+Module Driver
+    Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
+        Dim fm As FAST_MUTEX
+        ExAcquireFastMutex fm
+        ExReleaseFastMutex fm
+        ExTryToAcquireFastMutex fm
+        Dim irql As KIRQL = KeGetCurrentIrql()
+        irql = KeRaiseIrqlToDpcLevel()
+        irql = KfRaiseIrql(irql)
+        Dim spinLock As LongPtr
+        irql = KeAcquireSpinLock(spinLock)
+        KeReleaseSpinLock spinLock, irql
+        Dim bm As RTL_BITMAP_EX
+        ' A buffer of 64 bits; an array would be a SAFEARRAY, which a driver cannot have.
+        Dim bits As LongLong
+        RtlInitializeBitMapEx bm, bits, 64
+        RtlClearAllBitsEx bm
+        RtlSetBitEx bm, 1
+        RtlClearBitEx bm, 1
+        Dim b As Byte = RtlTestBitEx(bm, 1)
+        Dim n As LongLong = RtlFindSetBitsEx(bm, 1, 0)
+        n = RtlFindSetBitsAndClearEx(bm, 1, 0)
+        Return STATUS_SUCCESS
+    End Function
+End Module

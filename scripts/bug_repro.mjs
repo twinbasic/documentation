@@ -48,7 +48,7 @@
 //
 // ------------------------------------------------------------- what it relies on
 //
-//  1. THE ZIP IS WRITTEN IN NODE (scripts/lib/zip.mjs). Compress-Archive is
+//  1. THE ZIP IS WRITTEN IN NODE (lib/zip.mjs). Compress-Archive is
 //     PowerShell and 7-Zip is not on PATH; Git Bash's `tar -a` writes a tar
 //     archive under the .zip name and exits 0. Each entry's time is its file's
 //     own, so packing an unchanged source tree twice writes the same zip. A
@@ -159,7 +159,7 @@ import {
   runRepro,
 } from "./lib/vb6.mjs";
 import { SUITES } from "./lib/test-markers.mjs";
-import { fileEntry, zipFiles } from "./lib/zip.mjs";
+import { fileEntry, zipFiles } from "../lib/zip.mjs";
 
 let tidy = null;
 exitOnCrash(() => finishTidy(tidy));

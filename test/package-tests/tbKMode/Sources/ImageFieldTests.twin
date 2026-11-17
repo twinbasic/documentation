@@ -1,0 +1,21 @@
+[TestFixture]
+Module ImageFieldTests
+
+    ' A machine type is a USHORT in ntimage.h, as IMAGE_FILE_HEADER.Machine is, which the package
+    ' declares an Integer: a header read from an AMD64 or an ARM64 image holds the 16 bits of
+    ' IMAGE_FILE_MACHINE_AMD64 (0x8664) or IMAGE_FILE_MACHINE_ARM64 (0xAA64), and the field compares
+    ' equal to the constant.
+    [TestCase]
+    Public Sub MachineTypes_EqualTheMachineField()
+        Expect.Begin
+        Dim h As IMAGE_FILE_HEADER
+        h.Machine = &H8664
+        Expect.IsTrue h.Machine = IMAGE_FILE_MACHINE_AMD64, "IMAGE_FILE_HEADER.Machine of an AMD64 image (&H8664) = IMAGE_FILE_MACHINE_AMD64"
+        h.Machine = &HAA64
+        Expect.IsTrue h.Machine = IMAGE_FILE_MACHINE_ARM64, "IMAGE_FILE_HEADER.Machine of an ARM64 image (&HAA64) = IMAGE_FILE_MACHINE_ARM64"
+        h.Machine = &H14C
+        Expect.IsTrue h.Machine = IMAGE_FILE_MACHINE_I386, "IMAGE_FILE_HEADER.Machine of an x86 image (&H14C) = IMAGE_FILE_MACHINE_I386"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,21 @@
+' The scenario stack with the two procedures copied from the package's modWDM.twin into the driver's
+' own code, renamed, where the driver's settings apply. Their bodies are the package's, defects
+' included (the module's page says what each should be): only the import table is the question here.
+Module Driver
+    Private mIrp As IRP
+
+    Private Function CopiedGetNextIrpStackLocation(ByRef pIrp As IRP) As LongPtr
+        CopiedGetNextIrpStackLocation = pIrp.CurrentStackLocation - LenB(Of LongPtr)
+    End Function
+
+    Private Sub CopiedSkipCurrentIrpStackLocation(pIrp As IRP)
+        pIrp.CurrentLocation += CByte(1)
+        pIrp.CurrentStackLocation += 1
+    End Sub
+
+    Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
+        Dim p As LongPtr = CopiedGetNextIrpStackLocation(mIrp)
+        CopiedSkipCurrentIrpStackLocation mIrp
+        Return STATUS_SUCCESS
+    End Function
+End Module

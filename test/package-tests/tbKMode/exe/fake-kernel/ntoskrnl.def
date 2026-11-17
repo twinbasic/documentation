@@ -1,0 +1,56 @@
+; The exports of the user-mode stand-in for ntoskrnl.exe (ntoskrnl.c), undecorated as the kernel's
+; are. The C library's routines, and the two that windows.h makes macros, are defined under
+; fake_ names, so as not to meet the CRT's and the headers' own.
+LIBRARY ntoskrnl.exe
+EXPORTS
+  RtlMoveMemory = fake_RtlMoveMemory
+  RtlZeroMemory = fake_RtlZeroMemory
+  RtlInitUnicodeString
+  RtlCompareUnicodeString
+  wcsstr = fake_wcsstr
+  _wcslwr = fake_wcslwr
+  _wcsupr = fake_wcsupr
+  _wcsrev = fake_wcsrev
+  ExRaiseHardError
+  KeInitializeEvent
+  KeInitializeSpinLock
+  KeAcquireSpinLockRaiseToDpc
+  KeReleaseSpinLock
+  ExInterlockedAddUlong
+  ExInterlockedAddLargeInteger
+  IoAcquireRemoveLockEx
+  IoReleaseRemoveLockEx
+  IoReleaseRemoveLockAndWaitEx
+  MmGetSystemRoutineAddress
+  IofCallDriver
+  ObfDereferenceObject
+  ObCloseHandle
+  RtlDuplicateUnicodeString
+  ExAllocatePool2
+  RtlFindFirstRunClear
+  RtlFindLongestRunClear
+  ExReleaseResourceLite
+  ExReleaseResourceAndLeaveCriticalRegion
+  ExAcquireFastMutex
+  ExReleaseFastMutex
+  ExTryToAcquireFastMutex
+  InterlockedPopEntrySList = fake_InterlockedPopEntrySList
+  ExpInterlockedPopEntrySList
+  InterlockedIncrement = fake_InterlockedIncrement
+  PsProcessType DATA
+  PsThreadType DATA
+  FakeKernel_IsFake
+  FakeKernel_HardErrorCount
+  FakeKernel_HardErrorStatus
+  FakeKernel_HardErrorText
+  FakeKernel_HardErrorTitle
+  FakeKernel_EventCount
+  FakeKernel_EventType
+  FakeKernel_EventAddress
+  FakeKernel_SpinLockCount
+  FakeKernel_SpinLock
+  FakeKernel_LastCall
+  FakeKernel_LastArg
+  FakeKernel_LockHeldAtEntry
+  FakeKernel_RemoveLockFile
+  FakeKernel_ResetCall

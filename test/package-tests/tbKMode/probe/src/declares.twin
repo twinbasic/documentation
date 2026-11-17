@@ -1,0 +1,7 @@
+' Calls a Declare of the package only: the control. A driver imports only the routines it calls.
+Module Driver
+    Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
+        ZwClose 0
+        Return STATUS_SUCCESS
+    End Function
+End Module

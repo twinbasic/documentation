@@ -1,0 +1,36 @@
+' tbKMode, modFltMgr: calls written as the WDK's prototypes (fltKernel.h) have them. Each should
+' compile. Nothing here is ever run. Each line ends in a comment ' CASE <Name>: <code>.
+Module FltMgrCompileTests
+
+    Private Sub Canceled(CallbackData As FLT_CALLBACK_DATA)
+    End Sub
+
+    Private Function AllocateContext(ByVal PoolType As POOL_TYPE, ByVal Size As LongPtr, ByVal ContextType As Integer) As LongPtr
+    End Function
+
+    Public Sub Flt_GetFileNameInformationUnsafe_TakesNameOptions()
+        Dim fo As FILE_OBJECT, info As LongPtr, st As Long
+        st = FltGetFileNameInformationUnsafe(fo, 0, FLT_FILE_NAME_NORMALIZED, info) ' CASE GetFileNameInformationUnsafeTakesNameOptions: none
+    End Sub
+
+    Public Sub Flt_SetCancelCompletion_TakesTheCallback()
+        Dim cd As FLT_CALLBACK_DATA, st As Long
+        st = FltSetCancelCompletion(cd, AddressOf Canceled) ' CASE SetCancelCompletionTakesTheCallback: none
+    End Sub
+
+    Public Sub Flt_ClearCancelCompletion_TakesOneArgument()
+        Dim cd As FLT_CALLBACK_DATA, st As Long
+        st = FltClearCancelCompletion(cd) ' CASE ClearCancelCompletionTakesOneArgument: none
+    End Sub
+
+    Public Sub Flt_GetUpperInstance_IsDeclared()
+        Dim upper As LongPtr, st As Long
+        st = FltGetUpperInstance(0, upper) ' CASE GetUpperInstanceIsDeclared: none
+    End Sub
+
+    Public Sub Flt_ContextAllocateCallback_ReturnsThePool()
+        Dim reg As FLT_CONTEXT_REGISTRATION
+        reg.ContextAllocateCallback = AddressOf AllocateContext ' CASE ContextAllocateCallbackReturnsThePool: none
+    End Sub
+
+End Module

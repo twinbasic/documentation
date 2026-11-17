@@ -1,0 +1,9 @@
+{
+  "consts": {
+    "EPROCESS_TOKEN_OFFSET_10": "Windows 10, from its first release to version 1809.",
+    "EPROCESS_TOKEN_OFFSET_1903": "Windows 10 version 1903 only.",
+    "EPROCESS_TOKEN_OFFSET_1909": "Windows 10 version 1909 to Windows 11 version 22H2, the last build its author checked.",
+    "EPROCESS_TOKEN_OFFSET_7": "64-bit Windows 7 only.",
+    "EPROCESS_TOKEN_OFFSET_7x86": "32-bit Windows 7 only."
+  }
+}

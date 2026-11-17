@@ -1,0 +1,1258 @@
+[
+ {
+  "kind": "Declare",
+  "name": "ZwQueryInformationFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwqueryinformationfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryInformationFile(\n  [in]  HANDLE                 FileHandle,\n  [out] PIO_STATUS_BLOCK       IoStatusBlock,\n  [out] PVOID                  FileInformation,\n  [in]  ULONG                  Length,\n  [in]  FILE_INFORMATION_CLASS FileInformationClass\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryInformationProcess",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/procthread/zwqueryinformationprocess",
+  "syntax": "NTSTATUS WINAPI ZwQueryInformationProcess(\n  _In_&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;HANDLE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ProcessHandle,\n  _In_&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PROCESSINFOCLASS ProcessInformationClass,\n  _Out_&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PVOID &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ProcessInformation,\n  _In_&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ULONG &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ProcessInformationLength,\n  _Out_opt_&nbsp;PULONG &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ReturnLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryInformationToken",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwqueryinformationtoken",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryInformationToken(\n  [in]  HANDLE                  TokenHandle,\n  [in]  TOKEN_INFORMATION_CLASS TokenInformationClass,\n  [out] PVOID                   TokenInformation,\n  [in]  ULONG                   TokenInformationLength,\n  [out] PULONG                  ReturnLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwqueryobject",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryObject(\n  [in, optional]  HANDLE                   Handle,\n  [in]            OBJECT_INFORMATION_CLASS ObjectInformationClass,\n  [out, optional] PVOID                    ObjectInformation,\n  [in]            ULONG                    ObjectInformationLength,\n  [out, optional] PULONG                   ReturnLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQuerySection",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQuerySystemInformation",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/sysinfo/zwquerysysteminformation",
+  "syntax": "NTSTATUS WINAPI ZwQuerySystemInformation(\n  _In_      SYSTEM_INFORMATION_CLASS SystemInformationClass,\n  _Inout_   PVOID                    SystemInformation,\n  _In_      ULONG                    SystemInformationLength,\n  _Out_opt_ PULONG                   ReturnLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryVolumeInformationFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwqueryvolumeinformationfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryVolumeInformationFile(\n  [in]  HANDLE               FileHandle,\n  [out] PIO_STATUS_BLOCK     IoStatusBlock,\n  [out] PVOID                FsInformation,\n  [in]  ULONG                Length,\n  [in]  FS_INFORMATION_CLASS FsInformationClass\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSetInformationFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwsetinformationfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwSetInformationFile(\n  [in]  HANDLE                 FileHandle,\n  [out] PIO_STATUS_BLOCK       IoStatusBlock,\n  [in]  PVOID                  FileInformation,\n  [in]  ULONG                  Length,\n  [in]  FILE_INFORMATION_CLASS FileInformationClass\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSetInformationToken",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwsetinformationtoken",
+  "syntax": "NTSYSAPI NTSTATUS ZwSetInformationToken(\n  [in] HANDLE                  TokenHandle,\n  [in] TOKEN_INFORMATION_CLASS TokenInformationClass,\n  [in] PVOID                   TokenInformation,\n  [in] ULONG                   TokenInformationLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSetVolumeInformationFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwsetvolumeinformationfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwSetVolumeInformationFile(\n  [in]  HANDLE               FileHandle,\n  [out] PIO_STATUS_BLOCK     IoStatusBlock,\n  [in]  PVOID                FsInformation,\n  [in]  ULONG                Length,\n  [in]  FS_INFORMATION_CLASS FsInformationClass\n);"
+ },
+ {
+  "kind": "Type",
+  "name": "CURDIR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ACCESS_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_access_information",
+  "syntax": "typedef struct _FILE_ACCESS_INFORMATION {\n  ACCESS_MASK AccessFlags;\n} FILE_ACCESS_INFORMATION, *PFILE_ACCESS_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ALIGNMENT_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_alignment_information",
+  "syntax": "typedef struct _FILE_ALIGNMENT_INFORMATION {\n  ULONG AlignmentRequirement;\n} FILE_ALIGNMENT_INFORMATION, *PFILE_ALIGNMENT_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ALLOCATION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_allocation_information",
+  "syntax": "typedef struct _FILE_ALLOCATION_INFORMATION {\n  LARGE_INTEGER AllocationSize;\n} FILE_ALLOCATION_INFORMATION, *PFILE_ALLOCATION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ALL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_all_information",
+  "syntax": "typedef struct _FILE_ALL_INFORMATION {\n  FILE_BASIC_INFORMATION     BasicInformation;\n  FILE_STANDARD_INFORMATION  StandardInformation;\n  FILE_INTERNAL_INFORMATION  InternalInformation;\n  FILE_EA_INFORMATION        EaInformation;\n  FILE_ACCESS_INFORMATION    AccessInformation;\n  FILE_POSITION_INFORMATION  PositionInformation;\n  FILE_MODE_INFORMATION      ModeInformation;\n  FILE_ALIGNMENT_INFORMATION AlignmentInformation;\n  FILE_NAME_INFORMATION      NameInformation;\n} FILE_ALL_INFORMATION, *PFILE_ALL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ATTRIBUTE_TAG_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_attribute_tag_information",
+  "syntax": "typedef struct _FILE_ATTRIBUTE_TAG_INFORMATION {\n  ULONG FileAttributes;\n  ULONG ReparseTag;\n} FILE_ATTRIBUTE_TAG_INFORMATION, *PFILE_ATTRIBUTE_TAG_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_BASIC_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_basic_information",
+  "syntax": "typedef struct _FILE_BASIC_INFORMATION {\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  ULONG         FileAttributes;\n} FILE_BASIC_INFORMATION, *PFILE_BASIC_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_BOTH_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_both_dir_information",
+  "syntax": "typedef struct _FILE_BOTH_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  ULONG         EaSize;\n  CCHAR         ShortNameLength;\n  WCHAR         ShortName[12];\n  WCHAR         FileName[1];\n} FILE_BOTH_DIR_INFORMATION, *PFILE_BOTH_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_CASE_SENSITIVE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_case_sensitive_information",
+  "syntax": "typedef struct _FILE_CASE_SENSITIVE_INFORMATION {\n  ULONG Flags;\n} FILE_CASE_SENSITIVE_INFORMATION, *PFILE_CASE_SENSITIVE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_COMPLETION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_completion_information",
+  "syntax": "typedef struct _FILE_COMPLETION_INFORMATION {\n  HANDLE Port;\n  PVOID  Key;\n} FILE_COMPLETION_INFORMATION, *PFILE_COMPLETION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_COMPRESSION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_compression_information",
+  "syntax": "typedef struct _FILE_COMPRESSION_INFORMATION {\n  LARGE_INTEGER CompressedFileSize;\n  USHORT        CompressionFormat;\n  UCHAR         CompressionUnitShift;\n  UCHAR         ChunkShift;\n  UCHAR         ClusterShift;\n  UCHAR         Reserved[3];\n} FILE_COMPRESSION_INFORMATION, *PFILE_COMPRESSION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_DESIRED_STORAGE_CLASS_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_desired_storage_class_information",
+  "syntax": "typedef struct _FILE_DESIRED_STORAGE_CLASS_INFORMATION {\n  FILE_STORAGE_TIER_CLASS Class;\n  ULONG                   Flags;\n} FILE_DESIRED_STORAGE_CLASS_INFORMATION, *PFILE_DESIRED_STORAGE_CLASS_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_DIRECTORY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_directory_information",
+  "syntax": "typedef struct _FILE_DIRECTORY_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  WCHAR         FileName[1];\n} FILE_DIRECTORY_INFORMATION, *PFILE_DIRECTORY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_DISPOSITION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_disposition_information",
+  "syntax": "typedef struct _FILE_DISPOSITION_INFORMATION {\n  BOOLEAN DeleteFile;\n} FILE_DISPOSITION_INFORMATION, *PFILE_DISPOSITION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_DISPOSITION_INFO_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_EA_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_ea_information",
+  "syntax": "typedef struct _FILE_EA_INFORMATION {\n  ULONG EaSize;\n} FILE_EA_INFORMATION, *PFILE_EA_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_END_OF_FILE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_end_of_file_information",
+  "syntax": "typedef struct _FILE_END_OF_FILE_INFORMATION {\n  LARGE_INTEGER EndOfFile;\n} FILE_END_OF_FILE_INFORMATION, *PFILE_END_OF_FILE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_ATTRIBUTE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_fs_attribute_information",
+  "syntax": "typedef struct _FILE_FS_ATTRIBUTE_INFORMATION {\n  ULONG FileSystemAttributes;\n  LONG  MaximumComponentNameLength;\n  ULONG FileSystemNameLength;\n  WCHAR FileSystemName[1];\n} FILE_FS_ATTRIBUTE_INFORMATION, *PFILE_FS_ATTRIBUTE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_CONTROL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_fs_control_information",
+  "syntax": "typedef struct _FILE_FS_CONTROL_INFORMATION {\n  LARGE_INTEGER FreeSpaceStartFiltering;\n  LARGE_INTEGER FreeSpaceThreshold;\n  LARGE_INTEGER FreeSpaceStopFiltering;\n  LARGE_INTEGER DefaultQuotaThreshold;\n  LARGE_INTEGER DefaultQuotaLimit;\n  ULONG         FileSystemControlFlags;\n} FILE_FS_CONTROL_INFORMATION, *PFILE_FS_CONTROL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_DATA_COPY_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_DEVICE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_fs_device_information",
+  "syntax": "typedef struct _FILE_FS_DEVICE_INFORMATION {\n  DEVICE_TYPE DeviceType;\n  ULONG       Characteristics;\n} FILE_FS_DEVICE_INFORMATION, *PFILE_FS_DEVICE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_DRIVER_PATH_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_fs_driver_path_information",
+  "syntax": "typedef struct _FILE_FS_DRIVER_PATH_INFORMATION {\n  BOOLEAN DriverInPath;\n  ULONG   DriverNameLength;\n  WCHAR   DriverName[1];\n} FILE_FS_DRIVER_PATH_INFORMATION, *PFILE_FS_DRIVER_PATH_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_FULL_SIZE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_full_size_information",
+  "syntax": "typedef struct _FILE_FS_FULL_SIZE_INFORMATION {\n  LARGE_INTEGER TotalAllocationUnits;\n  LARGE_INTEGER CallerAvailableAllocationUnits;\n  LARGE_INTEGER ActualAvailableAllocationUnits;\n  ULONG         SectorsPerAllocationUnit;\n  ULONG         BytesPerSector;\n} FILE_FS_FULL_SIZE_INFORMATION, *PFILE_FS_FULL_SIZE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_FULL_SIZE_INFORMATION_EX",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_full_size_information_ex",
+  "syntax": "typedef struct _FILE_FS_FULL_SIZE_INFORMATION_EX {\n  ULONGLONG ActualTotalAllocationUnits;\n  ULONGLONG ActualAvailableAllocationUnits;\n  ULONGLONG ActualPoolUnavailableAllocationUnits;\n  ULONGLONG CallerTotalAllocationUnits;\n  ULONGLONG CallerAvailableAllocationUnits;\n  ULONGLONG CallerPoolUnavailableAllocationUnits;\n  ULONGLONG UsedAllocationUnits;\n  ULONGLONG TotalReservedAllocationUnits;\n  ULONGLONG VolumeStorageReserveAllocationUnits;\n  ULONGLONG AvailableCommittedAllocationUnits;\n  ULONGLONG PoolAvailableAllocationUnits;\n  ULONG     SectorsPerAllocationUnit;\n  ULONG     BytesPerSector;\n} FILE_FS_FULL_SIZE_INFORMATION_EX, *PFILE_FS_FULL_SIZE_INFORMATION_EX;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_LABEL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_label_information",
+  "syntax": "typedef struct _FILE_FS_LABEL_INFORMATION {\n  ULONG VolumeLabelLength;\n  WCHAR VolumeLabel[1];\n} FILE_FS_LABEL_INFORMATION, *PFILE_FS_LABEL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_METADATA_SIZE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_OBJECTID_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_objectid_information",
+  "syntax": "typedef struct _FILE_FS_OBJECTID_INFORMATION {\n  UCHAR ObjectId[16];\n  UCHAR ExtendedInfo[48];\n} FILE_FS_OBJECTID_INFORMATION, *PFILE_FS_OBJECTID_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_SECTOR_SIZE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_sector_size_information",
+  "syntax": "typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION {\n  ULONG LogicalBytesPerSector;\n  ULONG PhysicalBytesPerSectorForAtomicity;\n  ULONG PhysicalBytesPerSectorForPerformance;\n  ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;\n  ULONG Flags;\n  ULONG ByteOffsetForSectorAlignment;\n  ULONG ByteOffsetForPartitionAlignment;\n} FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_SIZE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_size_information",
+  "syntax": "typedef struct _FILE_FS_SIZE_INFORMATION {\n  LARGE_INTEGER TotalAllocationUnits;\n  LARGE_INTEGER AvailableAllocationUnits;\n  ULONG         SectorsPerAllocationUnit;\n  ULONG         BytesPerSector;\n} FILE_FS_SIZE_INFORMATION, *PFILE_FS_SIZE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_VOLUME_FLAGS_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FS_VOLUME_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_volume_information",
+  "syntax": "typedef struct _FILE_FS_VOLUME_INFORMATION {\n  LARGE_INTEGER VolumeCreationTime;\n  ULONG         VolumeSerialNumber;\n  ULONG         VolumeLabelLength;\n  BOOLEAN       SupportsObjects;\n  WCHAR         VolumeLabel[1];\n} FILE_FS_VOLUME_INFORMATION, *PFILE_FS_VOLUME_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FULL_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_full_dir_information",
+  "syntax": "typedef struct _FILE_FULL_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  ULONG         EaSize;\n  WCHAR         FileName[1];\n} FILE_FULL_DIR_INFORMATION, *PFILE_FULL_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_FULL_EA_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_full_ea_information",
+  "syntax": "typedef struct _FILE_FULL_EA_INFORMATION {\n  ULONG  NextEntryOffset;\n  UCHAR  Flags;\n  UCHAR  EaNameLength;\n  USHORT EaValueLength;\n  CHAR   EaName[1];\n} FILE_FULL_EA_INFORMATION, *PFILE_FULL_EA_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_128",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_id_128",
+  "syntax": "typedef struct _FILE_ID_128 {\n  BYTE Identifier[16];\n} FILE_ID_128, *PFILE_ID_128;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_BOTH_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_both_dir_information",
+  "syntax": "typedef struct _FILE_ID_BOTH_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  ULONG         EaSize;\n  CCHAR         ShortNameLength;\n  WCHAR         ShortName[12];\n  LARGE_INTEGER FileId;\n  WCHAR         FileName[1];\n} FILE_ID_BOTH_DIR_INFORMATION, *PFILE_ID_BOTH_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_EXTD_BOTH_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_extd_both_dir_information",
+  "syntax": "typedef struct _FILE_ID_EXTD_BOTH_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  ULONG         EaSize;\n  ULONG         ReparsePointTag;\n  FILE_ID_128   FileId;\n  CCHAR         ShortNameLength;\n  WCHAR         ShortName[12];\n  WCHAR         FileName[1];\n} FILE_ID_EXTD_BOTH_DIR_INFORMATION, *PFILE_ID_EXTD_BOTH_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_EXTD_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_id_extd_dir_information",
+  "syntax": "typedef struct _FILE_ID_EXTD_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  ULONG         EaSize;\n  ULONG         ReparsePointTag;\n  FILE_ID_128   FileId;\n  WCHAR         FileName[1];\n} FILE_ID_EXTD_DIR_INFORMATION, *PFILE_ID_EXTD_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_FULL_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_full_dir_information",
+  "syntax": "typedef struct _FILE_ID_FULL_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  ULONG         EaSize;\n  LARGE_INTEGER FileId;\n  WCHAR         FileName[1];\n} FILE_ID_FULL_DIR_INFORMATION, *PFILE_ID_FULL_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_GLOBAL_TX_DIR_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_global_tx_dir_information",
+  "syntax": "typedef struct _FILE_ID_GLOBAL_TX_DIR_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         FileIndex;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER EndOfFile;\n  LARGE_INTEGER AllocationSize;\n  ULONG         FileAttributes;\n  ULONG         FileNameLength;\n  LARGE_INTEGER FileId;\n  GUID          LockingTransactionId;\n  ULONG         TxInfoFlags;\n  WCHAR         FileName[1];\n} FILE_ID_GLOBAL_TX_DIR_INFORMATION, *PFILE_ID_GLOBAL_TX_DIR_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_ID_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_id_information",
+  "syntax": "typedef struct _FILE_ID_INFORMATION {\n  ULONGLONG   VolumeSerialNumber;\n  FILE_ID_128 FileId;\n} FILE_ID_INFORMATION, *PFILE_ID_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_INTERNAL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_internal_information",
+  "syntax": "typedef struct _FILE_INTERNAL_INFORMATION {\n  LARGE_INTEGER IndexNumber;\n} FILE_INTERNAL_INFORMATION, *PFILE_INTERNAL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_IOSTATUSBLOCK_RANGE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_IO_COMPLETION_NOTIFICATION_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_IO_PRIORITY_HINT_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_io_priority_hint_information",
+  "syntax": "typedef struct _FILE_IO_PRIORITY_HINT_INFORMATION {\n  IO_PRIORITY_HINT PriorityHint;\n} FILE_IO_PRIORITY_HINT_INFORMATION, *PFILE_IO_PRIORITY_HINT_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_IS_REMOTE_DEVICE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_is_remote_device_information",
+  "syntax": "typedef struct _FILE_IS_REMOTE_DEVICE_INFORMATION {\n  BOOLEAN IsRemote;\n} FILE_IS_REMOTE_DEVICE_INFORMATION, *PFILE_IS_REMOTE_DEVICE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_KNOWN_FOLDER_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_known_folder_information",
+  "syntax": "typedef struct _FILE_KNOWN_FOLDER_INFORMATION {\n  FILE_KNOWN_FOLDER_TYPE Type;\n} FILE_KNOWN_FOLDER_INFORMATION, *PFILE_KNOWN_FOLDER_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_LINKS_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_links_information",
+  "syntax": "typedef struct _FILE_LINKS_INFORMATION {\n  ULONG                       BytesNeeded;\n  ULONG                       EntriesReturned;\n  FILE_LINK_ENTRY_INFORMATION Entry;\n} FILE_LINKS_INFORMATION, *PFILE_LINKS_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_LINK_ENTRY_FULL_ID_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_LINK_ENTRY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_link_entry_information",
+  "syntax": "typedef struct _FILE_LINK_ENTRY_INFORMATION {\n  ULONG    NextEntryOffset;\n  LONGLONG ParentFileId;\n  ULONG    FileNameLength;\n  WCHAR    FileName[1];\n} FILE_LINK_ENTRY_INFORMATION, *PFILE_LINK_ENTRY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_LINK_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_link_information",
+  "syntax": "typedef struct _FILE_LINK_INFORMATION {\n#if (_WIN32_WINNT >= _WIN32_WINNT_WIN10_RS5)\n    union {\n        BOOLEAN ReplaceIfExists;  // FileLinkInformation\n        ULONG Flags;              // FileLinkInformationEx\n    } DUMMYUNIONNAME;\n#else\n    BOOLEAN ReplaceIfExists;\n#endif\n    HANDLE RootDirectory;\n    ULONG FileNameLength;\n    WCHAR FileName[1];\n} FILE_LINK_INFORMATION, *PFILE_LINK_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_LINK_INFORMATION_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_MAILSLOT_QUERY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_mailslot_query_information",
+  "syntax": "typedef struct _FILE_MAILSLOT_QUERY_INFORMATION {\n  ULONG         MaximumMessageSize;\n  ULONG         MailslotQuota;\n  ULONG         NextMessageSize;\n  ULONG         MessagesAvailable;\n  LARGE_INTEGER ReadTimeout;\n} FILE_MAILSLOT_QUERY_INFORMATION, *PFILE_MAILSLOT_QUERY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_MAILSLOT_SET_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_mailslot_set_information",
+  "syntax": "typedef struct _FILE_MAILSLOT_SET_INFORMATION {\n  PLARGE_INTEGER ReadTimeout;\n} FILE_MAILSLOT_SET_INFORMATION, *PFILE_MAILSLOT_SET_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_MEMORY_PARTITION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_memory_partition_information",
+  "syntax": "typedef struct _FILE_MEMORY_PARTITION_INFORMATION {\n  ULONG_PTR OwnerPartitionHandle;\n  union {\n    struct {\n      UCHAR NoCrossPartitionAccess;\n      UCHAR Spare[3];\n    } DUMMYSTRUCTNAME;\n    ULONG AllFlags;\n  } Flags;\n} FILE_MEMORY_PARTITION_INFORMATION, *PFILE_MEMORY_PARTITION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_MODE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_mode_information",
+  "syntax": "typedef struct _FILE_MODE_INFORMATION {\n  ULONG Mode;\n} FILE_MODE_INFORMATION, *PFILE_MODE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_MOVE_CLUSTER_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_NAMES_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_names_information",
+  "syntax": "typedef struct _FILE_NAMES_INFORMATION {\n  ULONG NextEntryOffset;\n  ULONG FileIndex;\n  ULONG FileNameLength;\n  WCHAR FileName[1];\n} FILE_NAMES_INFORMATION, *PFILE_NAMES_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_NAME_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_name_information",
+  "syntax": "typedef struct _FILE_NAME_INFORMATION {\n  ULONG FileNameLength;\n  WCHAR FileName[1];\n} FILE_NAME_INFORMATION, *PFILE_NAME_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_NETWORK_OPEN_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_network_open_information",
+  "syntax": "typedef struct _FILE_NETWORK_OPEN_INFORMATION {\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER AllocationSize;\n  LARGE_INTEGER EndOfFile;\n  ULONG         FileAttributes;\n} FILE_NETWORK_OPEN_INFORMATION, *PFILE_NETWORK_OPEN_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_NETWORK_PHYSICAL_NAME_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_network_physical_name_information",
+  "syntax": "typedef struct _FILE_NETWORK_PHYSICAL_NAME_INFORMATION {\n  ULONG FileNameLength;\n  WCHAR FileName[1];\n} FILE_NETWORK_PHYSICAL_NAME_INFORMATION, *PFILE_NETWORK_PHYSICAL_NAME_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_NUMA_NODE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_OBJECTID_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_objectid_information",
+  "syntax": "typedef struct _FILE_OBJECTID_INFORMATION {\n  LONGLONG FileReference;\n  UCHAR    ObjectId[16];\n  union {\n    struct {\n      UCHAR BirthVolumeId[16];\n      UCHAR BirthObjectId[16];\n      UCHAR DomainId[16];\n    } DUMMYSTRUCTNAME;\n    UCHAR ExtendedInfo[48];\n  } DUMMYUNIONNAME;\n} FILE_OBJECTID_INFORMATION, *PFILE_OBJECTID_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_PIPE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_pipe_information",
+  "syntax": "typedef struct _FILE_PIPE_INFORMATION {\n  ULONG ReadMode;\n  ULONG CompletionMode;\n} FILE_PIPE_INFORMATION, *PFILE_PIPE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_PIPE_LOCAL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_pipe_local_information",
+  "syntax": "typedef struct _FILE_PIPE_LOCAL_INFORMATION {\n  ULONG NamedPipeType;\n  ULONG NamedPipeConfiguration;\n  ULONG MaximumInstances;\n  ULONG CurrentInstances;\n  ULONG InboundQuota;\n  ULONG ReadDataAvailable;\n  ULONG OutboundQuota;\n  ULONG WriteQuotaAvailable;\n  ULONG NamedPipeState;\n  ULONG NamedPipeEnd;\n} FILE_PIPE_LOCAL_INFORMATION, *PFILE_PIPE_LOCAL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_PIPE_REMOTE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_pipe_remote_information",
+  "syntax": "typedef struct _FILE_PIPE_REMOTE_INFORMATION {\n  LARGE_INTEGER CollectDataTime;\n  ULONG         MaximumCollectionCount;\n} FILE_PIPE_REMOTE_INFORMATION, *PFILE_PIPE_REMOTE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_POSITION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_position_information",
+  "syntax": "typedef struct _FILE_POSITION_INFORMATION {\n  LARGE_INTEGER CurrentByteOffset;\n} FILE_POSITION_INFORMATION, *PFILE_POSITION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_PROCESS_IDS_USING_FILE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_QUOTA_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_quota_information",
+  "syntax": "typedef struct _FILE_QUOTA_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         SidLength;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER QuotaUsed;\n  LARGE_INTEGER QuotaThreshold;\n  LARGE_INTEGER QuotaLimit;\n  SID           Sid;\n} FILE_QUOTA_INFORMATION, *PFILE_QUOTA_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_REMOTE_PROTOCOL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_remote_protocol_information",
+  "syntax": "typedef struct _FILE_REMOTE_PROTOCOL_INFORMATION {\n  USHORT StructureVersion;\n  USHORT StructureSize;\n  ULONG  Protocol;\n  USHORT ProtocolMajorVersion;\n  USHORT ProtocolMinorVersion;\n  USHORT ProtocolRevision;\n  USHORT Reserved;\n  ULONG  Flags;\n  struct {\n    ULONG Reserved[8];\n  } GenericReserved;\n  struct {\n    ULONG Reserved[16];\n  } ProtocolSpecificReserved;\n  union {\n    struct {\n      struct {\n        ULONG Capabilities;\n      } Server;\n      struct {\n        ULONG Capabilities;\n        ULONG ShareFlags;\n        ULONG CachingFlags;\n        UCHAR ShareType;\n        UCHAR Reserved0[3];\n        ULONG Reserved1;\n      } Share;\n    } Smb2;\n    ULONG Reserved[16];\n  } ProtocolSpecific;\n} FILE_REMOTE_PROTOCOL_INFORMATION, *PFILE_REMOTE_PROTOCOL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_RENAME_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information",
+  "syntax": "typedef struct _FILE_RENAME_INFORMATION {\n#if (_WIN32_WINNT >= _WIN32_WINNT_WIN10_RS1)\n    union {\n        BOOLEAN ReplaceIfExists;  // FileRenameInformation\n        ULONG Flags;              // FileRenameInformationEx\n    } DUMMYUNIONNAME;\n#else\n    BOOLEAN ReplaceIfExists;\n#endif\n    HANDLE RootDirectory;\n    ULONG FileNameLength;\n    WCHAR FileName[1];\n} FILE_RENAME_INFORMATION, *PFILE_RENAME_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_RENAME_INFORMATION_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_REPARSE_POINT_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_reparse_point_information",
+  "syntax": "typedef struct _FILE_REPARSE_POINT_INFORMATION {\n  LONGLONG FileReference;\n  ULONG    Tag;\n} FILE_REPARSE_POINT_INFORMATION, *PFILE_REPARSE_POINT_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_SFIO_RESERVE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-file_sfio_reserve_information",
+  "syntax": "typedef struct _FILE_SFIO_RESERVE_INFORMATION {\n  ULONG   RequestsPerPeriod;\n  ULONG   Period;\n  BOOLEAN RetryFailures;\n  BOOLEAN Discardable;\n  ULONG   RequestSize;\n  ULONG   NumOutstandingRequests;\n} FILE_SFIO_RESERVE_INFORMATION, *PFILE_SFIO_RESERVE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_SFIO_VOLUME_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_STANDARD_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_standard_information",
+  "syntax": "typedef struct _FILE_STANDARD_INFORMATION {\n  LARGE_INTEGER AllocationSize;\n  LARGE_INTEGER EndOfFile;\n  ULONG         NumberOfLinks;\n  BOOLEAN       DeletePending;\n  BOOLEAN       Directory;\n} FILE_STANDARD_INFORMATION, *PFILE_STANDARD_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_STANDARD_LINK_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_standard_link_information",
+  "syntax": "typedef struct _FILE_STANDARD_LINK_INFORMATION {\n  ULONG   NumberOfAccessibleLinks;\n  ULONG   TotalNumberOfLinks;\n  BOOLEAN DeletePending;\n  BOOLEAN Directory;\n} FILE_STANDARD_LINK_INFORMATION, *PFILE_STANDARD_LINK_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_STAT_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stat_information",
+  "syntax": "typedef struct _FILE_STAT_INFORMATION {\n  LARGE_INTEGER FileId;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER AllocationSize;\n  LARGE_INTEGER EndOfFile;\n  ULONG         FileAttributes;\n  ULONG         ReparseTag;\n  ULONG         NumberOfLinks;\n  ACCESS_MASK   EffectiveAccess;\n} FILE_STAT_INFORMATION, *PFILE_STAT_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_STAT_LX_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stat_lx_information",
+  "syntax": "typedef struct _FILE_STAT_LX_INFORMATION {\n  LARGE_INTEGER FileId;\n  LARGE_INTEGER CreationTime;\n  LARGE_INTEGER LastAccessTime;\n  LARGE_INTEGER LastWriteTime;\n  LARGE_INTEGER ChangeTime;\n  LARGE_INTEGER AllocationSize;\n  LARGE_INTEGER EndOfFile;\n  ULONG         FileAttributes;\n  ULONG         ReparseTag;\n  ULONG         NumberOfLinks;\n  ACCESS_MASK   EffectiveAccess;\n  ULONG         LxFlags;\n  ULONG         LxUid;\n  ULONG         LxGid;\n  ULONG         LxMode;\n  ULONG         LxDeviceIdMajor;\n  ULONG         LxDeviceIdMinor;\n} FILE_STAT_LX_INFORMATION, *PFILE_STAT_LX_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_STREAM_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stream_information",
+  "syntax": "typedef struct _FILE_STREAM_INFORMATION {\n  ULONG         NextEntryOffset;\n  ULONG         StreamNameLength;\n  LARGE_INTEGER StreamSize;\n  LARGE_INTEGER StreamAllocationSize;\n  WCHAR         StreamName[1];\n} FILE_STREAM_INFORMATION, *PFILE_STREAM_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_TRACKING_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_VALID_DATA_LENGTH_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_valid_data_length_information",
+  "syntax": "typedef struct _FILE_VALID_DATA_LENGTH_INFORMATION {\n  LARGE_INTEGER ValidDataLength;\n} FILE_VALID_DATA_LENGTH_INFORMATION, *PFILE_VALID_DATA_LENGTH_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_VOLUME_NAME_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "GENERIC_MAPPING",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_generic_mapping",
+  "syntax": "typedef struct _GENERIC_MAPPING {\n  ACCESS_MASK GenericRead;\n  ACCESS_MASK GenericWrite;\n  ACCESS_MASK GenericExecute;\n  ACCESS_MASK GenericAll;\n} GENERIC_MAPPING;"
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_BASIC_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_DIRECTORY_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_HANDLE_FLAG_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_NAME_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_TYPE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_VISTA",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN10_R3",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN10_R4",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN10_R5",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN10_T2",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN11",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN7",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_WIN8",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PEB_XP",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PROCESS_BASIC_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PROCESS_BASIC_INFORMATION32",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PROCESS_BASIC_INFORMATION64",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_DRIVE_LETTER_CURDIR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_DYNAMIC_TIME_ZONE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_PROCESS_BACKTRACES",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_PROCESS_BACKTRACE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_PROCESS_LOCKS",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_PROCESS_LOCK_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_PROCESS_MODULES",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_PROCESS_MODULE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_TIME_ZONE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-rtl_user_process_parameters",
+  "syntax": "typedef struct _RTL_USER_PROCESS_PARAMETERS {\n  BYTE           Reserved1[16];\n  PVOID          Reserved2[10];\n  UNICODE_STRING ImagePathName;\n  UNICODE_STRING CommandLine;\n} RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;"
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN10",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN10_19H1",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN10_20H1",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN10_R5",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN11_21H2",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN7",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_WIN8",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_USER_PROCESS_PARAMETERS_XP",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SECTION_BASIC_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SECTION_IMAGE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SECTION_INTERNAL_IMAGE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_BASIC_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_BASIC_PERFORMANCE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_BOOT_ENVIRONMENT_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_BOOT_GRAPHICS_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_BOOT_LOGO_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_CALL_COUNT_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_CALL_TIME_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_CODEINTEGRITYPOLICY_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_CODEINTEGRITYVERIFICATION_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_CODEINTEGRITY_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_DEVICE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_FILECACHE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_FLAGS_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_HANDLE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_HANDLE_TABLE_ENTRY_INFO",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_KERNEL_DEBUGGER_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_LOOKASIDE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_OBJECTTYPE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_OBJECT_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_PAGEFILE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_PAGEFILE_INFORMATION_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_PERFORMANCE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_PROCESSOR_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_PROCESS_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_SECUREBOOT_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_THREAD_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SYSTEM_TIMEOFDAY_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "TIME_FIELDS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-time_fields",
+  "syntax": "typedef struct _TIME_FIELDS {\n  CSHORT Year;\n  CSHORT Month;\n  CSHORT Day;\n  CSHORT Hour;\n  CSHORT Minute;\n  CSHORT Second;\n  CSHORT Milliseconds;\n  CSHORT Weekday;\n} TIME_FIELDS;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_ACCESS_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-token_access_information",
+  "syntax": "typedef struct _TOKEN_ACCESS_INFORMATION {\n  PSID_AND_ATTRIBUTES_HASH     SidHash;\n  PSID_AND_ATTRIBUTES_HASH     RestrictedSidHash;\n  PTOKEN_PRIVILEGES            Privileges;\n  LUID                         AuthenticationId;\n  TOKEN_TYPE                   TokenType;\n  SECURITY_IMPERSONATION_LEVEL ImpersonationLevel;\n  TOKEN_MANDATORY_POLICY       MandatoryPolicy;\n  ULONG                        Flags;\n  ULONG                        AppContainerNumber;\n  PSID                         PackageSid;\n  PSID_AND_ATTRIBUTES_HASH     CapabilitiesHash;\n  PSID                         TrustLevelSid;\n  PSECURITY_ATTRIBUTES_OPAQUE  SecurityAttributes;\n} TOKEN_ACCESS_INFORMATION, *PTOKEN_ACCESS_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_APPCONTAINER_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_appcontainer_information",
+  "syntax": "typedef struct _TOKEN_APPCONTAINER_INFORMATION {\n  PSID TokenAppContainer;\n} TOKEN_APPCONTAINER_INFORMATION, *PTOKEN_APPCONTAINER_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_AUDIT_POLICY",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_audit_policy",
+  "syntax": "typedef struct _TOKEN_AUDIT_POLICY {\n  BYTE PerUserPolicy[((POLICY_AUDIT_SUBCATEGORY_COUNT)>> 1)+ 1];\n} TOKEN_AUDIT_POLICY, *PTOKEN_AUDIT_POLICY;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_AUDIT_POLICY_Vista",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_AUDIT_POLICY_Win8",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_CONTROL",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_control",
+  "syntax": "typedef struct _TOKEN_CONTROL {\n  LUID         TokenId;\n  LUID         AuthenticationId;\n  LUID         ModifiedId;\n  TOKEN_SOURCE TokenSource;\n} TOKEN_CONTROL, *PTOKEN_CONTROL;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_DEFAULT_DACL",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_default_dacl",
+  "syntax": "typedef struct _TOKEN_DEFAULT_DACL {\n  PACL DefaultDacl;\n} TOKEN_DEFAULT_DACL, *PTOKEN_DEFAULT_DACL;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_DEVICE_CLAIMS",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_device_claims",
+  "syntax": "typedef struct _TOKEN_DEVICE_CLAIMS {\n  PCLAIMS_BLOB DeviceClaims;\n} TOKEN_DEVICE_CLAIMS, *PTOKEN_DEVICE_CLAIMS;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_ELEVATION",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_elevation",
+  "syntax": "typedef struct _TOKEN_ELEVATION {\n  DWORD TokenIsElevated;\n} TOKEN_ELEVATION, *PTOKEN_ELEVATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_GROUPS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_groups",
+  "syntax": "typedef struct _TOKEN_GROUPS {\n  ULONG              GroupCount;\n#if ...\n  SID_AND_ATTRIBUTES *Groups[];\n#else\n  SID_AND_ATTRIBUTES Groups[ANYSIZE_ARRAY];\n#endif\n} TOKEN_GROUPS, *PTOKEN_GROUPS;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_GROUPS_AND_PRIVILEGES",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_groups_and_privileges",
+  "syntax": "typedef struct _TOKEN_GROUPS_AND_PRIVILEGES {\n  ULONG                SidCount;\n  ULONG                SidLength;\n  PSID_AND_ATTRIBUTES  Sids;\n  ULONG                RestrictedSidCount;\n  ULONG                RestrictedSidLength;\n  PSID_AND_ATTRIBUTES  RestrictedSids;\n  ULONG                PrivilegeCount;\n  ULONG                PrivilegeLength;\n  PLUID_AND_ATTRIBUTES Privileges;\n  LUID                 AuthenticationId;\n} TOKEN_GROUPS_AND_PRIVILEGES, *PTOKEN_GROUPS_AND_PRIVILEGES;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_LINKED_TOKEN",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_linked_token",
+  "syntax": "typedef struct _TOKEN_LINKED_TOKEN {\n  HANDLE LinkedToken;\n} TOKEN_LINKED_TOKEN, *PTOKEN_LINKED_TOKEN;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_MANDATORY_LABEL",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_mandatory_label",
+  "syntax": "typedef struct _TOKEN_MANDATORY_LABEL {\n  SID_AND_ATTRIBUTES Label;\n} TOKEN_MANDATORY_LABEL, *PTOKEN_MANDATORY_LABEL;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_MANDATORY_POLICY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-token_mandatory_policy",
+  "syntax": "typedef struct _TOKEN_MANDATORY_POLICY {\n  ULONG Policy;\n} TOKEN_MANDATORY_POLICY, *PTOKEN_MANDATORY_POLICY;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_ORIGIN",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_origin",
+  "syntax": "typedef struct _TOKEN_ORIGIN {\n  LUID OriginatingLogonSession;\n} TOKEN_ORIGIN, *PTOKEN_ORIGIN;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_OWNER",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_owner",
+  "syntax": "typedef struct _TOKEN_OWNER {\n  PSID Owner;\n} TOKEN_OWNER, *PTOKEN_OWNER;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_PRIMARY_GROUP",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_primary_group",
+  "syntax": "typedef struct _TOKEN_PRIMARY_GROUP {\n  PSID PrimaryGroup;\n} TOKEN_PRIMARY_GROUP, *PTOKEN_PRIMARY_GROUP;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_SOURCE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_source",
+  "syntax": "typedef struct _TOKEN_SOURCE {\n  CHAR SourceName[TOKEN_SOURCE_LENGTH];\n  LUID SourceIdentifier;\n} TOKEN_SOURCE, *PTOKEN_SOURCE;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_STATISTICS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_statistics",
+  "syntax": "typedef struct _TOKEN_STATISTICS {\n  LUID                         TokenId;\n  LUID                         AuthenticationId;\n  LARGE_INTEGER                ExpirationTime;\n  TOKEN_TYPE                   TokenType;\n  SECURITY_IMPERSONATION_LEVEL ImpersonationLevel;\n  ULONG                        DynamicCharged;\n  ULONG                        DynamicAvailable;\n  ULONG                        GroupCount;\n  ULONG                        PrivilegeCount;\n  LUID                         ModifiedId;\n} TOKEN_STATISTICS, *PTOKEN_STATISTICS;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_USER",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_user",
+  "syntax": "typedef struct _TOKEN_USER {\n  SID_AND_ATTRIBUTES User;\n} TOKEN_USER, *PTOKEN_USER;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_USER_CLAIMS",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_user_claims",
+  "syntax": "typedef struct _TOKEN_USER_CLAIMS {\n  PCLAIMS_BLOB UserClaims;\n} TOKEN_USER_CLAIMS, *PTOKEN_USER_CLAIMS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "CheckTokenMembershipExFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_CS_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_DISPOSITION_EX_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_INFORMATION_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_file_information_class",
+  "syntax": "typedef enum _FILE_INFORMATION_CLASS {\n  FileDirectoryInformation = 1,\n  FileFullDirectoryInformation = 2,\n  FileBothDirectoryInformation = 3,\n  FileBasicInformation = 4,\n  FileStandardInformation = 5,\n  FileInternalInformation = 6,\n  FileEaInformation = 7,\n  FileAccessInformation = 8,\n  FileNameInformation = 9,\n  FileRenameInformation = 10,\n  FileLinkInformation = 11,\n  FileNamesInformation = 12,\n  FileDispositionInformation = 13,\n  FilePositionInformation = 14,\n  FileFullEaInformation = 15,\n  FileModeInformation = 16,\n  FileAlignmentInformation = 17,\n  FileAllInformation = 18,\n  FileAllocationInformation = 19,\n  FileEndOfFileInformation = 20,\n  FileAlternateNameInformation = 21,\n  FileStreamInformation = 22,\n  FilePipeInformation = 23,\n  FilePipeLocalInformation = 24,\n  FilePipeRemoteInformation = 25,\n  FileMailslotQueryInformation = 26,\n  FileMailslotSetInformation = 27,\n  FileCompressionInformation = 28,\n  FileObjectIdInformation = 29,\n  FileCompletionInformation = 30,\n  FileMoveClusterInformation = 31,\n  FileQuotaInformation = 32,\n  FileReparsePointInformation = 33,\n  FileNetworkOpenInformation = 34,\n  FileAttributeTagInformation = 35,\n  FileTrackingInformation = 36,\n  FileIdBothDirectoryInformation = 37,\n  FileIdFullDirectoryInformation = 38,\n  FileValidDataLengthInformation = 39,\n  FileShortNameInformation = 40,\n  FileIoCompletionNotificationInformation = 41,\n  FileIoStatusBlockRangeInformation = 42,\n  FileIoPriorityHintInformation = 43,\n  FileSfioReserveInformation = 44,\n  FileSfioVolumeInformation = 45,\n  FileHardLinkInformation = 46,\n  FileProcessIdsUsingFileInformation = 47,\n  FileNormalizedNameInformation = 48,\n  FileNetworkPhysicalNameInformation = 49,\n  FileIdGlobalTxDirectoryInformation = 50,\n  FileIsRemoteDeviceInformation = 51,\n  FileUnusedInformation = 52,\n  FileNumaNodeInformation = 53,\n  FileStandardLinkInformation = 54,\n  FileRemoteProtocolInformation = 55,\n  FileRenameInformationBypassAccessCheck = 56,\n  FileLinkInformationBypassAccessCheck = 57,\n  FileVolumeNameInformation = 58,\n  FileIdInformation = 59,\n  FileIdExtdDirectoryInformation = 60,\n  FileReplaceCompletionInformation = 61,\n  FileHardLinkFullIdInformation = 62,\n  FileIdExtdBothDirectoryInformation = 63,\n  FileDispositionInformationEx = 64,\n  FileRenameInformationEx = 65,\n  FileRenameInformationExBypassAccessCheck = 66,\n  FileDesiredStorageClassInformation = 67,\n  FileStatInformation = 68,\n  FileMemoryPartitionInformation = 69,\n  FileStatLxInformation = 70,\n  FileCaseSensitiveInformation = 71,\n  FileLinkInformationEx = 72,\n  FileLinkInformationExBypassAccessCheck = 73,\n  FileStorageReserveIdInformation = 74,\n  FileCaseSensitiveInformationForceAccessCheck = 75,\n  FileKnownFolderInformation = 76,\n  FileStatBasicInformation = 77,\n  FileId64ExtdDirectoryInformation = 78,\n  FileId64ExtdBothDirectoryInformation = 79,\n  FileIdAllExtdDirectoryInformation = 80,\n  FileIdAllExtdBothDirectoryInformation = 81,\n  FileStreamReservationInformation,\n  FileMupProviderInfo,\n  FileMaximumInformation\n} FILE_INFORMATION_CLASS, *PFILE_INFORMATION_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_IO_COMPLETION_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_KNOWN_FOLDER_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-file_known_folder_type",
+  "syntax": "typedef enum _FILE_KNOWN_FOLDER_TYPE {\n  KnownFolderNone,\n  KnownFolderDesktop,\n  KnownFolderDocuments,\n  KnownFolderDownloads,\n  KnownFolderMusic,\n  KnownFolderPictures,\n  KnownFolderVideos,\n  KnownFolderOther,\n  KnownFolderMax\n} FILE_KNOWN_FOLDER_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_LINK_EX_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_LX_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_LX_MODE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_PIPE_COMPLETION_MODE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_PIPE_CONFIG",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_PIPE_END",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_PIPE_READ_MODE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_PIPE_STATE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_PIPE_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_RENAME_EX_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_STORAGE_TIER_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_file_storage_tier_class",
+  "syntax": "typedef enum _FILE_STORAGE_TIER_CLASS {\n  FileStorageTierClassUnspecified,\n  FileStorageTierClassCapacity,\n  FileStorageTierClassPerformance,\n  FileStorageTierClassMax\n} FILE_STORAGE_TIER_CLASS, *PFILE_STORAGE_TIER_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_STORAGE_TIER_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_TX_DIRINFO_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FIRMWARE_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-firmware_type",
+  "syntax": "typedef enum _FIRMWARE_TYPE {\n  FirmwareTypeUnknown,\n  FirmwareTypeBios,\n  FirmwareTypeUefi,\n  FirmwareTypeMax\n} FIRMWARE_TYPE, *PFIRMWARE_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FS_CONTROL_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FS_INFORMATION_CLASS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FileSystemFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IO_PRIORITY_HINT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_io_priority_hint",
+  "syntax": "typedef enum _IO_PRIORITY_HINT {\n  IoPriorityVeryLow,\n  IoPriorityLow,\n  IoPriorityNormal,\n  IoPriorityHigh,\n  IoPriorityCritical,\n  MaxIoPriorityTypes\n} IO_PRIORITY_HINT;"
+ },
+ {
+  "kind": "Enum",
+  "name": "LDR_DATA_TABLE_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MANDATORY_LEVEL",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-mandatory_level",
+  "syntax": "typedef enum _MANDATORY_LEVEL {\n  MandatoryLevelUntrusted = 0,\n  MandatoryLevelLow,\n  MandatoryLevelMedium,\n  MandatoryLevelHigh,\n  MandatoryLevelSystem,\n  MandatoryLevelSecureProcess,\n  MandatoryLevelCount\n} MANDATORY_LEVEL, *PMANDATORY_LEVEL;"
+ },
+ {
+  "kind": "Enum",
+  "name": "NTGLB_Flags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NTSectionFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NT_COMPRESSION_FORMAT",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "OBJECT_INFORMATION_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_object_information_class",
+  "syntax": "typedef enum _OBJECT_INFORMATION_CLASS {\n  ObjectBasicInformation = 0,\n  ObjectTypeInformation = 2\n} OBJECT_INFORMATION_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "OB_OBJECT_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PROCESSINFOCLASS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PROCESSOR_ARCHITECTURE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "QUOTA_LIMITS_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "REMOTE_PROTOCOL_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SECTION_INFORMATION_CLASS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SECTION_INHERIT",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SECTOR_SIZE_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SYSTEM_BOOT_ENV_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SYSTEM_CODEINTEGRITYPOLICY_HVCI_OPTIONS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SYSTEM_CODEINTEGRITYPOLICY_OPTIONS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SYSTEM_CODEINTEGRITY_OPTIONS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SYSTEM_INFORMATION_CLASS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SYSTEM_PIXEL_FORMAT",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SectionImageBitfield",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "TOKEN_ELEVATION_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_elevation_type",
+  "syntax": "typedef enum _TOKEN_ELEVATION_TYPE {\n  TokenElevationTypeDefault = 1,\n  TokenElevationTypeFull,\n  TokenElevationTypeLimited\n} TOKEN_ELEVATION_TYPE, *PTOKEN_ELEVATION_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "TOKEN_INFORMATION_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_token_information_class",
+  "syntax": "typedef enum _TOKEN_INFORMATION_CLASS {\n  TokenUser,\n  TokenGroups,\n  TokenPrivileges,\n  TokenOwner,\n  TokenPrimaryGroup,\n  TokenDefaultDacl,\n  TokenSource,\n  TokenType,\n  TokenImpersonationLevel,\n  TokenStatistics,\n  TokenRestrictedSids,\n  TokenSessionId,\n  TokenGroupsAndPrivileges,\n  TokenSessionReference,\n  TokenSandBoxInert,\n  TokenAuditPolicy,\n  TokenOrigin,\n  TokenElevationType,\n  TokenLinkedToken,\n  TokenElevation,\n  TokenHasRestrictions,\n  TokenAccessInformation,\n  TokenVirtualizationAllowed,\n  TokenVirtualizationEnabled,\n  TokenIntegrityLevel,\n  TokenUIAccess,\n  TokenMandatoryPolicy,\n  TokenLogonSid,\n  TokenIsAppContainer,\n  TokenCapabilities,\n  TokenAppContainerSid,\n  TokenAppContainerNumber,\n  TokenUserClaimAttributes,\n  TokenDeviceClaimAttributes,\n  TokenRestrictedUserClaimAttributes,\n  TokenRestrictedDeviceClaimAttributes,\n  TokenDeviceGroups,\n  TokenRestrictedDeviceGroups,\n  TokenSecurityAttributes,\n  TokenIsRestricted,\n  TokenProcessTrustLevel,\n  TokenPrivateNameSpace,\n  TokenSingletonAttributes,\n  TokenBnoIsolation,\n  TokenChildProcessFlags,\n  TokenIsLessPrivilegedAppContainer,\n  TokenIsSandboxed,\n  TokenIsAppSilo,\n  TokenLoggingInformation,\n  TokenLearningMode,\n  MaxTokenInfoClass\n} TOKEN_INFORMATION_CLASS, *PTOKEN_INFORMATION_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "TOKEN_MANDATORY_POLICY_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "WNNC_CODES",
+  "url": null
+ }
+]

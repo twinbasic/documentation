@@ -12,7 +12,10 @@
 // independent, so a source is never published wherever it lives.
 //
 // Idempotent: a second build with no source changes is a no-op (mtime
-// check). The `.dot` is the canonical source; the SVG is a build
+// check), and an SVG that comes out the same as the file on disk, line ends
+// aside, is not rewritten, only touched; a changed one keeps the file's line
+// ends. So a checkout's mtimes cause no change git sees, with or without
+// core.autocrlf. The `.dot` is the canonical source; the SVG is a build
 // artifact -- editing the .dot by one character regenerates the SVG on
 // the next build.
 //
@@ -106,7 +109,20 @@ export async function regenerateDot(srcRoot) {
     try {
       const source = await fs.readFile(src, "utf8");
       const svgXml = stripXmlPrologue(gv.dot(source), path.basename(src));
-      await fs.writeFile(svg, svgXml, "utf8");
+      // A checkout sets the mtimes of a .dot and its SVG in no particular order, so an SVG is
+      // often found stale that is not. One that comes out as the file already holds, line ends
+      // aside, is left as it is, and only its time moves past its source's. One that did change
+      // is written with the line ends the file on disk has: CRLF in a checkout with
+      // core.autocrlf, LF in one without (CI), so that git sees the change and nothing else. A new
+      // one is written LF, as Graphviz gives it; git takes either when it is added.
+      const lf = svgXml.replace(/\r\n/g, "\n");
+      const old = await fs.readFile(svg, "utf8").catch(() => null);
+      if (old !== null && old.replace(/\r\n/g, "\n") === lf) {
+        const now = new Date();
+        await fs.utimes(svg, now, now);
+        continue;
+      }
+      await fs.writeFile(svg, old?.includes("\r\n") ? lf.replace(/\n/g, "\r\n") : lf, "utf8");
       regenerated++;
     } catch (err) {
       console.warn(`dot: skipped ${path.basename(src)} (${err.message}); existing SVG retained`);

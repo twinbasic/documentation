@@ -1,0 +1,3108 @@
+[
+ {
+  "kind": "Declare",
+  "name": "CmCallbackGetKeyObjectID",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackgetkeyobjectid",
+  "syntax": "NTSTATUS CmCallbackGetKeyObjectID(\n  [in]            PLARGE_INTEGER   Cookie,\n  [in]            PVOID            Object,\n  [out, optional] PULONG_PTR       ObjectID,\n  [out, optional] PCUNICODE_STRING *ObjectName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmCallbackGetKeyObjectIDEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackgetkeyobjectidex",
+  "syntax": "NTSTATUS CmCallbackGetKeyObjectIDEx(\n  [in]            PLARGE_INTEGER   Cookie,\n  [in]            PVOID            Object,\n  [out, optional] PULONG_PTR       ObjectID,\n  [out, optional] PCUNICODE_STRING *ObjectName,\n  [in]            ULONG            Flags\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmCallbackReleaseKeyObjectIDEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackreleasekeyobjectidex",
+  "syntax": "VOID CmCallbackReleaseKeyObjectIDEx(\n  PCUNICODE_STRING ObjectName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmGetBoundTransaction",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmgetboundtransaction",
+  "syntax": "PVOID CmGetBoundTransaction(\n  [in] PLARGE_INTEGER Cookie,\n  [in] PVOID          Object\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmGetCallbackVersion",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmgetcallbackversion",
+  "syntax": "VOID CmGetCallbackVersion(\n  [out, optional] PULONG Major,\n  [out, optional] PULONG Minor\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmRegisterCallback",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmregistercallback",
+  "syntax": "NTSTATUS CmRegisterCallback(\n  [in]           PEX_CALLBACK_FUNCTION Function,\n  [in, optional] PVOID                 Context,\n  [out]          PLARGE_INTEGER        Cookie\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmRegisterCallbackEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmregistercallbackex",
+  "syntax": "NTSTATUS CmRegisterCallbackEx(\n  [in]           PEX_CALLBACK_FUNCTION Function,\n  [in]           PCUNICODE_STRING      Altitude,\n  [in]           PVOID                 Driver,\n  [in, optional] PVOID                 Context,\n  [out]          PLARGE_INTEGER        Cookie,\n                 PVOID                 Reserved\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmSetCallbackObjectContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmsetcallbackobjectcontext",
+  "syntax": "NTSTATUS CmSetCallbackObjectContext(\n  [in, out]       PVOID          Object,\n  [in]            PLARGE_INTEGER Cookie,\n  [in]            PVOID          NewContext,\n  [out, optional] PVOID          *OldContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CmUnRegisterCallback",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmunregistercallback",
+  "syntax": "NTSTATUS CmUnRegisterCallback(\n  [in] LARGE_INTEGER Cookie\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CompareMemory",
+  "entry": "RtlCompareMemory",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcomparememory",
+  "syntax": "NTSYSAPI SIZE_T RtlCompareMemory(\n  [in] const VOID *Source1,\n  [in] const VOID *Source2,\n  [in] SIZE_T     Length\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "CopyMemory",
+  "entry": "RtlMoveMemory",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlmovememory",
+  "syntax": "void RtlMoveMemory(\n   void*       Destination,\n   const void* Source,\n   size_t      Length\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrint",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprint",
+  "syntax": "ULONG DbgPrint(\n  PCSTR Format,\n  ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrint1",
+  "entry": "DbgPrint",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprint",
+  "syntax": "ULONG DbgPrint(\n  PCSTR Format,\n  ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrint2",
+  "entry": "DbgPrint",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprint",
+  "syntax": "ULONG DbgPrint(\n  PCSTR Format,\n  ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrint3",
+  "entry": "DbgPrint",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprint",
+  "syntax": "ULONG DbgPrint(\n  PCSTR Format,\n  ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrintEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex",
+  "syntax": "NTSYSAPI ULONG DbgPrintEx(\n  [in] ULONG ComponentId,\n  [in] ULONG Level,\n  [in] PCSTR Format,\n       ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrintEx1",
+  "entry": "DbgPrintEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex",
+  "syntax": "NTSYSAPI ULONG DbgPrintEx(\n  [in] ULONG ComponentId,\n  [in] ULONG Level,\n  [in] PCSTR Format,\n       ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrintEx2",
+  "entry": "DbgPrintEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex",
+  "syntax": "NTSYSAPI ULONG DbgPrintEx(\n  [in] ULONG ComponentId,\n  [in] ULONG Level,\n  [in] PCSTR Format,\n       ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "DbgPrintEx3",
+  "entry": "DbgPrintEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex",
+  "syntax": "NTSYSAPI ULONG DbgPrintEx(\n  [in] ULONG ComponentId,\n  [in] ULONG Level,\n  [in] PCSTR Format,\n       ...   \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwActivityIdControl",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwactivityidcontrol",
+  "syntax": "NTSTATUS EtwActivityIdControl(\n  [in]      ULONG  ControlCode,\n  [in, out] LPGUID ActivityId\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwEventEnabled",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etweventenabled",
+  "syntax": "BOOLEAN EtwEventEnabled(\n  [in] REGHANDLE          RegHandle,\n  [in] PCEVENT_DESCRIPTOR EventDescriptor\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwProviderEnabled",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwproviderenabled",
+  "syntax": "BOOLEAN EtwProviderEnabled(\n  [in] REGHANDLE RegHandle,\n  [in] UCHAR     Level,\n  [in] ULONGLONG Keyword\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwRegister",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwregister",
+  "syntax": "NTSTATUS EtwRegister(\n  [in]           LPCGUID            ProviderId,\n  [in, optional] PETWENABLECALLBACK EnableCallback,\n  [in, optional] PVOID              CallbackContext,\n  [out]          PREGHANDLE         RegHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwSetInformation",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwsetinformation",
+  "syntax": "NTSTATUS EtwSetInformation(\n  [in]           REGHANDLE        RegHandle,\n  [in]           EVENT_INFO_CLASS InformationClass,\n  [in, optional] PVOID            EventInformation,\n  [in]           ULONG            InformationLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwUnregister",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwunregister",
+  "syntax": "NTSTATUS EtwUnregister(\n  [in] REGHANDLE RegHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwWrite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwrite",
+  "syntax": "NTSTATUS EtwWrite(\n  [in]           REGHANDLE              RegHandle,\n  [in]           PCEVENT_DESCRIPTOR     EventDescriptor,\n  [in, optional] LPCGUID                ActivityId,\n  [in]           ULONG                  UserDataCount,\n  [in, optional] PEVENT_DATA_DESCRIPTOR UserData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwWriteEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwriteex",
+  "syntax": "NTSTATUS EtwWriteEx(\n  [in]           REGHANDLE              RegHandle,\n  [in]           PCEVENT_DESCRIPTOR     EventDescriptor,\n  [in]           ULONG64                Filter,\n  [in]           ULONG                  Flags,\n  [in, optional] LPCGUID                ActivityId,\n  [in, optional] LPCGUID                RelatedActivityId,\n  [in]           ULONG                  UserDataCount,\n  [in, optional] PEVENT_DATA_DESCRIPTOR UserData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwWriteString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwritestring",
+  "syntax": "NTSTATUS EtwWriteString(\n  [in]           REGHANDLE RegHandle,\n  [in]           UCHAR     Level,\n  [in]           ULONGLONG Keyword,\n  [in, optional] LPCGUID   ActivityId,\n  [in]           PCWSTR    String\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "EtwWriteTransfer",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwritetransfer",
+  "syntax": "NTSTATUS EtwWriteTransfer(\n  [in]           REGHANDLE              RegHandle,\n  [in]           PCEVENT_DESCRIPTOR     EventDescriptor,\n  [in, optional] LPCGUID                ActivityId,\n  [in, optional] LPCGUID                RelatedActivityId,\n  [in]           ULONG                  UserDataCount,\n  [in, optional] PEVENT_DATA_DESCRIPTOR UserData\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAcquireFastMutex",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquirefastmutex",
+  "syntax": "VOID ExAcquireFastMutex(\n  PFAST_MUTEX FastMutex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAcquireResourceExclusiveLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquireresourceexclusivelite",
+  "syntax": "BOOLEAN ExAcquireResourceExclusiveLite(\n  [in, out] PERESOURCE Resource,\n  [in]      BOOLEAN    Wait\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAcquireResourceSharedLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquireresourcesharedlite",
+  "syntax": "BOOLEAN ExAcquireResourceSharedLite(\n  [in, out] PERESOURCE Resource,\n  [in]      BOOLEAN    Wait\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAcquireSharedStarveExclusive",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquiresharedstarveexclusive",
+  "syntax": "BOOLEAN ExAcquireSharedStarveExclusive(\n  [in, out] PERESOURCE Resource,\n  [in]      BOOLEAN    Wait\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAcquireSharedWaitForExclusive",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquiresharedwaitforexclusive",
+  "syntax": "BOOLEAN ExAcquireSharedWaitForExclusive(\n  [in, out] PERESOURCE Resource,\n  [in]      BOOLEAN    Wait\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAllocatePool2",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepool2",
+  "syntax": "DECLSPEC_RESTRICT PVOID ExAllocatePool2(\n  POOL_FLAGS Flags,\n  SIZE_T     NumberOfBytes,\n  ULONG      Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAllocatePool3",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepool3",
+  "syntax": "DECLSPEC_RESTRICT PVOID ExAllocatePool3(\n  POOL_FLAGS                Flags,\n  SIZE_T                    NumberOfBytes,\n  ULONG                     Tag,\n  PCPOOL_EXTENDED_PARAMETER ExtendedParameters,\n  ULONG                     ExtendedParametersCount\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAllocatePoolWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtag",
+  "syntax": "PVOID ExAllocatePoolWithTag(\n  [in] __drv_strictTypeMatch(__drv_typeExpr)POOL_TYPE PoolType,\n  [in] SIZE_T                                         NumberOfBytes,\n  [in] ULONG                                          Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExAllocatePoolWithTagPriority",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtagpriority",
+  "syntax": "PVOID ExAllocatePoolWithTagPriority(\n  [in] __drv_strictTypeMatch(__drv_typeCond)POOL_TYPE        PoolType,\n  [in] SIZE_T                                                NumberOfBytes,\n  [in] ULONG                                                 Tag,\n  [in] __drv_strictTypeMatch(__drv_typeExpr)EX_POOL_PRIORITY Priority\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExDeleteResourceLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exdeleteresourcelite",
+  "syntax": "NTSTATUS ExDeleteResourceLite(\n  [in, out] PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExEnterCriticalRegionAndAcquireResourceExclusive",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exentercriticalregionandacquireresourceexclusive",
+  "syntax": "PVOID ExEnterCriticalRegionAndAcquireResourceExclusive(\n  PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExEnterCriticalRegionAndAcquireResourceShared",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ExEnterCriticalRegionAndAcquireSharedWaitForExclusive",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ExFreePool2",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2",
+  "syntax": "VOID ExFreePool2(\n  [in]           PVOID                     P,\n  [in]           ULONG                     Tag,\n  [in, optional] PCPOOL_EXTENDED_PARAMETER ExtendedParameters,\n  [in]           ULONG                     ExtendedParametersCount\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExFreePoolWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepoolwithtag",
+  "syntax": "VOID ExFreePoolWithTag(\n  [in] PVOID P,\n  [in] ULONG Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExGetPreviousMode",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exgetpreviousmode",
+  "syntax": "KPROCESSOR_MODE ExGetPreviousMode();"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExInitializeNPagedLookasideList",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinitializenpagedlookasidelist",
+  "syntax": "VOID ExInitializeNPagedLookasideList(\n  [out]          PNPAGED_LOOKASIDE_LIST Lookaside,\n  [in, optional] PALLOCATE_FUNCTION     Allocate,\n  [in, optional] PFREE_FUNCTION         Free,\n  [in]           ULONG                  Flags,\n  [in]           SIZE_T                 Size,\n  [in]           ULONG                  Tag,\n  [in]           USHORT                 Depth\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExInitializeResourceLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinitializeresourcelite",
+  "syntax": "NTSTATUS ExInitializeResourceLite(\n  [out] PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExInterlockedAddLargeInteger",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinterlockedaddlargeinteger",
+  "syntax": "LARGE_INTEGER ExInterlockedAddLargeInteger(\n  [in, out] PLARGE_INTEGER Addend,\n  [in]      LARGE_INTEGER  Increment,\n  [in, out] PKSPIN_LOCK    Lock\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExInterlockedAddUlong",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinterlockedaddulong",
+  "syntax": "ULONG ExInterlockedAddUlong(\n  [in, out] PULONG      Addend,\n  [in]      ULONG       Increment,\n  [in, out] PKSPIN_LOCK Lock\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExIsResourceAcquiredExclusiveLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exisresourceacquiredexclusivelite",
+  "syntax": "BOOLEAN ExIsResourceAcquiredExclusiveLite(\n  [in] PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExIsResourceAcquiredSharedLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exisresourceacquiredsharedlite",
+  "syntax": "ULONG ExIsResourceAcquiredSharedLite(\n  [in] PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExRaiseHardError",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ExRaiseStatus",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exraisestatus",
+  "syntax": "VOID ExRaiseStatus(\n  [in] NTSTATUS Status\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExReinitializeResourceLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreinitializeresourcelite",
+  "syntax": "NTSTATUS ExReinitializeResourceLite(\n  [in, out] PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExReleaseFastMutex",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleasefastmutex",
+  "syntax": "VOID ExReleaseFastMutex(\n  PFAST_MUTEX FastMutex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExReleaseResourceAndLeaveCriticalRegion",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourceandleavecriticalregion",
+  "syntax": "VOID ExReleaseResourceAndLeaveCriticalRegion(\n  PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExReleaseResourceForThreadLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourceforthreadlite",
+  "syntax": "VOID ExReleaseResourceForThreadLite(\n  [in, out] PERESOURCE       Resource,\n  [in]      ERESOURCE_THREAD ResourceThreadId\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExReleaseResourceLite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourcelite",
+  "syntax": "VOID ExReleaseResourceLite(\n  [in, out] PERESOURCE Resource\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExSetResourceOwnerPointer",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exsetresourceownerpointer",
+  "syntax": "VOID ExSetResourceOwnerPointer(\n  [in, out] PERESOURCE Resource,\n  [in]      PVOID      OwnerPointer\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ExTryToAcquireFastMutex",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-extrytoacquirefastmutex",
+  "syntax": "BOOLEAN ExTryToAcquireFastMutex(\n  PFAST_MUTEX FastMutex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FsRtlGetFileNameInformation",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "FsRtlGetFileSize",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-_fsrtl_advanced_fcb_header-fsrtlgetfilesize",
+  "syntax": "NTSTATUS FsRtlGetFileSize(\n  [in]  PFILE_OBJECT   FileObject,\n  [out] PLARGE_INTEGER FileSize\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FsRtlIsNameInExpression",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-_fsrtl_advanced_fcb_header-fsrtlisnameinexpression",
+  "syntax": "BOOLEAN FsRtlIsNameInExpression(\n  [in]           PUNICODE_STRING Expression,\n  [in]           PUNICODE_STRING Name,\n  [in]           BOOLEAN         IgnoreCase,\n  [in, optional] PWCH            UpcaseTable\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FsRtlIsNameInUnUpcasedExpression",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-_fsrtl_advanced_fcb_header-fsrtlisnameinunupcasedexpression-r3",
+  "syntax": "BOOLEAN FsRtlIsNameInUnUpcasedExpression(\n  PUNICODE_STRING Expression,\n  PUNICODE_STRING Name,\n  BOOLEAN         IgnoreCase,\n  PWCH            UpcaseTable\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FsRtlIsPagingFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-fsrtlispagingfile",
+  "syntax": "LOGICAL FsRtlIsPagingFile(\n  [in] PFILE_OBJECT FileObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "FsRtlIsSystemPagingFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-fsrtlissystempagingfile",
+  "syntax": "LOGICAL FsRtlIsSystemPagingFile(\n  [in] PFILE_OBJECT FileObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "InterlockedIncrement",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement",
+  "syntax": "LONG CDECL_NON_WVMPURE InterlockedIncrement(\n  [in, out] LONG volatile *Addend\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "InterlockedPopEntrySList",
+  "entry": "ExpInterlockedPopEntrySList",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-expinterlockedpopentryslist",
+  "syntax": "PSLIST_ENTRY ExpInterlockedPopEntrySList(\n  PSLIST_HEADER ListHead\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoAcquireRemoveLockEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "IoAllocateDriverObjectExtension",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-ioallocatedriverobjectextension",
+  "syntax": "NTSTATUS IoAllocateDriverObjectExtension(\n  [in]  PDRIVER_OBJECT DriverObject,\n  [in]  PVOID          ClientIdentificationAddress,\n  [in]  ULONG          DriverObjectExtensionSize,\n  [out] PVOID          *DriverObjectExtension\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoAttachDeviceToDeviceStack",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-ioattachdevicetodevicestack",
+  "syntax": "PDEVICE_OBJECT IoAttachDeviceToDeviceStack(\n  [in] PDEVICE_OBJECT SourceDevice,\n  [in] PDEVICE_OBJECT TargetDevice\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoAttachDeviceToDeviceStackSafe",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-ioattachdevicetodevicestacksafe",
+  "syntax": "NTSTATUS IoAttachDeviceToDeviceStackSafe(\n  [in]  PDEVICE_OBJECT SourceDevice,\n  [in]  PDEVICE_OBJECT TargetDevice,\n  [out] PDEVICE_OBJECT *AttachedToDeviceObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoCompleteRequest",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocompleterequest",
+  "syntax": "VOID IofCompleteRequest(\n  PIRP  Irp,\n  CCHAR PriorityBoost\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoCreateDevice",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocreatedevice",
+  "syntax": "NTSTATUS IoCreateDevice(\n  [in]           PDRIVER_OBJECT  DriverObject,\n  [in]           ULONG           DeviceExtensionSize,\n  [in, optional] PUNICODE_STRING DeviceName,\n  [in]           DEVICE_TYPE     DeviceType,\n  [in]           ULONG           DeviceCharacteristics,\n  [in]           BOOLEAN         Exclusive,\n  [out]          PDEVICE_OBJECT  *DeviceObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoCreateSymbolicLink",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocreatesymboliclink",
+  "syntax": "NTSTATUS IoCreateSymbolicLink(\n  [in] PUNICODE_STRING SymbolicLinkName,\n  [in] PUNICODE_STRING DeviceName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoDeleteDevice",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iodeletedevice",
+  "syntax": "VOID IoDeleteDevice(\n  [in] PDEVICE_OBJECT DeviceObject\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoDeleteSymbolicLink",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iodeletesymboliclink",
+  "syntax": "NTSTATUS IoDeleteSymbolicLink(\n  [in] PUNICODE_STRING SymbolicLinkName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoDetachDevice",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iodetachdevice",
+  "syntax": "VOID IoDetachDevice(\n  [in, out] PDEVICE_OBJECT TargetDevice\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoGetDriverObjectExtension",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iogetdriverobjectextension",
+  "syntax": "__drv_aliasesMem PVOID IoGetDriverObjectExtension(\n  [in] PDRIVER_OBJECT DriverObject,\n  [in] PVOID          ClientIdentificationAddress\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoGetRequestorProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-iogetrequestorprocess",
+  "syntax": "PEPROCESS IoGetRequestorProcess(\n  [in] PIRP Irp\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoGetTopLevelIrp",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iogettoplevelirp",
+  "syntax": "PIRP IoGetTopLevelIrp();"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoInitializeRemoveLockEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "IoReleaseRemoveLockAndWaitEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "IoReleaseRemoveLockEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "IoSetDeviceInterfaceState",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iosetdeviceinterfacestate",
+  "syntax": "NTSTATUS IoSetDeviceInterfaceState(\n  [in] PUNICODE_STRING SymbolicLinkName,\n  [in] BOOLEAN         Enable\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IoThreadToProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-iothreadtoprocess",
+  "syntax": "PEPROCESS IoThreadToProcess(\n  [in] PETHREAD Thread\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "IofCallDriver",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iofcalldriver",
+  "syntax": "NTSTATUS IofCallDriver(\n  PDEVICE_OBJECT        DeviceObject,\n  __drv_aliasesMem PIRP Irp\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeAcquireSpinLock",
+  "entry": "KeAcquireSpinLockRaiseToDpc",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keacquirespinlockraisetodpc",
+  "syntax": "KIRQL KeAcquireSpinLockRaiseToDpc(\n  PKSPIN_LOCK SpinLock\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeAttachProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-keattachprocess",
+  "syntax": "VOID KeAttachProcess(\n  PRKPROCESS Process\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeDelayExecutionThread",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kedelayexecutionthread",
+  "syntax": "NTSTATUS KeDelayExecutionThread(\n  [in] KPROCESSOR_MODE WaitMode,\n  [in] BOOLEAN         Alertable,\n  [in] PLARGE_INTEGER  Interval\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeDetachProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-kedetachprocess",
+  "syntax": "VOID KeDetachProcess();"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeGetCurrentIrql",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kegetcurrentirql",
+  "syntax": "NTHALAPI KIRQL KeGetCurrentIrql();"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeInitializeEvent",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keinitializeevent",
+  "syntax": "VOID KeInitializeEvent(\n  [out] PRKEVENT   Event,\n  [in]  EVENT_TYPE Type,\n  [in]  BOOLEAN    State\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeInitializeSpinLock",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keinitializespinlock",
+  "syntax": "VOID KeInitializeSpinLock(\n  [out] PKSPIN_LOCK SpinLock\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeLowerIrql",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kelowerirql",
+  "syntax": "VOID KeLowerIrql(\n  [in] KIRQL NewIrql\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeQuerySystemTime",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kequerysystemtime-r1",
+  "syntax": "VOID KeQuerySystemTime(\n  [out] PLARGE_INTEGER CurrentTime\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeQuerySystemTimePrecise",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kequerysystemtimeprecise",
+  "syntax": "VOID KeQuerySystemTimePrecise(\n  [out] PLARGE_INTEGER CurrentTime\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeRaiseIrqlToDpcLevel",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keraiseirqltodpclevel",
+  "syntax": "_DECL_HAL_KE_IMPORT KIRQL KeRaiseIrqlToDpcLevel();"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeReleaseSpinLock",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kereleasespinlock",
+  "syntax": "VOID KeReleaseSpinLock(\n  PKSPIN_LOCK SpinLock,\n  KIRQL       NewIrql\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeSetEvent",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kesetevent",
+  "syntax": "LONG KeSetEvent(\n  [in, out] PRKEVENT  Event,\n  [in]      KPRIORITY Increment,\n  [in]      BOOLEAN   Wait\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeSetPriorityThread",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kesetprioritythread",
+  "syntax": "KPRIORITY KeSetPriorityThread(\n  [in, out] PKTHREAD  Thread,\n  [in]      KPRIORITY Priority\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeStackAttachProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-kestackattachprocess",
+  "syntax": "VOID KeStackAttachProcess(\n        PRKPROCESS   PROCESS,\n  [out] PRKAPC_STATE ApcState\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeUnstackDetachProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-keunstackdetachprocess",
+  "syntax": "VOID KeUnstackDetachProcess(\n  [in] PRKAPC_STATE ApcState\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeWaitForSingleObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kewaitforsingleobject",
+  "syntax": "NTSTATUS\nKeWaitForSingleObject (\n    PVOID Object,\n    KWAIT_REASON WaitReason,\n    KPROCESSOR_MODE WaitMode,\n    BOOLEAN Alertable,\n    PLARGE_INTEGER Timeout\n    );"
+ },
+ {
+  "kind": "Declare",
+  "name": "KfLowerIrql",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "KfRaiseIrql",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "MmCopyMemory",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-mmcopymemory",
+  "syntax": "NTSTATUS MmCopyMemory(\n  [in]  PVOID           TargetAddress,\n  [in]  MM_COPY_ADDRESS SourceAddress,\n  [in]  SIZE_T          NumberOfBytes,\n  [in]  ULONG           Flags,\n  [out] PSIZE_T         NumberOfBytesTransferred\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "MmGetSystemRoutineAddress",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmgetsystemroutineaddress",
+  "syntax": "PVOID MmGetSystemRoutineAddress(\n  [in] PUNICODE_STRING SystemRoutineName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "MmIsAddressValid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-mmisaddressvalid",
+  "syntax": "BOOLEAN MmIsAddressValid(\n  [in] PVOID VirtualAddress\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "MmMapLockedPagesSpecifyCache",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmmaplockedpagesspecifycache",
+  "syntax": "PVOID MmMapLockedPagesSpecifyCache(\n  [in]           PMDL                                                                          MemoryDescriptorList,\n  [in]           __drv_strictType(KPROCESSOR_MODE / enum _MODE,__drv_typeConst)KPROCESSOR_MODE AccessMode,\n  [in]           __drv_strictTypeMatch(__drv_typeCond)MEMORY_CACHING_TYPE                      CacheType,\n  [in, optional] PVOID                                                                         RequestedAddress,\n  [in]           ULONG                                                                         BugCheckOnFailure,\n  [in]           ULONG                                                                         Priority\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObCloseHandle",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obclosehandle",
+  "syntax": "NTSTATUS ObCloseHandle(\n  [in] HANDLE          Handle,\n  [in] KPROCESSOR_MODE PreviousMode\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObDereferenceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobject",
+  "syntax": "void ObDereferenceObject(\n  [in] a\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObDereferenceObjectDeferDelete",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobjectdeferdelete",
+  "syntax": "VOID ObDereferenceObjectDeferDelete(\n  [in] PVOID Object\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObDereferenceObjectDeferDeleteWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobjectdeferdeletewithtag",
+  "syntax": "VOID ObDereferenceObjectDeferDeleteWithTag(\n  [in] PVOID Object,\n  [in] ULONG Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObDereferenceObjectWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobjectwithtag",
+  "syntax": "void ObDereferenceObjectWithTag(\n  [in] a,\n  [in] t\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObGetFilterVersion",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ObGetObjectSecurity",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obgetobjectsecurity",
+  "syntax": "NTSTATUS ObGetObjectSecurity(\n  [in]  PVOID                Object,\n  [out] PSECURITY_DESCRIPTOR *SecurityDescriptor,\n  [out] PBOOLEAN             MemoryAllocated\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObIsKernelHandle",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obiskernelhandle",
+  "syntax": "BOOLEAN ObIsKernelHandle(\n  [in] HANDLE Handle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObMakeTemporaryObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obmaketemporaryobject",
+  "syntax": "VOID ObMakeTemporaryObject(\n  PVOID Object\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObOpenObjectByPointer",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obopenobjectbypointer",
+  "syntax": "NTSTATUS ObOpenObjectByPointer(\n  [in]           PVOID           Object,\n  [in]           ULONG           HandleAttributes,\n  [in, optional] PACCESS_STATE   PassedAccessState,\n  [in]           ACCESS_MASK     DesiredAccess,\n  [in, optional] POBJECT_TYPE    ObjectType,\n  [in]           KPROCESSOR_MODE AccessMode,\n  [out]          PHANDLE         Handle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObQueryNameString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obquerynamestring",
+  "syntax": "NTSTATUS ObQueryNameString(\n  [in]            PVOID                    Object,\n  [out, optional] POBJECT_NAME_INFORMATION ObjectNameInfo,\n  [in]            ULONG                    Length,\n  [out]           PULONG                   ReturnLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobject",
+  "syntax": "void ObReferenceObject(\n  [in] Object\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectByHandle",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbyhandle",
+  "syntax": "NTSTATUS ObReferenceObjectByHandle(\n  [in]            HANDLE                     Handle,\n  [in]            ACCESS_MASK                DesiredAccess,\n  [in, optional]  POBJECT_TYPE               ObjectType,\n  [in]            KPROCESSOR_MODE            AccessMode,\n  [out]           PVOID                      *Object,\n  [out, optional] POBJECT_HANDLE_INFORMATION HandleInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectByHandleWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbyhandlewithtag",
+  "syntax": "NTSTATUS ObReferenceObjectByHandleWithTag(\n  [in]            HANDLE                     Handle,\n  [in]            ACCESS_MASK                DesiredAccess,\n  [in, optional]  POBJECT_TYPE               ObjectType,\n  [in]            KPROCESSOR_MODE            AccessMode,\n  [in]            ULONG                      Tag,\n  [out]           PVOID                      *Object,\n  [out, optional] POBJECT_HANDLE_INFORMATION HandleInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectByPointer",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbypointer",
+  "syntax": "NTSTATUS ObReferenceObjectByPointer(\n  [in]           PVOID           Object,\n  [in]           ACCESS_MASK     DesiredAccess,\n  [in, optional] POBJECT_TYPE    ObjectType,\n  [in]           KPROCESSOR_MODE AccessMode\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectByPointerWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbypointerwithtag",
+  "syntax": "NTSTATUS ObReferenceObjectByPointerWithTag(\n  [in]           PVOID           Object,\n  [in]           ACCESS_MASK     DesiredAccess,\n  [in, optional] POBJECT_TYPE    ObjectType,\n  [in]           KPROCESSOR_MODE AccessMode,\n  [in]           ULONG           Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectSafe",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectsafe",
+  "syntax": "BOOLEAN ObReferenceObjectSafe(\n  PVOID Object\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectSafeWithTag",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReferenceObjectWithTag",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectwithtag",
+  "syntax": "void ObReferenceObjectWithTag(\n  [in] Object,\n  [in] Tag\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObRegisterCallbacks",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obregistercallbacks",
+  "syntax": "NTSTATUS ObRegisterCallbacks(\n  [in]  POB_CALLBACK_REGISTRATION CallbackRegistration,\n  [out] PVOID                     *RegistrationHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObReleaseObjectSecurity",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreleaseobjectsecurity",
+  "syntax": "VOID ObReleaseObjectSecurity(\n  [in] PSECURITY_DESCRIPTOR SecurityDescriptor,\n  [in] BOOLEAN              MemoryAllocated\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObUnRegisterCallbacks",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obunregistercallbacks",
+  "syntax": "VOID ObUnRegisterCallbacks(\n  [in] PVOID RegistrationHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObfDereferenceObject",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ObfDereferenceObjectWithTag",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ObfReferenceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obfreferenceobject",
+  "syntax": "LONG_PTR ObfReferenceObject(\n  [in] PVOID Object\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ObfReferenceObjectWithTag",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "PoCallDriver",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-pocalldriver",
+  "syntax": "NTSTATUS PoCallDriver(\n  [in]      PDEVICE_OBJECT        DeviceObject,\n  [in, out] __drv_aliasesMem PIRP Irp\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PoStartNextPowerIrp",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-postartnextpowerirp",
+  "syntax": "VOID PoStartNextPowerIrp(\n  [in, out] PIRP Irp\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ProbeForRead",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-probeforread",
+  "syntax": "VOID ProbeForRead(\n  [in] const volatile VOID *Address,\n  [in] SIZE_T              Length,\n  [in] ULONG               Alignment\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ProbeForWrite",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-probeforwrite",
+  "syntax": "VOID ProbeForWrite(\n  [in, out] volatile VOID *Address,\n  [in]      SIZE_T        Length,\n  [in]      ULONG         Alignment\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsGetCurrentProcess",
+  "entry": "IoGetCurrentProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iogetcurrentprocess",
+  "syntax": "PEPROCESS IoGetCurrentProcess();"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsGetCurrentProcessId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-psgetcurrentprocessid",
+  "syntax": "HANDLE PsGetCurrentProcessId();"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsGetCurrentThread",
+  "entry": "KeGetCurrentThread",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kegetcurrentthread",
+  "syntax": "PKTHREAD KeGetCurrentThread();"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsGetCurrentThreadId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-psgetcurrentthreadid",
+  "syntax": "HANDLE PsGetCurrentThreadId();"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsGetProcessId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-psgetprocessid",
+  "syntax": "HANDLE PsGetProcessId(\n  [in] PEPROCESS Process\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsGetThreadProcessId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-psgetthreadprocessid",
+  "syntax": "HANDLE PsGetThreadProcessId(\n  PETHREAD Thread\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsLookupProcessByProcessId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-pslookupprocessbyprocessid",
+  "syntax": "NTSTATUS PsLookupProcessByProcessId(\n  [in]  HANDLE    ProcessId,\n  [out] PEPROCESS *Process\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsLookupThreadByThreadId",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-pslookupthreadbythreadid",
+  "syntax": "NTSTATUS PsLookupThreadByThreadId(\n  [in]  HANDLE   ThreadId,\n  [out] PETHREAD *Thread\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsRemoveCreateThreadNotifyRoutine",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-psremovecreatethreadnotifyroutine",
+  "syntax": "NTSTATUS PsRemoveCreateThreadNotifyRoutine(\n  [in] PCREATE_THREAD_NOTIFY_ROUTINE NotifyRoutine\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsRemoveLoadImageNotifyRoutine",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-psremoveloadimagenotifyroutine",
+  "syntax": "NTSTATUS PsRemoveLoadImageNotifyRoutine(\n  [in] PLOAD_IMAGE_NOTIFY_ROUTINE NotifyRoutine\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsSetCreateProcessNotifyRoutine",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreateprocessnotifyroutine",
+  "syntax": "NTSTATUS PsSetCreateProcessNotifyRoutine(\n  [in] PCREATE_PROCESS_NOTIFY_ROUTINE NotifyRoutine,\n  [in] BOOLEAN                        Remove\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsSetCreateProcessNotifyRoutineEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreateprocessnotifyroutineex",
+  "syntax": "NTSTATUS PsSetCreateProcessNotifyRoutineEx(\n  [in] PCREATE_PROCESS_NOTIFY_ROUTINE_EX NotifyRoutine,\n  [in] BOOLEAN                           Remove\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsSetCreateThreadNotifyRoutine",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreatethreadnotifyroutine",
+  "syntax": "NTSTATUS PsSetCreateThreadNotifyRoutine(\n  [in] PCREATE_THREAD_NOTIFY_ROUTINE NotifyRoutine\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsSetCreateThreadNotifyRoutineEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreatethreadnotifyroutineex",
+  "syntax": "NTSTATUS PsSetCreateThreadNotifyRoutineEx(\n  [in] PSCREATETHREADNOTIFYTYPE NotifyType,\n  [in] PVOID                    NotifyInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "PsSetLoadImageNotifyRoutine",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetloadimagenotifyroutine",
+  "syntax": "NTSTATUS PsSetLoadImageNotifyRoutine(\n  [in] PLOAD_IMAGE_NOTIFY_ROUTINE NotifyRoutine\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAcquirePebLock",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAllocateAndInitializeSid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlallocateandinitializesid",
+  "syntax": "NTSYSAPI NTSTATUS RtlAllocateAndInitializeSid(\n  PSID_IDENTIFIER_AUTHORITY IdentifierAuthority,\n  UCHAR                     SubAuthorityCount,\n  ULONG                     SubAuthority0,\n  ULONG                     SubAuthority1,\n  ULONG                     SubAuthority2,\n  ULONG                     SubAuthority3,\n  ULONG                     SubAuthority4,\n  ULONG                     SubAuthority5,\n  ULONG                     SubAuthority6,\n  ULONG                     SubAuthority7,\n  PSID                      *Sid\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAllocateHeap",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlallocateheap",
+  "syntax": "NTSYSAPI PVOID RtlAllocateHeap(\n  [in]           PVOID  HeapHandle,\n  [in, optional] ULONG  Flags,\n  [in]           SIZE_T Size\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAppendUnicodeStringToString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlappendunicodestringtostring",
+  "syntax": "NTSYSAPI NTSTATUS RtlAppendUnicodeStringToString(\n  [in, out] PUNICODE_STRING  Destination,\n  [in]      PCUNICODE_STRING Source\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAppendUnicodeToString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlappendunicodetostring",
+  "syntax": "NTSYSAPI NTSTATUS RtlAppendUnicodeToString(\n  [in, out]      PUNICODE_STRING Destination,\n  [in, optional] PCWSTR          Source\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAreBitsClear",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlarebitsclear",
+  "syntax": "NTSYSAPI BOOLEAN RtlAreBitsClear(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       StartingIndex,\n  [in] ULONG       Length\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlAreBitsSet",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlarebitsset",
+  "syntax": "NTSYSAPI BOOLEAN RtlAreBitsSet(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       StartingIndex,\n  [in] ULONG       Length\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCheckBit",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcheckbit",
+  "syntax": "BOOLEAN RtlCheckBit(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       BitPosition\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlClearAllBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlclearallbits",
+  "syntax": "NTSYSAPI VOID RtlClearAllBits(\n  [in] PRTL_BITMAP BitMapHeader\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlClearAllBitsEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlClearBit",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlclearbit",
+  "syntax": "NTSYSAPI VOID RtlClearBit(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       BitNumber\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlClearBitEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlClearBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlclearbits",
+  "syntax": "NTSYSAPI VOID RtlClearBits(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       StartingIndex,\n  [in] ULONG       NumberToClear\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCompareUnicodeString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcompareunicodestring",
+  "syntax": "NTSYSAPI LONG RtlCompareUnicodeString(\n  [in] PCUNICODE_STRING String1,\n  [in] PCUNICODE_STRING String2,\n  [in] BOOLEAN          CaseInSensitive\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCompareUnicodeStrings",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCopyBitMap",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCopyUnicodeString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcopyunicodestring",
+  "syntax": "NTSYSAPI VOID RtlCopyUnicodeString(\n  [in, out]      PUNICODE_STRING  DestinationString,\n  [in, optional] PCUNICODE_STRING SourceString\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCreateHeap",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlcreateheap",
+  "syntax": "NTSYSAPI PVOID RtlCreateHeap(\n  [in]           ULONG                Flags,\n  [in, optional] PVOID                HeapBase,\n  [in, optional] SIZE_T               ReserveSize,\n  [in, optional] SIZE_T               CommitSize,\n  [in, optional] PVOID                Lock,\n  [in, optional] PRTL_HEAP_PARAMETERS Parameters\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCreateSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcreatesecuritydescriptor",
+  "syntax": "NTSYSAPI NTSTATUS RtlCreateSecurityDescriptor(\n  [out] PSECURITY_DESCRIPTOR SecurityDescriptor,\n  [in]  ULONG                Revision\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlCreateServiceSid",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlDefaultNpAcl",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlDeriveCapabilitySidsFromName",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlDestroyHeap",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtldestroyheap",
+  "syntax": "NTSYSAPI PVOID RtlDestroyHeap(\n  [in] PVOID HeapHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlDuplicateUnicodeString",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlEqualPrefixSid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlequalprefixsid",
+  "syntax": "NTSYSAPI BOOLEAN RtlEqualPrefixSid(\n  [in] PSID Sid1,\n  [in] PSID Sid2\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlEqualSid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlequalsid",
+  "syntax": "NTSYSAPI BOOLEAN RtlEqualSid(\n  [in] PSID Sid1,\n  [in] PSID Sid2\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlEqualUnicodeString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlequalunicodestring",
+  "syntax": "NTSYSAPI BOOLEAN RtlEqualUnicodeString(\n  [in] PCUNICODE_STRING String1,\n  [in] PCUNICODE_STRING String2,\n  [in] BOOLEAN          CaseInSensitive\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlExtractBitMap",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindClearBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindclearbits",
+  "syntax": "NTSYSAPI ULONG RtlFindClearBits(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       NumberToFind,\n  [in] ULONG       HintIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindClearBitsAndSet",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindclearbitsandset",
+  "syntax": "NTSYSAPI ULONG RtlFindClearBitsAndSet(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       NumberToFind,\n  [in] ULONG       HintIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindClearRuns",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindclearruns",
+  "syntax": "NTSYSAPI ULONG RtlFindClearRuns(\n  [in]  PRTL_BITMAP     BitMapHeader,\n  [out] PRTL_BITMAP_RUN RunArray,\n  [in]  ULONG           SizeOfRunArray,\n  [in]  BOOLEAN         LocateLongestRuns\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindExportedRoutineByName",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindFirstRunClear",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindfirstrunclear",
+  "syntax": "NTSYSAPI ULONG RtlFindFirstRunClear(\n  [in]  PRTL_BITMAP BitMapHeader,\n  [out] PULONG      StartingIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindLastBackwardRunClear",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindlastbackwardrunclear",
+  "syntax": "NTSYSAPI ULONG RtlFindLastBackwardRunClear(\n  [in]  PRTL_BITMAP BitMapHeader,\n  [in]  ULONG       FromIndex,\n  [out] PULONG      StartingRunIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindLeastSignificantBit",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindleastsignificantbit",
+  "syntax": "NTSYSAPI CCHAR RtlFindLeastSignificantBit(\n  [in] ULONGLONG Set\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindLongestRunClear",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindlongestrunclear",
+  "syntax": "NTSYSAPI ULONG RtlFindLongestRunClear(\n  [in]  PRTL_BITMAP BitMapHeader,\n  [out] PULONG      StartingIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindMostSignificantBit",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindmostsignificantbit",
+  "syntax": "NTSYSAPI CCHAR RtlFindMostSignificantBit(\n  [in] ULONGLONG Set\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindNextForwardRunClear",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindnextforwardrunclear",
+  "syntax": "NTSYSAPI ULONG RtlFindNextForwardRunClear(\n  [in]  PRTL_BITMAP BitMapHeader,\n  [in]  ULONG       FromIndex,\n  [out] PULONG      StartingRunIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindSetBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindsetbits",
+  "syntax": "NTSYSAPI ULONG RtlFindSetBits(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       NumberToFind,\n  [in] ULONG       HintIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindSetBitsAndClear",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindsetbitsandclear",
+  "syntax": "NTSYSAPI ULONG RtlFindSetBitsAndClear(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       NumberToFind,\n  [in] ULONG       HintIndex\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindSetBitsAndClearEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFindSetBitsEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFreeHeap",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlfreeheap",
+  "syntax": "NTSYSAPI LOGICAL RtlFreeHeap(\n  [in]           PVOID                 HeapHandle,\n  [in, optional] ULONG                 Flags,\n                 _Frees_ptr_opt_ PVOID BaseAddress\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFreeSid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlfreesid",
+  "syntax": "NTSYSAPI PVOID RtlFreeSid(\n  PSID Sid\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlFreeUnicodeString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfreeunicodestring",
+  "syntax": "NTSYSAPI VOID RtlFreeUnicodeString(\n  [in, out] PUNICODE_STRING UnicodeString\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlGUIDFromString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlguidfromstring",
+  "syntax": "NTSYSAPI NTSTATUS RtlGUIDFromString(\n  [in]  PCUNICODE_STRING GuidString,\n  [out] GUID             *Guid\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlGetControlSecurityDescriptor",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlGetCurrentPeb",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlGetDaclSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlgetdaclsecuritydescriptor",
+  "syntax": "NTSYSAPI NTSTATUS RtlGetDaclSecurityDescriptor(\n  [in]  PSECURITY_DESCRIPTOR SecurityDescriptor,\n  [out] PBOOLEAN             DaclPresent,\n  [out] PACL                 *Dacl,\n  [out] PBOOLEAN             DaclDefaulted\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlGetSaclSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlgetsaclsecuritydescriptor",
+  "syntax": "NTSYSAPI NTSTATUS RtlGetSaclSecurityDescriptor(\n  [in]  PSECURITY_DESCRIPTOR SecurityDescriptor,\n  [out] PBOOLEAN             SaclPresent,\n  [out] PACL                 *Sacl,\n  [out] PBOOLEAN             SaclDefaulted\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlGetVersion",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion",
+  "syntax": "NTSYSAPI NTSTATUS RtlGetVersion(\n  [out] PRTL_OSVERSIONINFOW lpVersionInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlImageDirectoryEntryToData",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlImageNtHeader",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInitUnicodeString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlinitunicodestring",
+  "syntax": "NTSYSAPI VOID RtlInitUnicodeString(\n  [out]          PUNICODE_STRING         DestinationString,\n  [in, optional] __drv_aliasesMem PCWSTR SourceString\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInitializeBitMap",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlinitializebitmap",
+  "syntax": "NTSYSAPI VOID RtlInitializeBitMap(\n  [out] PRTL_BITMAP             BitMapHeader,\n  [in]  __drv_aliasesMem PULONG BitMapBuffer,\n  [in]  ULONG                   SizeOfBitMap\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInitializeBitMapEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInitializeSid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlinitializesid",
+  "syntax": "NTSYSAPI NTSTATUS RtlInitializeSid(\n  [out] PSID                      Sid,\n  [in]  PSID_IDENTIFIER_AUTHORITY IdentifierAuthority,\n  [in]  UCHAR                     SubAuthorityCount\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInitializeSidEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlinitializesidex",
+  "syntax": "NTSYSAPI NTSTATUS RtlInitializeSidEx(\n  [out] PSID                      Sid,\n  [in]  PSID_IDENTIFIER_AUTHORITY IdentifierAuthority,\n  [in]  UCHAR                     SubAuthorityCount,\n        ...                       \n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInterlockedClearBitRun",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlInterlockedSetBitRun",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlIsElevatedRid",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlIsNameLegalDOS8Dot3",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlisnamelegaldos8dot3",
+  "syntax": "NTSYSAPI BOOLEAN RtlIsNameLegalDOS8Dot3(\n  [in]            PCUNICODE_STRING Name,\n  [in, out]       POEM_STRING      OemName,\n  [out, optional] PBOOLEAN         NameContainsSpaces\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlLengthSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtllengthsecuritydescriptor",
+  "syntax": "NTSYSAPI ULONG RtlLengthSecurityDescriptor(\n  [in] PSECURITY_DESCRIPTOR SecurityDescriptor\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlLocalTimeToSystemTime",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-rtllocaltimetosystemtime",
+  "syntax": "NTSTATUS RtlLocalTimeToSystemTime(\n  [in]  PLARGE_INTEGER LocalTime,\n  [out] PLARGE_INTEGER SystemTime\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlNtStatusToDosError",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlntstatustodoserror",
+  "syntax": "NTSYSAPI ULONG RtlNtStatusToDosError(\n  [in] NTSTATUS Status\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlNumberOfClearBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlnumberofclearbits",
+  "syntax": "NTSYSAPI ULONG RtlNumberOfClearBits(\n  [in] PRTL_BITMAP BitMapHeader\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlNumberOfClearBitsInRange",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlNumberOfSetBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlnumberofsetbits",
+  "syntax": "NTSYSAPI ULONG RtlNumberOfSetBits(\n  [in] PRTL_BITMAP BitMapHeader\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlNumberOfSetBitsInRange",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlNumberOfSetBitsUlongPtr",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlnumberofsetbitsulongptr",
+  "syntax": "NTSYSAPI ULONG RtlNumberOfSetBitsUlongPtr(\n  [in] ULONG_PTR Target\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlQueryRegistryValues",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlqueryregistryvalues",
+  "syntax": "NTSYSAPI NTSTATUS RtlQueryRegistryValues(\n  [in]           ULONG                     RelativeTo,\n  [in]           PCWSTR                    Path,\n  [in, out]      PRTL_QUERY_REGISTRY_TABLE QueryTable,\n  [in, optional] PVOID                     Context,\n  [in, optional] PVOID                     Environment\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlReleasePebLock",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetAllBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits",
+  "syntax": "NTSYSAPI VOID RtlSetAllBits(\n  [in] PRTL_BITMAP BitMapHeader\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetBit",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetbit",
+  "syntax": "NTSYSAPI VOID RtlSetBit(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       BitNumber\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetBitEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetBits",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetbits",
+  "syntax": "NTSYSAPI VOID RtlSetBits(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       StartingIndex,\n  [in] ULONG       NumberToSet\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetControlSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/devnotes/rtlsetcontrolsecuritydescriptor",
+  "syntax": "NTSTATUS NTAPI RtlSetControlSecurityDescriptor (\n     IN PSECURITY_DESCRIPTOR pSecurityDescriptor,\n     IN SECURITY_DESCRIPTOR_CONTROL ControlBitsOfInterest,\n     IN SECURITY_DESCRIPTOR_CONTROL ControlBitsToSet\n     );"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetDaclSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetdaclsecuritydescriptor",
+  "syntax": "NTSYSAPI NTSTATUS RtlSetDaclSecurityDescriptor(\n  [in, out]      PSECURITY_DESCRIPTOR SecurityDescriptor,\n  [in]           BOOLEAN              DaclPresent,\n  [in, optional] PACL                 Dacl,\n  [in, optional] BOOLEAN              DaclDefaulted\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSetSaclSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/devnotes/rtlsetsaclsecuritydescriptor",
+  "syntax": "NTSTATUS NTAPI RtlSetSaclSecurityDescriptor (\n    PSECURITY_DESCRIPTOR SecurityDescriptor,\n    BOOLEAN SaclPresent,\n    PACL Sacl,\n    BOOLEAN SaclDefaulted\n    );"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSidHashInitialize",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlSidHashLookup",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlTestBit",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtltestbit",
+  "syntax": "NTSYSAPI BOOLEAN RtlTestBit(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       BitNumber\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlTestBitEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlUniform",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-rtluniform",
+  "syntax": "ULONG RtlUniform(\n  [in, out] PULONG Seed\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlUpcaseUnicodeString",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-rtlupcaseunicodestring",
+  "syntax": "NTSYSAPI NTSTATUS RtlUpcaseUnicodeString(\n  [in, out] PUNICODE_STRING  DestinationString,\n  [in]      PCUNICODE_STRING SourceString,\n  [in]      BOOLEAN          AllocateDestinationString\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlValidRelativeSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlvalidrelativesecuritydescriptor",
+  "syntax": "NTSYSAPI BOOLEAN RtlValidRelativeSecurityDescriptor(\n  [in] PSECURITY_DESCRIPTOR SecurityDescriptorInput,\n  [in] ULONG                SecurityDescriptorLength,\n  [in] SECURITY_INFORMATION RequiredInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlValidSecurityDescriptor",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlvalidsecuritydescriptor",
+  "syntax": "NTSYSAPI BOOLEAN RtlValidSecurityDescriptor(\n  [in] PSECURITY_DESCRIPTOR SecurityDescriptor\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "RtlValidSid",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlvalidsid",
+  "syntax": "NTSYSAPI BOOLEAN RtlValidSid(\n  [in] PSID Sid\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeAccessCheck",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seaccesscheck",
+  "syntax": "BOOLEAN SeAccessCheck(\n  [in]  PSECURITY_DESCRIPTOR      SecurityDescriptor,\n  [in]  PSECURITY_SUBJECT_CONTEXT SubjectSecurityContext,\n  [in]  BOOLEAN                   SubjectContextLocked,\n  [in]  ACCESS_MASK               DesiredAccess,\n  [in]  ACCESS_MASK               PreviouslyGrantedAccess,\n  [out] PPRIVILEGE_SET            *Privileges,\n  [in]  PGENERIC_MAPPING          GenericMapping,\n  [in]  KPROCESSOR_MODE           AccessMode,\n  [out] PACCESS_MASK              GrantedAccess,\n  [out] PNTSTATUS                 AccessStatus\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeAssignSecurity",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seassignsecurity",
+  "syntax": "NTSTATUS SeAssignSecurity(\n  [in, optional] PSECURITY_DESCRIPTOR      ParentDescriptor,\n  [in, optional] PSECURITY_DESCRIPTOR      ExplicitDescriptor,\n  [out]          PSECURITY_DESCRIPTOR      *NewDescriptor,\n  [in]           BOOLEAN                   IsDirectoryObject,\n  [in]           PSECURITY_SUBJECT_CONTEXT SubjectContext,\n  [in]           PGENERIC_MAPPING          GenericMapping,\n  [in]           POOL_TYPE                 PoolType\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeAssignSecurityEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seassignsecurityex",
+  "syntax": "NTSTATUS SeAssignSecurityEx(\n  [in, optional] PSECURITY_DESCRIPTOR      ParentDescriptor,\n  [in, optional] PSECURITY_DESCRIPTOR      ExplicitDescriptor,\n  [out]          PSECURITY_DESCRIPTOR      *NewDescriptor,\n  [in, optional] GUID                      *ObjectType,\n  [in]           BOOLEAN                   IsDirectoryObject,\n  [in]           ULONG                     AutoInheritFlags,\n  [in]           PSECURITY_SUBJECT_CONTEXT SubjectContext,\n  [in]           PGENERIC_MAPPING          GenericMapping,\n  [in]           POOL_TYPE                 PoolType\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeComputeAutoInheritByObjectType",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "SeEtwWriteKMCveEvent",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seetwwritekmcveevent",
+  "syntax": "NTSTATUS SeEtwWriteKMCveEvent(\n  [in]           PCUNICODE_STRING CveId,\n  [in, optional] PCUNICODE_STRING AdditionalDetails\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeLocateProcessImageName",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-selocateprocessimagename",
+  "syntax": "NTSTATUS SeLocateProcessImageName(\n  PEPROCESS       Process,\n  PUNICODE_STRING *pImageFileName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeLockSubjectContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-selocksubjectcontext",
+  "syntax": "VOID SeLockSubjectContext(\n  [in] PSECURITY_SUBJECT_CONTEXT SubjectContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeQueryInformationToken",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-sequeryinformationtoken",
+  "syntax": "NTSTATUS SeQueryInformationToken(\n  [in]  PACCESS_TOKEN           Token,\n  [in]  TOKEN_INFORMATION_CLASS TokenInformationClass,\n  [out] PVOID                   *TokenInformation\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "SeUnlockSubjectContext",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seunlocksubjectcontext",
+  "syntax": "VOID SeUnlockSubjectContext(\n  [in] PSECURITY_SUBJECT_CONTEXT SubjectContext\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZeroMemory",
+  "entry": "RtlZeroMemory",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlzeromemory",
+  "syntax": "void RtlZeroMemory(\n   void*  Destination,\n   size_t Length\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwClose",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwclose",
+  "syntax": "NTSYSAPI NTSTATUS ZwClose(\n  [in] HANDLE Handle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCommitRegistryTransaction",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCompactKeys",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCompressKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateDirectoryObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatedirectoryobject",
+  "syntax": "NTSYSAPI NTSTATUS ZwCreateDirectoryObject(\n  [out] PHANDLE            DirectoryHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatefile",
+  "syntax": "NTSYSAPI NTSTATUS ZwCreateFile(\n  [out]          PHANDLE            FileHandle,\n  [in]           ACCESS_MASK        DesiredAccess,\n  [in]           POBJECT_ATTRIBUTES ObjectAttributes,\n  [out]          PIO_STATUS_BLOCK   IoStatusBlock,\n  [in, optional] PLARGE_INTEGER     AllocationSize,\n  [in]           ULONG              FileAttributes,\n  [in]           ULONG              ShareAccess,\n  [in]           ULONG              CreateDisposition,\n  [in]           ULONG              CreateOptions,\n  [in, optional] PVOID              EaBuffer,\n  [in]           ULONG              EaLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwCreateKey(\n  [out]           PHANDLE            KeyHandle,\n  [in]            ACCESS_MASK        DesiredAccess,\n  [in]            POBJECT_ATTRIBUTES ObjectAttributes,\n                  ULONG              TitleIndex,\n  [in, optional]  PUNICODE_STRING    Class,\n  [in]            ULONG              CreateOptions,\n  [out, optional] PULONG             Disposition\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateKeyTransacted",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatekeytransacted",
+  "syntax": "NTSYSAPI NTSTATUS ZwCreateKeyTransacted(\n  [out]           PHANDLE            KeyHandle,\n  [in]            ACCESS_MASK        DesiredAccess,\n  [in]            POBJECT_ATTRIBUTES ObjectAttributes,\n                  ULONG              TitleIndex,\n  [in, optional]  PUNICODE_STRING    Class,\n  [in]            ULONG              CreateOptions,\n  [in]            HANDLE             TransactionHandle,\n  [out, optional] PULONG             Disposition\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateRegistryTransaction",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateSection",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatesection",
+  "syntax": "NTSYSAPI NTSTATUS ZwCreateSection(\n  [out]          PHANDLE            SectionHandle,\n  [in]           ACCESS_MASK        DesiredAccess,\n  [in, optional] POBJECT_ATTRIBUTES ObjectAttributes,\n  [in, optional] PLARGE_INTEGER     MaximumSize,\n  [in]           ULONG              SectionPageProtection,\n  [in]           ULONG              AllocationAttributes,\n  [in, optional] HANDLE             FileHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwCreateUserProcess",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwDeleteFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwdeletefile",
+  "syntax": "NTSYSAPI NTSTATUS ZwDeleteFile(\n  [in] POBJECT_ATTRIBUTES ObjectAttributes\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwDeleteKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwdeletekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwDeleteKey(\n  [in] HANDLE KeyHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwDeleteValueKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwdeletevaluekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwDeleteValueKey(\n  [in] HANDLE          KeyHandle,\n  [in] PUNICODE_STRING ValueName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwDuplicateObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwduplicateobject",
+  "syntax": "NTSYSAPI NTSTATUS ZwDuplicateObject(\n  [in]            HANDLE      SourceProcessHandle,\n  [in]            HANDLE      SourceHandle,\n  [in, optional]  HANDLE      TargetProcessHandle,\n  [out, optional] PHANDLE     TargetHandle,\n  [in]            ACCESS_MASK DesiredAccess,\n  [in]            ULONG       HandleAttributes,\n  [in]            ULONG       Options\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwEnumerateKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwenumeratekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwEnumerateKey(\n  [in]            HANDLE                KeyHandle,\n  [in]            ULONG                 Index,\n  [in]            KEY_INFORMATION_CLASS KeyInformationClass,\n  [out, optional] PVOID                 KeyInformation,\n  [in]            ULONG                 Length,\n  [out]           PULONG                ResultLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwEnumerateValueKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwenumeratevaluekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwEnumerateValueKey(\n  [in]            HANDLE                      KeyHandle,\n  [in]            ULONG                       Index,\n  [in]            KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,\n  [out, optional] PVOID                       KeyValueInformation,\n  [in]            ULONG                       Length,\n  [out]           PULONG                      ResultLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwFlushKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwflushkey",
+  "syntax": "NTSYSAPI NTSTATUS ZwFlushKey(\n  [in] HANDLE KeyHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwFreezeRegistry",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwFsControlFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwfscontrolfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwFsControlFile(\n  [in]            HANDLE           FileHandle,\n  [in, optional]  HANDLE           Event,\n  [in, optional]  PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional]  PVOID            ApcContext,\n  [out]           PIO_STATUS_BLOCK IoStatusBlock,\n  [in]            ULONG            FsControlCode,\n  [in, optional]  PVOID            InputBuffer,\n  [in]            ULONG            InputBufferLength,\n  [out, optional] PVOID            OutputBuffer,\n  [in]            ULONG            OutputBufferLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwInitializeRegistry",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLoadKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLoadKey2",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLoadKey3",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLoadKeyEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLockFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwlockfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwLockFile(\n  [in]           HANDLE           FileHandle,\n  [in, optional] HANDLE           Event,\n  [in, optional] PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional] PVOID            ApcContext,\n  [out]          PIO_STATUS_BLOCK IoStatusBlock,\n  [in]           PLARGE_INTEGER   ByteOffset,\n  [in]           PLARGE_INTEGER   Length,\n  [in]           ULONG            Key,\n  [in]           BOOLEAN          FailImmediately,\n  [in]           BOOLEAN          ExclusiveLock\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLockProductActivationKeys",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwLockRegistryKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwMapViewOfSection",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwmapviewofsection",
+  "syntax": "NTSYSAPI NTSTATUS ZwMapViewOfSection(\n  [in]                HANDLE          SectionHandle,\n  [in]                HANDLE          ProcessHandle,\n  [in, out]           PVOID           *BaseAddress,\n  [in]                ULONG_PTR       ZeroBits,\n  [in]                SIZE_T          CommitSize,\n  [in, out, optional] PLARGE_INTEGER  SectionOffset,\n  [in, out]           PSIZE_T         ViewSize,\n  [in]                SECTION_INHERIT InheritDisposition,\n  [in]                ULONG           AllocationType,\n  [in]                ULONG           Win32Protect\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwNotifyChangeKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwnotifychangekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwNotifyChangeKey(\n  [in]            HANDLE           KeyHandle,\n  [in, optional]  HANDLE           Event,\n  [in, optional]  PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional]  PVOID            ApcContext,\n  [out]           PIO_STATUS_BLOCK IoStatusBlock,\n  [in]            ULONG            CompletionFilter,\n  [in]            BOOLEAN          WatchTree,\n  [out, optional] PVOID            Buffer,\n  [in]            ULONG            BufferSize,\n  [in]            BOOLEAN          Asynchronous\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwNotifyChangeMultipleKeys",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenDirectoryObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwopendirectoryobject",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenDirectoryObject(\n  [out] PHANDLE            DirectoryHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopenkey",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenKey(\n  [out] PHANDLE            KeyHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenKeyEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopenkeyex",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenKeyEx(\n  [out] PHANDLE            KeyHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes,\n  [in]  ULONG              OpenOptions\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenKeyTransacted",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopenkeytransacted",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenKeyTransacted(\n  [out] PHANDLE            KeyHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes,\n  [in]  HANDLE             TransactionHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenKeyTransactedEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopenkeytransactedex",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenKeyTransactedEx(\n  [out] PHANDLE            KeyHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes,\n  [in]  ULONG              OpenOptions,\n  [in]  HANDLE             TransactionHandle\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenProcess",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-zwopenprocess",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenProcess(\n  [out]          PHANDLE            ProcessHandle,\n  [in]           ACCESS_MASK        DesiredAccess,\n  [in]           POBJECT_ATTRIBUTES ObjectAttributes,\n  [in, optional] PCLIENT_ID         ClientId\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenRegistryTransaction",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenSection",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopensection",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenSection(\n  [out] PHANDLE            SectionHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwOpenSymbolicLinkObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopensymboliclinkobject",
+  "syntax": "NTSYSAPI NTSTATUS ZwOpenSymbolicLinkObject(\n  [out] PHANDLE            LinkHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryDirectoryFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwquerydirectoryfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryDirectoryFile(\n  [in]           HANDLE                 FileHandle,\n  [in, optional] HANDLE                 Event,\n  [in, optional] PIO_APC_ROUTINE        ApcRoutine,\n  [in, optional] PVOID                  ApcContext,\n  [out]          PIO_STATUS_BLOCK       IoStatusBlock,\n  [out]          PVOID                  FileInformation,\n  [in]           ULONG                  Length,\n  [in]           FILE_INFORMATION_CLASS FileInformationClass,\n  [in]           BOOLEAN                ReturnSingleEntry,\n  [in, optional] PUNICODE_STRING        FileName,\n  [in]           BOOLEAN                RestartScan\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryDirectoryFileEx",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwquerydirectoryfileex",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryDirectoryFileEx(\n  [in]           HANDLE                 FileHandle,\n  [in, optional] HANDLE                 Event,\n  [in, optional] PIO_APC_ROUTINE        ApcRoutine,\n  [in, optional] PVOID                  ApcContext,\n  [out]          PIO_STATUS_BLOCK       IoStatusBlock,\n  [out]          PVOID                  FileInformation,\n  [in]           ULONG                  Length,\n  [in]           FILE_INFORMATION_CLASS FileInformationClass,\n  [in]           ULONG                  QueryFlags,\n  [in, optional] PUNICODE_STRING        FileName\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryDirectoryObject",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwquerykey",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryKey(\n  [in]            HANDLE                KeyHandle,\n  [in]            KEY_INFORMATION_CLASS KeyInformationClass,\n  [out, optional] PVOID                 KeyInformation,\n  [in]            ULONG                 Length,\n  [out]           PULONG                ResultLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryMultipleValueKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryOpenSubKeys",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryOpenSubKeysEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQuerySymbolicLinkObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwquerysymboliclinkobject",
+  "syntax": "NTSYSAPI NTSTATUS ZwQuerySymbolicLinkObject(\n  [in]            HANDLE          LinkHandle,\n  [in, out]       PUNICODE_STRING LinkTarget,\n  [out, optional] PULONG          ReturnedLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwQueryValueKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwqueryvaluekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwQueryValueKey(\n  [in]            HANDLE                      KeyHandle,\n  [in]            PUNICODE_STRING             ValueName,\n  [in]            KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,\n  [out, optional] PVOID                       KeyValueInformation,\n  [in]            ULONG                       Length,\n  [out]           PULONG                      ResultLength\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwReadFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwreadfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwReadFile(\n  [in]           HANDLE           FileHandle,\n  [in, optional] HANDLE           Event,\n  [in, optional] PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional] PVOID            ApcContext,\n  [out]          PIO_STATUS_BLOCK IoStatusBlock,\n  [out]          PVOID            Buffer,\n  [in]           ULONG            Length,\n  [in, optional] PLARGE_INTEGER   ByteOffset,\n  [in, optional] PULONG           Key\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwRenameKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwReplaceKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwRestoreKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwResumeProcess",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwRollbackRegistryTransaction",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSaveKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSaveKeyEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSaveMergedKeys",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSetInformationKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSetValueKey",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwsetvaluekey",
+  "syntax": "NTSYSAPI NTSTATUS ZwSetValueKey(\n  [in]           HANDLE          KeyHandle,\n  [in]           PUNICODE_STRING ValueName,\n  [in, optional] ULONG           TitleIndex,\n  [in]           ULONG           Type,\n  [in, optional] PVOID           Data,\n  [in]           ULONG           DataSize\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwSuspendProcess",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwThawRegistry",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwUnloadKey",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwUnloadKey2",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwUnloadKeyEx",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwUnlockFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwunlockfile",
+  "syntax": "NTSYSAPI NTSTATUS ZwUnlockFile(\n  [in]  HANDLE           FileHandle,\n  [out] PIO_STATUS_BLOCK IoStatusBlock,\n  [in]  PLARGE_INTEGER   ByteOffset,\n  [in]  PLARGE_INTEGER   Length,\n  [in]  ULONG            Key\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwUnmapViewOfSection",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwunmapviewofsection",
+  "syntax": "NTSYSAPI NTSTATUS ZwUnmapViewOfSection(\n  [in]           HANDLE ProcessHandle,\n  [in, optional] PVOID  BaseAddress\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "ZwWriteFile",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwwritefile",
+  "syntax": "NTSYSAPI NTSTATUS ZwWriteFile(\n  [in]           HANDLE           FileHandle,\n  [in, optional] HANDLE           Event,\n  [in, optional] PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional] PVOID            ApcContext,\n  [out]          PIO_STATUS_BLOCK IoStatusBlock,\n  [in]           PVOID            Buffer,\n  [in]           ULONG            Length,\n  [in, optional] PLARGE_INTEGER   ByteOffset,\n  [in, optional] PULONG           Key\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "_wcslwr",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "_wcsrev",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "_wcsupr",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "towlower",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "towupper",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcscat",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcscat_s",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcschr",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcscmp",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcscpy",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcslen",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcsnlen",
+  "url": null
+ },
+ {
+  "kind": "Declare",
+  "name": "wcsstr",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "ACCESS_STATE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_access_state",
+  "syntax": "typedef struct _ACCESS_STATE {\n  LUID                     OperationID;\n  BOOLEAN                  SecurityEvaluated;\n  BOOLEAN                  GenerateAudit;\n  BOOLEAN                  GenerateOnClose;\n  BOOLEAN                  PrivilegesAllocated;\n  ULONG                    Flags;\n  ACCESS_MASK              RemainingDesiredAccess;\n  ACCESS_MASK              PreviouslyGrantedAccess;\n  ACCESS_MASK              OriginalDesiredAccess;\n  SECURITY_SUBJECT_CONTEXT SubjectSecurityContext;\n  PSECURITY_DESCRIPTOR     SecurityDescriptor;\n  PVOID                    AuxData;\n  union {\n    INITIAL_PRIVILEGE_SET InitialPrivilegeSet;\n    PRIVILEGE_SET         PrivilegeSet;\n  } Privileges;\n  BOOLEAN                  AuditPrivileges;\n  UNICODE_STRING           ObjectName;\n  UNICODE_STRING           ObjectTypeName;\n} ACCESS_STATE, *PACCESS_STATE;"
+ },
+ {
+  "kind": "Type",
+  "name": "ANSI_STRING",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "CLIENT_ID",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "CM_EXTENDED_PARAMETER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DEVICEIOCTL",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DEVICE_OBJECT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_device_object",
+  "syntax": "typedef struct _DEVICE_OBJECT {\n  CSHORT                   Type;\n  USHORT                   Size;\n  LONG                     ReferenceCount;\n  struct _DRIVER_OBJECT    *DriverObject;\n  struct _DEVICE_OBJECT    *NextDevice;\n  struct _DEVICE_OBJECT    *AttachedDevice;\n  struct _IRP              *CurrentIrp;\n  PIO_TIMER                Timer;\n  ULONG                    Flags;\n  ULONG                    Characteristics;\n  __volatile PVPB          Vpb;\n  PVOID                    DeviceExtension;\n  DEVICE_TYPE              DeviceType;\n  CCHAR                    StackSize;\n  union {\n    LIST_ENTRY         ListEntry;\n    WAIT_CONTEXT_BLOCK Wcb;\n  } Queue;\n  ULONG                    AlignmentRequirement;\n  KDEVICE_QUEUE            DeviceQueue;\n  KDPC                     Dpc;\n  ULONG                    ActiveThreadCount;\n  PSECURITY_DESCRIPTOR     SecurityDescriptor;\n  KEVENT                   DeviceLock;\n  USHORT                   SectorSize;\n  USHORT                   Spare1;\n  struct _DEVOBJ_EXTENSION *DeviceObjectExtension;\n  PVOID                    Reserved;\n} *PDEVICE_OBJECT, DEVICE_OBJECT;"
+ },
+ {
+  "kind": "Type",
+  "name": "DISPATCHER_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DRIVER_EXTENSION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "DRIVER_OBJECT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_driver_object",
+  "syntax": "typedef struct _DRIVER_OBJECT {\n  CSHORT             Type;\n  CSHORT             Size;\n  PDEVICE_OBJECT     DeviceObject;\n  ULONG              Flags;\n  PVOID              DriverStart;\n  ULONG              DriverSize;\n  PVOID              DriverSection;\n  PDRIVER_EXTENSION  DriverExtension;\n  UNICODE_STRING     DriverName;\n  PUNICODE_STRING    HardwareDatabase;\n  PFAST_IO_DISPATCH  FastIoDispatch;\n  PDRIVER_INITIALIZE DriverInit;\n  PDRIVER_STARTIO    DriverStartIo;\n  PDRIVER_UNLOAD     DriverUnload;\n  PDRIVER_DISPATCH   MajorFunction[IRP_MJ_MAXIMUM_FUNCTION + 1];\n} DRIVER_OBJECT, *PDRIVER_OBJECT;"
+ },
+ {
+  "kind": "Type",
+  "name": "ERESOURCE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-eresource-routines",
+  "syntax": null
+ },
+ {
+  "kind": "Type",
+  "name": "EVENT_DATA_DESCRIPTOR",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntprov/ns-evntprov-event_data_descriptor",
+  "syntax": "typedef struct _EVENT_DATA_DESCRIPTOR {\n  ULONGLONG Ptr;\n  ULONG     Size;\n  union {\n    ULONG Reserved;\n    struct {\n      UCHAR  Type;\n      UCHAR  Reserved1;\n      USHORT Reserved2;\n    } DUMMYSTRUCTNAME;\n  } DUMMYUNIONNAME;\n} EVENT_DATA_DESCRIPTOR, *PEVENT_DATA_DESCRIPTOR;"
+ },
+ {
+  "kind": "Type",
+  "name": "EVENT_DESCRIPTOR",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FAST_MUTEX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "FILETIME",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime",
+  "syntax": "typedef struct _FILETIME {\n  DWORD dwLowDateTime;\n  DWORD dwHighDateTime;\n} FILETIME, *PFILETIME, *LPFILETIME;"
+ },
+ {
+  "kind": "Type",
+  "name": "FILE_OBJECT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object",
+  "syntax": "typedef struct _FILE_OBJECT {\n  CSHORT                                Type;\n  CSHORT                                Size;\n  PDEVICE_OBJECT                        DeviceObject;\n  PVPB                                  Vpb;\n  PVOID                                 FsContext;\n  PVOID                                 FsContext2;\n  PSECTION_OBJECT_POINTERS              SectionObjectPointer;\n  PVOID                                 PrivateCacheMap;\n  NTSTATUS                              FinalStatus;\n  struct _FILE_OBJECT                   *RelatedFileObject;\n  BOOLEAN                               LockOperation;\n  BOOLEAN                               DeletePending;\n  BOOLEAN                               ReadAccess;\n  BOOLEAN                               WriteAccess;\n  BOOLEAN                               DeleteAccess;\n  BOOLEAN                               SharedRead;\n  BOOLEAN                               SharedWrite;\n  BOOLEAN                               SharedDelete;\n  ULONG                                 Flags;\n  UNICODE_STRING                        FileName;\n  LARGE_INTEGER                         CurrentByteOffset;\n  __volatile ULONG                      Waiters;\n  __volatile ULONG                      Busy;\n  PVOID                                 LastLock;\n  KEVENT                                Lock;\n  KEVENT                                Event;\n  __volatile PIO_COMPLETION_CONTEXT     CompletionContext;\n  KSPIN_LOCK                            IrpListLock;\n  LIST_ENTRY                            IrpList;\n  __volatile _IOP_FILE_OBJECT_EXTENSION *FileObjectExtension;\n  struct                                _IOP_FILE_OBJECT_EXTENSION;\n} FILE_OBJECT, *PFILE_OBJECT;"
+ },
+ {
+  "kind": "Type",
+  "name": "GENERAL_LOOKASIDE_LAYOUT",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_INFO",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_image_info",
+  "syntax": "typedef struct _IMAGE_INFO {\n  union {\n    ULONG Properties;\n    struct {\n      ULONG ImageAddressingMode : 8;\n      ULONG SystemModeImage : 1;\n      ULONG ImageMappedToAllPids : 1;\n      ULONG ExtendedInfoPresent : 1;\n      ULONG MachineTypeMismatch : 1;\n      ULONG ImageSignatureLevel : 4;\n      ULONG ImageSignatureType : 3;\n      ULONG ImagePartialMap : 1;\n      ULONG Reserved : 12;\n    };\n  };\n  PVOID  ImageBase;\n  ULONG  ImageSelector;\n  SIZE_T ImageSize;\n  ULONG  ImageSectionNumber;\n} IMAGE_INFO, *PIMAGE_INFO;"
+ },
+ {
+  "kind": "Type",
+  "name": "IMAGE_INFO_EX",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_image_info_ex",
+  "syntax": "typedef struct _IMAGE_INFO_EX {\n  SIZE_T              Size;\n  IMAGE_INFO          ImageInfo;\n  struct _FILE_OBJECT *FileObject;\n} IMAGE_INFO_EX, *PIMAGE_INFO_EX;"
+ },
+ {
+  "kind": "Type",
+  "name": "INITIAL_PRIVILEGE_SET",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IO_COMPLETION_CONTEXT",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IO_DRIVER_CREATE_CONTEXT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_io_driver_create_context",
+  "syntax": "typedef struct _IO_DRIVER_CREATE_CONTEXT {\n  CSHORT               Size;\n  struct _ECP_LIST     *ExtraCreateParameter;\n  PVOID                DeviceObjectHint;\n  PTXN_PARAMETER_BLOCK TxnParameters;\n  PESILO               SiloContext;\n} IO_DRIVER_CREATE_CONTEXT, *PIO_DRIVER_CREATE_CONTEXT;"
+ },
+ {
+  "kind": "Type",
+  "name": "IO_REMOVE_LOCK",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IO_REMOVE_LOCK_COMMON_BLOCK",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IO_SECURITY_CONTEXT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_io_security_context",
+  "syntax": "typedef struct _IO_SECURITY_CONTEXT {\n  PSECURITY_QUALITY_OF_SERVICE SecurityQos;\n  PACCESS_STATE                AccessState;\n  ACCESS_MASK                  DesiredAccess;\n  ULONG                        FullCreateOptions;\n} IO_SECURITY_CONTEXT, *PIO_SECURITY_CONTEXT;"
+ },
+ {
+  "kind": "Type",
+  "name": "IO_STACK_LOCATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_io_stack_location",
+  "syntax": "typedef struct _IO_STACK_LOCATION {\n  UCHAR                  MajorFunction;\n  UCHAR                  MinorFunction;\n  UCHAR                  Flags;\n  UCHAR                  Control;\n  union {\n    struct {\n      PIO_SECURITY_CONTEXT     SecurityContext;\n      ULONG                    Options;\n      USHORT POINTER_ALIGNMENT FileAttributes;\n      USHORT                   ShareAccess;\n      ULONG POINTER_ALIGNMENT  EaLength;\n    } Create;\n    struct {\n      PIO_SECURITY_CONTEXT          SecurityContext;\n      ULONG                         Options;\n      USHORT POINTER_ALIGNMENT      Reserved;\n      USHORT                        ShareAccess;\n      PNAMED_PIPE_CREATE_PARAMETERS Parameters;\n    } CreatePipe;\n    struct {\n      PIO_SECURITY_CONTEXT        SecurityContext;\n      ULONG                       Options;\n      USHORT POINTER_ALIGNMENT    Reserved;\n      USHORT                      ShareAccess;\n      PMAILSLOT_CREATE_PARAMETERS Parameters;\n    } CreateMailslot;\n    struct {\n      ULONG                   Length;\n      ULONG POINTER_ALIGNMENT Key;\n      ULONG                   Flags;\n      LARGE_INTEGER           ByteOffset;\n    } Read;\n    struct {\n      ULONG                   Length;\n      ULONG POINTER_ALIGNMENT Key;\n      ULONG                   Flags;\n      LARGE_INTEGER           ByteOffset;\n    } Write;\n    struct {\n      ULONG                   Length;\n      PUNICODE_STRING         FileName;\n      FILE_INFORMATION_CLASS  FileInformationClass;\n      ULONG POINTER_ALIGNMENT FileIndex;\n    } QueryDirectory;\n    struct {\n      ULONG                   Length;\n      ULONG POINTER_ALIGNMENT CompletionFilter;\n    } NotifyDirectory;\n    struct {\n      ULONG                                                Length;\n      ULONG POINTER_ALIGNMENT                              CompletionFilter;\n      DIRECTORY_NOTIFY_INFORMATION_CLASS POINTER_ALIGNMENT DirectoryNotifyInformationClass;\n    } NotifyDirectoryEx;\n    struct {\n      ULONG                                    Length;\n      FILE_INFORMATION_CLASS POINTER_ALIGNMENT FileInformationClass;\n    } QueryFile;\n    struct {\n      ULONG                                    Length;\n      FILE_INFORMATION_CLASS POINTER_ALIGNMENT FileInformationClass;\n      PFILE_OBJECT                             FileObject;\n      union {\n        struct {\n          BOOLEAN ReplaceIfExists;\n          BOOLEAN AdvanceOnly;\n        };\n        ULONG  ClusterCount;\n        HANDLE DeleteHandle;\n      };\n    } SetFile;\n    struct {\n      ULONG                   Length;\n      PVOID                   EaList;\n      ULONG                   EaListLength;\n      ULONG POINTER_ALIGNMENT EaIndex;\n    } QueryEa;\n    struct {\n      ULONG Length;\n    } SetEa;\n    struct {\n      ULONG                                  Length;\n      FS_INFORMATION_CLASS POINTER_ALIGNMENT FsInformationClass;\n    } QueryVolume;\n    struct {\n      ULONG                                  Length;\n      FS_INFORMATION_CLASS POINTER_ALIGNMENT FsInformationClass;\n    } SetVolume;\n    struct {\n      ULONG                   OutputBufferLength;\n      ULONG POINTER_ALIGNMENT InputBufferLength;\n      ULONG POINTER_ALIGNMENT FsControlCode;\n      PVOID                   Type3InputBuffer;\n    } FileSystemControl;\n    struct {\n      PLARGE_INTEGER          Length;\n      ULONG POINTER_ALIGNMENT Key;\n      LARGE_INTEGER           ByteOffset;\n    } LockControl;\n    struct {\n      ULONG                   OutputBufferLength;\n      ULONG POINTER_ALIGNMENT InputBufferLength;\n      ULONG POINTER_ALIGNMENT IoControlCode;\n      PVOID                   Type3InputBuffer;\n    } DeviceIoControl;\n    struct {\n      SECURITY_INFORMATION    SecurityInformation;\n      ULONG POINTER_ALIGNMENT Length;\n    } QuerySecurity;\n    struct {\n      SECURITY_INFORMATION SecurityInformation;\n      PSECURITY_DESCRIPTOR SecurityDescriptor;\n    } SetSecurity;\n    struct {\n      PVPB           Vpb;\n      PDEVICE_OBJECT DeviceObject;\n      ULONG          OutputBufferLength;\n    } MountVolume;\n    struct {\n      PVPB           Vpb;\n      PDEVICE_OBJECT DeviceObject;\n    } VerifyVolume;\n    struct {\n      struct _SCSI_REQUEST_BLOCK *Srb;\n    } Scsi;\n    struct {\n      ULONG                       Length;\n      PSID                        StartSid;\n      PFILE_GET_QUOTA_INFORMATION SidList;\n      ULONG                       SidListLength;\n    } QueryQuota;\n    struct {\n      ULONG Length;\n    } SetQuota;\n    struct {\n      DEVICE_RELATION_TYPE Type;\n    } QueryDeviceRelations;\n    struct {\n      const GUID *InterfaceType;\n      USHORT     Size;\n      USHORT     Version;\n      PINTERFACE Interface;\n      PVOID      InterfaceSpecificData;\n    } QueryInterface;\n    struct {\n      PDEVICE_CAPABILITIES Capabilities;\n    } DeviceCapabilities;\n    struct {\n      PIO_RESOURCE_REQUIREMENTS_LIST IoResourceRequirementList;\n    } FilterResourceRequirements;\n    struct {\n      ULONG                   WhichSpace;\n      PVOID                   Buffer;\n      ULONG                   Offset;\n      ULONG POINTER_ALIGNMENT Length;\n    } ReadWriteConfig;\n    struct {\n      BOOLEAN Lock;\n    } SetLock;\n    struct {\n      BUS_QUERY_ID_TYPE IdType;\n    } QueryId;\n    struct {\n      DEVICE_TEXT_TYPE       DeviceTextType;\n      LCID POINTER_ALIGNMENT LocaleId;\n    } QueryDeviceText;\n    struct {\n      BOOLEAN                                          InPath;\n      BOOLEAN                                          Reserved[3];\n      DEVICE_USAGE_NOTIFICATION_TYPE POINTER_ALIGNMENT Type;\n    } UsageNotification;\n    struct {\n      SYSTEM_POWER_STATE PowerState;\n    } WaitWake;\n    struct {\n      PPOWER_SEQUENCE PowerSequence;\n    } PowerSequence;\n#if ...\n    struct {\n      union {\n        ULONG                      SystemContext;\n        SYSTEM_POWER_STATE_CONTEXT SystemPowerStateContext;\n      };\n      POWER_STATE_TYPE POINTER_ALIGNMENT Type;\n      POWER_STATE POINTER_ALIGNMENT      State;\n      POWER_ACTION POINTER_ALIGNMENT     ShutdownType;\n    } Power;\n#else\n    struct {\n      ULONG                              SystemContext;\n      POWER_STATE_TYPE POINTER_ALIGNMENT Type;\n      POWER_STATE POINTER_ALIGNMENT      State;\n      POWER_ACTION POINTER_ALIGNMENT     ShutdownType;\n    } Power;\n#endif\n    struct {\n      PCM_RESOURCE_LIST AllocatedResources;\n      PCM_RESOURCE_LIST AllocatedResourcesTranslated;\n    } StartDevice;\n    struct {\n      ULONG_PTR ProviderId;\n      PVOID     DataPath;\n      ULONG     BufferSize;\n      PVOID     Buffer;\n    } WMI;\n    struct {\n      PVOID Argument1;\n      PVOID Argument2;\n      PVOID Argument3;\n      PVOID Argument4;\n    } Others;\n  } Parameters;\n  PDEVICE_OBJECT         DeviceObject;\n  PFILE_OBJECT           FileObject;\n  PIO_COMPLETION_ROUTINE CompletionRoutine;\n  PVOID                  Context;\n} IO_STACK_LOCATION, *PIO_STACK_LOCATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "IO_STATUS_BLOCK",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_io_status_block",
+  "syntax": "typedef struct _IO_STATUS_BLOCK {\n  union {\n    NTSTATUS Status;\n    PVOID    Pointer;\n  };\n  ULONG_PTR Information;\n} IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;"
+ },
+ {
+  "kind": "Type",
+  "name": "IO_STATUS_BLOCK_Ptr",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "IRP",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp",
+  "syntax": "typedef struct _IRP {\n  CSHORT                    Type;\n  USHORT                    Size;\n  PMDL                      MdlAddress;\n  ULONG                     Flags;\n  union {\n    struct _IRP     *MasterIrp;\n    __volatile LONG IrpCount;\n    PVOID           SystemBuffer;\n  } AssociatedIrp;\n  LIST_ENTRY                ThreadListEntry;\n  IO_STATUS_BLOCK           IoStatus;\n  KPROCESSOR_MODE           RequestorMode;\n  BOOLEAN                   PendingReturned;\n  CHAR                      StackCount;\n  CHAR                      CurrentLocation;\n  BOOLEAN                   Cancel;\n  KIRQL                     CancelIrql;\n  CCHAR                     ApcEnvironment;\n  UCHAR                     AllocationFlags;\n  union {\n    PIO_STATUS_BLOCK UserIosb;\n    PVOID            IoRingContext;\n  };\n  PKEVENT                   UserEvent;\n  union {\n    struct {\n      union {\n        PIO_APC_ROUTINE UserApcRoutine;\n        PVOID           IssuingProcess;\n      };\n      union {\n        PVOID                 UserApcContext;\n#if ...\n        _IORING_OBJECT        *IoRing;\n#else\n        struct _IORING_OBJECT *IoRing;\n#endif\n      };\n    } AsynchronousParameters;\n    LARGE_INTEGER AllocationSize;\n  } Overlay;\n  __volatile PDRIVER_CANCEL CancelRoutine;\n  PVOID                     UserBuffer;\n  union {\n    struct {\n      union {\n        KDEVICE_QUEUE_ENTRY DeviceQueueEntry;\n        struct {\n          PVOID DriverContext[4];\n        };\n      };\n      PETHREAD     Thread;\n      PCHAR        AuxiliaryBuffer;\n      struct {\n        LIST_ENTRY ListEntry;\n        union {\n          struct _IO_STACK_LOCATION *CurrentStackLocation;\n          ULONG                     PacketType;\n        };\n      };\n      PFILE_OBJECT OriginalFileObject;\n    } Overlay;\n    KAPC  Apc;\n    PVOID CompletionKey;\n  } Tail;\n} IRP;"
+ },
+ {
+  "kind": "Type",
+  "name": "KAPC_STATE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KDEVICE_QUEUE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KDPC",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KEVENT",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KEY_VALUE_BASIC_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_basic_information",
+  "syntax": "typedef struct _KEY_VALUE_BASIC_INFORMATION {\n  ULONG TitleIndex;\n  ULONG Type;\n  ULONG NameLength;\n  WCHAR Name[1];\n} KEY_VALUE_BASIC_INFORMATION, *PKEY_VALUE_BASIC_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "KEY_VALUE_ENTRY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_entry",
+  "syntax": "typedef struct _KEY_VALUE_ENTRY {\n  PUNICODE_STRING ValueName;\n  ULONG           DataLength;\n  ULONG           DataOffset;\n  ULONG           Type;\n} KEY_VALUE_ENTRY, *PKEY_VALUE_ENTRY;"
+ },
+ {
+  "kind": "Type",
+  "name": "KEY_VALUE_FULL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_full_information",
+  "syntax": "typedef struct _KEY_VALUE_FULL_INFORMATION {\n  ULONG TitleIndex;\n  ULONG Type;\n  ULONG DataOffset;\n  ULONG DataLength;\n  ULONG NameLength;\n  WCHAR Name[1];\n} KEY_VALUE_FULL_INFORMATION, *PKEY_VALUE_FULL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "KEY_VALUE_LAYER_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KEY_VALUE_PARTIAL_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_key_value_partial_information",
+  "syntax": "typedef struct _KEY_VALUE_PARTIAL_INFORMATION {\n  ULONG TitleIndex;\n  ULONG Type;\n  ULONG DataLength;\n  UCHAR Data[1];\n} KEY_VALUE_PARTIAL_INFORMATION, *PKEY_VALUE_PARTIAL_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "KEY_VALUE_PARTIAL_INFORMATION_ALIGN64",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KLDR_DATA_TABLE_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KSYSTEM_TIME",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "KUSER_SHARED_DATA",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-kuser_shared_data",
+  "syntax": "typedef struct _KUSER_SHARED_DATA {\n  ULONG                         TickCountLowDeprecated;\n  ULONG                         TickCountMultiplier;\n  KSYSTEM_TIME                  InterruptTime;\n  KSYSTEM_TIME                  SystemTime;\n  KSYSTEM_TIME                  TimeZoneBias;\n  USHORT                        ImageNumberLow;\n  USHORT                        ImageNumberHigh;\n  WCHAR                         NtSystemRoot[260];\n  ULONG                         MaxStackTraceDepth;\n  ULONG                         CryptoExponent;\n  ULONG                         TimeZoneId;\n  ULONG                         LargePageMinimum;\n  ULONG                         AitSamplingValue;\n  ULONG                         AppCompatFlag;\n  ULONGLONG                     RNGSeedVersion;\n  ULONG                         GlobalValidationRunlevel;\n  LONG                          TimeZoneBiasStamp;\n  ULONG                         NtBuildNumber;\n  NT_PRODUCT_TYPE               NtProductType;\n  BOOLEAN                       ProductTypeIsValid;\n  BOOLEAN                       Reserved0[1];\n  USHORT                        NativeProcessorArchitecture;\n  ULONG                         NtMajorVersion;\n  ULONG                         NtMinorVersion;\n  BOOLEAN                       ProcessorFeatures[PROCESSOR_FEATURE_MAX];\n  ULONG                         Reserved1;\n  ULONG                         Reserved3;\n  ULONG                         TimeSlip;\n  ALTERNATIVE_ARCHITECTURE_TYPE AlternativeArchitecture;\n  ULONG                         BootId;\n  LARGE_INTEGER                 SystemExpirationDate;\n  ULONG                         SuiteMask;\n  BOOLEAN                       KdDebuggerEnabled;\n  union {\n    UCHAR MitigationPolicies;\n    struct {\n      UCHAR NXSupportPolicy : 2;\n      UCHAR SEHValidationPolicy : 2;\n      UCHAR CurDirDevicesSkippedForDlls : 2;\n      UCHAR Reserved : 2;\n    };\n  };\n  USHORT                        CyclesPerYield;\n  ULONG                         ActiveConsoleId;\n  ULONG                         DismountCount;\n  ULONG                         ComPlusPackage;\n  ULONG                         LastSystemRITEventTickCount;\n  ULONG                         NumberOfPhysicalPages;\n  BOOLEAN                       SafeBootMode;\n  union {\n    UCHAR VirtualizationFlags;\n    struct {\n      UCHAR ArchStartedInEl2 : 1;\n      UCHAR QcSlIsSupported : 1;\n    };\n  };\n  UCHAR                         Reserved12[2];\n  union {\n    ULONG SharedDataFlags;\n    struct {\n      ULONG DbgErrorPortPresent : 1;\n      ULONG DbgElevationEnabled : 1;\n      ULONG DbgVirtEnabled : 1;\n      ULONG DbgInstallerDetectEnabled : 1;\n      ULONG DbgLkgEnabled : 1;\n      ULONG DbgDynProcessorEnabled : 1;\n      ULONG DbgConsoleBrokerEnabled : 1;\n      ULONG DbgSecureBootEnabled : 1;\n      ULONG DbgMultiSessionSku : 1;\n      ULONG DbgMultiUsersInSessionSku : 1;\n      ULONG DbgStateSeparationEnabled : 1;\n      ULONG SpareBits : 21;\n    } DUMMYSTRUCTNAME2;\n  } DUMMYUNIONNAME2;\n  ULONG                         DataFlagsPad[1];\n  ULONGLONG                     TestRetInstruction;\n  LONGLONG                      QpcFrequency;\n  ULONG                         SystemCall;\n  ULONG                         Reserved2;\n  ULONGLONG                     FullNumberOfPhysicalPages;\n  ULONGLONG                     SystemCallPad[1];\n  union {\n    KSYSTEM_TIME TickCount;\n    ULONG64      TickCountQuad;\n    struct {\n      ULONG ReservedTickCountOverlay[3];\n      ULONG TickCountPad[1];\n    } DUMMYSTRUCTNAME;\n  } DUMMYUNIONNAME3;\n  ULONG                         Cookie;\n  ULONG                         CookiePad[1];\n  LONGLONG                      ConsoleSessionForegroundProcessId;\n  ULONGLONG                     TimeUpdateLock;\n  ULONGLONG                     BaselineSystemTimeQpc;\n  ULONGLONG                     BaselineInterruptTimeQpc;\n  ULONGLONG                     QpcSystemTimeIncrement;\n  ULONGLONG                     QpcInterruptTimeIncrement;\n  UCHAR                         QpcSystemTimeIncrementShift;\n  UCHAR                         QpcInterruptTimeIncrementShift;\n  USHORT                        UnparkedProcessorCount;\n  ULONG                         EnclaveFeatureMask[4];\n  ULONG                         TelemetryCoverageRound;\n  USHORT                        UserModeGlobalLogger[16];\n  ULONG                         ImageFileExecutionOptions;\n  ULONG                         LangGenerationCount;\n  ULONGLONG                     Reserved4;\n  ULONGLONG                     InterruptTimeBias;\n  ULONGLONG                     QpcBias;\n  ULONG                         ActiveProcessorCount;\n  UCHAR                         ActiveGroupCount;\n  UCHAR                         Reserved9;\n  union {\n    USHORT QpcData;\n    struct {\n      UCHAR QpcBypassEnabled;\n      UCHAR QpcReserved;\n    };\n  };\n  LARGE_INTEGER                 TimeZoneBiasEffectiveStart;\n  LARGE_INTEGER                 TimeZoneBiasEffectiveEnd;\n  XSTATE_CONFIGURATION          XState;\n  ULONG64                       UserPointerAuthMask;\n  XSTATE_CONFIGURATION          XStateArm64;\n  ULONG                         Reserved10[214];\n  KSYSTEM_TIME                  FeatureConfigurationChangeStamp;\n  ULONG                         Spare;\n} KUSER_SHARED_DATA, *PKUSER_SHARED_DATA;"
+ },
+ {
+  "kind": "Type",
+  "name": "LARGE_INTEGER",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-large_integer-r1",
+  "syntax": "typedef union _LARGE_INTEGER {\n  struct {\n    DWORD LowPart;\n    LONG  HighPart;\n  } DUMMYSTRUCTNAME;\n  struct {\n    DWORD LowPart;\n    LONG  HighPart;\n  } u;\n  LONGLONG QuadPart;\n} LARGE_INTEGER;"
+ },
+ {
+  "kind": "Type",
+  "name": "LIST_ENTRY",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-list_entry",
+  "syntax": "typedef struct _LIST_ENTRY {\n  struct _LIST_ENTRY *Flink;\n  struct _LIST_ENTRY *Blink;\n} LIST_ENTRY, *PLIST_ENTRY, PRLIST_ENTRY;"
+ },
+ {
+  "kind": "Type",
+  "name": "LPC_MESSAGE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "LUID",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/igpupvdev/ns-igpupvdev-_luid",
+  "syntax": "typedef struct _LUID {\n  DWORD LowPart;\n  LONG &nbsp;HighPart;\n} LUID, *PLUID;"
+ },
+ {
+  "kind": "Type",
+  "name": "LUID_AND_ATTRIBUTES",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_luid_and_attributes",
+  "syntax": "typedef struct _LUID_AND_ATTRIBUTES {\n  LUID  Luid;\n  ULONG Attributes;\n} LUID_AND_ATTRIBUTES, *PLUID_AND_ATTRIBUTES;"
+ },
+ {
+  "kind": "Type",
+  "name": "MDL",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_mdl",
+  "syntax": "typedef struct _MDL {\n  struct _MDL      *Next;\n  CSHORT           Size;\n  CSHORT           MdlFlags;\n  struct _EPROCESS *Process;\n  PVOID            MappedSystemVa;\n  PVOID            StartVa;\n  ULONG            ByteCount;\n  ULONG            ByteOffset;\n} MDL, *PMDL;"
+ },
+ {
+  "kind": "Type",
+  "name": "NPAGED_LOOKASIDE_LIST",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_ATTRIBUTES",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes",
+  "syntax": "typedef struct _OBJECT_ATTRIBUTES {\n  ULONG           Length;\n  HANDLE          RootDirectory;\n  PUNICODE_STRING ObjectName;\n  ULONG           Attributes;\n  PVOID           SecurityDescriptor;\n  PVOID           SecurityQualityOfService;\n} OBJECT_ATTRIBUTES;"
+ },
+ {
+  "kind": "Type",
+  "name": "OBJECT_HANDLE_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OB_CALLBACK_REGISTRATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_callback_registration",
+  "syntax": "typedef struct _OB_CALLBACK_REGISTRATION {\n  USHORT                    Version;\n  USHORT                    OperationRegistrationCount;\n  UNICODE_STRING            Altitude;\n  PVOID                     RegistrationContext;\n  OB_OPERATION_REGISTRATION *OperationRegistration;\n} OB_CALLBACK_REGISTRATION, *POB_CALLBACK_REGISTRATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_OPERATION_REGISTRATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_operation_registration",
+  "syntax": "typedef struct _OB_OPERATION_REGISTRATION {\n  POBJECT_TYPE                *ObjectType;\n  OB_OPERATION                Operations;\n  POB_PRE_OPERATION_CALLBACK  PreOperation;\n  POB_POST_OPERATION_CALLBACK PostOperation;\n} OB_OPERATION_REGISTRATION, *POB_OPERATION_REGISTRATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_POST_CREATE_HANDLE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_create_handle_information",
+  "syntax": "typedef struct _OB_POST_CREATE_HANDLE_INFORMATION {\n  ACCESS_MASK GrantedAccess;\n} OB_POST_CREATE_HANDLE_INFORMATION, *POB_POST_CREATE_HANDLE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_POST_DUPLICATE_HANDLE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_duplicate_handle_information",
+  "syntax": "typedef struct _OB_POST_DUPLICATE_HANDLE_INFORMATION {\n  ACCESS_MASK GrantedAccess;\n} OB_POST_DUPLICATE_HANDLE_INFORMATION, *POB_POST_DUPLICATE_HANDLE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_POST_OPERATION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_operation_information",
+  "syntax": "typedef struct _OB_POST_OPERATION_INFORMATION {\n  OB_OPERATION                  Operation;\n  union {\n    ULONG Flags;\n    struct {\n      ULONG KernelHandle : 1;\n      ULONG Reserved : 31;\n    };\n  };\n  PVOID                         Object;\n  POBJECT_TYPE                  ObjectType;\n  PVOID                         CallContext;\n  NTSTATUS                      ReturnStatus;\n  POB_POST_OPERATION_PARAMETERS Parameters;\n} OB_POST_OPERATION_INFORMATION, *POB_POST_OPERATION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_POST_OPERATION_PARAMETERS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_operation_parameters",
+  "syntax": "typedef union _OB_POST_OPERATION_PARAMETERS {\n  OB_POST_CREATE_HANDLE_INFORMATION    CreateHandleInformation;\n  OB_POST_DUPLICATE_HANDLE_INFORMATION DuplicateHandleInformation;\n} OB_POST_OPERATION_PARAMETERS, *POB_POST_OPERATION_PARAMETERS;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_PRE_CREATE_HANDLE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_pre_create_handle_information",
+  "syntax": "typedef struct _OB_PRE_CREATE_HANDLE_INFORMATION {\n  ACCESS_MASK DesiredAccess;\n  ACCESS_MASK OriginalDesiredAccess;\n} OB_PRE_CREATE_HANDLE_INFORMATION, *POB_PRE_CREATE_HANDLE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_PRE_DUPLICATE_HANDLE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_pre_duplicate_handle_information",
+  "syntax": "typedef struct _OB_PRE_DUPLICATE_HANDLE_INFORMATION {\n  ACCESS_MASK DesiredAccess;\n  ACCESS_MASK OriginalDesiredAccess;\n  PVOID       SourceProcess;\n  PVOID       TargetProcess;\n} OB_PRE_DUPLICATE_HANDLE_INFORMATION, *POB_PRE_DUPLICATE_HANDLE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OB_PRE_OPERATION_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_pre_operation_information",
+  "syntax": "typedef struct _OB_PRE_OPERATION_INFORMATION {\n  OB_OPERATION                 Operation;\n  union {\n    ULONG Flags;\n    struct {\n      ULONG KernelHandle : 1;\n      ULONG Reserved : 31;\n    };\n  };\n  PVOID                        Object;\n  POBJECT_TYPE                 ObjectType;\n  PVOID                        CallContext;\n  POB_PRE_OPERATION_PARAMETERS Parameters;\n} OB_PRE_OPERATION_INFORMATION, *POB_PRE_OPERATION_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "OEM_STRING",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "OWNER_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "POOL_EXTENDED_PARAMETER",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-pool_extended_parameter",
+  "syntax": "typedef struct _POOL_EXTENDED_PARAMETER {\n  struct {\n    ULONG64 Type : POOL_EXTENDED_PARAMETER_TYPE_BITS;\n    ULONG64 Optional : POOL_EXTENDED_PARAMETER_REQUIRED_FIELD_BITS;\n    ULONG64 Reserved : POOL_EXTENDED_PARAMETER_RESERVED_BITS;\n  } DUMMYSTRUCTNAME;\n  union {\n    ULONG64                          Reserved2;\n    PVOID                            Reserved3;\n    EX_POOL_PRIORITY                 Priority;\n    POOL_EXTENDED_PARAMS_SECURE_POOL *SecurePoolParams;\n    POOL_NODE_REQUIREMENT            PreferredNode;\n    HANDLE                           PrivatePoolHandle;\n  } DUMMYUNIONNAME;\n} POOL_EXTENDED_PARAMETER, *PPOOL_EXTENDED_PARAMETER;"
+ },
+ {
+  "kind": "Type",
+  "name": "POOL_EXTENDED_PARAMS_SECURE_POOL",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-pool_extended_params_secure_pool",
+  "syntax": "typedef struct _POOL_EXTENDED_PARAMS_SECURE_POOL {\n  HANDLE    SecurePoolHandle;\n  PVOID     Buffer;\n  ULONG_PTR Cookie;\n  ULONG     SecurePoolFlags;\n} POOL_EXTENDED_PARAMS_SECURE_POOL;"
+ },
+ {
+  "kind": "Type",
+  "name": "PORT_DATA_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PORT_DATA_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PORT_MESSAGE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_ATTRIBUTE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_ATTRIBUTE_LIST",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_BNO_ISOLATION_PARAMETERS",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_CREATE_INFO",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_CREATE_INFO_SUCCESS_U",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_CREATE_NOTIFY_INFO",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_ps_create_notify_info",
+  "syntax": "typedef struct _PS_CREATE_NOTIFY_INFO {\n  SIZE_T              Size;\n  union {\n    ULONG Flags;\n    struct {\n      ULONG FileOpenNameAvailable : 1;\n      ULONG IsSubsystemProcess : 1;\n      ULONG Reserved : 30;\n    };\n  };\n  HANDLE              ParentProcessId;\n  CLIENT_ID           CreatingThreadId;\n  struct _FILE_OBJECT *FileObject;\n  PCUNICODE_STRING    ImageFileName;\n  PCUNICODE_STRING    CommandLine;\n  NTSTATUS            CreationStatus;\n} PS_CREATE_NOTIFY_INFO, *PPS_CREATE_NOTIFY_INFO;"
+ },
+ {
+  "kind": "Type",
+  "name": "PS_MEMORY_RESERVE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "PS_STD_HANDLE_INFO",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "REG_CALLBACK_CONTEXT_CLEANUP_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_callback_context_cleanup_information",
+  "syntax": "typedef struct _REG_CALLBACK_CONTEXT_CLEANUP_INFORMATION {\n  PVOID Object;\n  PVOID ObjectContext;\n  PVOID Reserved;\n} REG_CALLBACK_CONTEXT_CLEANUP_INFORMATION, *PREG_CALLBACK_CONTEXT_CLEANUP_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_DELETE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_delete_key_information",
+  "syntax": "typedef struct _REG_DELETE_KEY_INFORMATION {\n  PVOID Object;\n  PVOID CallContext;\n  PVOID ObjectContext;\n  PVOID Reserved;\n} REG_DELETE_KEY_INFORMATION, *PREG_DELETE_KEY_INFORMATION, REG_FLUSH_KEY_INFORMATION, *PREG_FLUSH_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_DELETE_VALUE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_delete_value_key_information",
+  "syntax": "typedef struct _REG_DELETE_VALUE_KEY_INFORMATION {\n  PVOID           Object;\n  PUNICODE_STRING ValueName;\n  PVOID           CallContext;\n  PVOID           ObjectContext;\n  PVOID           Reserved;\n} REG_DELETE_VALUE_KEY_INFORMATION, *PREG_DELETE_VALUE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_ENUMERATE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_enumerate_key_information",
+  "syntax": "typedef struct _REG_ENUMERATE_KEY_INFORMATION {\n  PVOID                 Object;\n  ULONG                 Index;\n  KEY_INFORMATION_CLASS KeyInformationClass;\n  PVOID                 KeyInformation;\n  ULONG                 Length;\n  PULONG                ResultLength;\n  PVOID                 CallContext;\n  PVOID                 ObjectContext;\n  PVOID                 Reserved;\n} REG_ENUMERATE_KEY_INFORMATION, *PREG_ENUMERATE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_ENUMERATE_VALUE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_enumerate_value_key_information",
+  "syntax": "typedef struct _REG_ENUMERATE_VALUE_KEY_INFORMATION {\n  PVOID                       Object;\n  ULONG                       Index;\n  KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass;\n  PVOID                       KeyValueInformation;\n  ULONG                       Length;\n  PULONG                      ResultLength;\n  PVOID                       CallContext;\n  PVOID                       ObjectContext;\n  PVOID                       Reserved;\n} REG_ENUMERATE_VALUE_KEY_INFORMATION, *PREG_ENUMERATE_VALUE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_FLUSH_KEY_INFORMATION",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "REG_KEY_HANDLE_CLOSE_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_key_handle_close_information",
+  "syntax": "typedef struct _REG_KEY_HANDLE_CLOSE_INFORMATION {\n  PVOID Object;\n  PVOID CallContext;\n  PVOID ObjectContext;\n  PVOID Reserved;\n} REG_KEY_HANDLE_CLOSE_INFORMATION, *PREG_KEY_HANDLE_CLOSE_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_LOAD_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_load_key_information",
+  "syntax": "typedef struct _REG_LOAD_KEY_INFORMATION {\n  PVOID           Object;\n  PUNICODE_STRING KeyName;\n  PUNICODE_STRING SourceFile;\n  ULONG           Flags;\n  PVOID           TrustClassObject;\n  PVOID           UserEvent;\n  ACCESS_MASK     DesiredAccess;\n  PHANDLE         RootHandle;\n  PVOID           CallContext;\n  PVOID           ObjectContext;\n  PVOID           Reserved;\n} REG_LOAD_KEY_INFORMATION, *PREG_LOAD_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_LOAD_KEY_INFORMATION_V2",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-reg_load_key_information_v2",
+  "syntax": "typedef struct _REG_LOAD_KEY_INFORMATION_V2 {\n  PVOID           Object;\n  PUNICODE_STRING KeyName;\n  PUNICODE_STRING SourceFile;\n  ULONG           Flags;\n  PVOID           TrustClassObject;\n  PVOID           UserEvent;\n  ACCESS_MASK     DesiredAccess;\n  PHANDLE         RootHandle;\n  PVOID           CallContext;\n  PVOID           ObjectContext;\n  ULONG_PTR       Version;\n  PVOID           FileAccessToken;\n} REG_LOAD_KEY_INFORMATION_V2, *PREG_LOAD_KEY_INFORMATION_V2;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_QUERY_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_query_key_information",
+  "syntax": "typedef struct _REG_QUERY_KEY_INFORMATION {\n  PVOID                 Object;\n  KEY_INFORMATION_CLASS KeyInformationClass;\n  PVOID                 KeyInformation;\n  ULONG                 Length;\n  PULONG                ResultLength;\n  PVOID                 CallContext;\n  PVOID                 ObjectContext;\n  PVOID                 Reserved;\n} REG_QUERY_KEY_INFORMATION, *PREG_QUERY_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_QUERY_KEY_NAME",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_query_key_name",
+  "syntax": "typedef struct _REG_QUERY_KEY_NAME {\n  PVOID                    Object;\n  POBJECT_NAME_INFORMATION ObjectNameInfo;\n  ULONG                    Length;\n  PULONG                   ReturnLength;\n  PVOID                    CallContext;\n  PVOID                    ObjectContext;\n  PVOID                    Reserved;\n} REG_QUERY_KEY_NAME, *PREG_QUERY_KEY_NAME;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_QUERY_KEY_SECURITY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_query_key_security_information",
+  "syntax": "typedef struct _REG_QUERY_KEY_SECURITY_INFORMATION {\n  PVOID                 Object;\n  PSECURITY_INFORMATION SecurityInformation;\n  PSECURITY_DESCRIPTOR  SecurityDescriptor;\n  PULONG                Length;\n  PVOID                 CallContext;\n  PVOID                 ObjectContext;\n  PVOID                 Reserved;\n} REG_QUERY_KEY_SECURITY_INFORMATION, *PREG_QUERY_KEY_SECURITY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_query_multiple_value_key_information",
+  "syntax": "typedef struct _REG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION {\n  PVOID            Object;\n  PKEY_VALUE_ENTRY ValueEntries;\n  ULONG            EntryCount;\n  PVOID            ValueBuffer;\n  PULONG           BufferLength;\n  PULONG           RequiredBufferLength;\n  PVOID            CallContext;\n  PVOID            ObjectContext;\n  PVOID            Reserved;\n} REG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION, *PREG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_QUERY_VALUE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_query_value_key_information",
+  "syntax": "typedef struct _REG_QUERY_VALUE_KEY_INFORMATION {\n  PVOID                       Object;\n  PUNICODE_STRING             ValueName;\n  KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass;\n  PVOID                       KeyValueInformation;\n  ULONG                       Length;\n  PULONG                      ResultLength;\n  PVOID                       CallContext;\n  PVOID                       ObjectContext;\n  PVOID                       Reserved;\n} REG_QUERY_VALUE_KEY_INFORMATION, *PREG_QUERY_VALUE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_RENAME_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_rename_key_information",
+  "syntax": "typedef struct _REG_RENAME_KEY_INFORMATION {\n  PVOID           Object;\n  PUNICODE_STRING NewName;\n  PVOID           CallContext;\n  PVOID           ObjectContext;\n  PVOID           Reserved;\n} REG_RENAME_KEY_INFORMATION, *PREG_RENAME_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_REPLACE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_replace_key_information",
+  "syntax": "typedef struct _REG_REPLACE_KEY_INFORMATION {\n  PVOID           Object;\n  PUNICODE_STRING OldFileName;\n  PUNICODE_STRING NewFileName;\n  PVOID           CallContext;\n  PVOID           ObjectContext;\n  PVOID           Reserved;\n} REG_REPLACE_KEY_INFORMATION, *PREG_REPLACE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_RESTORE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_restore_key_information",
+  "syntax": "typedef struct _REG_RESTORE_KEY_INFORMATION {\n  PVOID  Object;\n  HANDLE FileHandle;\n  ULONG  Flags;\n  PVOID  CallContext;\n  PVOID  ObjectContext;\n  PVOID  Reserved;\n} REG_RESTORE_KEY_INFORMATION, *PREG_RESTORE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_SAVE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_save_key_information",
+  "syntax": "typedef struct _REG_SAVE_KEY_INFORMATION {\n  PVOID  Object;\n  HANDLE FileHandle;\n  ULONG  Format;\n  PVOID  CallContext;\n  PVOID  ObjectContext;\n  PVOID  Reserved;\n} REG_SAVE_KEY_INFORMATION, *PREG_SAVE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_SAVE_MERGED_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-reg_save_merged_key_information",
+  "syntax": "typedef struct _REG_SAVE_MERGED_KEY_INFORMATION {\n  PVOID  Object;\n  HANDLE FileHandle;\n  PVOID  HighKeyObject;\n  PVOID  LowKeyObject;\n  PVOID  CallContext;\n  PVOID  ObjectContext;\n  PVOID  Reserved;\n} REG_SAVE_MERGED_KEY_INFORMATION, *PREG_SAVE_MERGED_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_SET_INFORMATION_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_set_information_key_information",
+  "syntax": "typedef struct _REG_SET_INFORMATION_KEY_INFORMATION {\n  PVOID                     Object;\n  KEY_SET_INFORMATION_CLASS KeySetInformationClass;\n  PVOID                     KeySetInformation;\n  ULONG                     KeySetInformationLength;\n  PVOID                     CallContext;\n  PVOID                     ObjectContext;\n  PVOID                     Reserved;\n} REG_SET_INFORMATION_KEY_INFORMATION, *PREG_SET_INFORMATION_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_SET_KEY_SECURITY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_set_key_security_information",
+  "syntax": "typedef struct _REG_SET_KEY_SECURITY_INFORMATION {\n  PVOID                 Object;\n  PSECURITY_INFORMATION SecurityInformation;\n  PSECURITY_DESCRIPTOR  SecurityDescriptor;\n  PVOID                 CallContext;\n  PVOID                 ObjectContext;\n  PVOID                 Reserved;\n} REG_SET_KEY_SECURITY_INFORMATION, *PREG_SET_KEY_SECURITY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_SET_VALUE_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_set_value_key_information",
+  "syntax": "typedef struct _REG_SET_VALUE_KEY_INFORMATION {\n  PVOID           Object;\n  PUNICODE_STRING ValueName;\n  ULONG           TitleIndex;\n  ULONG           Type;\n  PVOID           Data;\n  ULONG           DataSize;\n  PVOID           CallContext;\n  PVOID           ObjectContext;\n  PVOID           Reserved;\n} REG_SET_VALUE_KEY_INFORMATION, *PREG_SET_VALUE_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "REG_UNLOAD_KEY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_reg_unload_key_information",
+  "syntax": "typedef struct _REG_UNLOAD_KEY_INFORMATION {\n  PVOID Object;\n  PVOID UserEvent;\n  PVOID CallContext;\n  PVOID ObjectContext;\n  PVOID Reserved;\n} REG_UNLOAD_KEY_INFORMATION, *PREG_UNLOAD_KEY_INFORMATION;"
+ },
+ {
+  "kind": "Type",
+  "name": "RESOURCE_HASH_ENTRY",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RESOURCE_PERFORMANCE_DATA",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_BITMAP",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_BITMAP_EX",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_BITMAP_RUN",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_HEAP_PARAMETERS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-rtl_heap_parameters",
+  "syntax": "typedef struct _RTL_HEAP_PARAMETERS {\n  ULONG                    Length;\n  SIZE_T                   SegmentReserve;\n  SIZE_T                   SegmentCommit;\n  SIZE_T                   DeCommitFreeBlockThreshold;\n  SIZE_T                   DeCommitTotalFreeThreshold;\n  SIZE_T                   MaximumAllocationSize;\n  SIZE_T                   VirtualMemoryThreshold;\n  SIZE_T                   InitialCommit;\n  SIZE_T                   InitialReserve;\n  PRTL_HEAP_COMMIT_ROUTINE CommitRoutine;\n  SIZE_T                   Reserved[2];\n} RTL_HEAP_PARAMETERS, *PRTL_HEAP_PARAMETERS;"
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_OSVERSIONINFOEXW",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_OSVERSIONINFOW",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "RTL_QUERY_REGISTRY_TABLE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "SECTION_OBJECT_POINTERS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_section_object_pointers",
+  "syntax": "typedef struct _SECTION_OBJECT_POINTERS {\n  PVOID DataSectionObject;\n  PVOID SharedCacheMap;\n  PVOID ImageSectionObject;\n} SECTION_OBJECT_POINTERS;"
+ },
+ {
+  "kind": "Type",
+  "name": "SECURITY_DESCRIPTOR",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_security_descriptor",
+  "syntax": "typedef struct _SECURITY_DESCRIPTOR {\n  UCHAR                       Revision;\n  UCHAR                       Sbz1;\n  SECURITY_DESCRIPTOR_CONTROL Control;\n  PSID                        Owner;\n  PSID                        Group;\n  PACL                        Sacl;\n  PACL                        Dacl;\n} SECURITY_DESCRIPTOR, *PISECURITY_DESCRIPTOR;"
+ },
+ {
+  "kind": "Type",
+  "name": "SECURITY_SUBJECT_CONTEXT",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_security_subject_context",
+  "syntax": "typedef struct _SECURITY_SUBJECT_CONTEXT {\n  PACCESS_TOKEN                ClientToken;\n  SECURITY_IMPERSONATION_LEVEL ImpersonationLevel;\n  PACCESS_TOKEN                PrimaryToken;\n  PVOID                        ProcessAuditId;\n} SECURITY_SUBJECT_CONTEXT, *PSECURITY_SUBJECT_CONTEXT;"
+ },
+ {
+  "kind": "Type",
+  "name": "SE_SID",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_se_sid",
+  "syntax": "typedef union _SE_SID {\n  SID   Sid;\n  UCHAR Buffer[SECURITY_MAX_SID_SIZE];\n} SE_SID, *PSE_SID;"
+ },
+ {
+  "kind": "Type",
+  "name": "SID",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_sid",
+  "syntax": "typedef struct _SID {\n  UCHAR                    Revision;\n  UCHAR                    SubAuthorityCount;\n  SID_IDENTIFIER_AUTHORITY IdentifierAuthority;\n#if ...\n  ULONG                    *SubAuthority[];\n#else\n  ULONG                    SubAuthority[ANYSIZE_ARRAY];\n#endif\n} SID, *PISID;"
+ },
+ {
+  "kind": "Type",
+  "name": "SID_AND_ATTRIBUTES",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_sid_and_attributes",
+  "syntax": "typedef struct _SID_AND_ATTRIBUTES {\n#if ...\n  PISID Sid;\n#else\n  PSID  Sid;\n#endif\n  ULONG Attributes;\n} SID_AND_ATTRIBUTES, *PSID_AND_ATTRIBUTES;"
+ },
+ {
+  "kind": "Type",
+  "name": "SID_AND_ATTRIBUTES_HASH",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-sid_and_attributes_hash",
+  "syntax": "typedef struct _SID_AND_ATTRIBUTES_HASH {\n  ULONG               SidCount;\n  PSID_AND_ATTRIBUTES SidAttr;\n  SID_HASH_ENTRY      Hash[SID_HASH_SIZE];\n} SID_AND_ATTRIBUTES_HASH, *PSID_AND_ATTRIBUTES_HASH;"
+ },
+ {
+  "kind": "Type",
+  "name": "SID_IDENTIFIER_AUTHORITY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_sid_identifier_authority",
+  "syntax": "typedef struct _SID_IDENTIFIER_AUTHORITY {\n  UCHAR Value[6];\n} SID_IDENTIFIER_AUTHORITY, *PSID_IDENTIFIER_AUTHORITY;"
+ },
+ {
+  "kind": "Type",
+  "name": "TOKEN_PRIVILEGES",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_privileges",
+  "syntax": "typedef struct _TOKEN_PRIVILEGES {\n  ULONG               PrivilegeCount;\n  LUID_AND_ATTRIBUTES Privileges[ANYSIZE_ARRAY];\n} TOKEN_PRIVILEGES, *PTOKEN_PRIVILEGES;"
+ },
+ {
+  "kind": "Type",
+  "name": "ULARGE_INTEGER",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-ularge_integer-r1",
+  "syntax": "typedef union _ULARGE_INTEGER {\n  struct {\n    DWORD LowPart;\n    DWORD HighPart;\n  } DUMMYSTRUCTNAME;\n  struct {\n    DWORD LowPart;\n    DWORD HighPart;\n  } u;\n  ULONGLONG QuadPart;\n} ULARGE_INTEGER;"
+ },
+ {
+  "kind": "Type",
+  "name": "UNICODE_STRING",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_unicode_string",
+  "syntax": "typedef struct _UNICODE_STRING {\n  USHORT Length;\n  USHORT MaximumLength;\n  PWSTR  Buffer;\n} UNICODE_STRING, *PUNICODE_STRING;"
+ },
+ {
+  "kind": "Type",
+  "name": "UUID",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/rpc/rpcdce/ns-rpcdce-uuid",
+  "syntax": "typedef GUID UUID;"
+ },
+ {
+  "kind": "Type",
+  "name": "VPB",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_vpb",
+  "syntax": "typedef struct _VPB {\n  CSHORT                Type;\n  CSHORT                Size;\n  USHORT                Flags;\n  USHORT                VolumeLabelLength;\n  struct _DEVICE_OBJECT *DeviceObject;\n  struct _DEVICE_OBJECT *RealDevice;\n  ULONG                 SerialNumber;\n  ULONG                 ReferenceCount;\n  WCHAR                 VolumeLabel[MAXIMUM_VOLUME_LABEL_LENGTH / sizeof(WCHAR)];\n} VPB, *PVPB;"
+ },
+ {
+  "kind": "Type",
+  "name": "_GENERAL_LOOKASIDE",
+  "url": null
+ },
+ {
+  "kind": "Type",
+  "name": "_SLIST_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ALTERNATIVE_ARCHITECTURE_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "BOOL",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "CM_EXTENDED_PARAMETER_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DEVICE_OBJECT_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DEVICE_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DPFLTR_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DRIVER_OBJECT_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DbgPrntLevels",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DirectoryAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "DuplicateObjectOptions",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "EResFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ETWEventDataDescriptorTypes",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ETWEventWriteFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "EVENT_INFO_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntprov/ne-evntprov-event_info_class",
+  "syntax": "typedef enum _EVENT_INFO_CLASS {\n  EventProviderBinaryTrackInfo,\n  EventProviderSetReserved1,\n  EventProviderSetTraits,\n  EventProviderUseDescriptorType,\n  EventProviderSetReserved2,\n  MaxEventInfo\n} EVENT_INFO_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "EVENT_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "EX_POOL_PRIORITY",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-ex_pool_priority",
+  "syntax": "typedef _Enum_is_bitflag_ enum _EX_POOL_PRIORITY {\n    LowPoolPriority,\n    LowPoolPrioritySpecialPoolOverrun = 8,\n    LowPoolPrioritySpecialPoolUnderrun = 9,\n    NormalPoolPriority = 16,\n    NormalPoolPrioritySpecialPoolOverrun = 24,\n    NormalPoolPrioritySpecialPoolUnderrun = 25,\n    HighPoolPriority = 32,\n    HighPoolPrioritySpecialPoolOverrun = 40,\n    HighPoolPrioritySpecialPoolUnderrun = 41\n} EX_POOL_PRIORITY;"
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_ATTRIBUTES",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_DEVICE_CHARACTERISTICS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FILE_OBJECT_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FileAccessFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FileAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FileCreateDisposition",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FileCreateOutcome",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "FileShareMode",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "GROUP_SID_ATTRIBUTES",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "GenericRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "HARDERROR_RESPONSE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "HARDERROR_RESPONSE_OPTION",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "HeapFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IO_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IoCreateFileFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IoStackLocFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "IrpFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "KEY_INFORMATION_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_key_information_class",
+  "syntax": "typedef enum _KEY_INFORMATION_CLASS {\n  KeyBasicInformation,\n  KeyNodeInformation,\n  KeyFullInformation,\n  KeyNameInformation,\n  KeyCachedInformation,\n  KeyFlagsInformation,\n  KeyVirtualizationInformation,\n  KeyHandleTagsInformation,\n  KeyTrustInformation,\n  KeyLayerInformation,\n  MaxKeyInfoClass\n} KEY_INFORMATION_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "KEY_SET_INFORMATION_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_key_set_information_class",
+  "syntax": "typedef enum _KEY_SET_INFORMATION_CLASS {\n  KeyWriteTimeInformation,\n  KeyWow64FlagsInformation,\n  KeyControlFlagsInformation,\n  KeySetVirtualizationInformation,\n  KeySetDebugInformation,\n  KeySetHandleTagsInformation,\n  KeySetLayerInformation,\n  MaxKeySetInfoClass\n} KEY_SET_INFORMATION_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "KEY_VALUE_INFORMATION_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_key_value_information_class",
+  "syntax": "typedef enum _KEY_VALUE_INFORMATION_CLASS {\n  KeyValueBasicInformation,\n  KeyValueFullInformation,\n  KeyValuePartialInformation,\n  KeyValueFullInformationAlign64,\n  KeyValuePartialInformationAlign64,\n  KeyValueLayerInformation,\n  MaxKeyValueInfoClass\n} KEY_VALUE_INFORMATION_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "KPRIORITY",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "KWAIT_REASON",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MDL_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MEMORY_CACHING_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_memory_caching_type",
+  "syntax": "typedef enum _MEMORY_CACHING_TYPE {\n  MmNonCached,\n  MmCached,\n  MmWriteCombined,\n  MmHardwareCoherentCached,\n  MmNonCachedUnordered,\n  MmUSWCCached,\n  MmMaximumCacheType,\n  MmNotMapped\n} MEMORY_CACHING_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "MM_COPY_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MM_PAGE_PRIORITY",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MdlMappingFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MemAllocType",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MemProtectFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "MessageBoxFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NTSTATUS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NTSectionAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NT_LPC_MSG_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NT_PRODUCT_TYPE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NtFileQueryFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "NtLoadKeyExFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "OB_OPERATION",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "OB_PREOP_CALLBACK_STATUS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ObjectAttributeValues",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "OwnerEntryFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "POOL_EXTENDED_PARAMETER_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-pool_extended_parameter_type",
+  "syntax": "typedef enum POOL_EXTENDED_PARAMETER_TYPE {\n  PoolExtendedParameterInvalidType = 0,\n  PoolExtendedParameterPriority,\n  PoolExtendedParameterSecurePool,\n  PoolExtendedParameterNumaNode,\n  PoolExtendedParameterPrivatePool,\n  PoolExtendedParameterMax\n}  *PPOOL_EXTENDED_PARAMETER_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "POOL_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_pool_type",
+  "syntax": "typedef enum _POOL_TYPE {\n    NonPagedPool,\n    NonPagedPoolExecute = NonPagedPool,\n    PagedPool,\n    NonPagedPoolMustSucceed = NonPagedPool + 2,\n    DontUseThisType,\n    NonPagedPoolCacheAligned = NonPagedPool + 4,\n    PagedPoolCacheAligned,\n    NonPagedPoolCacheAlignedMustS = NonPagedPool + 6,\n    MaxPoolType,\n    NonPagedPoolBase = 0,\n    NonPagedPoolBaseMustSucceed = NonPagedPoolBase + 2,\n    NonPagedPoolBaseCacheAligned = NonPagedPoolBase + 4,\n    NonPagedPoolBaseCacheAlignedMustS = NonPagedPoolBase + 6,\n    NonPagedPoolSession = 32,\n    PagedPoolSession = NonPagedPoolSession + 1,\n    NonPagedPoolMustSucceedSession = PagedPoolSession + 1,\n    DontUseThisTypeSession = NonPagedPoolMustSucceedSession + 1,\n    NonPagedPoolCacheAlignedSession = DontUseThisTypeSession + 1,\n    PagedPoolCacheAlignedSession = NonPagedPoolCacheAlignedSession + 1,\n    NonPagedPoolCacheAlignedMustSSession = PagedPoolCacheAlignedSession + 1,\n    NonPagedPoolNx = 512,\n    NonPagedPoolNxCacheAligned = NonPagedPoolNx + 4,\n    NonPagedPoolSessionNx = NonPagedPoolNx + 32,\n\n} POOL_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "PROCESS_CREATE_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PSCNI_Flags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PSCREATETHREADNOTIFYTYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ne-ntddk-_pscreatethreadnotifytype",
+  "syntax": "typedef enum _PSCREATETHREADNOTIFYTYPE {\n  PsCreateThreadNotifyNonSystem,\n  PsCreateThreadNotifySubsystems\n} PSCREATETHREADNOTIFYTYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "PS_ATTRIBUTE_ID",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PS_ATTRIBUTE_NUM",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PS_CREATE_STATE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PS_MITIGATION_OPTION",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PS_STD_HANDLES",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PS_STD_HANDLE_STATE",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "PortAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ProcessAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "REGSAM",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/shell/regsam",
+  "syntax": null
+ },
+ {
+  "kind": "Enum",
+  "name": "REGTYPES",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "REG_NOTIFY_CLASS",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_reg_notify_class",
+  "syntax": "typedef enum _REG_NOTIFY_CLASS {\n  RegNtDeleteKey,\n  RegNtPreDeleteKey,\n  RegNtSetValueKey,\n  RegNtPreSetValueKey,\n  RegNtDeleteValueKey,\n  RegNtPreDeleteValueKey,\n  RegNtSetInformationKey,\n  RegNtPreSetInformationKey,\n  RegNtRenameKey,\n  RegNtPreRenameKey,\n  RegNtEnumerateKey,\n  RegNtPreEnumerateKey,\n  RegNtEnumerateValueKey,\n  RegNtPreEnumerateValueKey,\n  RegNtQueryKey,\n  RegNtPreQueryKey,\n  RegNtQueryValueKey,\n  RegNtPreQueryValueKey,\n  RegNtQueryMultipleValueKey,\n  RegNtPreQueryMultipleValueKey,\n  RegNtPreCreateKey,\n  RegNtPostCreateKey,\n  RegNtPreOpenKey,\n  RegNtPostOpenKey,\n  RegNtKeyHandleClose,\n  RegNtPreKeyHandleClose,\n  RegNtPostDeleteKey,\n  RegNtPostSetValueKey,\n  RegNtPostDeleteValueKey,\n  RegNtPostSetInformationKey,\n  RegNtPostRenameKey,\n  RegNtPostEnumerateKey,\n  RegNtPostEnumerateValueKey,\n  RegNtPostQueryKey,\n  RegNtPostQueryValueKey,\n  RegNtPostQueryMultipleValueKey,\n  RegNtPostKeyHandleClose,\n  RegNtPreCreateKeyEx,\n  RegNtPostCreateKeyEx,\n  RegNtPreOpenKeyEx,\n  RegNtPostOpenKeyEx,\n  RegNtPreFlushKey,\n  RegNtPostFlushKey,\n  RegNtPreLoadKey,\n  RegNtPostLoadKey,\n  RegNtPreUnLoadKey,\n  RegNtPostUnLoadKey,\n  RegNtPreQueryKeySecurity,\n  RegNtPostQueryKeySecurity,\n  RegNtPreSetKeySecurity,\n  RegNtPostSetKeySecurity,\n  RegNtCallbackObjectContextCleanup,\n  RegNtPreRestoreKey,\n  RegNtPostRestoreKey,\n  RegNtPreSaveKey,\n  RegNtPostSaveKey,\n  RegNtPreReplaceKey,\n  RegNtPostReplaceKey,\n  RegNtPreQueryKeyName,\n  RegNtPostQueryKeyName,\n  RegNtPreSaveMergedKey,\n  RegNtPostSaveMergedKey,\n  MaxRegNtNotifyClass\n} REG_NOTIFY_CLASS;"
+ },
+ {
+  "kind": "Enum",
+  "name": "RTL_UPP_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RegKeyRestoreAndLoadHiveFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RegNotifyChangeValues",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RegOptions",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RegSaveKeyFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RegUnloadFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RegistryCreateDispositions",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "ReparseDataExFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "RtlDupUnicodeStrFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SECURITY_DESCRIPTOR_CONTROL",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/security-descriptor-control",
+  "syntax": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SECURITY_IMPERSONATION_LEVEL",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_security_impersonation_level",
+  "syntax": "typedef enum _SECURITY_IMPERSONATION_LEVEL {\n  SecurityAnonymous,\n  SecurityIdentification,\n  SecurityImpersonation,\n  SecurityDelegation\n} SECURITY_IMPERSONATION_LEVEL, *PSECURITY_IMPERSONATION_LEVEL;"
+ },
+ {
+  "kind": "Enum",
+  "name": "SECURITY_INFORMATION",
+  "url": "https://learn.microsoft.com/en-us/windows/win32/secauthz/security-information",
+  "syntax": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SEF_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SE_PRIVILEGE_ATTR",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SID_NAME_USE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_sid_name_use",
+  "syntax": "typedef enum _SID_NAME_USE {\n  SidTypeUser,\n  SidTypeGroup,\n  SidTypeDomain,\n  SidTypeAlias,\n  SidTypeWellKnownGroup,\n  SidTypeDeletedAccount,\n  SidTypeInvalid,\n  SidTypeUnknown,\n  SidTypeComputer,\n  SidTypeLabel,\n  SidTypeLogonSession\n} SID_NAME_USE, *PSID_NAME_USE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "SecurePoolFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "StandardAccessTypes",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "SymbolicLinkAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "THREAD_CREATE_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "TOKEN_TYPE",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_token_type",
+  "syntax": "typedef enum _TOKEN_TYPE {\n  TokenPrimary,\n  TokenImpersonation\n} TOKEN_TYPE;"
+ },
+ {
+  "kind": "Enum",
+  "name": "ThreadAccessRights",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "TokenAccessStateFlags",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "VBP_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "eKIRQL",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "eKPROCESSOR_MODE",
+  "url": null
+ }
+]

@@ -71,3 +71,19 @@ For each contributed package it has test cases for, the documentation project pu
 | Package | Test project | Size |
 |---------|--------------|------|
 {{tbdocs:packageTestRows}}
+
+## Package tools
+
+<div class="download-grid">
+<div class="download-card">
+
+### tbKMode Verifier
+
+Checks the tbKMode package's declarations, and drivers built with it, against what the Windows kernel exports and what the WDK's headers declare, for 32-bit and 64-bit drivers.
+
+<p class="download-meta">ZIP of a Node.js 20.11+ program and its database: extract it and run <code>node verify.mjs</code>.</p>
+
+<p class="download-actions"><a class="btn" href="tB/Packages/Contributed/tbKMode/tbKMode-verifier.zip" download>tbKMode-verifier.zip <span class="download-size">{{tbdocs:size:tB/Packages/Contributed/tbKMode/tbKMode-verifier.zip}}</span></a> <a class="download-doc" href="tB/Packages/Contributed/tbKMode/Verifier">Documentation<span class="sr-only"> for the tbKMode Verifier</span></a></p>
+
+</div>
+</div>
