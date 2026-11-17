@@ -617,16 +617,23 @@ export const SYMBOL_INDEX_FORMAT = 1;
 export const SYMBOL_INDEX_REL = "tB/symbols.json";
 
 /**
+ * Whether deriveSymbolIndex reads a page: one under /tB/, or a summary page.
+ * The lane that renders such a page reads its headings (headingsOf) and sends
+ * them back with it, so that the main thread need not, after the last chunk
+ * and with every lane waiting.
+ */
+export function isSymbolPage(p) {
+  return String(p.permalink ?? "").startsWith("/tB/") || SUMMARY_PAGES.has(p.srcRel);
+}
+
+/**
  * The build's pages as deriveSymbolIndex reads them: those under /tB/, and the
- * summary pages, with the headings of their rendered HTML.
+ * summary pages, with the headings of their rendered HTML, which are the
+ * page's `headings` when it has them and are read here when it has not.
  */
 export function symbolPages(pages) {
   return pages
-    .filter(
-      (p) =>
-        (String(p.permalink ?? "").startsWith("/tB/") || SUMMARY_PAGES.has(p.srcRel)) &&
-        typeof p.renderedContent === "string",
-    )
+    .filter((p) => isSymbolPage(p) && typeof p.renderedContent === "string")
     .map((p) => {
       const fm = p.frontmatter ?? {};
       // YAML reads an unquoted True, False or Null as a boolean or null, which would be
@@ -642,7 +649,7 @@ export function symbolPages(pages) {
         parent: fm.parent,
         symbols: fm.symbols == null ? null : [].concat(fm.symbols),
         excludeFromDocs: fm.exclude_from_docs == null ? null : [].concat(fm.exclude_from_docs).map(String),
-        headings: headingsOf(p.renderedContent),
+        headings: p.headings ?? headingsOf(p.renderedContent),
       };
     });
 }

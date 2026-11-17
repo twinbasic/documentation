@@ -11,6 +11,8 @@ export class SharedState {
   site = {};
   pageByDest = new Map();
   searchChunks = []; // Phase 17: per-chunk search entries from render workers
+  searchKeys = []; // the entries' settle keys, by chunk likewise
+  searchPacked = []; // the entries again, each chunk's packed by its lane for search-data.json and the index's lanes
 }
 
 export class Scheduler {

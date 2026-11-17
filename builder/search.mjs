@@ -35,13 +35,27 @@ import { stripHtml } from "./seo.mjs";
 import { encodeSpaces } from "./url.mjs";
 import { writeFileMkdirp } from "./write.mjs";
 
-// Phase 17 consolidation path: per-worker render handlers call
-// deriveSearchEntries on their chunk and stash the result on
-// state.searchChunks[i].  This function flattens those chunks (in chunk-
-// index order, matching the serial page iteration), renumbers `i` so it
-// is globally sequential, and writes the same byte-for-byte search-data.json
-// a single-pass derivation over all pages at once would have produced.
-export async function writeSearchDataFromChunks(searchChunks, destRoot, symbols) {
+// The search entries, final. Per-worker render handlers call
+// deriveSearchEntries on their chunk, and each render:i.submit() stashes the
+// result on state.searchChunks[i]. This flattens those chunks (in chunk-
+// index order, matching the serial page iteration), settles the labels,
+// renumbers `i` so it is globally sequential, and joins the symbols: the
+// entries a single-pass derivation over all pages at once would have produced.
+//
+// It is what stands between the last render chunk and the search index's
+// slices, with every lane waiting, so it does only what needs every entry:
+// what an entry alone decides is done by the lane that rendered it
+// (entryKeys, packSearchEntries), and the file is written afterwards
+// (writeSearchData).
+//
+// `keyChunks` are the entries' settle keys, chunk by chunk as the entries are
+// (entryKeys); without them settleLabels works them out.
+//
+// Returns the entries, and where each is among what the lanes sent:
+// `places[n]` is entry n's `[chunk, place in the chunk]`. An entry that
+// settleLabels dropped has no number, and its place is skipped.
+// writeSearchData and planIndexSegments find an entry's packed text by it.
+export function consolidateSearchEntries(searchChunks, symbols, keyChunks = null) {
   // searchChunks starts as `new Array(N)` -- holes, not undefined -- and
   // each render:i.submit() fills its own slot. Array.prototype.flat()
   // skips holes silently, so a slot that has not been filled yet does
@@ -65,13 +79,157 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot, symbols)
 
   const flat = searchChunks.flat();
   checkIndexTerms(flat);
-  const allEntries = settleLabels(flat);
-  for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
-  if (symbols?.length) joinSymbolsToEntries(allEntries, symbols);
-  const body = allEntries.map(renderEntryString).join(",");
-  const json = `{` + body + `\n}\n`;
+  const keys = keyChunks?.flat();
+  // Asserted: keys one out of step would settle every entry by another's.
+  if (keys && keys.length !== flat.length) {
+    throw new Error(`search index: ${flat.length} entries came with the settle keys of ${keys.length}`);
+  }
+  const entries = settleLabels(flat, keys);
+  // settleLabels keeps the order, so the kept entries are met in turn.
+  const places = new Array(entries.length);
+  let n = 0;
+  searchChunks.forEach((chunk, c) => {
+    for (let k = 0; k < chunk.length; k++) if (chunk[k] === entries[n]) places[n++] = [c, k];
+  });
+  if (n !== entries.length) {
+    throw new Error(`search index: ${entries.length} entries were kept, and ${n} of them are in the chunks`);
+  }
+  for (let idx = 0; idx < entries.length; idx++) entries[idx].i = idx;
+  if (symbols?.length) joinSymbolsToEntries(entries, symbols);
+  return { entries, places };
+}
+
+// The entries as search-data.json holds them, parsed: `{ "0": { doc, title,
+// content, ... }, ... }`, each with its fields in the file's order. The search
+// index writes them into search-index.json, and they are made from the entries
+// rather than parsed from the file's text, which would cost the build a parse
+// of 11 MB; test/search.test.mjs checks that the two are the same.
+export function searchDocs(entries) {
+  const docs = {};
+  for (const e of entries) {
+    const doc = { doc: e.doc, title: e.title, content: e.content };
+    if (e.names) doc.names = e.names;
+    if (e.qualified) doc.qualified = e.qualified;
+    if (e.primary) doc.primary = e.primary;
+    if (e.index?.length) doc.index = e.index;
+    if (e.index_also?.length) doc.index_also = e.index_also;
+    doc.url = e.url;
+    doc.relUrl = e.relUrl;
+    docs[e.i] = doc;
+  }
+  return docs;
+}
+
+// ── Between the lanes ──────────────────────────────────────────────────────
+//
+// The lane that renders a chunk writes its entries' text into a
+// SharedArrayBuffer (packSearchEntries), once, for two readers. The lanes that
+// build the search index read their entries from it in place
+// (readSearchEntries), and the main thread copies each entry's text from it
+// into search-data.json (searchDataBytes). The main thread gets the entries
+// too, as objects, and decides what only it can (the numbers, the dropped term
+// entries, the labels, the symbols); what it decided reaches the index's lanes
+// as a few KB beside each slice (planIndexSegments in search-index.mjs), not as
+// the entries all over again.
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+// A chunk's entries in one SharedArrayBuffer, each as the head and the tail of
+// its text in search-data.json (entryHead, entryTail), which together are a
+// JSON object of the fields known when the page is rendered: doc, title,
+// content, url and relUrl. First the count, then for each entry where its text
+// starts and where its tail does, then where the last entry's text ends
+// (uint32, in bytes from the texts' start); then the texts, with a comma
+// between them, so that any run of entries is the inside of a JSON array.
+export function packSearchEntries(entries) {
+  const count = entries.length;
+  const texts = new Array(count);
+  const words = new Uint32Array(2 * count + 2);
+  words[0] = count;
+  let at = 0;
+  for (let k = 0; k < count; k++) {
+    const head = entryHead(entries[k]);
+    const tail = entryTail(entries[k]);
+    texts[k] = head + tail;
+    words[1 + 2 * k] = at;
+    at += Buffer.byteLength(head);
+    words[2 + 2 * k] = at;
+    at += Buffer.byteLength(tail) + 1;
+  }
+  words[1 + 2 * count] = at;
+  const sab = new SharedArrayBuffer(words.byteLength + at);
+  new Uint32Array(sab, 0, words.length).set(words);
+  const { written } = encoder.encodeInto(texts.join(","), new Uint8Array(sab, words.byteLength));
+  // Asserted: a short write would leave an entry's text cut, and a reader's
+  // JSON.parse would say only where, not why.
+  if (written !== Math.max(0, at - 1)) throw new Error(`search entries: packed ${written} bytes, expected ${at - 1}`);
+  return sab;
+}
+
+// What packSearchEntries packed, to read in place. Entry k's text is `bytes`
+// from words[1 + 2k] to words[3 + 2k] - 1, the comma left out, and its tail
+// starts at words[2 + 2k].
+function packedEntries(sab) {
+  const count = new Uint32Array(sab, 0, 1)[0];
+  const words = new Uint32Array(sab, 0, 2 * count + 2);
+  return { count, words, bytes: Buffer.from(sab, words.byteLength) };
+}
+
+// Entries `from` to `to` (exclusive) of what packSearchEntries packed, each
+// `{ doc, title, content, url, relUrl }`.
+export function readSearchEntries(sab, from = 0, to = undefined) {
+  const { count, words, bytes } = packedEntries(sab);
+  const end = to ?? count;
+  if (from < 0 || end > count || from > end) {
+    throw new Error(`search entries: ${from} to ${end} is not within the chunk's ${count}`);
+  }
+  if (from === end) return [];
+  return JSON.parse(`[${decoder.decode(bytes.subarray(words[1 + 2 * from], words[1 + 2 * end] - 1))}]`);
+}
+
+// search-data.json's bytes, from the final entries, where each is among the
+// chunks (consolidateSearchEntries' `places`) and the chunks as their lanes
+// packed them: `{`, then each entry as renderEntryString writes it, with a
+// comma between them, then a line break, `}` and a line break. An entry's head
+// and tail are copied from its lane's buffer, so the main thread writes only
+// its number and the fields it got since.
+export function searchDataBytes(entries, places, packed) {
+  const chunks = packed.map(packedEntries);
+  const prefixes = entries.map((e) => `${e.i === 0 ? "{" : ","}"${e.i}": `);
+  const extras = entries.map(entryExtra);
+  let size = 3;
+  if (!entries.length) size += 1;
+  for (let n = 0; n < entries.length; n++) {
+    const [c, k] = places[n];
+    const { words } = chunks[c];
+    size += prefixes[n].length + words[3 + 2 * k] - 1 - words[1 + 2 * k];
+    if (extras[n]) size += Buffer.byteLength(extras[n]);
+  }
+  const out = Buffer.allocUnsafe(size);
+  let to = entries.length ? 0 : out.write("{", 0, "latin1");
+  for (let n = 0; n < entries.length; n++) {
+    const [c, k] = places[n];
+    const { words, bytes } = chunks[c];
+    const tail = words[2 + 2 * k];
+    to += out.write(prefixes[n], to, "latin1");
+    to += bytes.copy(out, to, words[1 + 2 * k], tail);
+    if (extras[n]) to += out.write(extras[n], to, "utf8");
+    to += bytes.copy(out, to, tail, words[3 + 2 * k] - 1);
+  }
+  to += out.write("\n}\n", to, "latin1");
+  // Asserted: the buffer is not zeroed, so a short count would write whatever
+  // was in memory into the file.
+  if (to !== size) throw new Error(`search-data.json: wrote ${to} bytes of ${size}`);
+  return out;
+}
+
+// Writes search-data.json; returns its bytes, which the link check reads, and
+// the entries as the file holds them (searchDocs).
+export async function writeSearchData({ entries, places }, packed, destRoot) {
+  const json = searchDataBytes(entries, places, packed);
   await writeFileMkdirp(path.join(destRoot, "assets/js/search-data.json"), json);
-  return { entries: allEntries.length, json };
+  return { entries: entries.length, json, docs: searchDocs(entries) };
 }
 
 // Pure-compute derivation: produces the search-data entry array
@@ -410,29 +568,65 @@ function boldLabels(html) {
 // becomes a secondary index term of the entry that holds it, unless a heading, a
 // page title, a term entry or a hand mark already answers it. Returns the
 // entries kept, each without its labels.
-export function settleLabels(entries) {
-  const key = (s) =>
-    stripHtml(String(s))
-      .toLowerCase()
-      .replace(/&[a-z]+;/g, " ")
-      .replace(/[^\p{L}\p{N}]+/gu, " ")
-      .trim();
+//
+// Two names are compared by their keys (labelKey). `keys` holds each entry's
+// (entryKeys), in the entries' order. The render lanes work them out and send
+// them beside the entries, which then hold no `labels` at all, so that this,
+// which every lane waits for, only compares: working the keys out here took
+// longer than everything else it does, and so did deleting a property from
+// every entry.
+export function settleLabels(entries, keys = entries.map((e) => entryKeys(e))) {
   const isTerm = (e) => e.relUrl.includes(`#${TERM_ID_PREFIX}`);
-  const mains = new Set(entries.flatMap((e) => (e.index ?? []).map(key)));
-  const kept = entries.filter((e) => !(isTerm(e) && mains.has(key(e.title))));
+  const mains = new Set();
+  for (const k of keys) for (const t of k.index) mains.add(t);
+  const kept = [];
+  const keptKeys = [];
+  entries.forEach((e, n) => {
+    if (isTerm(e) && mains.has(keys[n].title)) return;
+    kept.push(e);
+    keptKeys.push(keys[n]);
+  });
   const answered = new Set(mains);
-  for (const e of kept) {
-    answered.add(key(e.title));
-    answered.add(key(e.doc));
-    for (const t of e.index_also ?? []) answered.add(key(t));
-    if (isTerm(e)) for (const l of e.labels ?? []) answered.add(key(l));
-  }
-  for (const e of kept) {
-    const labels = (e.labels ?? []).filter((l) => !answered.has(key(l)));
-    if (labels.length) e.index_also = [...new Set([...(e.index_also ?? []), ...labels])];
-    delete e.labels;
-  }
+  kept.forEach((e, n) => {
+    const k = keptKeys[n];
+    answered.add(k.title);
+    answered.add(k.doc);
+    for (const t of k.also) answered.add(t);
+    if (k.labels.length && isTerm(e)) for (const l of k.labels) answered.add(l);
+  });
+  kept.forEach((e, n) => {
+    const k = keptKeys[n];
+    if (k.labels.length) {
+      const labels = k.written.filter((_, j) => !answered.has(k.labels[j]));
+      if (labels.length) e.index_also = [...new Set([...(e.index_also ?? []), ...labels])];
+    }
+    if ("labels" in e) delete e.labels;
+  });
   return kept;
+}
+
+// A name as settleLabels compares it: without its HTML, lowercased, an entity
+// and any run of other characters as one space.
+export function labelKey(s) {
+  return stripHtml(String(s))
+    .toLowerCase()
+    .replace(/&[a-z]+;/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+// The keys of everything settleLabels compares of one entry, and its labels as
+// written, which `labels` holds the keys of. `key` may be a labelKey that
+// remembers: a page's entries share its title.
+export function entryKeys(e, key = labelKey) {
+  return {
+    title: key(e.title),
+    doc: key(e.doc),
+    index: (e.index ?? []).map(key),
+    also: (e.index_also ?? []).map(key),
+    labels: (e.labels ?? []).map(key),
+    written: e.labels ?? [],
+  };
 }
 
 // Returns the heading-split sections plus the prose-before-first-heading
@@ -542,11 +736,11 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
 function normalizeSymbolUrl(u) {
   const s = String(u ?? "");
   const hashIdx = s.indexOf("#");
-  const pathPart = hashIdx === -1 ? s : s.slice(0, hashIdx);
-  const hash = hashIdx === -1 ? "" : s.slice(hashIdx);
-  const noIndex = pathPart.replace(/\/index(\.html)?$/, "");
-  const noTrailingSlash = noIndex.length > 1 && noIndex.endsWith("/") ? noIndex.slice(0, -1) : noIndex;
-  return noTrailingSlash + hash;
+  let pathPart = hashIdx === -1 ? s : s.slice(0, hashIdx);
+  if (pathPart.endsWith("/index")) pathPart = pathPart.slice(0, -"/index".length);
+  else if (pathPart.endsWith("/index.html")) pathPart = pathPart.slice(0, -"/index.html".length);
+  if (pathPart.length > 1 && pathPart.endsWith("/")) pathPart = pathPart.slice(0, -1);
+  return hashIdx === -1 ? pathPart : pathPart + s.slice(hashIdx);
 }
 
 // Joins `tB/symbols.json`'s in-memory symbols (each `{ name, container,
@@ -572,10 +766,17 @@ export function joinSymbolsToEntries(entries, symbols) {
   const moduleNames = new Set();
   for (const s of symbols ?? []) if (s.kind === "module") moduleNames.add(s.name.toLowerCase());
   const byUrl = new Map();
+  // The symbol index is in URL order, so a symbol is mostly at the URL of the
+  // one before it.
+  let url;
+  let bucket;
   for (const s of symbols ?? []) {
-    const key = normalizeSymbolUrl(s.url);
-    let bucket = byUrl.get(key);
-    if (!bucket) byUrl.set(key, (bucket = { names: new Set(), qualified: new Set(), primary: new Set() }));
+    if (s.url !== url || !bucket) {
+      url = s.url;
+      const key = normalizeSymbolUrl(url);
+      bucket = byUrl.get(key);
+      if (!bucket) byUrl.set(key, (bucket = { names: new Set(), qualified: new Set(), primary: new Set() }));
+    }
     bucket.names.add(s.name);
     if (s.container) bucket.qualified.add(`${s.container}.${s.name}`);
     if (isPrimarySymbol(s, moduleNames)) bucket.primary.add(s.name);
@@ -620,23 +821,35 @@ function isPrimarySymbol(s, moduleNames) {
 // symbols (most of them -- see WIP.Search.md's "Design" §2) produces the
 // exact same bytes as before the join existed.
 export function renderEntryString(e) {
+  return `"${e.i}": ` + entryHead(e) + entryExtra(e) + entryTail(e);
+}
+
+// An entry's text in three parts. The head and the tail hold what is known
+// when its page is rendered, and together are a JSON object of those fields:
+// the lane that renders the page writes them (packSearchEntries). The number
+// before them and the fields between them are known only once every page is
+// rendered.
+function entryHead(e) {
+  return (
+    `{\n` +
+    `    "doc": ${JSON.stringify(e.doc)},\n` +
+    `    "title": ${JSON.stringify(e.title)},\n` +
+    `    "content": ${JSON.stringify(e.content)},\n`
+  );
+}
+
+function entryExtra(e) {
   let extra = "";
   if (e.names) extra += `    "names": ${JSON.stringify(e.names)},\n`;
   if (e.qualified) extra += `    "qualified": ${JSON.stringify(e.qualified)},\n`;
   if (e.primary) extra += `    "primary": ${JSON.stringify(e.primary)},\n`;
   if (e.index?.length) extra += `    "index": ${JSON.stringify(e.index)},\n`;
   if (e.index_also?.length) extra += `    "index_also": ${JSON.stringify(e.index_also)},\n`;
-  return (
-    `"${e.i}": {\n` +
-    `    "doc": ${JSON.stringify(e.doc)},\n` +
-    `    "title": ${JSON.stringify(e.title)},\n` +
-    `    "content": ${JSON.stringify(e.content)},\n` +
-    extra +
-    `    "url": "${e.url}",\n` +
-    `    \n` +
-    `    "relUrl": "${e.relUrl}"\n` +
-    `  }`
-  );
+  return extra;
+}
+
+function entryTail(e) {
+  return `    "url": "${e.url}",\n` + `    \n` + `    "relUrl": "${e.relUrl}"\n` + `  }`;
 }
 
 // Content sanitiser. Port of the Liquid filter chain in the template's

@@ -29,11 +29,15 @@ import {
   mergeSlices,
   offlineSearchIndexJs,
   packTotals,
+  planIndexSegments,
   planIndexSlices,
   searchIndexFile,
+  sliceDocs,
   sliceVectors,
+  stemTwins,
   unpackTotals,
 } from "../builder/search-index.mjs";
+import { packSearchEntries, readSearchEntries } from "../builder/search.mjs";
 
 // A deterministic fixture of `count` entries.
 function fixture(count) {
@@ -118,6 +122,67 @@ describe("the split build is lunr()'s", () => {
     const sab = packTotals(totals);
     const vectors = lanes.map((l, s) => sliceVectors(lunr, l.state, unpackTotals(sab, s)));
     assert.equal(assembleIndexJson(lunr, vectors, invertedIndexJson(merged)), reference);
+  });
+
+  // As the build plans it: the entries stay where the render lanes packed
+  // them, chunk by chunk, and a slice says where its entries are and what the
+  // main thread decided about them since (planIndexSegments, sliceDocs). Some
+  // entries the lanes sent were dropped, so a run of a chunk skips them.
+  test("from the chunks the render lanes packed it is lunr()'s, byte for byte", () => {
+    const entries = Object.entries(docs).map(([id, doc]) => ({ ...doc, i: Number(id), url: `/base${doc.relUrl}` }));
+    // Chunks of uneven sizes, one of them empty, with an entry that was
+    // dropped after every third kept one and at both ends of a chunk.
+    const dropped = { doc: "Dropped", title: "gone", content: "never indexed", url: "/base/gone", relUrl: "/gone" };
+    const sizes = [1, 0, 17, 40, 2, 60];
+    const sent = [];
+    const places = [];
+    let n = 0;
+    for (const size of sizes) {
+      const chunk = [dropped];
+      for (let k = 0; k < size; k++, n++) {
+        places.push([sent.length, chunk.length]);
+        chunk.push(entries[n]);
+        if (n % 3 === 2) chunk.push(dropped);
+      }
+      chunk.push(dropped);
+      sent.push(chunk);
+    }
+    assert.equal(n, entries.length);
+    const packed = sent.map(packSearchEntries);
+    const read = (chunk, from, to) => readSearchEntries(packed[chunk], from, to);
+    const twins = [...stemTwins(lunr, entries)];
+    assert.deepEqual(twins, [...stemTwins(lunr, docs)]);
+
+    for (const count of [1, 4, 9, 119]) {
+      const plan = planIndexSegments(entries, places, count).map((p) => JSON.parse(JSON.stringify(p)));
+      assert.equal(plan.length, count);
+      // Every entry once, in order, under its own number, as the file holds it.
+      const readBack = Object.assign({}, ...plan.map((p) => sliceDocs(p, read)));
+      assert.deepEqual(Object.keys(readBack), Object.keys(docs));
+      for (const id of Object.keys(docs)) assert.deepEqual(readBack[id], { ...docs[id], url: entries[id].url });
+      const lanes = plan.map((p) => addSlice(lunr, sliceDocs(p, read), twins));
+      const { merged, totals } = mergeSlices(lanes.map((l) => l.added));
+      const sab = packTotals(totals);
+      const vectors = lanes.map((l, s) => sliceVectors(lunr, l.state, unpackTotals(sab, s)));
+      assert.equal(assembleIndexJson(lunr, vectors, invertedIndexJson(merged)), reference, `${count} slices`);
+    }
+  });
+
+  test("the build's slices are cut where planIndexSlices cuts them", () => {
+    const entries = Object.values(docs);
+    const places = entries.map((_, k) => [0, k]);
+    for (const count of [1, 2, 5, 37, 119, 120, 500]) {
+      const whole = planIndexSlices(lunr, docs, count);
+      const segments = planIndexSegments(entries, places, count);
+      assert.deepEqual(
+        segments.map((p) => [p.first, p.segments]),
+        whole.map((p) => {
+          const ids = Object.keys(p.docs).map(Number);
+          return [ids[0], [[0, ids[0], ids.at(-1) + 1]]];
+        }),
+      );
+    }
+    assert.deepEqual(planIndexSegments([], [], 4), [{ slice: 0, first: 0, segments: [], dropped: [], late: {} }]);
   });
 
   test("the slices hold every entry once, in order, none of them empty", () => {

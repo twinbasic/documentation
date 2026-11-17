@@ -95,7 +95,7 @@ import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeLlmsTxt } from "./llms-txt.mjs";
 import { markdownCopyRel } from "./markdown-copy.mjs";
-import { writeSearchDataFromChunks } from "./search.mjs";
+import { consolidateSearchEntries, writeSearchData } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
 import { buildSitePathsSync, deriveOfflineCss, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
@@ -123,7 +123,8 @@ import {
   loadSearchLunr,
   mergeSlices,
   packTotals,
-  planIndexSlices,
+  planIndexSegments,
+  stemTwins,
   writeSearchIndex,
 } from "./search-index.mjs";
 import { baselineWrites } from "./baseline.mjs";
@@ -916,6 +917,11 @@ const TASKS = {
       // renderJoin fires, scheduler.state.searchChunks[0..N-1] holds every
       // worker's per-chunk entries in pages-order.
       scheduler.state.searchChunks = new Array(N);
+      // By chunk likewise: the entries' settle keys (search.mjs, entryKeys),
+      // and the same entries as each lane packed them for search-data.json
+      // and the index's lanes (packSearchEntries).
+      scheduler.state.searchKeys = new Array(N);
+      scheduler.state.searchPacked = new Array(N);
       scheduler.state.checkChunks = [];
       // linkJoin compares against this: a chunk that never arrived would
       // otherwise mean the link check quietly examined fewer pages and
@@ -1003,8 +1009,12 @@ const TASKS = {
               }
               p.renderedContent = r.renderedContent;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
+              // A page of the symbol index, with the headings its lane read.
+              if (r.headings !== undefined) p.headings = r.headings;
             }
             state.searchChunks[i] = renderOut.searchEntries;
+            state.searchKeys[i] = renderOut.searchKeys;
+            state.searchPacked[i] = renderOut.searchPacked;
           },
         });
 
@@ -1068,56 +1078,112 @@ const TASKS = {
     submit() {},
   },
 
-  // Write search-data.json. Depends on renderJoin (every render:i.submit
-  // has stored its searchEntries in state.searchChunks[i]), prepDest
-  // (_site/ exists), and symbolIndex -- whose `symbols` (each `{ name,
-  // container, url, ... }`) this task joins onto the matching entries by
-  // URL before writing, adding the `names` / `qualified` fields (see
-  // WIP.Search.md's "Design" §2 and `joinSymbolsToEntries` in
-  // search.mjs). Result passes through to writeAux so its search.json
-  // field reaches writeOffline.  Heavy lifting (extractSections, stripHtml,
-  // sanitiseContent) ran on the workers; this task only joins, concatenates
-  // and renumbers.
-  searchData: {
-    expected: ["renderJoin", "prepDest", "symbolIndex"],
+  // ── From the last render chunk to the search index's slices ────────────────
+  //
+  // Once the last chunk is rendered, every lane waits for the main thread to
+  // run symbolPlace, searchEntries and indexSlices, which then gives the lanes
+  // the search index to build. So those three do only what needs every page:
+  // what one page or one entry decides was done by the lane that rendered it
+  // (cpu-worker.mjs, render: the headings, the settle keys, the entries packed
+  // for the index's lanes), what is known from the start is read during render
+  // (packageApi), and what only writes a file comes after them (symbolIndex,
+  // searchData). They are declared here, before every other task that can be
+  // ready at that moment, because the main thread takes the first READY task
+  // in declaration order.
+
+  // builder/package-api.json, the package half of the symbol index: a
+  // committed snapshot the build never regenerates, because regenerating it
+  // needs a twinBASIC install. Read while the lanes render.
+  packageApi: {
+    expected: ["dispatch"],
     runOnMain: true,
-    async execute({ symbolIndex }, ctx, state) {
-      if (ctx.opts.dryRun) return { entries: 0, json: "" };
-      return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot, symbolIndex.symbols);
+    async execute() {
+      try {
+        return JSON.parse(await fs.readFile(PACKAGE_API_PATH, "utf8"));
+      } catch (err) {
+        if (err.code !== "ENOENT") throw err;
+        throw new Error(
+          "builder/package-api.json is missing, and the symbol index needs it. " +
+            "Restore it from git, or regenerate it with node indexer/twin-index.mjs derive",
+        );
+      }
     },
     submit() {},
   },
 
-  // The search index: the entries searchData wrote to search-data.json and
-  // their lunr index, in search-index.json, which the page loads instead of
-  // building the index (builder/search-index.mjs; WIP.Search.md, "The
-  // pre-built index"), and the offline tree's search-index.js, which wraps it
-  // as a script. Six tasks, so that the work runs on the lanes:
+  // The symbol index, in memory: every name the reference documents, placed on
+  // the page or heading that documents it -- see builder/symbols.mjs.
+  // renderJoin because an entry's anchor is the id the render gave its
+  // heading; each page's headings came back with its render chunk.
+  // symbolIndex writes the file; searchEntries joins the symbols onto the
+  // search entries.
+  symbolPlace: {
+    expected: ["renderJoin", "packageApi"],
+    runOnMain: true,
+    execute({ packageApi: api }, _ctx, state) {
+      const pages = symbolPages(state.pages);
+      return { pages, api, result: deriveSymbolIndex({ pages, api }) };
+    },
+    submit() {},
+  },
+
+  // The search entries, final (search.mjs, consolidateSearchEntries). Depends
+  // on renderJoin (every render:i.submit has stored its entries in
+  // state.searchChunks[i]) and on symbolPlace, whose symbols (each `{ name,
+  // container, url, ... }`) are joined onto the matching entries by URL,
+  // adding the `names` / `qualified` fields (WIP.Search.md's "Design" §2).
+  // Heavy lifting (extractSections, stripHtml, sanitiseContent, the settle
+  // keys) ran on the workers; this task only settles, renumbers and joins.
+  // searchData writes them to search-data.json; indexSlices plans their index.
+  searchEntries: {
+    expected: ["renderJoin", "symbolPlace"],
+    runOnMain: true,
+    execute({ symbolPlace }, ctx, state) {
+      if (ctx.opts.dryRun) return { entries: [], places: [] };
+      return consolidateSearchEntries(state.searchChunks, symbolPlace.result.symbols, state.searchKeys);
+    },
+    submit() {},
+  },
+
+  // The search index: the search entries and their lunr index, in
+  // search-index.json, which the page loads instead of building the index
+  // (builder/search-index.mjs; WIP.Search.md, "The pre-built index"), and the
+  // offline tree's search-index.js, which wraps it as a script. Six tasks, so
+  // that the work runs on the lanes:
   //
-  //   indexSlices      main  cuts the entries into one slice per lane
+  //   indexSlices      main  cuts the entries into slices, two for each lane
   //   indexAdd:i       lane  adds slice i to a builder that stays on the lane
   //   indexMerge       main  merges the slices' postings; broadcasts the totals
   //   indexTerms       main  writes the inverted index's JSON, meanwhile
   //   indexVectors:i   lane  slice i's field vectors, on indexAdd:i's lane
   //   searchIndex      main  joins the JSON and writes both files
   //
+  // The entries themselves never leave the lanes for this: each render lane
+  // packed its chunk's into a SharedArrayBuffer (state.searchPacked), all of
+  // which every lane is sent here, and a slice's payload says only where its
+  // entries are and what searchEntries decided about them since
+  // (planIndexSegments).
+  //
   // The offline file is written here rather than by writeOffline so that the
   // rest of the offline tree need not wait for the index; archiveLate
   // deflates it for the help archive.
   indexSlices: {
-    expected: ["searchData"],
+    expected: ["searchEntries"],
     runOnMain: true,
-    execute({ searchData }, ctx) {
-      if (ctx.opts.dryRun) return { entries: 0, slices: 0, docs: {}, payloads: [] };
-      // The text the build wrote, so that what is indexed is what the file holds.
-      const docs = JSON.parse(searchData.json);
-      const entries = Object.keys(docs).length;
-      const payloads = planIndexSlices(loadSearchLunr(), docs, indexSliceCount(entries, ctx.workerCount));
-      return { entries, slices: payloads.length, docs, payloads };
+    execute({ searchEntries: { entries, places } }, ctx) {
+      if (ctx.opts.dryRun) return { entries: 0, slices: 0, payloads: [], twins: [] };
+      const payloads = planIndexSegments(entries, places, indexSliceCount(entries.length, ctx.workerCount));
+      const twins = [...stemTwins(loadSearchLunr(), entries)];
+      return { entries: entries.length, slices: payloads.length, payloads, twins };
     },
-    submit(out, _state, scheduler) {
-      const { payloads } = out;
-      delete out.payloads; // in the lanes' payload now; the results map need not keep it
+    submit(out, state, scheduler) {
+      const { payloads, twins } = out;
+      // In the lanes' payload now; the results map need not keep them.
+      delete out.payloads;
+      delete out.twins;
+      // Before the task is marked done, so that it is queued on every lane
+      // before one can claim an indexAdd:i.
+      if (payloads.length) scheduler.pool.broadcastTaskData("indexEntries", { chunks: state.searchPacked, twins });
       fanOut(scheduler, {
         from: "indexSlices",
         prefix: "indexAdd",
@@ -1126,7 +1192,7 @@ const TASKS = {
         joins: ["indexMerge"],
         ganttSection: "Index",
         priority: 2,
-        describe: (p) => [`slice ${p.slice}: ${Object.keys(p.docs).length} entries`],
+        describe: (p) => [`slice ${p.slice}: entries from ${p.first}`],
       });
       fanOut(scheduler, {
         from: "indexSlices",
@@ -1178,13 +1244,13 @@ const TASKS = {
   },
 
   // Joins the index's JSON and writes search-index.json and the offline
-  // tree's search-index.js. indexVectors:i are added to `expected` by
-  // indexSlices.submit.
+  // tree's search-index.js, with the entries as searchData wrote them.
+  // indexVectors:i are added to `expected` by indexSlices.submit.
   searchIndex: {
-    expected: ["indexSlices", "indexMerge", "indexTerms"],
+    expected: ["indexSlices", "indexMerge", "indexTerms", "searchData"],
     runOnMain: true,
     async execute(inputs, ctx, state) {
-      const { indexSlices: plan, indexTerms } = inputs;
+      const { indexSlices: plan, indexTerms, searchData } = inputs;
       if (ctx.opts.dryRun) return { entries: 0, slices: 0, bytes: 0 };
       const vectors = [];
       for (let s = 0; s < plan.slices; s++) {
@@ -1193,33 +1259,37 @@ const TASKS = {
         vectors.push(v);
       }
       const json = assembleIndexJson(loadSearchLunr(), vectors, indexTerms.json);
-      const written = await writeSearchIndex(ctx.destRoot, json, plan.docs, { offline: !skipsOffline(ctx, state) });
+      const written = await writeSearchIndex(ctx.destRoot, json, searchData.docs, {
+        offline: !skipsOffline(ctx, state),
+      });
       return { ...written, slices: plan.slices };
     },
     submit() {},
   },
 
-  // Write tB/symbols.json, the symbol index the IDE help add-in reads -- see
-  // builder/symbols.mjs. renderJoin because an entry's anchor is the id the
-  // render gave its heading, read from the HTML; prepDest for the tree. The
-  // package half comes from builder/package-api.json, a committed snapshot the
-  // build never regenerates, because regenerating it needs a twinBASIC install.
-  symbolIndex: {
-    expected: ["renderJoin", "prepDest"],
+  // Write search-data.json, from the entries searchEntries settled, each
+  // one's text copied from the buffer its render lane packed it into
+  // (search.mjs, searchDataBytes); prepDest for the tree. The result passes
+  // through writeAux, so that its `json`, the file's bytes, reaches the link
+  // check; `docs`, the entries as the file holds them, are searchIndex's.
+  // After the index's tasks in this list: the lanes are adding their slices
+  // while this writes.
+  searchData: {
+    expected: ["searchEntries", "prepDest"],
     runOnMain: true,
-    async execute(_, ctx, state) {
-      let api;
-      try {
-        api = JSON.parse(await fs.readFile(PACKAGE_API_PATH, "utf8"));
-      } catch (err) {
-        if (err.code !== "ENOENT") throw err;
-        throw new Error(
-          "builder/package-api.json is missing, and the symbol index needs it. " +
-            "Restore it from git, or regenerate it with node indexer/twin-index.mjs derive",
-        );
-      }
-      const pages = symbolPages(state.pages);
-      const result = deriveSymbolIndex({ pages, api });
+    async execute({ searchEntries }, ctx, state) {
+      if (ctx.opts.dryRun) return { entries: 0, json: "", docs: {} };
+      return writeSearchData(searchEntries, state.searchPacked, ctx.destRoot);
+    },
+    submit() {},
+  },
+
+  // Write tB/symbols.json, the symbol index the IDE help add-in reads, from
+  // what symbolPlace placed -- see builder/symbols.mjs; prepDest for the tree.
+  symbolIndex: {
+    expected: ["symbolPlace", "prepDest"],
+    runOnMain: true,
+    async execute({ symbolPlace: { pages, api, result } }, ctx) {
       const gaps = reportableGaps(result, pages, api);
       const json = ctx.opts.dryRun ? "" : serializeSymbolIndex(result, api);
       if (json) await writeFileMkdirp(path.join(ctx.destRoot, SYMBOL_INDEX_REL), json);
@@ -1231,10 +1301,6 @@ const TASKS = {
         urls: [...new Set(result.symbols.map((s) => s.url))],
         gaps: gaps.length,
         unplaced: result.unplaced,
-        // Consumed by searchData's join (see joinSymbolsToEntries in
-        // search.mjs), not written anywhere itself -- symbolIndex's own
-        // file output is tB/symbols.json, above.
-        symbols: result.symbols,
         // The file's text, for the add-in's copy (addin-index.mjs) and its
         // project file (addinProject).
         json,

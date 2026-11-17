@@ -17,8 +17,9 @@ import { createMarkdownIt, renderPhase } from "./render.mjs";
 import { markdownCopy, markdownCopyRel } from "./markdown-copy.mjs";
 import { navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
-import { deriveSearchEntries } from "./search.mjs";
-import { addSlice, loadSearchLunr, sliceVectors, unpackTotals } from "./search-index.mjs";
+import { deriveSearchEntries, entryKeys, labelKey, packSearchEntries, readSearchEntries } from "./search.mjs";
+import { addSlice, loadSearchLunr, sliceDocs, sliceVectors, unpackTotals } from "./search-index.mjs";
+import { headingsOf, isSymbolPage } from "./symbols.mjs";
 import { computeChunkSeo } from "./seo.mjs";
 import { pictureSvgOutputs, pngPictures } from "./theme-pictures.mjs";
 import { deriveOfflinePage, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
@@ -240,10 +241,14 @@ const handlers = {
   // One slice of the search index (search-index.mjs, step 1): its entries
   // added to a builder that stays on this lane, for the indexVectors:i pinned
   // here; what it returns goes to indexMerge.
+  // The slice's entries are read from the buffers the render lanes packed
+  // them into, with what indexSlices decided since beside it in the payload.
   async indexAdd(taskIdx) {
-    const { slice, docs, twins } = await fanOutPayload(taskIdx);
+    const plan = await fanOutPayload(taskIdx);
+    const { chunks, twins } = await taskData("indexEntries");
+    const docs = sliceDocs(plan, (chunk, from, to) => readSearchEntries(chunks[chunk], from, to));
     const { state, added } = addSlice(loadSearchLunr(), docs, twins);
-    _indexSlices.set(slice, state);
+    _indexSlices.set(plan.slice, state);
     return added;
   },
 
@@ -368,11 +373,22 @@ const handlers = {
     }
     _pendingFlush.push(batch);
 
-    // Per-chunk search entries; consolidated on main during searchData.
+    // Per-chunk search entries; consolidated on main during searchEntries.
     // Drop `sourcePage` (workers hold cloned page objects, not master
     // refs) and `i` (chunk-local indices are meaningless; main assigns
-    // global indices during consolidation).
-    const searchEntries = deriveSearchEntries(chunk, env.site).map((e) => ({
+    // global indices during consolidation). Beside them go the keys
+    // settleLabels compares each by, with its labels: worked out here rather
+    // than on the main thread after the last chunk, when every lane waits
+    // for it.
+    const keyOf = new Map();
+    const key = (s) => {
+      let k = keyOf.get(s);
+      if (k === undefined) keyOf.set(s, (k = labelKey(s)));
+      return k;
+    };
+    const derived = deriveSearchEntries(chunk, env.site);
+    const searchKeys = derived.map((e) => entryKeys(e, key));
+    const searchEntries = derived.map((e) => ({
       doc: e.doc,
       title: e.title,
       content: e.content,
@@ -381,7 +397,6 @@ const handlers = {
       index: e.index,
       index_also: e.index_also,
       indexWritten: e.indexWritten,
-      labels: e.labels,
     }));
 
     return {
@@ -389,8 +404,14 @@ const handlers = {
         destPath: p.destPath,
         renderedContent: p.renderedContent,
         offlineMisses: p.offlineMisses,
+        // For the symbol index, which every lane waits for likewise.
+        headings: isSymbolPage(p) && typeof p.renderedContent === "string" ? headingsOf(p.renderedContent) : undefined,
       })),
       searchEntries,
+      searchKeys,
+      // The same entries for the lanes that build the search index, which
+      // read them from here: the main thread never sends them on.
+      searchPacked: packSearchEntries(searchEntries),
     };
   },
 };

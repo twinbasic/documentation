@@ -19,7 +19,8 @@ const COLORS = {
 // worker lanes go between Spine and Write. Render's main-thread tasks
 // (dispatch, prepDest, prepPageDirs) are drawn in Spine. Index is the
 // search index's tasks (tbdocs.mjs: indexSlices ... searchIndex), on the
-// lanes and on the main thread.
+// lanes and on the main thread, with the two the lanes wait for before
+// them (symbolPlace, searchEntries).
 const BANDS = ["Seeds", "Spine", "Write", "Index", "Check"];
 const BAND_OF = { Render: "Spine" };
 
@@ -46,10 +47,11 @@ export const GANTT_SECTION = {
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
-  deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine", downloadSizes: "Spine",
+  deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine", downloadSizes: "Spine", packageApi: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", symbolIndex: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",
+  symbolPlace: "Index", searchEntries: "Index",
   indexSlices: "Index", indexMerge: "Index", indexTerms: "Index", searchIndex: "Index",
   archivePlan: "Write", archiveLate: "Write", helpArchive: "Write",
   writeOffline: "Write", bookPayload: "Write", writePdf: "Write",

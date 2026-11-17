@@ -184,11 +184,11 @@ export function exactName(name) {
 // The qualified names that the stemmer merges with another name's
 // (`Printer.Font` and `Printer.Fonts` both stem to `printer.font`), which
 // would otherwise tie in `qualified`. Keyed by the name as the tokenizer
-// writes it.
+// writes it. `docs` are the entries by number, or in an array.
 export function stemTwins(lunr, docs) {
   const byStem = new Map();
-  for (const id in docs) {
-    for (const token of lunr.tokenizer(docs[id].qualified || "")) {
+  for (const doc of Object.values(docs)) {
+    for (const token of lunr.tokenizer(doc.qualified || "")) {
       const stem = lunr.stemmer(lunr.trimmer(token.clone())).toString();
       if (!byStem.has(stem)) byStem.set(stem, new Set());
       byStem.get(stem).add(token.str);
@@ -325,27 +325,108 @@ export function indexSliceCount(entries, lanes) {
 // as much as its text is long, and the entries run from a line to a page.
 export function planIndexSlices(lunr, docs, count) {
   const ids = Object.keys(docs);
-  const n = Math.max(1, Math.min(count, ids.length));
   const twins = [...stemTwins(lunr, docs)];
+  return cutIndexSlices(
+    ids.map((id) => docs[id]),
+    count,
+  ).map(([from, to], s) => ({
+    slice: s,
+    docs: Object.fromEntries(ids.slice(from, to).map((id) => [id, docs[id]])),
+    twins,
+  }));
+}
+
+// Where `count` slices of the entries `docs`, an array, start and end: each a
+// `[from, to)` of contiguous entries, of about equal text. At most one slice
+// for each entry, and at least one.
+export function cutIndexSlices(docs, count) {
+  const n = Math.max(1, Math.min(count, docs.length));
   const weight = (doc) => 64 + (doc.content?.length ?? 0) + (doc.title?.length ?? 0) + (doc.names?.length ?? 0);
   let total = 0;
-  for (const id of ids) total += weight(docs[id]);
-  const slices = Array.from({ length: n }, (_, s) => ({ slice: s, docs: {}, twins }));
+  for (const doc of docs) total += weight(doc);
+  const cuts = [[0, 0]];
   let s = 0;
-  let inSlice = 0;
   let sofar = 0;
-  ids.forEach((id, k) => {
+  docs.forEach((doc, k) => {
     // Move on once this slice has an entry and its share, or once the
     // entries left are only enough for one in each slice still to come.
-    if (s < n - 1 && inSlice > 0 && (sofar >= ((s + 1) * total) / n || ids.length - k <= n - 1 - s)) {
+    if (s < n - 1 && k > cuts[s][0] && (sofar >= ((s + 1) * total) / n || docs.length - k <= n - 1 - s)) {
+      cuts.push([k, k]);
       s++;
-      inSlice = 0;
     }
-    slices[s].docs[id] = docs[id];
-    inSlice++;
-    sofar += weight(docs[id]);
+    cuts[s][1] = k + 1;
+    sofar += weight(doc);
   });
-  return slices;
+  return cuts;
+}
+
+// The build's slices (tbdocs.mjs, indexSlices): the same cuts as
+// planIndexSlices makes, but each slice says where its entries are rather than
+// holding them. The lanes that rendered the pages packed the entries, chunk by
+// chunk (search.mjs, packSearchEntries), and a lane reads its slice's from
+// there (sliceDocs); what was decided since, with every entry known, comes
+// with the slice:
+//
+//   first     the number of its first entry; the rest follow in order
+//   segments  `[chunk, from, to)` runs of the chunks' entries, in order
+//   dropped   the places, counted along those runs, of entries that were
+//             dropped (settleLabels) and so have no number
+//   late      by number, the fields of an entry that its packed text does not
+//             hold: its symbols' `names`, `qualified` and `primary`, and its
+//             index terms, `index` and `index_also`
+//
+// `entries` are the final entries in order, and `places[n]` is entry n's
+// `[chunk, place in the chunk]` (search.mjs, consolidateSearchEntries). The
+// stem twins come apart from the slices, once for all of them.
+export function planIndexSegments(entries, places, count) {
+  // One slice at least, as cutIndexSlices cuts: an empty one for no entries.
+  if (!entries.length) return [{ slice: 0, first: 0, segments: [], dropped: [], late: {} }];
+  return cutIndexSlices(entries, count).map(([from, to], slice) => {
+    const segments = [];
+    const dropped = [];
+    const late = {};
+    let run = null;
+    let before = 0; // the entries of the runs before this one
+    for (let n = from; n < to; n++) {
+      const [chunk, place] = places[n];
+      if (run && run[0] === chunk) {
+        // Places a run passes over held entries that were dropped.
+        for (let gone = run[2]; gone < place; gone++) dropped.push(before + gone - run[1]);
+        run[2] = place + 1;
+      } else {
+        if (run) before += run[2] - run[1];
+        run = [chunk, place, place + 1];
+        segments.push(run);
+      }
+      const e = entries[n];
+      const fields = {};
+      if (e.names) fields.names = e.names;
+      if (e.qualified) fields.qualified = e.qualified;
+      if (e.primary) fields.primary = e.primary;
+      if (e.index?.length) fields.index = e.index;
+      if (e.index_also?.length) fields.index_also = e.index_also;
+      if (Object.keys(fields).length) late[n] = fields;
+    }
+    return { slice, first: from, segments, dropped, late };
+  });
+}
+
+// One slice's entries as addSlice takes them, by number, from what
+// planIndexSegments planned for it and the chunks' packed entries, read by
+// `read(chunk, from, to)`.
+export function sliceDocs({ first, segments, dropped, late }, read) {
+  const gone = new Set(dropped);
+  const docs = {};
+  let along = 0;
+  let id = first;
+  for (const [chunk, from, to] of segments) {
+    for (const doc of read(chunk, from, to)) {
+      if (gone.has(along++)) continue;
+      if (late[id]) Object.assign(doc, late[id]);
+      docs[id++] = doc;
+    }
+  }
+  return docs;
 }
 
 // Step 1: one slice's entries, added to a builder of its own. Returns the

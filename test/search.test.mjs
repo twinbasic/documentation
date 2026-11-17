@@ -21,12 +21,19 @@ import path from "node:path";
 import os from "node:os";
 import {
   checkIndexTerms,
+  consolidateSearchEntries,
   deriveSearchEntries,
+  entryKeys,
   joinSymbolsToEntries,
+  labelKey,
+  packSearchEntries,
   parseIndexTerms,
+  readSearchEntries,
   renderEntryString,
+  searchDataBytes,
+  searchDocs,
   settleLabels,
-  writeSearchDataFromChunks,
+  writeSearchData,
 } from "../builder/search.mjs";
 import { createMarkdownIt } from "../builder/render.mjs";
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
@@ -1910,24 +1917,155 @@ describe("settleLabels: what the bold labels come to", () => {
         { ...e("Add Reference", "/p#term:add-reference"), i: 1 },
         { ...e("B", "/p#b"), i: 2, labels: ["New Thing"] },
       ];
-      const { json, entries } = await writeSearchDataFromChunks([chunk], dir, []);
+      const packed = [packSearchEntries(chunk)];
+      const settled = consolidateSearchEntries([chunk], []);
+      const { json, entries } = await writeSearchData(settled, packed, dir);
       assert.equal(entries, 2);
-      assert.doesNotMatch(json, /labels/);
-      assert.deepEqual(Object.keys(JSON.parse(json)), ["0", "1"]);
+      assert.doesNotMatch(String(json), /labels/);
+      assert.deepEqual(Object.keys(JSON.parse(String(json))), ["0", "1"]);
+      assert.equal(fs.readFileSync(path.join(dir, "assets/js/search-data.json"), "utf8"), String(json));
       const plain = [
         { ...e("A", "/p#a"), i: 0 },
         { ...e("B", "/p#b"), i: 1 },
       ];
       const before = plain.map(renderEntryString).join(",");
-      const after = await writeSearchDataFromChunks([plain.map((x) => ({ ...x }))], dir, []);
-      assert.equal(after.json, `{${before}\n}\n`);
+      const copy = plain.map((x) => ({ ...x }));
+      const after = await writeSearchData(consolidateSearchEntries([copy], []), [packSearchEntries(copy)], dir);
+      assert.equal(String(after.json), `{${before}\n}\n`);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
+  // The labels reach the main thread in the keys (entryKeys' `written`), beside
+  // the entries, which hold none.
   test("the worker sends the labels to the main thread", () => {
-    assert.match(read("builder/cpu-worker.mjs"), /labels: e\.labels,/);
+    const worker = read("builder/cpu-worker.mjs");
+    assert.match(worker, /const searchKeys = derived\.map\(\(e\) => entryKeys\(e, key\)\);/);
+    assert.match(worker, /searchEntries,\r?\n\s+searchKeys,/);
+    assert.deepEqual(entryKeys(e("T", "/p", { labels: ["Copy Path"] })).written, ["Copy Path"]);
+  });
+
+  // The render lanes work the keys out (entryKeys) and the main thread only
+  // compares them: the outcome must be what settleLabels makes on its own.
+  test("with the keys a lane worked out, the outcome is the same", () => {
+    const make = () => [
+      e("Find &amp; <em>Replace</em>", "/p#find", { index: ["Debug-Console"], index_also: ["call  stack"] }),
+      e("Debug Console", "/p#term:debug-console"),
+      e("Menu Item", "/p#term:menu-item", { labels: ["Sub Item"] }),
+      e("Holder", "/p#h", {
+        doc: "Status Bar",
+        labels: ["find replace", "Call Stack", "Sub Item", "Status bar", "New"],
+      }),
+      e("Other", "/p#o", { labels: ["Menu  item", "Straße Neu"], index_also: ["kept"] }),
+    ];
+    const alone = settleLabels(make());
+    // As a lane sends them: the keys apart, and no `labels` on an entry.
+    const sent = make().map(({ labels: _labels, ...x }) => x);
+    const keyed = settleLabels(
+      sent,
+      make().map((x) => entryKeys(x)),
+    );
+    assert.deepEqual(keyed, alone);
+    assert.ok(alone.every((x) => !("labels" in x)));
+    assert.deepEqual(alone.find((x) => x.title === "Holder").index_also, ["New"]);
+    assert.deepEqual(alone.find((x) => x.title === "Other").index_also, ["kept", "Straße Neu"]);
+    assert.equal(labelKey("Find &amp; <em>Replace</em>"), "find replace");
+    // Through consolidateSearchEntries, chunk by chunk.
+    const chunked = consolidateSearchEntries(
+      [sent.slice(0, 2), sent.slice(2)],
+      [],
+      [
+        make()
+          .slice(0, 2)
+          .map((x) => entryKeys(x)),
+        make()
+          .slice(2)
+          .map((x) => entryKeys(x)),
+      ],
+    );
+    assert.deepEqual(
+      chunked.entries.map(({ i: _i, ...x }) => x),
+      alone,
+    );
+    assert.throws(() => consolidateSearchEntries([sent], [], [[]]), /5 entries came with the settle keys of 0/);
+  });
+});
+
+// The entries between the threads (search.mjs, "Between the lanes"): the lane
+// that renders a chunk packs its entries' text once, the main thread copies it
+// into search-data.json around what it decided since, and the search index's
+// lanes read their entries from it. All three must hold what the entries hold.
+describe("packed entries: one text for the file and for the index's lanes", () => {
+  const entry = (n, extra = {}) => ({
+    doc: `Page ${n % 3} \u{2014} "quoted"`,
+    title: n % 4 === 0 ? "" : `Title ${n} <em>\u{df}</em>`,
+    content: n % 5 === 0 ? "" : `Text ${n} \\ back\u{2028}slash &amp; \u{1F600} `,
+    url: `/base/P%20${n}#s`,
+    relUrl: `/P ${n}#s${n % 7 === 3 ? "term:x" : ""}`,
+    ...extra,
+  });
+  // Three chunks, one of them empty, with index terms, labels and a term entry
+  // that a main term drops.
+  const chunks = () => [
+    [entry(0, { index: ["Alpha Beta"] }), entry(1), entry(2, { labels: ["New Thing"], index_also: ["gamma"] })],
+    [],
+    [
+      { ...entry(3), title: "alpha beta", relUrl: "/P 3#term:alpha-beta" },
+      entry(4, { labels: ["Other One"] }),
+      entry(5),
+      entry(6),
+    ],
+  ];
+  const symbols = [
+    { name: "Left", container: "Strings", kind: "function", url: "/P 1#s" },
+    { name: "Strings", container: null, kind: "module", url: "/P 1#s" },
+    { name: "Caf\u{e9}", container: "T", kind: "property", url: "/P 5#s" },
+  ];
+
+  test("search-data.json is each entry as renderEntryString writes it", () => {
+    const sent = chunks();
+    const packed = sent.map(packSearchEntries);
+    const { entries, places } = consolidateSearchEntries(sent, symbols);
+    assert.equal(entries.length, 6, "the term entry a main term answers is dropped");
+    assert.deepEqual(places, [
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [2, 1],
+      [2, 2],
+      [2, 3],
+    ]);
+    const text = String(searchDataBytes(entries, places, packed));
+    assert.equal(text, `{${entries.map(renderEntryString).join(",")}\n}\n`);
+    assert.match(text, /"names": "Left Strings"/);
+    assert.match(text, /"index_also": \["gamma","New Thing"\]/);
+    // And the entries the index's file holds are the file's, in its order.
+    assert.equal(JSON.stringify(searchDocs(entries)), JSON.stringify(JSON.parse(text)));
+  });
+
+  test("no entry at all is an empty object", () => {
+    const { entries, places } = consolidateSearchEntries([[]], []);
+    assert.equal(String(searchDataBytes(entries, places, [packSearchEntries([])])), "{\n}\n");
+  });
+
+  test("a lane reads back the fields a page's render knows, for any run of a chunk", () => {
+    const sent = chunks()[2];
+    const sab = packSearchEntries(sent);
+    assert.ok(sab instanceof SharedArrayBuffer);
+    const fields = ({ doc, title, content, url, relUrl }) => ({ doc, title, content, url, relUrl });
+    assert.deepEqual(readSearchEntries(sab), sent.map(fields));
+    assert.deepEqual(readSearchEntries(sab, 1, 3), sent.slice(1, 3).map(fields));
+    assert.deepEqual(readSearchEntries(sab, 3, 4), sent.slice(3).map(fields));
+    assert.deepEqual(readSearchEntries(sab, 2, 2), []);
+    assert.deepEqual(readSearchEntries(packSearchEntries([])), []);
+    assert.throws(() => readSearchEntries(sab, 2, 5), /not within the chunk's 4/);
+  });
+
+  test("a chunk that never arrived is refused, not left out", () => {
+    const holes = new Array(2);
+    holes[0] = chunks()[0];
+    assert.throws(() => consolidateSearchEntries(holes, []), /1 of 2 chunks never arrived/);
   });
 });
 
