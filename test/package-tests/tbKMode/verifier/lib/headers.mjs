@@ -188,6 +188,9 @@ const hex = (v) => {
 };
 const num = (v) => (v >= -9999n && v <= 9999n ? `${v}` : `${v} (${hex(v)})`);
 
+/** A Try routine: ExTryToAcquireFastMutex, KeTryToAcquireSpinLockAtDpcLevel, IoTryQueueWorkItem. */
+const TRY_ROUTINE = /^[A-Z][a-z]+Try[A-Z]/;
+
 /** The tag of a structure or union the database records under a name or an alias, or null. */
 function tagOf(db, name, arch) {
   if (db.types[name]) return name;
@@ -449,6 +452,14 @@ function findingsFor(parsed, model, db, config) {
             say(`is ${p.type}, ${tb.size} bytes; the WDK's ${shown} takes ${kindText(ck)}, ${cs} bytes`);
         }
         const isSub = member.kind === "sub";
+        // A Sub may leave a result unread, except where the result is the point of the call: a
+        // Try routine's BOOLEAN says whether it acquired what it tried to (owner).
+        if (isSub && ret === "u1" && TRY_ROUTINE.test(shown))
+          add(
+            "error",
+            `return:${member.name}`,
+            `it is a Sub, and the WDK's ${shown} returns a BOOLEAN, whether it succeeded: the caller cannot tell`,
+          );
         if (isSub || !member.returnType) continue;
         if (ret === "v0") {
           add("warning", `return:${member.name}`, `it is a Function, and the WDK's ${shown} returns nothing`);

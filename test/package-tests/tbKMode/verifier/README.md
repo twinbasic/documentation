@@ -34,7 +34,8 @@ node verify.mjs wdk
   offset, and a field shorter than C's), laid out as twinBASIC lays a Type out; each Enum member
   and Const against the value of its name, as a Long, or as a LongLong when the value needs 64
   bits; and each Declare against the prototype of its entry point (how many parameters, how each
-  is passed and its size, what it returns). A parameter passed `ByRef` passes its variable's
+  is passed and its size, what it returns; a `Sub` for a Try routine, whose `BOOLEAN` says whether
+  it succeeded, is an error). A parameter passed `ByRef` passes its variable's
   address, so it is compared with what the routine's pointer points to: a structure where the
   routine takes the address of a pointer is an error, and so is a variable smaller than what the
   pointer points to (`As Any`, `void *`, a structure the headers do not define and a

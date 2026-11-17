@@ -338,6 +338,9 @@ Public Declare PtrSafe Sub Ln Lib "ntoskrnl.exe" (L As LongPtr)
 Public Declare PtrSafe Sub Dn Lib "ntoskrnl.exe" (D As BIG)
 Public Declare PtrSafe Sub Sn Lib "ntoskrnl.exe" (S As Integer, T As SMALL)
 Public Declare PtrSafe Sub Kn Lib "ntoskrnl.exe" (D As LongPtr, ByVal x As LongPtr, v As Any, q As LongLong, u As BIG, e As LongPtr, f As Byte, s As SMALL)
+Public Declare PtrSafe Sub ExTryThing Lib "ntoskrnl.exe" ()
+Public Declare PtrSafe Sub ExTryLogical Lib "ntoskrnl.exe" ()
+Public Declare PtrSafe Sub ExGetByte Lib "ntoskrnl.exe" ()
 End Module
 `;
 
@@ -366,6 +369,10 @@ function pointerWdk() {
     // structure for itself, anything for an undefined structure, a byte for a byte buffer, a
     // variable-length structure for its fixed part.
     Kn: "v0 p>p>s16:_BIG p>v0 p>v0 p>U8:_LARGE p>s16:_BIG p>s?:_EPROCESS p>u1 p>s8:_VAR",
+    // A Sub is reported only for a Try routine's BOOLEAN.
+    ExTryThing: "u1",
+    ExTryLogical: "u4",
+    ExGetByte: "u1",
   };
   const at = (sig, n) => sig.replaceAll("p>", `p${n}>`);
   return {
@@ -392,6 +399,8 @@ test("a ByRef parameter is compared with what the routine's pointer points to", 
   assert.deepEqual(got, [
     "Dn x64 error: parameter 1 (D) is BIG, a structure; the WDK's Dn takes a pointer to a pointer to struct _BIG there: the pointer the routine reads or writes is the structure's first bytes",
     "Dn x86 error: parameter 1 (D) is BIG, a structure; the WDK's Dn takes a pointer to a pointer to struct _BIG there: the pointer the routine reads or writes is the structure's first bytes",
+    "ExTryThing x64 error: it is a Sub, and the WDK's ExTryThing returns a BOOLEAN, whether it succeeded: the caller cannot tell",
+    "ExTryThing x86 error: it is a Sub, and the WDK's ExTryThing returns a BOOLEAN, whether it succeeded: the caller cannot tell",
     "Ln x64 error: parameter 1 (L) is LongPtr, 8 bytes; the WDK's Ln takes a pointer to struct _BIG (16 bytes) there: the routine reads or writes 8 bytes past the variable",
     "Ln x86 error: parameter 1 (L) is LongPtr, 4 bytes; the WDK's Ln takes a pointer to struct _BIG (16 bytes) there: the routine reads or writes 12 bytes past the variable",
     "Sn x64 error: parameter 1 (S) is Integer, 2 bytes; the WDK's Sn takes a pointer to a 4-byte unsigned integer (4 bytes) there: the routine reads or writes 2 bytes past the variable",
