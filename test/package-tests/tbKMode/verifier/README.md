@@ -11,10 +11,22 @@ files.
 ## Commands
 
 ```sh
+node verify.mjs check path\to\tbKMode
 node verify.mjs imports MyDriver.sys
 node verify.mjs kernels
 ```
 
+- **`check <package folder>`** checks every Declare of the package's `.twin` files (under the
+  folder, a `Packages` folder left out), once for each architecture its `#If` compiles it for.
+  Its file must be a kernel-mode file that exports its entry point (its `Alias`, else its name) in
+  every build the database holds for that architecture; when another file exports it (on x86,
+  `hal.dll` exports **KfRaiseIrql**), or the routine is exported by ordinal only, that is said. On
+  x86 its calling convention must be the routine's (`FastCall` for a `__fastcall` routine, `CDecl`
+  for a `__cdecl` one, neither for `__stdcall`), and the bytes its parameters take on the stack
+  must be those of the routine's decorated symbol, where the parameters' types say them: a
+  structure passed `ByVal` does not. Findings are `error` (a driver that calls it does not load,
+  or the call goes wrong), `warning` (some Windows versions lack it) and `unchecked`, listed with
+  `--all`; `--json` prints them as JSON.
 - **`imports <driver.sys> ...`** checks a built driver's import table. It may import from no
   user-mode DLL, since the kernel loads none for a driver. Each routine it imports from
   `ntoskrnl.exe`, `hal.dll` or `fltmgr.sys` must be exported by each build of that file the
@@ -29,8 +41,24 @@ node verify.mjs kernels
   `--rebuild` starts from an empty database. Downloads are kept in `--cache` (default
   `%TEMP%\tbkmode-verifier`), never in this folder: only the export tables are recorded.
 
-Exit codes: 0 done (for `imports`, every driver passed), 1 a driver failed, 2 the command line was
-refused or the command could not run.
+Exit codes: 0 done (for `check`, no error; for `imports`, every driver passed), 1 a Declare has an
+error or a driver failed, 2 the command line was refused or the command could not run.
+
+The package is read by the twinBASIC scanner the documentation's tools share
+(`scripts/lib/twin-api.mjs`), which `lib/scanner.mjs` names; the zip carries a copy of it in that
+file's place. A declaration it misreads is fixed there.
+
+## Self-test
+
+```sh
+node --test test/verifier.test.mjs
+```
+
+It tests the readers on PE files and an import library written in the test, the Declare check on
+a small package against a small database, the driver check, and the committed database: its
+layout, and that an update with nothing to fetch fetches nothing and changes nothing. No network.
+Run it after changing the verifier. It is in no gate of the documentation and not in CI: a
+contributed package's tools are run when that package's section is updated, not on every change.
 
 ## The database
 
@@ -64,10 +92,7 @@ only with `--refresh`. Three things in it come from how the sources work:
 
 ## Planned
 
-- `check`: the package's declarations against the database (each Declare's file and entry point
-  per arch, `FastCall` and the bytes of its arguments on x86) and against a database of the WDK
-  (structure layouts, enumeration and constant values, prototypes), shipped with the zip, and the
-  layout and value test modules written from it, which today's `../wdk/` tools write with Visual
-  Studio and the WDK.
-- A self-test with no network, run by the documentation's `test.bat`.
+- `check` against a database of the WDK (structure layouts, enumeration and constant values,
+  prototypes), shipped with the zip, and the layout and value test modules written from it, which
+  today's `../wdk/` tools write with Visual Studio and the WDK.
 - The zip, and its card on the Downloads page.

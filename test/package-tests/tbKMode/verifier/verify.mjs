@@ -5,7 +5,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { checkDeclares } from "./lib/declares.mjs";
 import { checkDriver } from "./lib/imports.mjs";
+import { readPackage } from "./lib/package.mjs";
 import { kernelDatabaseText, updateKernelDatabase } from "./lib/kernels.mjs";
 
 const here = import.meta.dirname;
@@ -13,6 +15,10 @@ const here = import.meta.dirname;
 const USAGE = `usage: node verify.mjs <command> [options]
 
 Commands:
+  check <package folder>    checks every Declare of the package's .twin files, for x86 and x64 as
+                            its #If says: that its file exports its entry point in every build of
+                            db/kernels.json, and on x86 that its calling convention and the bytes
+                            of its parameters are the routine's
   imports <driver.sys> ...  checks that every routine a built driver imports is exported by each
                             build of its kernel-mode file that db/kernels.json records for the
                             driver's arch, and that it imports from no user-mode DLL
@@ -24,11 +30,14 @@ Options:
   --cache <dir>             kernels: where downloads are kept (default: %TEMP%\\tbkmode-verifier)
   --refresh                 kernels: move each Windows version to its newest build
   --rebuild                 kernels: start from an empty database
+  --all                     check: list what could not be checked as well
+  --json                    check: print the findings as JSON
   -h, --help                print this text and exit
 
 Exit codes:
-  0  done; for imports, every driver passed
-  1  imports: a driver imports what some build does not export, or from a user-mode DLL
+  0  done; for check, no error; for imports, every driver passed
+  1  check: a Declare has an error; imports: a driver imports what some build does not export,
+     or from a user-mode DLL
   2  the command line was refused, or the command could not run`;
 
 function fail(message) {
@@ -45,6 +54,8 @@ try {
       cache: { type: "string" },
       refresh: { type: "boolean" },
       rebuild: { type: "boolean" },
+      json: { type: "boolean" },
+      all: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -58,6 +69,41 @@ if (values.help) {
 }
 const [command, ...args] = positionals;
 const KERNEL_DB = path.join(here, "db", "kernels.json");
+
+/**
+ * Prints findings by module and Declare: each Declare once, with its findings for each arch; a
+ * finding that holds for both arches is printed once. "unchecked" ones only with --all.
+ */
+function printFindings(findings, all) {
+  const shown = findings.filter((f) => all || f.severity !== "unchecked");
+  const byDeclare = new Map();
+  for (const f of shown) {
+    const key = `${f.module}\0${f.name}\0${f.line}`;
+    if (!byDeclare.has(key)) byDeclare.set(key, []);
+    byDeclare.get(key).push(f);
+  }
+  let module = null;
+  for (const list of byDeclare.values()) {
+    if (list[0].module !== module) {
+      module = list[0].module;
+      console.log(`\n${module}`);
+    }
+    console.log(`  ${list[0].name} (line ${list[0].line})`);
+    const seen = new Map();
+    for (const f of list) {
+      const k = `${f.severity}\0${f.message}`;
+      seen.set(k, [...(seen.get(k) ?? []), f.arch]);
+    }
+    for (const [k, arches] of seen) {
+      const [severity, message] = k.split("\0");
+      console.log(`    ${severity} ${arches.join("+")}: ${message}`);
+    }
+  }
+  const count = (s) => findings.filter((f) => f.severity === s).length;
+  console.log(
+    `\n${count("error")} errors, ${count("warning")} warnings, ${count("unchecked")} not checked${all ? "" : " (--all lists them)"}`,
+  );
+}
 
 if (command === "kernels") {
   if (args.length) fail(`kernels takes no arguments\n${USAGE}`);
@@ -77,6 +123,20 @@ if (command === "kernels") {
     writeFileSync(KERNEL_DB, text, "utf8");
     console.log(`wrote ${path.relative(process.cwd(), KERNEL_DB)}`);
   }
+} else if (command === "check") {
+  if (args.length !== 1) fail(`check needs the package's folder\n${USAGE}`);
+  for (const o of ["cache", "refresh", "rebuild"]) if (values[o]) fail(`--${o} is for kernels\n${USAGE}`);
+  const db = JSON.parse(readFileSync(KERNEL_DB, "utf8"));
+  let parsed;
+  try {
+    parsed = readPackage(path.resolve(args[0]));
+  } catch (e) {
+    fail(e.message);
+  }
+  const findings = checkDeclares(parsed, db);
+  if (values.json) console.log(JSON.stringify({ files: parsed.files.length, findings }, null, 1));
+  else printFindings(findings, values.all);
+  process.exitCode = findings.some((f) => f.severity === "error") ? 1 : 0;
 } else if (command === "imports") {
   if (!args.length) fail(`imports needs a driver file\n${USAGE}`);
   for (const o of ["cache", "refresh", "rebuild"]) if (values[o]) fail(`--${o} is for kernels\n${USAGE}`);
