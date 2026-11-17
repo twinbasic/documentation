@@ -275,6 +275,8 @@ The site builds via [builder/](builder/), a custom Node.js static site generator
 
 The task-graph scheduler and parallelisation are described in [builder/PLAN-scheduler.md](builder/PLAN-scheduler.md). A task that never finishes fails the build after `--stall-timeout` seconds ([WIP.Build.md](WIP.Build.md#a-hung-build-times-out-and-says-where-it-hung)).
 
+**No task of the build starts a thread** (owner): the lanes are its only threads. Work that should run in parallel is split into lane tasks with `fanOut` (`builder/fan-out.mjs`), so that the scheduler places it and the Gantt chart shows it. A task starts no worker thread and no process for its work, and puts no CPU work on Node's thread pool, which zlib's functions without `Sync` in their name do. `check_lint.mjs` refuses the imports; the reasons and the exceptions are in [WIP.Build.md](WIP.Build.md#no-task-starts-a-thread).
+
 ### Compiling the reference's own code samples
 
 No build gate evaluates a `tb` fence: `check_code_regions.mjs` only protects its

@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Pipeline-Stages
 # Pipeline Stages
 {: .no_toc }
 
-Interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the five Gantt sections (Seeds / Spine / Render / Write / Check). The second half covers every module and its exports.
+Interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the Gantt sections (Seeds / Spine / Render / Write / Check); the search index's tasks, which the chart draws as Index, are under Write. The second half covers every module and its exports.
 
 For design rationale and a tour, see [tbdocs Builder](Builder). To add a task or markdown-it plugin, see [Extending the Builder](Extending).
 
@@ -110,9 +110,9 @@ Every task is an entry in the static `TASKS` object in [`tbdocs.mjs`](https://gi
 | `survives_reset` | `boolean` | no | The per-lane done flags survive an SAB reset between builds in serve mode. |
 | `perWorkerDeps` | `string[]` | no | Names of `unique_per_worker` tasks that must have run on the claiming lane. |
 | `pinnedTo` / `F_PIN_TO_PRED` | (dynamic) | no | Must run on the same lane that ran the named predecessor. Set via the `pinnedTo` array, not in the task def directly. |
-| `priority` | `number` | no | When several tasks are READY, the **highest** value claims first. Default `0`; `dispatch.submit` gives each `flush:i` `priority: 1`, so a pending flush outranks a fresh render. |
+| `priority` | `number` | no | When several tasks are READY, the **highest** value claims first. Default `0`; `dispatch.submit` gives each `flush:i` `priority: 1`, so a pending flush outranks a fresh render. The search index's pieces, `archiveLateDeflate:i`, `writePdf` and `checkBook` have `2`, and `archiveDeflate:i` has `1`: the first group is the path the end of the build waits for. |
 | `consolidate` | `boolean` | no | Combine timings across lanes into one Gantt swimlane (`render:i` / `flush:i`). |
-| `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write` / `Check`). |
+| `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write` / `Index` / `Check`). |
 
 ### Handler IDs
 
@@ -123,8 +123,8 @@ export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
-  helpArchive: 8, writePdf: 9, checkBook: 10,
-  searchIndex: 11,
+  writePdf: 9, checkBook: 10,
+  indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
 };
 ```
 
@@ -132,7 +132,13 @@ The reverse table (`handlerById`) is built when the worker module loads.
 
 ### Static vs dynamic tasks
 
-`TASKS` lists the **static** tasks, whose presence and edges are known before the build starts. **Dynamic** tasks (`render:i`, `flush:i`) are allocated at runtime by `dispatch.submit()` once the page count is known. Both kinds share the SAB: `sab-scheduler.mjs:allocDynamicSlots` reserves slots from the same pool, and `wireDynamicEdges` plus `appendDynamicSuccessors` extend the successor edges.
+`TASKS` lists the **static** tasks, whose presence and edges are known before the build starts. **Dynamic** tasks are allocated at runtime, once a count is known: `render:i` and `flush:i` by `dispatch.submit()`, from the page count, and the pieces of the search index and of the help archive by the `submit()` of the task that plans them, through [`fanOut`](#fan-outmjs). Both kinds share the SAB: `sab-scheduler.mjs:allocDynamicSlots` reserves slots from the same pool, and `wireDynamicEdges` plus `appendDynamicSuccessors` extend the successor edges.
+
+### No task starts a thread
+
+The lanes are the build's only threads. A task whose work can run in parallel splits it into pieces and adds each piece to the graph as a lane task with [`fanOut`](#fan-outmjs). The scheduler then places the pieces on the lanes that are free, and the Gantt chart on [Build Info](BuildInfo) shows each piece on the lane that ran it.
+
+A task therefore never starts a worker thread or a process for its work, and never puts CPU work on Node's thread pool, which is what the functions of `node:zlib` do unless their name ends in `Sync`. File reads and writes may use the pool. The two exceptions are named in `biome.jsonc`: `worker-pool.mjs` and `cpu-worker.mjs` are the lanes, and `build-info.mjs` and `addin-project.mjs` run `git`. [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint) refuses any other import of `worker_threads`, `cluster` or `child_process` in `builder/`, and any import from `node:zlib` in `builder/` or `lib/` other than a `Sync` function, `crc32` or `constants`.
 
 ---
 
@@ -375,7 +381,7 @@ Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `bookPay
 
 ## Section 4 --- Write and post-write
 
-The tasks that write the output. `scss` joins the two stylesheets after `prepDest`; each `flush:i` writes its chunk's pages after its `render:i` and `prepPageDirs`; the rest are produced by the main-thread writers, which run one at a time in the order `TASKS` declares them, and by two worker tasks, `helpArchive` and `writePdf`. All but `writeAssets` wait behind `renderJoin` or `flushJoin`.
+The tasks that write the output. `scss` joins the two stylesheets after `prepDest`; each `flush:i` writes its chunk's pages after its `render:i` and `prepPageDirs`; the rest are produced by the main-thread writers, which run one at a time in the order `TASKS` declares them, and by worker tasks: `writePdf`, and the pieces of the search index and of the help archive, which their main-thread tasks add to the graph. All but `writeAssets` wait behind `renderJoin` or `flushJoin`.
 
 ### `scss` (main)
 
@@ -407,7 +413,7 @@ flushJoin.expected = []    // populated by dispatch.submit with ["flush:0", ...,
 flushJoin.execute(inputs) → { written, offlineWritten, offlineMisses }
 ```
 
-Aggregates per-chunk write stats. Unblocks `writeAux`, `helpArchive`, `bookPayload` and `linkJoin`.
+Aggregates per-chunk write stats. Unblocks `writeAux`, `archivePlan`, `bookPayload` and `linkJoin`.
 
 ### `writeAssets` (main)
 
@@ -425,16 +431,32 @@ searchData.expected = ["renderJoin", "prepDest", "symbolIndex"]
 
 Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. It flattens the per-chunk entry arrays and joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields -- see `WIP.Search.md`'s "Design" §2). It then renumbers the global `i` index, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The workers did the heavy work (heading split, content sanitisation, URL encoding); this task only joins and concatenates. It depends on `symbolIndex` for the `symbols` array.
 
-### `searchIndex` (worker)
+### The search index: `indexSlices` to `searchIndex`
+{: #searchindex-worker }
 
 ```js
-searchIndex.expected = ["searchData"]
-searchIndex.handler  = "searchIndex"
+indexSlices.expected    = ["searchData"]                                   // main
+indexAdd:i.expected     = ["indexSlices"]                                  // worker, dynamic
+indexMerge.expected     = ["indexSlices", "indexAdd:0", ...]               // main
+indexTerms.expected     = ["indexMerge"]                                   // main
+indexVectors:i.expected = ["indexSlices", "indexMerge", "indexAdd:i"]      // worker, dynamic, pinned to indexAdd:i
+searchIndex.expected    = ["indexSlices", "indexMerge", "indexTerms", "indexVectors:0", ...]   // main
 ```
 
-Calls `writeSearchIndex(destRoot, { offline })` from `search-index.mjs`, which reads the `search-data.json` that `searchData` wrote and writes `assets/js/search-index.json` beside it: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. Returns `{ entries, workers, bytes }`.
+These tasks build the lunr index of the entries that `searchData` wrote, and write it. The functions are in `search-index.mjs`. lunr cannot merge two indexes, but most of a build is independent for each entry, so the index is built in slices, each a run of consecutive entries:
 
-The index is built on threads of the task's own (`search-index-worker.mjs`), up to eight, one for every 500 entries, so a small tree starts none. Each thread adds a run of the entries to a `lunr.Builder` of its own; the task merges the postings, numbering each term as one build would, works out the totals the field vectors need, and has each thread make its entries' vectors. The result is byte for byte what `lunr()` makes on one thread, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks. The task runs on a worker rather than on the main thread because the main thread runs one task at a time, and as one of them it held back `bookPayload`, `writeAux` and `writeOffline` for the second or two the index takes. `helpArchive` and `checkReport` wait for it.
+1. **`indexSlices`** parses the text of `search-data.json` as `searchData` returned it, and cuts the entries into slices of about equal text (`planIndexSlices`): two for each lane, and at most one for every 500 entries, so a small tree is one slice. Its `submit` adds an `indexAdd:i` and an `indexVectors:i` for each slice with [`fanOut`](#fan-outmjs).
+2. **`indexAdd:i`** adds its slice to a `lunr.Builder` that stays on its lane (`addSlice`), and returns the slice's terms, postings and field lengths.
+3. **`indexMerge`** merges the postings (`mergeSlices`). It numbers each term as one build would, and works out each term's document count and each field's average length over all the entries. It broadcasts those totals to the lanes as the task data `"indexTotals"` (`packTotals`).
+4. **`indexTerms`** writes the JSON of the inverted index (`invertedIndexJson`) on the main thread, while the lanes make the vectors.
+5. **`indexVectors:i`** makes its slice's field vectors with the totals (`sliceVectors`). It is pinned to the lane that ran `indexAdd:i`, which holds the slice's builder.
+6. **`searchIndex`** joins the JSON (`assembleIndexJson`) and writes the files (`writeSearchIndex`). Returns `{ entries, slices, bytes }`.
+
+The result is byte for byte what `lunr()` makes on one thread, for any number of slices, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks.
+
+`searchIndex` writes `assets/js/search-index.json`: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. `archiveLate` and `checkReport` wait for it.
+
+The index tasks are drawn in their own colour in the Gantt chart, and their main-thread tasks in the band `Index`.
 
 ### `symbolIndex` (main)
 
@@ -486,16 +508,27 @@ writeOffline.expected = ["writeAux", "writeAssets"]
 
 Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
 
-### `helpArchive` (worker)
+### The help archive: `archivePlan` to `helpArchive`
+{: #helparchive-worker }
 
 ```js
-helpArchive.expected = ["flushJoin", "scss", "searchIndex", "writeOffline"]
-helpArchive.handler  = "helpArchive"
+archivePlan.expected          = ["flushJoin", "scss", "writeOffline"]       // main
+archiveDeflate:i.expected     = ["archivePlan"]                             // worker, dynamic
+archiveLate.expected          = ["archivePlan", "searchIndex"]              // main
+archiveLateDeflate:i.expected = ["archiveLate"]                             // worker, dynamic
+helpArchive.expected          = ["archivePlan", "archiveLate", "archiveDeflate:0", ..., "archiveLateDeflate:0", ...]   // main
 ```
 
-Writes `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The four predecessors between them write the whole offline tree. The handler calls `helpArchiveStep` from `help-archive-step.mjs`, with the `skipOffline` flag it reads from `dispatch`'s shared broadcast (`sharedData()` in `cpu-worker.mjs`), and reads the offline tree from disk. It runs on a worker because it needs nothing that `dispatch` has not broadcast, and the main thread meanwhile does the work that follows `writeOffline`.
+Write `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The functions are in `help-archive-step.mjs`, over `lib/help-archive.mjs`.
 
-The zip comes back as a plain byte array. `submit` wraps it again as a `Buffer` over the same memory, which `addinProject` packs into the add-in's project file and `runBuild` checks the offline tree against once the Gantt chart is injected (`recheckHelpArchive`). The step writes nothing for a source root other than `docs`, a `--dest` other than `docs/_site`, and under `--serve`, `--dry-run` or `--no-help-archive`.
+The deflating is split into **units**: a whole file, or one piece of 1 MB of a larger file. A large file's pieces are joined into one deflate stream. Every piece but the last ends with a sync flush, which ends it on a byte boundary without ending the stream, and each piece is primed with the 32 KB of the file before it. The bytes depend only on the piece size, never on how many lanes ran the units.
+
+1. **`archivePlan`** runs once `flushJoin`, `scss` and `writeOffline` have written everything in the offline tree but `search-index.js`. `planHelpArchive` decides whether this build writes the archive, refuses one that would hold a file the Downloads page offers, lists the tree less `LATE_FILES`, and deals the units into one group for each lane. Its `submit` adds an `archiveDeflate:i` for each group with [`fanOut`](#fan-outmjs). The tree is therefore deflated while the search index is still being built.
+2. **`archiveLate`** runs once `searchIndex` has written `search-index.js`, the one file in `LATE_FILES`. `planLateFiles` deals its pieces in the same way, as `archiveLateDeflate:i`.
+3. **`archiveDeflate:i`** and **`archiveLateDeflate:i`** run `deflateGroup` on a lane. Each unit is read, deflated and inflated again, and the result is compared with the bytes read. A failure comes back as `{ error }`, so that it fails the build without stopping it.
+4. **`helpArchive`** joins the units into entries (`finishHelpArchive`), writes the zip, reads it back and checks it against what it assembled and against the list of files.
+
+`helpArchive` returns the zip's bytes, which `addinProject` packs into the add-in's project file, and its path, which `runBuild` checks the offline tree against once the Gantt chart is injected (`recheckHelpArchive`). The tasks write nothing for a source root other than `docs`, a `--dest` other than `docs/_site`, and under `--serve`, `--dry-run` or `--no-help-archive`: `archivePlan` then returns a plan with no groups.
 
 ### `bookPayload` (main)
 
@@ -923,13 +956,20 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSearchIndex` | `(destRoot, { offline }) → Promise<{ entries, workers, bytes }>` | Reads `search-data.json`, writes `search-index.json` and, when `offline`, the offline tree's `search-index.js`. Used by the `searchIndex` task. |
-| `buildIndexJson` | `(docs, { workers, lunrPath }) → Promise<string>` | The index of the parsed search data as lunr's JSON, built on `workers` threads (`search-index-worker.mjs`); one builds it on the calling thread with `lunr()` itself. Every worker count gives the same bytes. |
+| `writeSearchIndex` | `(destRoot, indexJson, docs, { offline }) → Promise<{ entries, bytes }>` | Writes `search-index.json` and, when `offline`, the offline tree's `search-index.js`, from the index's JSON and the entries. Used by the `searchIndex` task. |
+| `indexSliceCount` | `(entries, lanes) → number` | The slices the build cuts an index into: two for each lane, at most one for every 500 entries. |
+| `planIndexSlices` | `(lunr, docs, count) → { slice, docs, twins }[]` | The entries cut into `count` runs of about equal text, each with the stem twins of every entry: what one `addSlice` takes. |
+| `addSlice` | `(lunr, docs, twins) → { state, added }` | One slice added to a `lunr.Builder` of its own. `state` holds the builder for `sliceVectors`; `added` is the slice's terms, postings and field lengths, for `mergeSlices`. |
+| `mergeSlices` | `(added[]) → { merged, totals }` | The slices' postings merged, each term numbered as one build numbers it, and the totals the vectors need: each slice's term numbers, each term's idf, the document count and each field's average length. |
+| `sliceVectors` | `(lunr, state, totals) → string` | lunr's `createFieldVectors` over one slice's builder, as `toJSON` writes the vectors. |
+| `invertedIndexJson` | `(merged) → string` | lunr's `toJSON` of the inverted index, from the merged postings. |
+| `assembleIndexJson` | `(lunr, vectors[], invertedIndex) → string` | The index's JSON, from every slice's vectors and the inverted index. |
+| `packTotals` / `unpackTotals` | `(totals) → SharedArrayBuffer` / `(sab, slice) → totals` | `mergeSlices`' totals for the lanes, which read them in place. |
+| `buildIndexJson` | `(docs, { slices, lunrPath }) → string` | The index of the parsed search data as lunr's JSON, every step on the calling thread. Every slice count gives the same bytes. The tests use it. |
 | `buildIndex` | `(lunr, docs) → lunr.Index` | The index built by `lunr()` on the calling thread: what the split build must equal. `eval/site_search.mjs` uses it for a site with no `search-index.json`. |
 | `loadSearchLunr` | `(lunrPath?) → lunr` | The vendored lunr with the site's patches installed, once per copy. |
 | `searchIndexFile` | `(indexJson, docs) → string` | `search-index.json`'s text: `{"docs": ..., "index": ...}`, the entries minified and the index as given. |
 | `offlineSearchIndexJs` | `(fileText) → string` | Wraps `search-index.json` as `window.SEARCH_INDEX = JSON.parse('…')` for the offline tree. |
-| `defaultIndexWorkers` | `(entries) → number` | The threads the build gives an index: half the machine, at most eight, one per 500 entries. |
 
 ### `symbols.mjs`
 
@@ -1021,6 +1061,14 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 | `SharedState` | class | `pages[]`, `staticFiles[]`, `site`, `pageByDest`, `searchChunks`. Created by the `Scheduler` constructor. |
 | `Scheduler` | class | Main-thread side of the pull scheduler. Constructor: `{ pool, tasks, views, idMapping, ganttSections }`. Methods: `start(ctx)` (returns the results promise), `addDynamicTasks(count)`, `summary()`. The orchestrator sets the event hooks (`_onWorkerDone`, `_onWorkerError`, `_onPerWorkerTiming`, `_onMainTaskReady`). |
 
+### `fan-out.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `fanOut` | `(scheduler, { from, prefix, handler, payloads, after?, pinTo?, joins?, ganttSection?, priority?, describe? }) → string[]` | Adds one lane task `<prefix>:<i>` for each payload, from the `submit` of the main-thread task `from`. Every piece waits for `from`, and for each task in `after` that is not done yet. `pinTo` names an earlier fan-out of the same `submit`: piece `i` then runs on the lane that ran its piece `i`. Each static task in `joins` waits for every piece, and receives each one's output under its name; it must list `from` in its `expected`. The payloads are packed into one `SharedArrayBuffer`, broadcast as the task data `fan:<base>:<count>`, which a handler reads with `fanOutPayload(taskIdx)` in `cpu-worker.mjs`. Returns the pieces' names. |
+
+A piece cannot become READY while its edges are being written, because `from` is still CLAIMED until its `submit` returns. For the same reason a task in `after` must be a main-thread task or a piece made in the same `submit`: a lane task could finish between the check of its status and the writing of its edge.
+
 ### `worker-pool.mjs`
 
 | Symbol | Signature | Description |
@@ -1042,7 +1090,9 @@ The handler table is built from the imported `HANDLERS` constant:
 | `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |
 | `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
-| `helpArchive` | `help-archive-step.mjs` | `helpArchiveStep` over the offline tree; reads `skipOffline` from the shared payload through `sharedData()`. |
+| `indexAdd` | `search-index.mjs` | `addSlice` over the slice in its `fanOutPayload`; keeps the builder in `_indexSlices` for `indexVectors`. |
+| `indexVectors` | `search-index.mjs` | `sliceVectors` over the builder `indexAdd` kept on this lane, with the `"indexTotals"` task data. |
+| `archiveDeflate` | `help-archive-step.mjs` | `deflateGroup` over the units in its `fanOutPayload`. Runs `archiveDeflate:i` and `archiveLateDeflate:i`. |
 | `writePdf` | `pdf.mjs` | Waits for the `"book"` task data, unpacks it with `unpackBookPayload`, writes the PDF tree and keeps the book for `checkBook`. |
 | `checkBook` | inline | `checkChunk` over the book `writePdf` kept on this lane; `null` without `--check`. |
 

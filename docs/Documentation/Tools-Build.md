@@ -116,7 +116,9 @@ The zip is too large to commit; `add-in/Resources/HELP/` is in `.gitignore`.
 
 Only a build of the documentation tree into `docs/_site-offline` writes the archive. Builds of another source tree or `--dest`, `--serve`, `--dry-run` and builds without an offline tree skip it, and so does `--no-help-archive`. CI must not pass `--no-help-archive`, or the project file it publishes would hold no archive; `check_ci_workflows.mjs` fails when one does.
 
-A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1. The build ends by checking the offline tree on disk against the archive again, now that the chart is in: the same files must be listed, less the ones the archive leaves out, and only `BuildInfo.html` and `assets/images/gantt.svg` may differ in content.
+A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1. The build ends by checking the offline tree on disk against the archive again, now that the chart is in: the same files must be listed, less the ones the archive leaves out, and only `BuildInfo.html` and `assets/images/gantt.svg` may differ in size or CRC-32 from the archive's entry.
+
+The build's lanes deflate the files, as tasks of its graph: the [Pipeline Stages](Pipeline-Stages#helparchive-worker) page lists them. The offline tree is deflated while the search index is built, and the index's own file, `assets/js/search-index.js`, once it is written.
 
 The reader on the twinBASIC side does no inflating of its own, so the zip format is fixed:
 
@@ -125,8 +127,9 @@ The reader on the twinBASIC side does no inflating of its own, so the zip format
 - No extra fields, comments or data descriptors: the CRC-32 and both sizes are in the local header and in the central directory.
 - No zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused.
 - Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
+- A deflated file larger than 1 MB is deflated in pieces of 1 MB, which are joined into one deflate stream. Every piece but the last ends with a sync flush, and each piece is primed with the 32 KB of the file before it, so the stream is about the size of one made in a single pass. The bytes depend only on the piece size, not on how many pieces were deflated at a time.
 
-The build reads the file back, checks every entry against its source file, and names any that differ. The writer is `lib/help-archive.mjs`.
+Each file, or piece, is inflated again after it is deflated and compared with the bytes read. The build then reads the zip back, compares it with what it assembled, and checks every entry's headers against the list of files; it names any that differ. The writer is `lib/help-archive.mjs`.
 
 ## build_fonts.py
 {: #build-fonts }

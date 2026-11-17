@@ -109,6 +109,46 @@ would differ.
 Measured on the dev box: the online build takes about 2 s; the offline pass adds about 700 ms,
 the PDF pass about 150 ms, and `--check` about 1.7 s.
 
+### No task starts a thread
+
+**The lanes are the build's only threads** (owner, 2026-11-17: "That's what the lanes
+are for, and we lose important diagnostics that way too"). A task whose work can run in
+parallel splits it into pieces and adds each to the graph as a lane task, with `fanOut`
+(`builder/fan-out.mjs`) from the `submit()` of the main-thread task that plans them. The
+search index (`indexAdd:i`, `indexVectors:i`) and the help archive (`archiveDeflate:i`,
+`archiveLateDeflate:i`) are the models; `render:i` and `flush:i` are the same idea, wired
+by `dispatch.submit`.
+
+So a task never:
+
+- starts a worker thread (`node:worker_threads`), a cluster or a process for its work;
+- puts CPU work on Node's thread pool: the functions of `node:zlib` whose name does not
+  end in `Sync` run there, as do the asynchronous key-derivation functions of
+  `node:crypto`. File reads and writes may use the pool: that is I/O.
+
+**Why.** A thread a task starts is one the scheduler cannot place and the Gantt chart
+does not show. The search index once built on threads of its own: two on a 4-core CI
+runner (half the machine), beside lanes that had nothing to do, and the chart showed one
+bar on one lane for the whole of it. The help archive deflated on the thread pool, so its
+one bar hid a 55 MB file deflating on a single thread for most of its length. As lane
+tasks, the index runs on every lane, the archive is deflated while the index is built,
+and each piece is a bar on the lane that ran it.
+
+**The gate is `check_lint.mjs`**, through `noRestrictedImports` in `biome.jsonc`:
+`builder/` may not import `worker_threads`, `cluster` or `child_process`, and `builder/`
+and `lib/` may import from `node:zlib` only the `Sync` functions, `crc32` and
+`constants`, by name (a default import would hide which function is called). The files
+that may are named there, each with its reason: `worker-pool.mjs` and `cpu-worker.mjs`
+are the lanes, and `build-info.mjs` and `addin-project.mjs` run `git`. The rule reads
+imports, so it cannot see a function of another module that does the same; a new
+dependency that starts threads is a review matter.
+
+**`fanOut`'s own rules** are in its header: every piece waits for the task whose
+`submit` adds it, so none can run while its edges are written; a join lists that task in
+its `expected`, and `fanOut` adds the pieces to that list, which is what holds the join
+until every piece's `submit` has run. `book/` is not the build: `book.bat`'s renderer
+deflates on the thread pool (`book/lib/parallel-deflate.mjs`), and has no lanes.
+
 ### A hung build times out and says where it hung
 
 Readers get this at [When a build stops instead of
@@ -1012,7 +1052,7 @@ The decisions, each with what it rules out:
   commit behind the add-in being edited. `Resources/HELP/` is also refused by name, in
   case it is ever added. A file git does not track is named in the build's output.
 - **The archive in the project is the one this build wrote, handed over in memory.**
-  The `helpArchive` task (a worker task) returns the zip it wrote, as bytes, and
+  The `helpArchive` task returns the zip it wrote, as bytes, and
   `addinProject` waits for it and packs those bytes as `Resources/HELP/site.zip`. Reading the file back from
   `add-in/Resources/HELP/` could pick up the archive of an earlier build whenever this
   one wrote none (`--no-help-archive`, `--serve`, another `--dest`, a fixture): that
@@ -1023,12 +1063,15 @@ The decisions, each with what it rules out:
   download that held it would differ from one build of a tree to the next.
   `recheckHelpArchive` checks at the end of `runBuild` that the offline tree still lists
   the archive's files and that only those two differ.
-- **The task waits for every writer of the offline tree.** `flushJoin` (the render
-  lanes write each page's offline HTML in their flush), `scss` (the offline
-  stylesheet), `searchIndex` (`search-index.js`) and `writeOffline` (statics, theme
-  assets, redirect stubs, `nav.js`). Nothing else writes there before the injection; a writer added
+- **The archive waits for every writer of the offline tree.** `archivePlan` waits for
+  `flushJoin` (the render lanes write each page's offline HTML in their flush), `scss`
+  (the offline stylesheet) and `writeOffline` (statics, theme assets, redirect stubs,
+  `nav.js`); `archiveLate` waits for `searchIndex` (`search-index.js`, the one file in
+  `LATE_FILES`). Nothing else writes there before the injection; a writer added
   later and missed here fails the build in `recheckHelpArchive`, which is why that
-  check compares every file's content.
+  check compares every file's size and CRC-32. **A file a new task writes into the
+  offline tree after `archivePlan` goes in `LATE_FILES`**, with `archiveLate` waiting
+  for that task.
 - **The offline tree has no copy, and its link goes to the website.** The project
   carries the offline tree's archive, so a copy in that tree would be inside its own
   archive. `deriveTreeRels` takes the path as an online-only file. The page links to
@@ -1086,7 +1129,7 @@ and the reader builds it. `test/addin-project.test.mjs` is the gate.
 
 ### The help archive
 
-- **The help archive is the `helpArchive` task of the build's graph.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, once every task that writes into the offline tree has finished (`flushJoin`, `scss`, `searchIndex`, `writeOffline`; the archive task lists exactly those) and **before** the Gantt injection. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. It reads the file back to verify it. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
+- **The help archive is made by tasks of the build's graph, its deflating on the lanes.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, **before** the Gantt injection. `archivePlan` runs once `flushJoin`, `scss` and `writeOffline` have finished, lists the tree less `LATE_FILES` (`search-index.js`) and deals the deflating into one group of units for each lane (`archiveDeflate:i`), so the tree is deflated while the search index is built. `archiveLate` does the same for `search-index.js` once `searchIndex` has written it (`archiveLateDeflate:i`), and `helpArchive` writes the zip from every group. A unit is a whole file or one 1 MB piece of a larger one; a large file's pieces are one deflate stream, each ending with a sync flush and primed with the 32 KB before it (pigz's method), so the bytes depend only on the piece size. Measured on the 55 MB `search-index.js` at level 9: 3.2 s as one stream, 0.8 s as pieces on four threads, at the same size to within 0.02%. Each unit inflates what it deflated and compares it with the bytes it read; the zip is read back and compared with what was assembled. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it, in size or CRC-32, only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
 
 ### Build-time counts as named values
 

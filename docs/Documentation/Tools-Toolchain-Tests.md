@@ -187,7 +187,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node --test test/search-index.test.mjs
 
-Verifies the search index the build writes. The build makes the index on several threads, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture on one thread with lunr itself and on two, three, seven and more threads than entries, and requires the same bytes each time. The fixture holds what the merge has to get right: words that look like numbers, words only a later thread meets, empty fields, HTML entities and hand-marked index terms. It also checks that an index loaded from the file answers as lunr's does, that a thread that fails fails the build, that `search-index.json` holds the search entries and their index and nothing else, and that the offline tree's `search-index.js` holds the same.
+Verifies the search index the build writes. The build makes the index in slices on its lanes, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture with lunr itself and in one, two, three, seven and more slices than entries, and requires the same bytes each time. It also runs the steps as the build runs them, with each slice's payload as JSON and the totals read from the `SharedArrayBuffer` the lanes are sent. The fixture holds what the merge has to get right: words that look like numbers, words only a later slice meets, empty fields, HTML entities and hand-marked index terms. It also checks that the slices hold every entry once and in order, that an index loaded from the file answers as lunr's does, that `search-index.json` holds the search entries and their index and nothing else, and that the offline tree's `search-index.js` holds the same.
 
 No browser, no built tree, about a second.
 
@@ -362,7 +362,7 @@ The others pack fixture folders, each a git repository of its own:
 - a CRLF checkout packs to the same bytes as an LF one, and two packs are identical;
 - the file is written into exactly the trees it is given.
 
-A second group writes small archives with `lib/help-archive.mjs` and checks them against their tree, as the build does at its end. A tree as it was archived has no differences, only the files named may differ in content, and any other changed, added or removed file is named.
+A second group writes small archives with `lib/help-archive.mjs` and checks them against their tree, as the build does at its end. A tree as it was archived has no differences, only the files named may differ in content, and any other changed, added or removed file is named. A file larger than the archive's piece size is deflated in pieces: its entry inflates in one pass to the file, with the file's CRC-32, and the archive's bytes are the same however the pieces are grouped and ordered.
 
 Needs git; no browser, no built tree, no twinBASIC, about 1 s.
 
