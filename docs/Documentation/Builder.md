@@ -71,7 +71,8 @@ Modules grouped by role. [Pipeline Stages](Pipeline-Stages) covers each in depth
 
 | File | Role |
 |---|---|
-| [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) | Source tree walk; parses frontmatter and classifies each file as a page or a static file. |
+| [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) | The source tree's inventory: lists the tree, cuts the listing into pieces for the lanes, and puts their results together as the sorted pages and static files. |
+| [`discover-read.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover-read.mjs) | What a lane does with a piece: reads each page and parses its frontmatter, sizes each static file, reads each picture pair's dimensions. |
 | [`nav.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/nav.mjs) | Sidebar tree, integrity check, breadcrumbs, per-page `navLevels`. |
 | [`seo.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/seo.mjs) | Site-level SEO on main (`computeSiteSeo`); per-page SEO on workers (`computeChunkSeo`). |
 | [`url.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/url.mjs) | The URL helpers every other module shares: `absoluteUrl` and `relativeUrl` (ports of Jekyll's two URL filters), `normalizeBaseurl`, `encodeSpaces`, `splitFragment`. |
@@ -217,7 +218,7 @@ The full layout, the allocation helper and the `readTaskMeta` / `writeTaskMeta` 
 The pipeline has the named static tasks below, plus dynamic ones: a `render:i` and a `flush:i` for each render chunk, and the pieces of the search index and of the help archive. The Gantt chart groups them into these sections, and so does the rest of this page:
 
 - **Seeds**: `config`, `buildInfo`, `scssLight`, `scssDark`, `highlighterInit`, `loadData`
-- **Spine**: `discover`, `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packTests`, `downloadSizes`, `packageApi`
+- **Spine**: `discoverList`, `discoverRead:i`, `discover`, `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packTests`, `downloadSizes`, `packageApi`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `render:i`, `renderJoin`
 - **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `archivePlan`, `archiveDeflate:i`, `archiveLate`, `archiveLateDeflate:i`, `helpArchive`, `addinProject`, `packageTests`, `writeAux`, `writeOffline`, `bookPayload`, `writePdf`
 - **Index**: `symbolPlace`, `searchEntries`, `indexSlices`, `indexAdd:i`, `indexMerge`, `indexTerms`, `indexVectors:i`, `searchIndex`
@@ -233,7 +234,7 @@ Every static task and dependency:
 
 ### Seeds
 
-`config`, `buildInfo`, `scssLight` and `scssDark` have no predecessors and start at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. The three worker tasks run while the main thread traverses the source tree.
+`config` and `buildInfo` have no predecessors and start at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `scssLight` and `scssDark` wait for `discoverList`, the listing of the source tree, so that the first workers up are free to read it (see [Spine](#spine)). The three worker tasks run while the source tree is read and the main thread prepares the render.
 
 - `config` (main) --- reads `_config.yml` and applies CLI overrides.
 - `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure.
@@ -244,18 +245,21 @@ Every static task and dependency:
 
 ### Spine
 
-`discover` and the main-thread tasks it feeds, with `dot` running on a worker beside them. They are cheap; the aim is to fork into independent streams as soon as the source tree is known. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, described under Render.
+The source tree's inventory and the main-thread tasks it feeds, with `dot` running on a worker beside them. They are cheap; the aim is to fork into independent streams as soon as the source tree is known. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, described under Render.
 
 ```
 config ┬→ highlighterInit → loadData
-       └→ discover ┬→ nav ──────────────────────────────┐
+       └→ discoverList → discoverRead:i (workers) → discover
+          discover ┬→ nav ──────────────────────────────┐
                    ├→ buildInit ────────────────────────┤
                    ├→ vendorAssets ────┐                │
                    └→ deriveRedirects ─┴→ markdownInit ─┼→ dispatch → deriveSitemap → resolveBookChapters
                               buildInfo, dot (workers) ─┘
 ```
 
-- `discover` --- traverses `docs/`, classifies pages and static files, builds `state.pageByDest`.
+- `discoverList` --- lists `docs/` and cuts the listing into two pieces. Each holds every second page file, static file and picture pair, so both have their share of every folder.
+- `discoverRead:i` (worker) --- reads a piece: each page and its frontmatter, each static file's size, each picture pair's dimensions. Every file the inventory opens is opened here, on two lanes at once. A lane needs only the first stage of its boot for this task (see [Worker boot](#worker-boot)), so the pieces are the first work a lane takes. `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit` wait for `discoverList`, which leaves the first lanes free for the pieces.
+- `discover` --- puts the pieces' results together as the sorted pages and static files, refuses a file that is not a publishable type or a light picture with no dark one, and builds `state.pageByDest`.
 - `vendorAssets` --- finds the YouTube video markers and GitHub user-attachment URLs in the pages, downloads any file not already in `docs/assets/thumbnails/` or `docs/assets/attachments/`, and adds the new files to the static-file copy. `markdownInit` and `writeAssets` depend on it.
 - `nav` --- builds the sidebar tree, runs the integrity check (an orphan or ambiguous `parent:` aborts the build here) and pre-renders the sidebar HTML.
 - `dot` (worker) --- regenerates stale `.dot` → `.svg` with the WASM build of Graphviz. WASM init takes ~50 ms and overlaps the main spine; each diagram then renders synchronously.
@@ -321,7 +325,8 @@ Every task and where it runs:
 | Seeds | `scssLight`, `scssDark` | workers | Light + dark palettes compile concurrently. |
 | Seeds | `highlighterInit` | main | Palette CSS only. |
 | Seeds | `loadData` | main | Reads `_book.yml`. |
-| Spine | `discover`, `vendorAssets`, `nav`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packageApi` | main | Single-threaded. |
+| Spine | `discoverList`, `discover`, `vendorAssets`, `nav`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packageApi` | main | Single-threaded. |
+| Spine | `discoverRead:i` | workers | The two pieces of the source tree, read at once. |
 | Spine | `dot` | worker | WASM Graphviz; init hides behind the main spine. |
 | Render | `dispatch`, `prepDest`, `prepPageDirs` | main | `prepDest` and `prepPageDirs` are deferred to after `dispatch`. |
 | Render | `render:i` | worker | Body + SEO + template + offline + search per chunk. |
@@ -399,7 +404,13 @@ Three details make the reuse work:
 
 - **Per-lane Shiki survives.** `warmInit` has `survives_reset`, so the per-lane done flags are pre-filled when later builds allocate the SAB. Workers keep the highlighter in module scope, so `warmInit` never re-runs; `render:i` goes straight to `renderEnvInit`, which must re-run because it reads config and link tables from the new shared SAB.
 - **`_buildCount`** tells the first build from later ones. `runBuild` tests `pool._buildCount > 0` to decide whether to skip injecting boot timings into the Gantt chart.
-- **Boot timings are emitted once.** Workers post a `coldBoot` message on their first init only.
+- **Boot timings are emitted once.** Workers post a `coldBoot` message for each stage of their boot, on the first build only.
+
+### Worker boot
+
+A worker boots in two stages. The first is the static imports of `cpu-worker.mjs`: the scheduler and `discover-read.mjs`, which needs only the YAML parser. The worker is in its pull loop after it and can run a `discoverRead:i`. The second stage loads everything else (the renderer and its plugins, the search index, the archive), and a worker runs it before its first task of any other kind. Two workers therefore read the source tree while the others load the second stage, and the main thread, which read the tree itself before, is idle meanwhile.
+
+A module that `discover-read.mjs` imports is loaded by every worker before the first piece can start. Keep that list short; the glob library is in `discover.mjs`, which only the main thread loads.
 
 ## Figures
 
@@ -471,7 +482,7 @@ The residual 0.5% is kerning, which a per-character table cannot express. The ta
 
 ## Gantt chart and build introspection
 
-Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `groupGanttTimings` sorts the scheduler's timings into a `Map<section, taskTiming[]>`, and `renderGantt(grouped)` draws one SVG row per main-thread task plus one row per worker lane. The main-thread rows form bands --- Seeds, Spine, Write, Index and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write. Index holds the search index's tasks, which have a colour of their own, so that they stand apart from the tasks that write files. The `Join` barriers are not drawn. Each worker row has one rectangle per task it ran, in start order, coloured by the task's section. The start-up bars share that row, labelled `cold` (the worker's cold start, drawn on the first build only), `warm` (`warmInit`) and `env` (`renderEnvInit`).
+Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `groupGanttTimings` sorts the scheduler's timings into a `Map<section, taskTiming[]>`, and `renderGantt(grouped)` draws one SVG row per main-thread task plus one row per worker lane. The main-thread rows form bands --- Seeds, Spine, Write, Index and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write. Index holds the search index's tasks, which have a colour of their own, so that they stand apart from the tasks that write files. The `Join` barriers are not drawn. Each worker row has one rectangle per task it ran, in start order, coloured by the task's section. The start-up bars share that row, labelled `cold` and `load` (the two stages of the worker's [boot](#worker-boot), drawn on the first build only), `warm` (`warmInit`) and `env` (`renderEnvInit`).
 
 The chart goes through the same figure pipeline as other diagrams. The [Build Info](BuildInfo) page contains a markdown image reference to a placeholder `gantt.svg`, which the render pass turns into a figure with an inline SVG. After `writeOffline` completes, `tbdocs.mjs:injectGanttChart` finds the wrapper's `data-svg-src` marker in the rendered HTML and replaces the placeholder with the real chart. It patches the online and offline copies of the page, and updates the on-disk `gantt.svg` for the offline mirror's fallback. The help archive and the help add-in's project file are made before the injection and hold the placeholder, because the chart holds the build's own timings and would make every download differ.
 

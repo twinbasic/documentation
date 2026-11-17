@@ -64,6 +64,7 @@ The roster, by wrapper ([Tools and Scripts](docs/Documentation/Tools.md) owns th
 | `test.bat` | `test/addin-project.test.mjs` | `builder/addin-project.mjs` packs exactly the files git tracks in `add-in/`, the same bytes from a CRLF and an LF checkout. Needs git |
 | `test.bat` | `test/indexer.test.mjs` | the package indexer (`indexer/lib/`) changes a snapshot only when the API changes |
 | `test.bat` | `test/ide-js.test.mjs` | `scripts/ide_js.mjs` and `scripts/ide-js/lib.mjs` on a few lines of minified JavaScript, and that the tool writes only under `%TEMP%` |
+| `test.bat` | `test/discover.test.mjs` | the source tree's inventory (`builder/discover.mjs`, `discover-read.mjs`) is the same in any number of pieces, with a picture pair that has a `bundle_extra` file |
 | `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes, and patch only the members `PATCHES` lists |
 | `test.bat` | `check_impexp_parity` | the Node and Python editions of `impexp` (and, with `IMPEXP_EXE`, the twinBASIC one) behave alike |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
@@ -85,10 +86,10 @@ A dynamic barrier must list every chunk task in its `expected`, even when its ow
 
 So every skip on the chunk-merge path refuses to continue when a piece is missing --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). On this path, "the piece is missing" is a bug, not a case to handle.
 
-**A sort key on this path must be total.** `discover()` fills `pages` from inside
-a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
-`allFiles` order. `pages.sort(byName)` is stable and Jekyll's key is the
-*basename*, so a tie would keep that I/O completion order --- and over a hundred
+**A sort key on this path must be total.** The pages arrive piece by piece (see
+[The source tree is read on the lanes](#the-source-tree-is-read-on-the-lanes)),
+not in the listing's order. `pages.sort(byName)` is stable and Jekyll's key is the
+*basename*, so a tie would keep the order of arrival --- and over a hundred
 folder-style classes are all named `index.md`. Tied pages would reorder the
 chunking and make `search-data.json` differ between two builds of one commit.
 `byName` breaks ties on `srcRel`. Two builds of a commit are byte-identical
@@ -148,6 +149,64 @@ dependency that starts threads is a review matter.
 its `expected`, and `fanOut` adds the pieces to that list, which is what holds the join
 until every piece's `submit` has run. `book/` is not the build: `book.bat`'s renderer
 deflates on the thread pool (`book/lib/parallel-deflate.mjs`), and has no lanes.
+
+### The source tree is read on the lanes
+
+`discover` was one main-thread task: a glob, then every page read and its frontmatter
+parsed, every static file sized and every picture pair's two headers read, all through
+the asynchronous file calls. On a four-CPU CI runner it took about 1.0 s, as a fifth
+thread beside four lanes that were booting, and everything up to the first render waits
+for it. It is three steps now (`builder/discover.mjs`): `discoverList` lists the tree on
+the main thread and cuts the listing into pieces, each `discoverRead:i` does a piece on
+a lane (`builder/discover-read.mjs`, every file opened there, synchronously), and
+`discover` puts the results together. `discover()` is the same code in one piece, for
+the tools.
+
+What makes it worth doing, and what to keep when changing it:
+
+- **A lane boots in two stages** (`builder/cpu-worker.mjs`). The first loads the
+  scheduler and what `discoverRead` needs, and the lane is in the pull loop after it. The
+  second (`loadRest`: the renderer, the search index, the archive) runs before the
+  lane's first task that is not a `discoverRead`. Without the split a piece would start
+  only after a whole boot, later than the main thread used to start reading. **A module
+  `discover-read.mjs` imports is paid for by every lane before the first piece**: keep it
+  to the YAML parser and `paths.mjs`. The glob library stays in `discover.mjs`.
+- **The other early lane tasks wait for `discoverList`**: `scssLight`, `scssDark`, `dot`,
+  `packTests` and `warmInit`. They are READY at the start otherwise, the first lanes up
+  would take them and load the second stage, and the pieces would wait for a lane. The
+  listing takes a few hundredths of a second, less than a lane takes to start. The
+  pieces have the highest priority, so the first two lanes that look take them.
+  `buildInfo` does not wait: `dispatch` waits for it, and in a serve rebuild its two
+  `git` processes (0.1 to 0.3 s) are what `dispatch` waits for once `discover` is short.
+- **Two pieces** (`DISCOVER_PIECES`). On four CPUs the other two lanes compile the
+  stylesheets meanwhile; with four pieces `dot` and `packTests` queued behind the reads
+  and `dispatch`, which waits for `dot`, started late.
+- **The reads are synchronous.** Asynchronous calls from every lane queue on libuv's one
+  pool of four threads; synchronous ones on two lanes are two reads at a time, and the
+  lane has nothing else to do. Alone, every page read on one thread takes 67 ms on the
+  dev box, 40 ms on two and 23 ms on four.
+
+Measured, each `discover` ending at:
+
+| | before | two pieces |
+|---|---|---|
+| CI (Linux, four CPUs): one run before, two after | 1.05 s | 0.26 s, 0.38 s |
+| dev box (Windows, 16 CPUs), one-off build | 0.48 to 0.50 s | 0.43 to 0.51 s |
+| dev box, four CPUs (`start /affinity F`) | 0.51 to 0.59 s | 0.35 to 0.46 s |
+| dev box, serve rebuild | 0.16 to 0.22 s | 0.14 to 0.16 s |
+
+On CI the first render started at about 1.2 s in the first run after and about 1.65 s in
+the second, where it had started at 2.05 s. The first run's runner was about a quarter
+faster than the one before (render itself took 10 s against 13 s); the second's was as
+slow as it (render 14 s), so about 0.4 s is the change. `dispatch` ended at 1.45 s in the
+second run against 2.0 s. The whole build's time did not change beyond what the runners
+differ by (24.6 s against 24.2 s on the two slow ones). **On Windows a one-off build gains nothing**:
+while the other lanes boot, a lane's piece takes 0.2 to 0.3 s for half the tree, where
+the same reads alone take 40 ms, and `markdownInit` and `dispatch` then run beside
+every lane's second stage and `warmInit` and take longer than they did. The first
+render started at 1.15 to 1.28 s against 0.96 to 0.99 s in the prototype's runs, on a
+machine that was not quiet; not measured again since. The change is for CI and for
+serve rebuilds.
 
 ### A hung build times out and says where it hung
 
@@ -1423,9 +1482,9 @@ light one alone, a plain `<img>` (`lightOnly` in
   `.light.png` is an ordinary static file to the publish allowlist, the link check and the index
   audit, and each one adds one to the page baseline's static-file count.
 - **Each is shown at its own size, at one scale.** The page's `{:width height}` is the dark
-  picture's; the light `<img>` gets it scaled by the two files' pixel sizes, which `discover`
-  reads from their PNG headers on the main thread (`pairSizes`) and the workers receive with the
-  shared render data. The Light theme lays the IDE out a few pixels differently (the toolbar
+  picture's; the light `<img>` gets it scaled by the two files' pixel sizes, which the
+  `discoverRead:i` lanes read from their PNG headers (`picturePairs` names the pairs) and the
+  workers receive with the shared render data. The Light theme lays the IDE out a few pixels differently (the toolbar
   4 CSS px shorter, a panel's title bar 3, some buttons narrower), so a light screenshot is up to
   a few pixels off the dark one's size. Forcing the dark size on it instead either pulls
   neighbouring UI into the frame (a line of the blue title bar over every light toolbar) or

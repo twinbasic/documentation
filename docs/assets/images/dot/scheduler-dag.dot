@@ -38,6 +38,8 @@ digraph scheduler {
     LD  [label=<loadData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
     WI  [label=<warmInit<BR/><FONT POINT-SIZE="10">[W] per-lane<BR/>on_demand, idle</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
 
+    DL  [label=<discoverList<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    DRi [label=<discoverRead:i<BR/><FONT POINT-SIZE="10">[W]</FONT>>,     fillcolor="#e8f0fe", color="#4285f4"]
     DI  [label=<discover<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
     VA  [label=<vendorAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     NV  [label=<nav<BR/><FONT POINT-SIZE="10">[M]</FONT>>,                fillcolor="#fef7e0", color="#f9ab00"]
@@ -87,7 +89,15 @@ digraph scheduler {
 
     // ── Edges ───────────────────────────────────────────────────────────
 
-    CF -> DI
+    CF -> DL
+    DL -> DRi
+    DRi -> DI
+    // The lane tasks that wait for the listing, so that the first lanes up
+    // are free for the pieces.
+    DL -> SL
+    DL -> SD
+    DL -> DT
+    DL -> WI
     CF -> HI
     HI -> LD
     DI -> NV

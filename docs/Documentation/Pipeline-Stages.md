@@ -22,7 +22,7 @@ Every task shares three pieces of mutable state: the `pages[]` array, the `stati
 
 ### Page objects (`pages[]`)
 
-`discover` creates one page object per `.md` or `.html` source file with parseable YAML frontmatter. Later tasks add fields; none removes or renames a field set earlier. Render workers receive structured-clone copies of their chunk, mutate the copies, and return a delta that the render task's `submit()` merges into the master page via `state.pageByDest`.
+The inventory creates one page object per `.md` or `.html` source file with parseable YAML frontmatter: a `discoverRead:i` lane makes it, and `discover` puts it in `pages[]`. The fields below that name `discover` are set there. Later tasks add fields; none removes or renames a field set earlier. Render workers receive structured-clone copies of their chunk, mutate the copies, and return a delta that the render task's `submit()` merges into the master page via `state.pageByDest`.
 
 | Field | Added by | Type | Description |
 |---|---|---|---|
@@ -128,6 +128,7 @@ export const HANDLERS = {
   buildInfo: 6, render: 7,
   writePdf: 9, checkBook: 10, packTests: 11,
   indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
+  discoverRead: 15,
 };
 ```
 
@@ -147,7 +148,7 @@ A task therefore never starts a worker thread or a process for its work, and nev
 
 ## Section 1 --- Seed tasks
 
-The tasks that start the build. `config`, `buildInfo`, `scssLight` and `scssDark` have no predecessors and are claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`.
+The tasks that start the build. `config` and `buildInfo` have no predecessors and are claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `scssLight` and `scssDark` wait for [`discoverList`](#discoverlist-main), as `dot`, `packTests` and `warmInit` do.
 
 ### `config` (main)
 
@@ -162,6 +163,11 @@ Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url`
 Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`, which runs two parallel `git` commands (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on failure. The result goes to `state.site.buildInfo`.
 
 ### `scssLight` (worker), `scssDark` (worker)
+
+```js
+scssLight.expected = ["discoverList"]
+scssDark.expected  = ["discoverList"]
+```
 
 Handlers call `compileLightScss(srcRoot)` and `compileDarkScss(srcRoot)`. Each compiles the vendored just-the-docs SCSS plus customisations against one palette. The CSS strings go to the `scss` task.
 
@@ -185,17 +191,46 @@ Calls `loadData(srcRoot)` from `data.mjs`. Writes `state.site.data` and `state.s
 
 ## Section 2 --- Spine tasks
 
-`discover` and the main-thread tasks fed by it, with `dot` (no predecessors) running on a worker beside them. They build the `site` object, derive auxiliary data and prepare the fan-out. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, in Section 3.
+The source tree's inventory and the main-thread tasks fed by it, with `dot` running on a worker beside them. They build the `site` object, derive auxiliary data and prepare the fan-out. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, in Section 3.
+
+The inventory is three tasks. The main thread lists the tree, two lanes open every file, and the main thread puts the results together.
+
+### `discoverList` (main)
+
+```js
+discoverList.expected = ["config"]
+discoverList.execute({ config: { config } }, ctx) →
+  { pieces, statics, pairs }
+```
+
+Calls `listSources(srcRoot, config.exclude ?? [])` and then `cutPieces(listing, count, config.bundle_extra ?? [])`, both from `discover.mjs`. `count` is `DISCOVER_PIECES`, two, or one on a machine with one lane. Each piece is `{ pageRels, statSrcs, pairs }`: every `count`-th `.md` or `.html` file, static file and picture pair, so that each piece has its share of every folder. The `bundle_extra` files are among the static files, and a light picture is paired with its dark one wherever the two are. `statics` and `pairs` are what `discover` needs to put the results in order.
+
+`submit()` calls `fanOut` with the pieces as payloads, handler `discoverRead`, join `discover` and the highest priority of any lane task.
+
+The lane tasks that would otherwise be claimable before the pieces exist list `discoverList` in their `expected`: `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit`. The first lanes to start therefore find the pieces and nothing else. `buildInfo` does not wait, because `dispatch` waits for it.
+
+### `discoverRead:i` (worker)
+
+```js
+discoverRead:i.expected = ["discoverList"]
+discoverRead:i → { pages, plain, warnings, sizes, pairSizes }
+```
+
+Handler in `cpu-worker.mjs`: calls `readPiece(srcRoot, piece)` from `discover-read.mjs` with its `fanOutPayload`. It reads each page file and parses its frontmatter into a [page object](#page-objects-pages), sizes each static file, and reads each picture pair's width and height from the two PNG headers. A `.md` or `.html` file with no frontmatter goes to `plain`, with its size: it is a static file. The warnings about unquoted frontmatter values that end in `#` go to `warnings`, which the main thread prints. Frontmatter that does not parse throws, naming the file, and fails the build.
+
+Every call is synchronous. A lane has nothing else to do while it reads, and two lanes reading at once is what makes the inventory parallel.
+
+This is the one handler a lane runs after the first stage of its boot alone; see [`cpu-worker.mjs`](#cpu-workermjs).
 
 ### `discover` (main)
 
 ```js
-discover.expected = ["config"]
-discover.execute({ config: { config } }, ctx) →
-  { pages, staticFiles, config }
+discover.expected = ["config", "discoverList", "discoverRead:0", ...]   // the pieces, added by fanOut
+discover.execute(inputs, ctx) →
+  { pages, staticFiles, config, pictureSizes }
 ```
 
-Calls `discover(srcRoot, config.exclude ?? [])` from `discover.mjs`, appends each `bundle_extra` entry to `staticFiles`, then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the result and **throws** if anything is not a publishable type, before any write. `submit()` writes the three fields to `SharedState` and populates `state.pageByDest`.
+Calls `assemble(srcRoot, plan, results)` from `discover.mjs` with `discoverList`'s plan and each piece's result; a piece that is missing throws. `assemble` sorts the pages by file name and then by path, the static files by path, and puts the `bundle_extra` files after them. The task then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the static files and **throws** if anything is not a publishable type, before any write, and throws for a light picture with no dark one. `submit()` writes the four fields to `SharedState` and populates `state.pageByDest`.
 
 ### `vendorAssets` (main)
 
@@ -221,6 +256,10 @@ nav.execute() → { sidebar }
 Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderSidebar(state.site)` from `template.mjs`. The nav-integrity check runs inside `computeNav` and throws on orphan or ambiguous `parent:` declarations. Returns the sidebar HTML for `dispatch` to add to the shared payload.
 
 ### `dot` (worker)
+
+```js
+dot.expected = ["discoverList"]
+```
 
 Handler calls `regenerateDot(srcRoot)`. It finds `*.dot` files at any depth under `<srcRoot>` (skipping underscore-prefixed directories, which hold build output), compares mtimes against the `.svg` siblings, calls `Graphviz.load()` once, installs Inter's width table via `applyInterMetrics()`, then runs `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends the new SVG descriptors to `state.staticFiles`. Rendering takes under a millisecond per diagram after a one-time `Graphviz.load()` of about 50 ms.
 
@@ -280,7 +319,7 @@ Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`, w
 ### `packTests` (worker)
 
 ```js
-packTests.expected = ["config"]
+packTests.expected = ["config", "discoverList"]
 packTests → { packed, ms } | { failed, error } | {}
 ```
 
@@ -335,7 +374,11 @@ Pre-creates every page output directory (online + offline), so `flush:i` can cal
 
 ### `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`)
 
-Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flags:
+```js
+warmInit.expected = ["discoverList"]
+```
+
+Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). A lane does not start it before the source tree is listed, so that an idle lane takes a `discoverRead:i` first. The flags:
 
 - `unique_per_worker`: every lane that runs a render task needs its own warmup.
 - `on_demand`: keeps it off the auto-start list.
@@ -715,7 +758,18 @@ The pure core shared by the build's check and the standalone [`scripts/check_lin
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Traverses the source tree, classifies pages vs static files, returns the two sorted arrays. |
+| `listSources` | `(srcRoot, ignore) → Promise<{ pageRels, otherRels }>` | The files under the source root that `ignore` does not leave out, sorted: the `.md` and `.html` files, and the others. |
+| `cutPieces` | `(listing, count, extra?) → { pieces, statics, pairs }` | The listing in `count` pieces for `readPiece`, with the `bundle_extra` files (`extra`) among the static files, and what `assemble` needs. |
+| `assemble` | `(srcRoot, plan, results) → { pages, staticFiles, pictureSizes }` | The inventory, from `cutPieces`' plan and each piece's result: the two sorted arrays and the picture pairs' sizes. |
+| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | The same steps in one call and one piece, without `bundle_extra`, for the tools that have no lanes. |
+
+### `discover-read.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `readPiece` | `(srcRoot, { pageRels, statSrcs, pairs }) → { pages, plain, warnings, sizes, pairSizes }` | Reads one piece, synchronously: the pages, the files with no frontmatter, the warnings to print, each static file's size and each pair's `[lightW, lightH, darkW, darkH]` or `null`. |
+| `PAGE_EXT` | `RegExp` | The extensions of a file that may be a page: `.md` and `.html`. |
+| `toPosix` | `(path) → string` | A path with forward slashes. |
 
 ### `publish-policy.mjs`
 
@@ -1133,10 +1187,13 @@ A piece cannot become READY while its edges are being written, because `from` is
 
 Worker harness; no exports. Runs the pull loop in module scope.
 
+The module's static imports are the first stage of a lane's boot: the scheduler, `sab-broadcast.mjs` and `discover-read.mjs`. Every other module a handler needs is loaded by `loadRest`, the second stage, which the pull loop awaits before a lane's first task that is not a `discoverRead`. Each stage posts a `coldBoot` message with its times, for the Gantt chart.
+
 The handler table is built from the imported `HANDLERS` constant:
 
 | Handler | Source | Description |
 |---|---|---|
+| `discoverRead` | `discover-read.mjs` | `readPiece` over the piece in its `fanOutPayload`. Runs after the first boot stage alone. |
 | `warmInit` | inline | Awaits `initHighlighter()`. |
 | `renderEnvInit` | inline | Unpacks shared SAB, awaits highlighter, reconstructs link tables, builds markdown-it, stores `_renderEnv`. |
 | `flush` | inline | Drains the next `_pendingFlush` batch to disk. |
