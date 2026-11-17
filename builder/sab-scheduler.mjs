@@ -38,6 +38,7 @@ export const HANDLERS = {
   render: 7,
   writePdf: 9,
   checkBook: 10,
+  packTests: 11,
   // The pieces of fan-outs (fan-out.mjs).
   indexAdd: 12,
   indexVectors: 13,

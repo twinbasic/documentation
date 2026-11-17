@@ -64,7 +64,7 @@ import { Scheduler } from "./scheduler.mjs";
 import { GANTT_SECTION, groupGanttTimings, renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
-import { checkPlaceholders, deriveCounts, deriveDownloads } from "./counts.mjs";
+import { checkPlaceholders, deriveCounts, deriveDownloads, packedDownloads } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
@@ -107,13 +107,7 @@ import { normalizeBaseurl } from "./url.mjs";
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
 import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
-import {
-  formatPackageTests,
-  packageTestRels,
-  packageTestsOf,
-  packAllPackageTests,
-  writePackageTests,
-} from "./package-tests.mjs";
+import { formatPackageTests, packageTestRels, packageTestsOf, writePackageTests } from "./package-tests.mjs";
 import {
   finishHelpArchive,
   helpArchiveOut,
@@ -148,6 +142,7 @@ import {
   verifySchedulerSAB,
   SLICES_PER_WORKER,
   HANDLERS,
+  DONE,
   F_PIN_TO_PRED,
   writeTaskMeta,
   allocDynamicSlots,
@@ -260,7 +255,12 @@ const TASKS = {
       config.url = String(config.url ?? "").replace(/\/+$/, "");
       return { config };
     },
-    submit() {},
+    // What packTests packs, for the lane that runs it: broadcast before this
+    // task is marked done, so it is queued on every lane before one can claim
+    // packTests.
+    submit({ config }, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("packageTests", packShared(config.package_tests ?? null));
+    },
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
@@ -593,11 +593,11 @@ const TASKS = {
   markdownInit: {
     // deriveRedirects is here for the counts registry alone: {{tbdocs:redirectStubs}}
     // is derived from the stub set, and nothing else on this task needs it.
-    // packTests is here for {{tbdocs:size:...}} and {{tbdocs:packageTestRows}}, which state the
-    // test projects' sizes before any page renders.
-    expected: ["discover", "vendorAssets", "deriveRedirects", "packTests"],
+    // packTests is not here: the files it packs are named now and sized later, by
+    // downloadSizes, for the few pages that state one.
+    expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
-    execute({ deriveRedirects: { stubs }, packTests }, ctx, state) {
+    execute({ deriveRedirects: { stubs } }, ctx, state) {
       const linkTables = buildLinkTables(state.pages);
       const baseurl = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map((s) => s.srcRel));
@@ -623,24 +623,27 @@ const TASKS = {
       // The downloads' sizes, for the placeholders the pre-render rewrites expand
       // ({{tbdocs:size:...}}, {{tbdocs:packageTestRows}}). The help add-in's project is named
       // only to refuse it: it embeds the offline tree, which holds the pages that state sizes.
-      if (packTests?.failed) throw new Error(`package tests: not packed: ${packTests.error}`);
-      const testsCfg = packageTestsOf(state.site.config, ctx.srcRoot);
+      // The files packTests packs are named, by a listing of their folders, and not yet sized:
+      // a lane may still be packing them. The pages that state one of their sizes are the
+      // late pages, whose render chunks wait for downloadSizes (dispatch).
       const downloads = deriveDownloads(state, {
-        tests: testsCfg && packTests?.packed ? { dest: testsCfg.dest, packed: packTests.packed } : null,
+        packed: packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot)),
         addinDest: addinProjectOf(state.site.config)?.dest ?? null,
       });
-      const { problems: badNames, sizes } = checkPlaceholders(
-        state.pages,
-        state.site.counts,
-        downloads,
-        state.site.markdown,
-      );
+      const {
+        problems: badNames,
+        sizes,
+        packedArgs,
+        late,
+      } = checkPlaceholders(state.pages, state.site.counts, downloads, state.site.markdown);
       if (badNames.length) {
         throw new Error(`bad {{tbdocs:...}} placeholder in ${badNames.length} place(s):\n\n` + badNames.join("\n\n"));
       }
       // Only what the pages ask for goes to the workers.
-      state.site.downloads = { sizes, tests: downloads.tests };
+      state.site.downloads = { sizes, tests: null };
       state.site.markdown.downloads = state.site.downloads;
+      state.site.packedArgs = packedArgs;
+      state.site.latePages = late;
 
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
@@ -649,6 +652,32 @@ const TASKS = {
       return {};
     },
     submit() {},
+  },
+
+  // The sizes of the files packTests packed, for the late pages: those that state one
+  // ({{tbdocs:size:...}}) or list the test projects ({{tbdocs:packageTestRows}}), which
+  // markdownInit named. The render chunks that hold one wait for this task (dispatch), and
+  // read what it broadcasts; every other chunk renders without it. So the pack is on no
+  // page's path but theirs, and a lane does it at any time before they render.
+  downloadSizes: {
+    expected: ["markdownInit", "packTests"],
+    runOnMain: true,
+    execute({ packTests }, ctx, state) {
+      if (packTests?.failed) throw new Error(`package tests: not packed: ${packTests.error}`);
+      state.site.downloads = packedDownloads({
+        sizes: state.site.downloads.sizes,
+        packedArgs: state.site.packedArgs,
+        dest: packageTestsOf(state.site.config, ctx.srcRoot)?.dest ?? "",
+        packed: packTests?.packed ?? [],
+      });
+      state.site.markdown.downloads = state.site.downloads;
+      return packShared(state.site.downloads);
+    },
+    // Before the task is marked done, so the data is queued on every lane
+    // before one can claim a chunk that waits for it.
+    submit(sab, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("downloads", sab);
+    },
   },
 
   loadData: {
@@ -863,10 +892,15 @@ const TASKS = {
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
         pictureSizes: state.site.pictureSizes ?? {},
         counts: state.site.counts,
+        // As they are now: the static files' sizes, or everything if downloadSizes has run.
         downloads: state.site.downloads,
+        latePages: state.site.latePages,
       };
       const sharedSAB = packShared(shared);
-      return { chunks, sharedSAB };
+      // The chunks that hold a late page (markdownInit), which wait for downloadSizes.
+      const latePages = new Set(state.site.latePages);
+      const lateChunks = chunks.flatMap((chunk, i) => (chunk.some((p) => latePages.has(p.srcRel)) ? [i] : []));
+      return { chunks, sharedSAB, lateChunks };
     },
     submit(out, _state, scheduler) {
       const N = out.chunks.length;
@@ -929,6 +963,17 @@ const TASKS = {
         views.flags[flushBase + i] |= F_PIN_TO_PRED;
       }
 
+      // A chunk that holds a late page waits for downloadSizes, unless that has
+      // run. It is a main-thread task and so is this submit, so it cannot finish
+      // between the look at its status and the edge.
+      const sizesIdx = idMap.nameToIdx.get("downloadSizes");
+      const waiting = Atomics.load(views.status, sizesIdx) === DONE ? [] : out.lateChunks;
+      if (waiting.length) {
+        for (const i of waiting) setDepCount(views, renderBase + i, 1);
+        appendDynamicSuccessors(views, [{ from: sizesIdx, to: waiting.map((i) => renderBase + i) }]);
+      }
+      const waits = new Set(waiting);
+
       // 5. Register names + task defs on the main-thread scheduler so
       //    _onWorkerDone can look up consolidate/ganttSection/submit and
       //    _assembleInputs can resolve flushJoin's expected list.
@@ -937,7 +982,7 @@ const TASKS = {
         idMap.nameToIdx.set(rName, renderBase + i);
         idMap.idxToName[renderBase + i] = rName;
         scheduler.tasks.set(rName, {
-          expected: [],
+          expected: waits.has(i) ? ["downloadSizes"] : [],
           consolidate: true,
           ganttSection: "Render",
           // Only consulted by the stall watchdog. "render:33 never
@@ -1308,22 +1353,16 @@ const TASKS = {
     submit() {},
   },
 
-  // Pack the contributed packages' test projects in memory, before any page renders: a page can
+  // Pack the contributed packages' test projects and published tools in memory: a page can
   // state a download's size ({{tbdocs:size:...}}), and the packageTests task writes these bytes.
   // A tree whose config declares no package_tests (the test fixtures) packs nothing; a failure
   // is reported by packageTests, which fails the build.
+  //
+  // On a lane (cpu-worker.mjs), and on no page's path but the late pages': downloadSizes takes
+  // the sizes from here, and only the render chunks that hold a late page wait for it.
   packTests: {
     expected: ["config"],
-    runOnMain: true,
-    async execute({ config: { config } }, ctx) {
-      const cfg = packageTestsOf(config, ctx.srcRoot);
-      if (!cfg) return {};
-      try {
-        return await packAllPackageTests(cfg);
-      } catch (err) {
-        return { failed: true, error: err.message };
-      }
-    },
+    handler: "packTests",
     submit() {},
   },
 

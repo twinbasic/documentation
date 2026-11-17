@@ -76,13 +76,17 @@
 //
 // So `expandDownloadPlaceholders` expands them in the page's source, between
 // `maskCode` and its `restore` (render.mjs, applyPreRenderRewrites), where code
-// is already hidden. Their values are settled before any page renders, because
-// the test projects are packed first (tbdocs.mjs, packTests) and the packageTests
-// task writes those same bytes. `checkPlaceholders` is `validateCountNames` for
-// them: it rejects, naming the file and the line, a path the build does not
-// publish or whose size cannot be known before render. The help add-in's
-// project is the deliberate case: it embeds the offline tree, which holds every
-// page that states a size, so its size would depend on itself.
+// is already hidden. A static file's size is known before any page renders. The
+// test projects and the published tools are packed on a lane while the pages
+// render (tbdocs.mjs, packTests; the packageTests task writes those same bytes),
+// so their sizes arrive later: `checkPlaceholders` names the pages that state
+// one, the render chunks that hold such a page wait for the downloadSizes task,
+// and `packedDownloads` gives them the sizes. `checkPlaceholders` is
+// `validateCountNames` for these placeholders: it rejects, naming the file and
+// the line, a path the build does not publish or whose size cannot be known
+// before the page renders. The help add-in's project is the deliberate case: it
+// embeds the offline tree, which holds every page that states a size, so its
+// size would depend on itself.
 
 import path from "node:path";
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
@@ -338,15 +342,21 @@ function editDistance(a, b) {
  * It also checks the two download placeholders against `downloads` (from
  * `deriveDownloads`; null when the caller has none, which makes them errors) and
  * returns the size of each file a `size` placeholder names, for the render
- * workers.
+ * workers. A file in `downloads.packed` has no size yet: its placeholder is
+ * accepted, and so is the table of test projects, and the page is named in
+ * `late`, for the build to render it once `packedDownloads` has the sizes.
  *
- * @returns {{problems: string[], sizes: Record<string, number>}} one message per
- *   bad reference, empty meaning clean; and the bytes of each file named
+ * @returns {{problems: string[], sizes: Record<string, number>, packedArgs: Record<string, string>,
+ *   late: string[]}} one message per bad reference, empty meaning clean; the bytes of each file
+ *   named; the path of each packed file named, by the placeholder's argument; and the `srcRel`
+ *   of each page that states a packed file's size or lists the test projects
  */
 export function checkPlaceholders(pages, counts, downloads, md) {
   const names = [...Object.keys(counts), ...DOWNLOAD_NAMES].sort();
   const problems = [];
   const sizes = {};
+  const packedArgs = {};
+  const late = new Set();
   for (const p of pages) {
     for (const { name, arg, line } of findCountRefs(p.rawContent ?? "", md)) {
       const where = `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}`;
@@ -358,11 +368,15 @@ export function checkPlaceholders(pages, counts, downloads, md) {
           const rel = arg.replace(/^\/+/, "");
           const bytes = downloads.files.get(rel);
           if (bytes !== undefined) sizes[arg] = bytes;
-          else refuse(downloads.refused.get(rel) ?? notPublished(rel, downloads));
+          else if (downloads.packed?.has(rel)) {
+            packedArgs[arg] = rel;
+            late.add(p.srcRel);
+          } else refuse(downloads.refused.get(rel) ?? notPublished(rel, downloads));
         }
       } else if (name === ROWS_NAME) {
         if (arg) refuse("takes no argument");
         else if (!downloads) refuse("this build has no downloads to list");
+        else late.add(p.srcRel);
       } else if (Object.hasOwn(counts, name)) {
         if (arg) refuse("a count name takes no argument");
       } else {
@@ -376,7 +390,7 @@ export function checkPlaceholders(pages, counts, downloads, md) {
       }
     }
   }
-  return { problems, sizes };
+  return { problems, sizes, packedArgs, late: [...late] };
 }
 
 /** `checkPlaceholders` for a caller with no downloads: the problems alone. */
@@ -388,7 +402,8 @@ export function validateCountNames(pages, counts, md) {
 // elsewhere, the usual slip.
 function notPublished(rel, downloads) {
   const base = path.posix.basename(rel);
-  const same = [...downloads.files.keys()].filter((k) => path.posix.basename(k) === base);
+  const known = [...downloads.files.keys(), ...(downloads.packed ?? [])];
+  const same = known.filter((k) => path.posix.basename(k) === base);
   return (
     `the build does not publish ${rel}; a size is known for the static files under docs/, the ` +
     "bundle_extra files and the package test projects" +
@@ -406,21 +421,21 @@ const REGENERATED_REFUSAL =
   "so its size cannot be known before render";
 
 /**
- * What the download placeholders know, from build state.
+ * What the download placeholders know before any page renders, from build state.
  *
- * `files` holds the bytes of every file whose size is settled before any page renders: the
- * static files discover found (the `bundle_extra` files among them), and the package test
- * projects. `refused` holds the paths that are published but cannot be sized, with the reason.
+ * `files` holds the bytes of every file whose size is settled by then: the static files
+ * discover found (the `bundle_extra` files among them). `refused` holds the paths that are
+ * published but cannot be sized, with the reason. `packed` holds the paths of the package test
+ * projects and the published tools, which are packed while the pages render: each can be
+ * sized, by `packedDownloads`, once it is.
  *
  * @param {object} state  scheduler state: needs `staticFiles`
  * @param {object} extra
- * @param {{dest: string, packed: {pkg: string, rel: string, bytes: Buffer}[]}|null} extra.tests
- *   the packed test projects, and where the online tree has them
+ * @param {string[]} [extra.packed]  the packed files' paths in the online tree
  * @param {string|null} extra.addinDest  the help add-in's project file, which is refused
- * @returns {{files: Map<string, number>, refused: Map<string, string>,
- *   tests: {dest: string, packages: {pkg: string, rel: string, bytes: number}[]}}}
+ * @returns {{files: Map<string, number>, refused: Map<string, string>, packed: Set<string>}}
  */
-export function deriveDownloads(state, { tests = null, addinDest = null }) {
+export function deriveDownloads(state, { packed = [], addinDest = null }) {
   const files = new Map();
   const refused = new Map();
   for (const f of state.staticFiles ?? []) {
@@ -431,12 +446,33 @@ export function deriveDownloads(state, { tests = null, addinDest = null }) {
     else files.set(rel, f.size);
   }
   if (addinDest) refused.set(addinDest, HELP_ADDIN_REFUSAL);
-  // Every packed file can be sized; only the test projects are rows of the table.
-  for (const { rel, bytes } of tests?.packed ?? []) files.set(rel, bytes.length);
-  const packages = (tests?.packed ?? [])
+  return { files, refused, packed: new Set(packed) };
+}
+
+/**
+ * The downloads as the late pages need them: `sizes` with each packed file a placeholder
+ * names added, and `tests`, the rows of the test projects' table. Every packed file can be
+ * sized; only the test projects are rows.
+ *
+ * @param {object} o
+ * @param {Record<string, number>} o.sizes  the sizes known before render (`checkPlaceholders`)
+ * @param {Record<string, string>} o.packedArgs  the packed files the pages name (`checkPlaceholders`)
+ * @param {string} o.dest  where the online tree has the test projects
+ * @param {{pkg: string, rel: string, bytes: Uint8Array, kind: string}[]} o.packed  the packed files
+ * @returns {{sizes: Record<string, number>,
+ *   tests: {dest: string, packages: {pkg: string, rel: string, bytes: number}[]}}}
+ */
+export function packedDownloads({ sizes, packedArgs, dest, packed }) {
+  const bytesOf = new Map(packed.map(({ rel, bytes }) => [rel, bytes.length]));
+  const all = { ...sizes };
+  for (const [arg, rel] of Object.entries(packedArgs)) {
+    if (!bytesOf.has(rel)) throw new Error(`{{tbdocs:size:${arg}}}: ${rel} was to be packed, and was not`);
+    all[arg] = bytesOf.get(rel);
+  }
+  const packages = packed
     .filter((t) => t.kind !== "tool")
     .map(({ pkg, rel, bytes }) => ({ pkg, rel, bytes: bytes.length }));
-  return { files, refused, tests: { dest: tests?.dest ?? "", packages } };
+  return { sizes: all, tests: { dest, packages } };
 }
 
 /** `43 KB` below a mebibyte (never less than 1 KB), `1.2 MB` from there. */
@@ -463,11 +499,13 @@ function linkFrom(permalink, target) {
  * the caller has already masked of code.
  *
  * `downloads` is the object the build hands the render workers: `sizes`, the bytes of each
- * path the pages name, and `tests`, as `deriveDownloads` returns it. `checkPlaceholders` has
- * rejected what cannot be expanded, so a miss here is a bug in the build and throws.
+ * path the pages name, and `tests`, the test projects' rows. Before the files are packed it
+ * has the static files' sizes and no `tests`; a page that needs more renders after
+ * `packedDownloads` has it. `checkPlaceholders` has rejected what cannot be expanded and named
+ * the pages that wait, so a miss here is a bug in the build and throws.
  *
  * @param {string} src
- * @param {{sizes: Record<string, number>, tests: {dest: string, packages: object[]}}} downloads
+ * @param {{sizes: Record<string, number>, tests: {dest: string, packages: object[]}|null}} downloads
  * @param {string} permalink  the page's URL; the table rows' links are relative to it
  */
 export function expandDownloadPlaceholders(src, downloads, permalink) {
@@ -476,10 +514,14 @@ export function expandDownloadPlaceholders(src, downloads, permalink) {
     if (name === SIZE_NAME && arg !== undefined) {
       const bytes = downloads.sizes[arg];
       if (bytes === undefined)
-        throw new Error(`{{tbdocs:size:${arg}}} has no size; checkPlaceholders should have refused it`);
+        throw new Error(
+          `{{tbdocs:size:${arg}}} has no size; checkPlaceholders should have refused it, or named its page as one that waits for the packed files`,
+        );
       return formatSize(bytes);
     }
     if (name === ROWS_NAME && arg === undefined) {
+      if (!downloads.tests)
+        throw new Error("{{tbdocs:packageTestRows}} was expanded before the test projects were packed");
       const { dest, packages } = downloads.tests;
       return packages
         .map(({ pkg, rel, bytes }) => {

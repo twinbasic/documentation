@@ -83,7 +83,7 @@ import path from "node:path";
 
 import MarkdownIt from "markdown-it";
 import deflist from "markdown-it-deflist";
-import { checkPlaceholders, formatSize, validateCountNames } from "../builder/counts.mjs";
+import { checkPlaceholders, formatSize, packedDownloads, validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import { markdownCopy } from "../builder/markdown-copy.mjs";
@@ -622,6 +622,48 @@ function downloadProbe() {
   assert.match(check("{{tbdocs:size:tB/add-in.twinproj}}")[0], /embeds the offline tree/);
   assert.match(check("{{tbdocs:size:s.css}}")[0], /rewritten/);
   assert.deepEqual(check("`{{tbdocs:size:nope}}`\n\n```\n{{tbdocs:size:nope}}\n```"), []);
+
+  // A file the build packs while the pages render has no size yet: its placeholder is accepted,
+  // and so is the table, and each page that holds one is named as late. packedDownloads then
+  // has the sizes and the rows; a tool is sized and is no row.
+  const withPacked = { ...downloads, packed: new Set(["t/P/P-tests.twinproj", "t/P/tool.zip"]) };
+  const checked = checkPlaceholders(
+    [
+      { srcRel: "early.md", rawContent: "{{tbdocs:size:a/x.bin}} `{{tbdocs:packageTestRows}}`" },
+      { srcRel: "size.md", rawContent: "{{tbdocs:size:/t/P/tool.zip}} {{tbdocs:size:a/x.bin}}" },
+      { srcRel: "rows.md", rawContent: "{{tbdocs:packageTestRows}}" },
+    ],
+    { pages: 1 },
+    withPacked,
+    md,
+  );
+  assert.deepEqual(checked.problems, []);
+  assert.deepEqual(checked.late, ["size.md", "rows.md"]);
+  assert.deepEqual(checked.sizes, { "a/x.bin": 1 });
+  assert.deepEqual(checked.packedArgs, { "/t/P/tool.zip": "t/P/tool.zip" });
+  const packed = [
+    { pkg: "P", rel: "t/P/P-tests.twinproj", bytes: new Uint8Array(2048), kind: "tests" },
+    { pkg: "P", rel: "t/P/tool.zip", bytes: new Uint8Array(3072), kind: "tool" },
+  ];
+  assert.deepEqual(packedDownloads({ ...checked, dest: "t", packed }), {
+    sizes: { "a/x.bin": 1, "/t/P/tool.zip": 3072 },
+    tests: { dest: "t", packages: [{ pkg: "P", rel: "t/P/P-tests.twinproj", bytes: 2048 }] },
+  });
+  assert.throws(() => packedDownloads({ ...checked, dest: "t", packed: [] }), /was to be packed, and was not/);
+  // Before the files are packed a parser has the static sizes alone, and refuses the rest.
+  const early = createMarkdownIt({
+    highlighter: null,
+    linkTables: null,
+    baseurl: "",
+    staticFiles: new Set(),
+    downloads: { sizes: checked.sizes, tests: null },
+  });
+  assert.equal(applyPreRenderRewrites("{{tbdocs:size:a/x.bin}}", early, { permalink: "/" }), "1 KB");
+  assert.throws(
+    () => applyPreRenderRewrites("{{tbdocs:packageTestRows}}", early, { permalink: "/" }),
+    /before the test projects were packed/,
+  );
+  assert.throws(() => applyPreRenderRewrites("{{tbdocs:size:/t/P/tool.zip}}", early, { permalink: "/" }), /waits/);
   assert.deepEqual([1, 1023, 1024, 44000, 1048000, 1048576, 1.25 * 1048576].map(formatSize), [
     "1 KB",
     "1 KB",

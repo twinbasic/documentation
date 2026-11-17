@@ -91,6 +91,7 @@ const handlers = {
       pictureSizes,
       counts,
       downloads,
+      latePages,
     } = await sharedData();
 
     const { initHighlighter } = await import("./highlight.mjs");
@@ -147,7 +148,7 @@ const handlers = {
     // each picture's SVG named back as its PNG; the others get it as rendered.
     const svgOutputs = pictureSvgOutputs(siteData.config);
     const asPng = (html) => pngPictures(html, staticFiles, baseurl || "");
-    _renderEnv = { site, initData, offlineBase, svgOutputs, asPng };
+    _renderEnv = { site, initData, offlineBase, svgOutputs, asPng, latePages: new Set(latePages ?? []) };
     return {};
   },
 
@@ -219,6 +220,23 @@ const handlers = {
     return { buildInfo };
   },
 
+  // The contributed packages' test projects and published tools, packed in
+  // memory (package-tests.mjs) from the package_tests entry that config
+  // broadcast. The bytes go back to the main thread, where downloadSizes reads
+  // their sizes and packageTests writes them. A failure goes back too, for
+  // packageTests to report: it fails the build without stopping it. The
+  // module is imported here, by the one lane that packs.
+  async packTests() {
+    const { packAllPackageTests, packageTestsOf } = await import("./package-tests.mjs");
+    const cfg = packageTestsOf({ package_tests: unpackShared(await taskData("packageTests")) }, ctx.srcRoot);
+    if (!cfg) return {};
+    try {
+      return await packAllPackageTests(cfg);
+    } catch (err) {
+      return { failed: true, error: err.message };
+    }
+  },
+
   // One slice of the search index (search-index.mjs, step 1): its entries
   // added to a builder that stays on this lane, for the indexVectors:i pinned
   // here; what it returns goes to indexMerge.
@@ -285,6 +303,12 @@ const handlers = {
     const chunk = JSON.parse(new TextDecoder().decode(new Uint8Array(_payloadSAB, offset, length)));
 
     const env = _renderEnv;
+
+    // A chunk with a late page ran after downloadSizes, which broadcast the
+    // packed files' sizes: this lane's parser has them from here on.
+    if (chunk.some((p) => env.latePages.has(p.srcRel))) {
+      env.site.markdown.downloads = unpackShared(await taskData("downloads"));
+    }
 
     await renderPhase(chunk, env.site);
     computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown);
