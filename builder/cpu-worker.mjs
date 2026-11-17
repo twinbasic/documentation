@@ -6,24 +6,49 @@
 import { promises as fsP } from "node:fs";
 import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
-import { compileLightScss, compileDarkScss } from "./scss.mjs";
-import { regenerateDot } from "./dot.mjs";
-import { captureBuildInfo } from "./build-info.mjs";
-import { deflateGroup } from "./help-archive-step.mjs";
-import { writePdf } from "./pdf.mjs";
-import { unpackBookPayload } from "./book-payload.mjs";
-
-import { createMarkdownIt, renderPhase } from "./render.mjs";
-import { markdownCopy, markdownCopyRel } from "./markdown-copy.mjs";
-import { navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav } from "./template.mjs";
+import { readPiece } from "./discover-read.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
-import { deriveSearchEntries, entryKeys, labelKey, packSearchEntries, readSearchEntries } from "./search.mjs";
-import { addSlice, loadSearchLunr, sliceDocs, sliceVectors, unpackTotals } from "./search-index.mjs";
-import { headingsOf, isSymbolPage } from "./symbols.mjs";
-import { computeChunkSeo } from "./seo.mjs";
-import { pictureSvgOutputs, pngPictures } from "./theme-pictures.mjs";
-import { deriveOfflinePage, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
-import { normalizeBaseurl } from "./url.mjs";
+
+// A lane boots in two stages. The first is this module's static imports: the
+// scheduler, and what discoverRead needs, which is the first work of a build
+// and needs little (discover-read.mjs). A lane is in the pull loop after it,
+// and two lanes read the source tree while the others load the rest.
+//
+// The second stage is everything else, below: the renderer and its plugins,
+// the search index, the archive. A lane loads it before its first task that is
+// not a discoverRead (loadRest, from the pull loop), and reports it as a
+// second boot bar. The names are module-level bindings that loadRest fills, so
+// that the handlers read as they would with static imports.
+// biome-ignore format: one module per line
+let compileLightScss, compileDarkScss, regenerateDot, captureBuildInfo, deflateGroup, writePdf, unpackBookPayload,
+  createMarkdownIt, renderPhase, markdownCopy, markdownCopyRel,
+  navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav,
+  deriveSearchEntries, entryKeys, labelKey, packSearchEntries, readSearchEntries,
+  addSlice, loadSearchLunr, sliceDocs, sliceVectors, unpackTotals,
+  headingsOf, isSymbolPage, computeChunkSeo, pictureSvgOutputs, pngPictures,
+  deriveOfflinePage, isWebsiteOnlyLink, websiteOf, normalizeBaseurl;
+let _rest = null;
+const loadRest = () =>
+  (_rest ??= (async () => {
+    const start = Date.now();
+    ({ compileLightScss, compileDarkScss } = await import("./scss.mjs"));
+    ({ regenerateDot } = await import("./dot.mjs"));
+    ({ captureBuildInfo } = await import("./build-info.mjs"));
+    ({ deflateGroup } = await import("./help-archive-step.mjs"));
+    ({ writePdf } = await import("./pdf.mjs"));
+    ({ unpackBookPayload } = await import("./book-payload.mjs"));
+    ({ createMarkdownIt, renderPhase } = await import("./render.mjs"));
+    ({ markdownCopy, markdownCopyRel } = await import("./markdown-copy.mjs"));
+    ({ navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav } = await import("./template.mjs"));
+    ({ deriveSearchEntries, entryKeys, labelKey, packSearchEntries, readSearchEntries } = await import("./search.mjs"));
+    ({ addSlice, loadSearchLunr, sliceDocs, sliceVectors, unpackTotals } = await import("./search-index.mjs"));
+    ({ headingsOf, isSymbolPage } = await import("./symbols.mjs"));
+    ({ computeChunkSeo } = await import("./seo.mjs"));
+    ({ pictureSvgOutputs, pngPictures } = await import("./theme-pictures.mjs"));
+    ({ deriveOfflinePage, isWebsiteOnlyLink, websiteOf } = await import("./offline-rewrite.mjs"));
+    ({ normalizeBaseurl } = await import("./url.mjs"));
+    parentPort.postMessage({ coldBoot: { type: "cold2", start, end: Date.now() } });
+  })());
 
 import {
   createViews,
@@ -68,6 +93,13 @@ async function sharedData() {
 // ── Handler table ───────────────────────────────────────────────────────────
 
 const handlers = {
+  // One piece of the source tree (tbdocs.mjs, discoverList): its pages read
+  // and their frontmatter parsed, its static files sized. The one handler
+  // that runs after the first stage of the boot alone.
+  async discoverRead(taskIdx) {
+    return readPiece(ctx.srcRoot, await fanOutPayload(taskIdx));
+  },
+
   async warmInit() {
     const { initHighlighter } = await import("./highlight.mjs");
     await initHighlighter();
@@ -568,6 +600,7 @@ function findIdleTask(views, lane) {
 // reports its timing and output. Returns false once a throw has been
 // reported, and the caller then ends the pull loop.
 async function runPerWorkerTask(taskIdx, meta) {
+  await loadRest();
   const t0 = Date.now();
   let output;
   try {
@@ -691,6 +724,7 @@ async function pullLoop() {
       return;
     }
 
+    if (meta.handlerIdx !== HANDLERS.discoverRead) await loadRest();
     const t0 = Date.now();
     let result;
     try {

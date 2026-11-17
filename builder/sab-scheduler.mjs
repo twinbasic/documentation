@@ -43,6 +43,7 @@ export const HANDLERS = {
   indexAdd: 12,
   indexVectors: 13,
   archiveDeflate: 14,
+  discoverRead: 15,
 };
 
 // ── SAB layout ───────────────────────────────────────────────────────────────

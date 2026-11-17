@@ -1886,7 +1886,7 @@ function walkTokens(tokens, fn) {
 // An image whose file has a light sibling among the static files (`X.png` and `X.light.png`)
 // becomes two images, the light one first, with the same alt text and attributes, each with
 // its theme's class and `loading="lazy"`; the light one's width and height are the page's
-// scaled by the two files' pixel sizes (`ctx.pictureSizes`, pairSizes in theme-pictures.mjs),
+// scaled by the two files' pixel sizes (`ctx.pictureSizes`, picturePairs in theme-pictures.mjs),
 // since the Light theme lays the IDE out a few pixels differently. The stylesheet hides the one for the other theme,
 // and a lazy image that is not displayed is never fetched. A link to such a picture (the
 // feature map's "Full size") becomes two links the same way, so that it opens the picture

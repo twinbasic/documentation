@@ -63,7 +63,7 @@ import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler } from "./scheduler.mjs";
 import { GANTT_SECTION, groupGanttTimings, renderGantt } from "./gantt.mjs";
 
-import { discover } from "./discover.mjs";
+import { assemble, cutPieces, listSources } from "./discover.mjs";
 import { checkPlaceholders, deriveCounts, deriveDownloads, packedDownloads } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
@@ -73,7 +73,7 @@ import { packBookPayload } from "./book-payload.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
 import { assignPackageVersions } from "../lib/callout-labels.mjs";
-import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
+import { isPictureSvg, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import {
   NAV_SCRIPT_REL,
@@ -180,6 +180,11 @@ function failBuild() {
 // summary, and returns.
 
 const workerCount = os.availableParallelism();
+// How many pieces the source tree is read in, each on a lane (discoverList).
+// Two: on a four-CPU CI runner the other two lanes compile the stylesheets
+// meanwhile, and more pieces would put those, dot and packTests behind the
+// reads. On Linux two pieces took discover from about 1.0 s to under 0.3 s.
+const DISCOVER_PIECES = 2;
 
 // Register a dynamic fan-in barrier: BOTH halves of its invariant, in
 // one call, because writing one without the other is a data-loss bug
@@ -276,13 +281,13 @@ const TASKS = {
   // Sass compilation split across two workers so light + dark run in parallel.
   // Each half is ~700 ms total serially; running concurrently saves ~200 ms.
   scssLight: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "scssLight",
     submit() {},
   },
 
   scssDark: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "scssDark",
     submit() {},
   },
@@ -334,7 +339,7 @@ const TASKS = {
   // no in-tree patches. Runs on a worker as a seed so the Graphviz.load()
   // WASM init (~50 ms) hides behind the main spine.
   dot: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "dot",
     submit(out, state) {
       const known = new Set(state.staticFiles.map((f) => f.srcRel));
@@ -402,7 +407,7 @@ const TASKS = {
   // worker has run it, the highlighter persists in module scope across
   // init messages, so survives_reset lets rebuilds skip it.
   warmInit: {
-    expected: [],
+    expected: ["discoverList"],
     on_demand: true,
     unique_per_worker: true,
     run_when_idle: true,
@@ -493,16 +498,54 @@ const TASKS = {
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
 
-  discover: {
+  // The source tree's inventory, in three steps (discover.mjs), of which the
+  // lanes do the middle one, where every file is opened. discoverList lists
+  // the tree and cuts the listing into pieces; each discoverRead:i reads its
+  // piece's pages and parses their frontmatter, sizes its static files and
+  // reads its picture pairs' headers (discover-read.mjs); discover puts the
+  // results together and checks them.
+  //
+  // The pieces are the first thing a lane takes: a lane runs one after the
+  // first stage of its boot alone (cpu-worker.mjs), and the lane tasks that
+  // would otherwise be READY before the pieces exist wait for this task, so
+  // that the first lanes up are free for the pieces. The listing takes a few
+  // hundredths of a second, less than a lane takes to start. buildInfo does
+  // not wait: dispatch waits for it, and it is two git processes.
+  discoverList: {
     expected: ["config"],
     runOnMain: true,
     async execute({ config: { config } }, ctx) {
-      const { pages, staticFiles } = await discover(ctx.srcRoot, config.exclude ?? []);
-      for (const entry of config.bundle_extra ?? []) {
-        const srcPath = path.resolve(ctx.srcRoot, entry.src);
-        const stat = await fs.stat(srcPath);
-        staticFiles.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
-      }
+      const listing = await listSources(ctx.srcRoot, config.exclude ?? []);
+      return cutPieces(listing, Math.min(DISCOVER_PIECES, ctx.workerCount), config.bundle_extra ?? []);
+    },
+    submit(out, _state, scheduler) {
+      fanOut(scheduler, {
+        from: "discoverList",
+        prefix: "discoverRead",
+        handler: "discoverRead",
+        payloads: out.pieces,
+        joins: ["discover"],
+        ganttSection: "Spine",
+        priority: 3,
+        describe: (p) => [`${p.pageRels.length} pages from ${p.pageRels[0]}, ${p.statSrcs.length} static files`],
+      });
+    },
+  },
+
+  discover: {
+    expected: ["config", "discoverList"],
+    runOnMain: true,
+    execute(inputs, ctx) {
+      const { config } = inputs.config;
+      const plan = inputs.discoverList;
+      const results = plan.pieces.map((_, i) => {
+        const result = inputs[`discoverRead:${i}`];
+        // Asserted: a piece missing here would quietly drop its pages from the site.
+        if (!result) throw new Error(`discover: piece ${i} of the source tree never arrived`);
+        for (const w of result.warnings) console.warn(w);
+        return result;
+      });
+      const { pages, staticFiles, pictureSizes } = assemble(ctx.srcRoot, plan, results);
       // Everything discover() could not parse frontmatter from is about to
       // be copied verbatim into a public tree. `exclude:` is a denylist and
       // only refuses what someone named in advance, so the allowlist runs
@@ -521,7 +564,6 @@ const TASKS = {
             `X.light.png needs X.png in the same folder:\n${unpaired.map((r) => `  ${r}`).join("\n")}`,
         );
       }
-      const pictureSizes = await pairSizes(staticFiles);
       return { pages, staticFiles, config, pictureSizes };
     },
     submit(out, state) {
@@ -1427,7 +1469,7 @@ const TASKS = {
   // On a lane (cpu-worker.mjs), and on no page's path but the late pages': downloadSizes takes
   // the sizes from here, and only the render chunks that hold a late page wait for it.
   packTests: {
-    expected: ["config"],
+    expected: ["config", "discoverList"],
     handler: "packTests",
     submit() {},
   },

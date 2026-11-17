@@ -3,14 +3,13 @@
 // renderer (render.mjs's themePairPlugin) writes both, each with a class that the stylesheet
 // hides in the other theme (custom.scss, `.pic-light` and `.pic-dark`), and both lazy, so the
 // browser fetches only the one it shows; the light one's width and height are the page's
-// scaled by the two files' sizes (pairSizes). The book keeps the light one alone (lightOnly,
+// scaled by the two files' sizes (picturePairs). The book keeps the light one alone (lightOnly,
 // from book.mjs). WIP.Build.md says why it is done this way.
 //
 // A picture may also have been drawn as SVG (shoot_docs.mjs --svg): `X.svg` beside `X.png`,
 // `X.light.svg` beside `X.light.png`. The renderer shows each theme's SVG where it exists,
 // unless the page's attribute block says `png`; the PNGs stay, as the SVGs' reference.
 
-import { open } from "node:fs/promises";
 import { replaceOutsideCode } from "./code-guard.mjs";
 
 export const PIC_LIGHT = "pic-light";
@@ -66,40 +65,26 @@ export function unpairedLightPictures(rels) {
   return rels.filter((r) => LIGHT_RE.test(r) && !all.has(r.replace(LIGHT_RE, ".png"))).sort();
 }
 
-// A PNG file's width and height in pixels, from its header; null when it is no PNG.
-async function pngSize(file) {
-  const fh = await open(file, "r");
-  try {
-    const b = Buffer.alloc(24);
-    const { bytesRead } = await fh.read(b, 0, 24, 0);
-    if (bytesRead < 24 || b.toString("latin1", 12, 16) !== "IHDR") return null;
-    return [b.readUInt32BE(16), b.readUInt32BE(20)];
-  } finally {
-    await fh.close();
-  }
-}
-
-// For each light picture among the static files ({ srcRel, srcPath }), its size and its dark
-// picture's, in pixels: { "<light srcRel>": [lightW, lightH, darkW, darkH] }. The Light theme
-// lays the IDE out a few pixels differently, so a light screenshot can be a little off the
-// dark one's size; the renderer scales the page's width and height by it, so that each
-// picture is shown at the same scale as the other. Read on the main thread, once, from the
-// headers alone.
-export async function pairSizes(staticFiles) {
-  const byRel = new Map(staticFiles.map((s) => [s.srcRel, s.srcPath]));
-  const out = Object.create(null);
-  for (const [rel, file] of byRel) {
+// The light pictures among the static files ({ srcRel, src }, `src` being where the file is)
+// that have their dark picture among them, in the files' order: [light srcRel, light src,
+// dark src]. The build reads each pair's two sizes from the files' headers (discover-read.mjs,
+// on the lanes) into `pictureSizes`: { "<light srcRel>": [lightW, lightH, darkW, darkH] }. The
+// Light theme lays the IDE out a few pixels differently, so a light screenshot can be a little
+// off the dark one's size; the renderer scales the page's width and height by it, so that each
+// picture is shown at the same scale as the other.
+export function picturePairs(staticFiles) {
+  const byRel = new Map(staticFiles.map((s) => [s.srcRel, s.src]));
+  const pairs = [];
+  for (const [rel, src] of byRel) {
     if (!LIGHT_RE.test(rel)) continue;
     const dark = byRel.get(rel.replace(LIGHT_RE, ".png"));
-    if (!dark) continue;
-    const [l, d] = await Promise.all([pngSize(file), pngSize(dark)]);
-    if (l && d) out[rel] = [...l, ...d];
+    if (dark) pairs.push([rel, src, dark]);
   }
-  return out;
+  return pairs;
 }
 
 // The light image's width and height, as the page's for the dark one scaled by the two
-// pictures' sizes: `sizes` is pairSizes' entry. A value that is not a whole number of pixels
+// pictures' sizes: `sizes` is the pair's entry in `pictureSizes`. A value that is not a whole number of pixels
 // (a percentage, an em) is left as it is.
 export function lightDimension(value, light, dark) {
   if (!/^\d+$/.test(String(value)) || !dark) return value;

@@ -27,6 +27,7 @@ import { Graphviz } from "@hpcc-js/wasm-graphviz";
 import { stripXmlPrologue } from "../builder/dot.mjs";
 import { inlineDiagram } from "../builder/inline-diagram.mjs";
 import { markdownCopy } from "../builder/markdown-copy.mjs";
+import { readPiece } from "../builder/discover-read.mjs";
 import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
 import { permalinkToDestPath } from "../builder/paths.mjs";
 import { assignPackageVersions, calloutLabelsOf, parseCalloutLabel } from "../lib/callout-labels.mjs";
@@ -39,7 +40,7 @@ import {
 } from "../builder/render.mjs";
 import {
   lightOnly,
-  pairSizes,
+  picturePairs,
   pictureSvgOutputs,
   pngPictures,
   unpairedLightPictures,
@@ -491,18 +492,20 @@ describe("themePairPlugin and lightOnly", () => {
     assert.match(render("`![x](Images/A.light.png)`"), /<code[^>]*>!\[x\]\(Images\/A\.light\.png\)<\/code>/);
   });
 
-  test("the two pictures' sizes are read from their headers", async () => {
+  test("the two pictures' sizes are read from their headers, a real PNG's", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "theme-pictures-"));
     try {
       const png = (w, h) => encodePng({ width: w, height: h, rgba: new Uint8Array(w * h * 4) });
       writeFileSync(path.join(dir, "A.png"), png(6, 4));
       writeFileSync(path.join(dir, "A.light.png"), png(5, 3));
       writeFileSync(path.join(dir, "B.light.png"), png(1, 1));
-      const files = ["A.png", "A.light.png", "B.light.png"].map((f) => ({
-        srcRel: `x/${f}`,
-        srcPath: path.join(dir, f),
-      }));
-      assert.deepEqual({ ...(await pairSizes(files)) }, { "x/A.light.png": [5, 3, 6, 4] });
+      const files = ["A.png", "A.light.png", "B.light.png"].map((f) => ({ srcRel: `x/${f}`, src: f }));
+      // The pairs, each with where its two files are; a light picture alone is no pair.
+      const pairs = picturePairs(files);
+      assert.deepEqual(pairs, [["x/A.light.png", "A.light.png", "A.png"]]);
+      // And their sizes, as a lane reads them (discover-read.mjs).
+      const { pairSizes } = readPiece(dir, { pageRels: [], statSrcs: [], pairs: pairs.map(([, l, d]) => [l, d]) });
+      assert.deepEqual(pairSizes, [[5, 3, 6, 4]]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

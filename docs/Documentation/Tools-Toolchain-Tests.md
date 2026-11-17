@@ -386,6 +386,23 @@ Unit tests for [`ide_js.mjs`](Tools-Defects#ide-js) and its library, `scripts/id
 
 Exit codes: **0** every test passed, **1** a test failed.
 
+## discover.test.mjs
+{: #discover-test }
+
+    node --test test/discover.test.mjs
+
+Unit tests for `builder/discover.mjs` and `builder/discover-read.mjs`, which make the source tree's inventory: the pages, the static files and the sizes of the pictures that come in two themes. The build reads the tree in pieces on its lanes and compares its output with the last commit's, on the site's own tree and its own piece count. A fault that those do not reach passes it. These tests read a small tree of their own, under the temp folder:
+
+- the inventory is the same in any number of pieces, and from `discover()`, which the other tools call;
+- the pages are sorted by file name and then by path, the static files by path, with the `bundle_extra` files after them;
+- a `.md` file with no frontmatter is a static file, and an excluded file is in neither list;
+- a picture pair's sizes are read, including a pair whose dark picture is a `bundle_extra` file, and a file that is not a PNG gives no entry;
+- an unquoted frontmatter value that ends in `#` is reported by the piece that read it, and frontmatter that does not parse names its file.
+
+No build, no lanes, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
 ## check_page_baseline.mjs
 {: #check-page-baseline }
 
