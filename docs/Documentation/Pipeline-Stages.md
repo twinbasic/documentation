@@ -123,7 +123,7 @@ export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
-  writePdf: 9, checkBook: 10,
+  writePdf: 9, checkBook: 10, packTests: 11,
   indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
 };
 ```
@@ -152,7 +152,7 @@ The tasks that start the build. `config`, `buildInfo`, `scssLight` and `scssDark
 config.execute({}, ctx) → { config }
 ```
 
-Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url` overrides, and returns the parsed object to `discover`.
+Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url` overrides, and returns the parsed object to `discover`. `submit` broadcasts the config's `package_tests` entry to the lanes as the `"packageTests"` task data, for [`packTests`](#packtests-worker).
 
 ### `buildInfo` (worker)
 
@@ -233,12 +233,12 @@ Calls `buildInitConfig(state.site)` from `template.mjs` to pre-render the config
 ### `markdownInit` (main)
 
 ```js
-markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects", "packTests"]
+markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects"]
 ```
 
 Builds the link tables (`buildLinkTables(state.pages)`) and derives the `{{tbdocs:<name>}}` counts registry (`deriveCounts(state, { redirectStubs: stubs.length })` from `counts.mjs`), throwing if a page names a count that does not exist. The redirect-stub count is why `deriveRedirects` is a predecessor.
 
-It also settles the downloads that `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` state (`deriveDownloads`, then `checkPlaceholders`, which throws on a path the build does not publish or cannot size). `packTests`, a task of its own that follows `config`, packs the contributed packages' test projects in memory so that their sizes are known; `packageTests` writes those same bytes. Only the sizes the pages ask for travel to the workers, as `state.site.downloads`.
+It also checks the downloads that `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` state (`deriveDownloads`, then `checkPlaceholders`, which throws on a path the build does not publish or cannot size). A static file's size is known here. The contributed packages' test projects and published tools are not packed yet: [`packTests`](#packtests-worker) packs them on a lane, and this task does not wait for it. It takes their paths from a listing of their folders (`packageTestRels`), accepts a placeholder that names one, and records each page that states such a size or lists the test projects as a **late page**, in `state.site.latePages`. Only the sizes the pages ask for travel to the workers, as `state.site.downloads`; [`downloadSizes`](#downloadsizes-main) adds the packed files' sizes for the late pages.
 
 It then instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles, vendoredVideos, vendoredImages, counts })`), serializes the link tables (`serializeLinkTables(linkTables)`) for the workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). It writes `counts`, `markdown`, `linkTablesSerialized`, `seoSiteTitle` and `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here; each render worker does it via `computeChunkSeo`.
 
@@ -274,6 +274,25 @@ Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`, w
 
 `dispatch`, the fan-out point, and the N render tasks it starts, with their barrier, the per-worker init they need, and the two tasks that prepare the destination trees. The chart draws `warmInit` and `renderEnvInit` in the worker rows as start-up bars, not in a section; they are described here. The N flush tasks and their barrier are in Section 4.
 
+### `packTests` (worker)
+
+```js
+packTests.expected = ["config"]
+packTests → { packed, ms } | { failed, error } | {}
+```
+
+Packs each contributed package's test project, and zips each published tool, in memory (`packAllPackageTests` in `package-tests.mjs`), from the `"packageTests"` task data that `config` broadcast. The lane imports `package-tests.mjs` when it runs the task, so the other lanes do not load it. The bytes return to the main thread, where `downloadSizes` reads their sizes and `packageTests` writes them into the online tree. A config without `package_tests` packs nothing, and a failure returns as `{ failed, error }`.
+
+No page waits for this task except the late pages. It therefore runs at any time from the start of the build to the render of those pages, on whichever lane is free.
+
+### `downloadSizes` (main)
+
+```js
+downloadSizes.expected = ["markdownInit", "packTests"]
+```
+
+Adds the packed files' sizes to `state.site.downloads` (`packedDownloads` in `counts.mjs`): the size of each packed file a page names, and the rows of the test projects' table. It throws when `packTests` failed. `submit` broadcasts the result to the lanes as the `"downloads"` task data, before the task is marked done. The render chunks that hold a late page wait for this task; see [`dispatch`](#dispatch-main).
+
 ### `dispatch` (main)
 
 ```js
@@ -281,7 +300,7 @@ dispatch.expected = [
   "nav", "buildInit", "buildInfo", "dot",
   "deriveRedirects", "markdownInit",
 ]
-dispatch.execute() → { chunks, sharedSAB }
+dispatch.execute() → { chunks, sharedSAB, lateChunks }
 ```
 
 `execute`:
@@ -291,7 +310,9 @@ dispatch.execute() → { chunks, sharedSAB }
 3. Derives each output tree's inventory with `deriveTreeRels` and runs `unpublishableTreePaths` from `publish-policy.mjs` over it, **throwing** on anything that is not a publishable type. This sweep sees what `discover`'s cannot: redirect stubs, vendored theme assets, and the generated `sitemap.xml` and `search-data.json`. The inventory is shared with `checkTrees` below.
 4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
 
-`submit` allocates 2N dynamic SAB slots and writes their handler IDs. It wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dependency `render:i → renderEnvInit`, and pins each `flush:i` to its `render:i`. It packs the per-chunk page data into a payload SAB, registers the `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and activates the `render:i` slots.
+`lateChunks` holds the index of each chunk that contains a late page (see [`markdownInit`](#markdowninit-main)). The chunks are cut as for any other page, so a late page stays in the chunk its position gives it.
+
+`submit` allocates 2N dynamic SAB slots and writes their handler IDs. It wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dependency `render:i → renderEnvInit`, and pins each `flush:i` to its `render:i`. Unless `downloadSizes` is done already, it also makes each `render:i` of `lateChunks` a successor of `downloadSizes`, with a dependency count of one, so that the chunk becomes claimable when the packed files' sizes are known. Both tasks run on the main thread, so `downloadSizes` cannot finish between the check of its status and the new edge. It packs the per-chunk page data into a payload SAB, registers the `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and activates the `render:i` slots.
 
 ### `prepDest` (main, deferred)
 
@@ -340,7 +361,7 @@ Per-lane render environment setup. Handler:
 
 Handler (`render` in `cpu-worker.mjs`):
 
-1. Reads the chunk JSON from `_payloadSAB` using `payloadOffset[taskIdx]` / `payloadLength[taskIdx]`.
+1. Reads the chunk JSON from `_payloadSAB` using `payloadOffset[taskIdx]` / `payloadLength[taskIdx]`. When the chunk holds a late page, it waits for the `"downloads"` task data from `downloadSizes` and gives it to the lane's markdown-it, which then has the packed files' sizes.
 2. `await renderPhase(chunk, env.site)` --- markdown-it body render.
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
@@ -859,8 +880,9 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `deriveCounts` | `(state, extra) → Record<string, number>` | Derives every named count from build state: page, static-file, reference-page and documentation-page totals, folder-style reference indexes and how many of them have a permalink ending in a slash, packages (total, default, built-in), attribute anchors, enumerations, and `extra.redirectStubs`. Called by `markdownInit` to build `state.site.counts`, whose keys are the names a page may use. |
 | `countPlugin` | `(md, ctx) → void` | A markdown-it plugin, the last one `createMarkdownIt` applies. Substitutes each `{{tbdocs:<name>}}` placeholder in prose and image alt text with the value `ctx.counts` holds under that name, and leaves an unknown name as written; code spans and fences are untouched. Its core rule is pushed last, so it runs after `replacements`. Does nothing when `ctx.counts` is absent. |
 | `findCountRefs` | `(rawContent, md) → { name, arg, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source, masking code with `maskCode` from `lib/markdown.mjs` and the site's markdown-it instance `md`, as the pre-render rewrites do. `line` is 1-based in `rawContent`, counted with the code put back (a masked fence is one line). Called by `validateCountNames` for each page. |
-| `checkPlaceholders` | `(pages, counts, downloads, md) → { problems, sizes }` | `validateCountNames` for all placeholders: also refuses a `size` whose path the build does not publish or cannot size before render (`downloads.refused`, which names the help add-in's project, stylesheets and SVGs), a `size` without a path, an argument on a name that takes none, and either download placeholder when `downloads` is `null`. `sizes` holds the bytes of each file named, which is all the workers are sent. |
-| `deriveDownloads` | `(state, { tests, addinDest }) → { files, refused, tests }` | The sizes known before render: the static files discover found (the `bundle_extra` files among them) and the packed package test projects (`tests`, from `packTests`), and the paths that are published but cannot be sized, each with its reason. |
+| `checkPlaceholders` | `(pages, counts, downloads, md) → { problems, sizes, packedArgs, late }` | `validateCountNames` for all placeholders: also refuses a `size` whose path the build does not publish or cannot size before the page renders (`downloads.refused`, which names the help add-in's project, stylesheets and SVGs), a `size` without a path, an argument on a name that takes none, and either download placeholder when `downloads` is `null`. `sizes` holds the bytes of each file named, which is all the workers are sent. A `size` that names a file in `downloads.packed` is accepted without a size: `packedArgs` maps its argument to the file's path, and `late` names each page that states such a size or lists the test projects. |
+| `deriveDownloads` | `(state, { packed, addinDest }) → { files, refused, packed }` | What is known before render: the sizes of the static files discover found (the `bundle_extra` files among them), the paths that are published but cannot be sized, each with its reason, and the paths of the files `packTests` packs (`packed`), which have no size yet. |
+| `packedDownloads` | `({ sizes, packedArgs, dest, packed }) → { sizes, tests }` | The downloads as the late pages need them, once `packTests` has packed: `sizes` with each packed file a page names added, and `tests`, one row for each package test project. Throws when a file a page names was not packed. Called by `downloadSizes`. |
 | `expandDownloadPlaceholders` | `(src, downloads, permalink) → string` | Expands `{{tbdocs:size:<site path>}}` as `43 KB` or `1.2 MB`, and `{{tbdocs:packageTestRows}}` as one table row for each package test project, with links relative to `permalink`. `applyPreRenderRewrites` calls it on the source with code masked, using the `downloads` the page's `md` carries. |
 | `formatSize` | `(bytes) → string` | Whole KB (1024-based, at least 1) below a mebibyte, MB with one decimal from there. |
 | `validateCountNames` | `(pages, counts, md) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`. Returns one message per unknown reference, giving the file and line (the reference's line in `rawContent`, moved down by the page's `contentLine`), the nearest known name when one is within an edit distance of three, and every known name. Empty when every reference is known. `markdownInit` throws when the result is non-empty. |
@@ -1089,6 +1111,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | `scssLight` / `scssDark` | `scss.mjs` | Light/dark palette compile. |
 | `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |
 | `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
+| `packTests` | `package-tests.mjs` | `packAllPackageTests` over the `"packageTests"` task data; imports the module when it runs. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
 | `indexAdd` | `search-index.mjs` | `addSlice` over the slice in its `fanOutPayload`; keeps the builder in `_indexSlices` for `indexVectors`. |
 | `indexVectors` | `search-index.mjs` | `sliceVectors` over the builder `indexAdd` kept on this lane, with the `"indexTotals"` task data. |
