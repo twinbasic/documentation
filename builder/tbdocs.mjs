@@ -680,9 +680,12 @@ const TASKS = {
       // only to refuse it: it embeds the offline tree, which holds the pages that state sizes.
       // The files packTests packs are named, by a listing of their folders, and not yet sized:
       // a lane may still be packing them. The pages that state one of their sizes are the
-      // late pages, whose render chunks wait for downloadSizes (dispatch).
+      // late pages, whose render chunks wait for downloadSizes (dispatch). The listing is
+      // kept for dispatch, which puts the same files in the online tree: it is a few dozen
+      // synchronous file calls, on the way to the first render.
+      state.site.packageTestRels = packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot));
       const downloads = deriveDownloads(state, {
-        packed: packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot)),
+        packed: state.site.packageTestRels,
         addinDest: addinProjectOf(state.site.config)?.dest ?? null,
       });
       const {
@@ -838,7 +841,8 @@ const TASKS = {
       // so a link to the file there goes to the website (computeWebsiteUrl).
       const addin = addinProjectOf(state.site.config);
       // The package test projects, which the packageTests task writes, likewise.
-      const packageTestFiles = packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot));
+      // markdownInit listed them.
+      const packageTestFiles = state.site.packageTestRels;
       // And each page's markdown copy, which the render lanes write beside the page
       // (markdown-copy.mjs). The publish allowlist refuses a .md file anywhere else.
       const markdownCopies = state.pages.map(markdownCopyRel).filter((rel) => rel !== null);

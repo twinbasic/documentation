@@ -89,7 +89,7 @@
 // size would depend on itself.
 
 import path from "node:path";
-import { blockRegions, maskCode } from "../lib/markdown.mjs";
+import { blockRegions, splitCodeSpans } from "../lib/markdown.mjs";
 import { CODE_OR_PRE } from "./code-guard.mjs";
 
 // The optional `:<argument>` is a site path for `size`; a count name takes none.
@@ -280,13 +280,12 @@ export function substituteCounts(text, counts) {
 /**
  * Find every `{{tbdocs:...}}` in a page's source that is not inside code.
  *
- * Masks code with `maskCode` and the site's parser `md`, as the pre-render
+ * Code is what `maskCode` hides with the site's parser `md`, as the pre-render
  * rewrites do, so "what is code" has one definition here and there. Without
  * it this would reject the very examples the documentation of this feature
  * has to contain.
  *
- * `line` is 1-based in `rawContent`. It is counted with the code put back,
- * because a masked fence is one line however many it holds.
+ * `line` is 1-based in `rawContent`.
  *
  * `arg` is the text after the name's colon, or undefined.
  *
@@ -294,10 +293,23 @@ export function substituteCounts(text, counts) {
  */
 export function findCountRefs(rawContent, md) {
   if (!rawContent.includes("{{tbdocs:")) return [];
-  const { masked, restore } = maskCode(rawContent.replace(/\r\n?/g, "\n"), { md });
+  // What maskCode would leave of the page, worked out for the lines that hold a
+  // placeholder alone: a line of a fence is code whole, and any other line is
+  // code in its code spans. A placeholder cannot span lines, so the lines can be
+  // read one by one, and masking the whole of each page that holds a placeholder
+  // was half of markdownInit, which every render waits for.
+  const src = rawContent.replace(/\r\n?/g, "\n");
+  const lines = src.split("\n");
+  const fenced = new Uint8Array(lines.length);
+  for (const r of blockRegions(src, { md })) if (r.type === "fence") fenced.fill(1, r.start, r.end);
   const out = [];
-  for (const m of masked.matchAll(PLACEHOLDER_RE)) {
-    out.push({ name: m[1], arg: m[2], line: restore(masked.slice(0, m.index)).split("\n").length });
+  for (const [i, text] of lines.entries()) {
+    if (fenced[i] || !text.includes("{{tbdocs:")) continue;
+    // A code span is replaced by what cannot be part of a placeholder's name.
+    const prose = splitCodeSpans(text)
+      .map((part) => (part.code ? "`\u{0}`" : part.text))
+      .join("");
+    for (const m of prose.matchAll(PLACEHOLDER_RE)) out.push({ name: m[1], arg: m[2], line: i + 1 });
   }
   return out;
 }
