@@ -1512,8 +1512,14 @@ SVGs: online and book do, offline (and so the help archive) does not. Why:
 - **An offline tree that shows PNGs holds no picture SVG.** `tbdocs.mjs` adds each one's path
   to `offline_exclude` in memory, so the offline copy, the help archive, the offline link check
   and the index audit agree without knowing about pictures. That adds a few hundred literal
-  patterns, so `offlineExcluded` (and its copy in `check-tree.mjs`) compares a pattern with no
-  wildcard as a string instead of compiling it. The archive is a stored zip, 37 MB without
+  patterns, and `dispatch` tests every path of both trees against the list, so the list is
+  compiled once (`matchesAny`, [builder/fnmatch.mjs](builder/fnmatch.mjs), which
+  `offlineExcluded` and `check-tree.mjs` both call): the patterns with no wildcard in a `Set`,
+  the others as regular expressions. Testing each path against each pattern, with a regular
+  expression made for every test, was most of `dispatch`: 0.32 to 0.39 s on four CPUs
+  (`start /affinity F`), 0.07 to 0.12 s since; 0.14 s and 0.05 s on sixteen. What is left in
+  `dispatch` is the JSON of the shared payload (about 10 ms) and, in its `submit`, of every
+  page for the render chunks (`packPayloads`, 12 MB, 50 to 60 ms). The archive is a stored zip, 37 MB without
   the SVGs, and the 310 of them would add 18 MB.
 - **A picture's SVG is never inlined.** `figurePlugin` inlines a diagram's SVG in its figure; a
   picture's (`isPictureSvg`: an `.svg` with its `.png` beside it) stays an `<img>` in the

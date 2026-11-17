@@ -720,6 +720,15 @@ The link and integrity check over rendered pages, which the standalone [`scripts
 | `deriveTreeRels` | `(which, …) → string[]` | Every relative path the build believes it emitted into a given tree: pages, redirect stubs, auxiliaries, static files, theme assets, generated DOT SVGs, minus offline exclusions. The check's oracle uses it instead of the filesystem; `auditIndex` verifies it. |
 | `posix` | `(p) → string` | Backslash-to-slash path normalisation. |
 
+### `fnmatch.mjs`
+
+The path patterns of `offline_exclude` and of the help archive's skip list: `*` stays within a folder, `**` crosses folders, `?` is one character that is not `/`. The module imports nothing, so `check-tree.mjs` can use it on the way to the first render.
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `matchesAny` | `(rel, patterns) → boolean` | Returns `true` when a path matches one of the patterns. The list is compiled the first time it is seen, and again when its length has changed: a pattern with no wildcard goes into a `Set`, the others become regular expressions. `dispatch` tests every path of both trees against a list that holds each picture's SVG when the offline tree shows PNGs. |
+| `fnmatchPathname` | `(pattern, path) → boolean` | The match of one pattern against one path. |
+
 ### `link-check.mjs`
 
 The pure core shared by the build's check and the standalone [`scripts/check_links.mjs`](Tools-Site-Checks#check-links). It does no filesystem traversal and has no CLI: it takes HTML and an oracle and returns findings. **The two front ends read the tree differently, and a checker that silently checks less reports a clean pass, so run [`check_links_diff.mjs`](Tools-Site-Checks#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
@@ -1149,11 +1158,10 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 | `deriveOfflinePage` | `(page, state) → { html, misses }` | Rewrites one page's HTML for offline use: strips SEO metadata, rewrites every absolute URL to a page-relative path, injects the offline search setup script. |
 | `deriveOfflineCss` | `(cssIn, themeRel, state) → { css, misses }` | Rewrites `url()` references in a CSS file to page-relative paths. |
 | `deriveOfflineRedirect` | `(stub, state) → string` | Rewrites a redirect stub's HTML for offline use. |
-| `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. |
+| `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. It is `matchesAny` of `fnmatch.mjs`. |
 | `stripFontPreloads` | `(html) → string` | Removes the `<link rel="preload" as="font">` tags from the offline tree only. A font preload is a CORS-mode fetch; under `file://` there is no origin to match, so Chrome fails it with `ERR_FAILED` while the `@font-face` fetch succeeds. The preload gains nothing offline and adds two red lines to the console. |
 | `posixDirname` | `(rel) → string` | POSIX directory component of a relative path. |
 | `fileDirSegsFromRel` | `(rel) → string[]` | Splits a destination path into directory segments. |
-| `fnmatchPathname` | `(pattern, path) → boolean` | Glob-style pathname match. |
 | `computeRelative`, `resolveRaw`, `computeRelUrl`, `buildSegs`, `decode`, `getPageCache`, `stripSeo`, `rewriteHtml`, `rewriteCss`, `injectSearchSetup` | various | Internal helpers; see [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) for the per-symbol descriptions. |
 
 ### `pdf.mjs`
