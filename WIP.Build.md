@@ -242,6 +242,38 @@ to 0.27 s since (builds 2 to 5 on one pool). A one-off build's first render is w
 the noise of the runs (0.78 to 0.88 s against 0.82 to 0.84 s): the lanes are still
 loading their second stage and Shiki then. `discover` ends when it did. Not measured: CI.
 
+### What markdownInit is made of
+
+Every render waits for `markdownInit`. On the dev box it took 117 to 151 ms in a one-off
+build, of which `checkPlaceholders` was 70 to 80 ms and `deriveCounts` 20 to 48 ms; the
+link tables, the parser, the SEO constants and the rest are a few milliseconds each.
+Both are scans of page source that need a block parse, and they are the first block
+parses of the build, so they run before the engine has compiled the parser: alone and
+warm, the same two take about 15 ms and 3 ms.
+
+- **`findCountRefs` cuts into code spans only the lines that hold a placeholder.** It
+  called `maskCode` on the whole of each page that holds one, and those are the longest
+  pages of the site (the developer pages: 0.6 MB in all). A placeholder cannot span
+  lines, so a line of a fence is skipped and any other line with a placeholder is cut
+  with `splitCodeSpans`. The block parse remains: it is what says where the fences are.
+  `checkPlaceholders` is 30 to 43 ms since, and `markdownInit` 78 to 109 ms.
+- **`maskCode` finds line ends and backticks with a regular expression and `indexOf`**
+  (`lib/markdown.mjs`: `splitLines`, `splitCodeSpans`), where it read one character at a
+  time. Over every page it took about 200 ms on one thread and takes about 115 ms, of
+  which the block parse is 80 ms. The render lanes call it on every page
+  (`applyPreRenderRewrites`), so that is about 85 ms of CPU off the render, shared among
+  the lanes. Old and new were compared over every page of the site: the same masked
+  text, the same segments of every line, the same placeholders.
+- **The package tests' folders are listed once.** `packageTestRels` is a few dozen
+  synchronous file calls (5 to 20 ms); `markdownInit` keeps its result
+  (`state.site.packageTestRels`) for `dispatch`, which made the listing again.
+
+What is left is the two cold block parses: of `Reference/Attributes.md` and
+`Reference/Enumerations.md` in `deriveCounts`, and of the pages with a placeholder in
+`checkPlaceholders`. Giving them to a lane would need the site's parser there, which is
+the second stage of a lane's boot: on Windows a one-off build's lanes are still loading
+it when `markdownInit` runs, so it would wait for them. Not done.
+
 ### A hung build times out and says where it hung
 
 Readers get this at [When a build stops instead of
