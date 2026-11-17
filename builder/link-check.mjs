@@ -864,6 +864,16 @@ export function settleFragments(pendingFragments, idsByTarget) {
 // generator rather than being re-derived here.
 
 const EXCLUDE = new Set(["book.html", "404.html"]);
+// nav.html, the whole nav tree (template.mjs, renderNavTreePage), is no page
+// of the site's: the sitemap and the search index leave it out, and it has no
+// canonical. Only the tree's root one: a page elsewhere may have that name.
+// The build hands it to the check with the redirect stubs, which leaves it out
+// already; a tree read from disk does not say so.
+const ROOT_EXCLUDE = new Set(["nav.html"]);
+
+function excluded(rel) {
+  return EXCLUDE.has(path.posix.basename(rel)) || ROOT_EXCLUDE.has(rel);
+}
 
 // Every page (except the exclusions) should appear in sitemap.xml.
 export function checkSitemap(xml, relFiles, basePath, optOut = null) {
@@ -885,7 +895,7 @@ export function checkSitemap(xml, relFiles, basePath, optOut = null) {
 
   const issues = [];
   for (const rel of relFiles) {
-    if (EXCLUDE.has(path.posix.basename(rel))) continue;
+    if (excluded(rel)) continue;
     if (optOut?.has(rel)) continue;
     const urlPath = deriveUrlPath(rel);
     if (!sitemapPaths.has(urlPath)) issues.push(`${rel}: sitemap-missing: ${urlPath}`);
@@ -907,7 +917,7 @@ export function checkSearch(searchData, relFiles, basePath, optOut = null) {
 
   const issues = [];
   for (const rel of relFiles) {
-    if (EXCLUDE.has(path.posix.basename(rel))) continue;
+    if (excluded(rel)) continue;
     if (optOut?.has(rel)) continue;
     const urlPath = deriveUrlPath(rel);
     if (!searchPageUrls.has(urlPath)) issues.push(`${rel}: search-missing: ${urlPath}`);
@@ -928,7 +938,7 @@ export function checkSearch(searchData, relFiles, basePath, optOut = null) {
 export function checkCanonical(canonicalByRel, basePath) {
   const issues = [];
   for (const [rel, canonical] of canonicalByRel) {
-    if (EXCLUDE.has(path.posix.basename(rel))) continue;
+    if (excluded(rel)) continue;
     const expected = (basePath || "") + deriveUrlPath(rel);
 
     let canonicalPath;

@@ -55,11 +55,12 @@ let _payloadSAB = null; // SharedArrayBuffer with packed per-task payloads
 let _sharedSAB = null; // SharedArrayBuffer with packed shared payload
 let _shared = null; // _sharedSAB decoded, once per lane
 
-// What dispatch broadcast. A task that reads it runs after dispatch, so the
-// SAB is here by then; renderEnvInit, which can be claimed earlier, waits
-// for it first.
-function sharedData() {
-  if (!_sharedSAB) throw new Error("the shared payload was read before dispatch broadcast it");
+// What dispatch broadcast. A task that reads it runs after dispatch, but the
+// message is not here by then: this lane may still be inside the pull loop
+// that claimed the task, so yield until it lands, as taskData does. A
+// searchIndex claimed that way threw here.
+async function sharedData() {
+  while (!_sharedSAB) await new Promise((resolve) => setImmediate(resolve));
   _shared ??= unpackShared(_sharedSAB);
   return _shared;
 }
@@ -74,10 +75,6 @@ const handlers = {
   },
 
   async renderEnvInit() {
-    while (!_sharedSAB) {
-      await new Promise((resolve) => setImmediate(resolve));
-    }
-
     const {
       siteData,
       initData,
@@ -95,7 +92,7 @@ const handlers = {
       pictureSizes,
       counts,
       downloads,
-    } = sharedData();
+    } = await sharedData();
 
     const { initHighlighter } = await import("./highlight.mjs");
     const highlighter = await initHighlighter();
@@ -227,7 +224,7 @@ const handlers = {
   // pages are written, and it needs nothing from the main thread that
   // dispatch has not already broadcast: it reads the offline tree from disk.
   async helpArchive() {
-    const { skipOffline } = sharedData();
+    const { skipOffline } = await sharedData();
     return helpArchiveStep({
       src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
       offlineRoot: skipOffline ? null : `${ctx.destRoot}-offline`,
@@ -244,7 +241,7 @@ const handlers = {
   // offline tree. It builds on threads of its own (search-index.mjs).
   async searchIndex() {
     if (ctx.opts.dryRun) return { entries: 0, workers: 0, bytes: 0 };
-    const { skipOffline } = sharedData();
+    const { skipOffline } = await sharedData();
     return writeSearchIndex(ctx.destRoot, { offline: !skipOffline });
   },
 
