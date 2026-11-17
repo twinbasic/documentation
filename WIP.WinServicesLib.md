@@ -1,10 +1,12 @@
 # WinServicesLib Package — Working Notes
 
-See [WIP.md](WIP.md) for the cross-package maintenance guide. Sister packages: [WinEventLogLib](WIP.WinEventLogLib.md), [WinNamedPipesLib](WIP.WinNamedPipesLib.md).
+Sister packages: [WinEventLogLib](WIP.WinEventLogLib.md), [WinNamedPipesLib](WIP.WinNamedPipesLib.md).
 
-A thin OS-services wrapper. The `[PredeclaredId]` singleton `Services` is the entry point; `ServiceManager` carries per-service configuration; `ServiceCreator(Of T)` is the generic factory; `ServiceState` is a read-only snapshot. The Win32 API wrappers, the `Private Module ServicesConstants` half of the constants file, the `ServiceControlHandlerCallback_Trampoline` helper, and the `IServiceCreator` / `IServiceManagerInternal` private interfaces are plumbing and get no doc page. The user-facing enums live in `Public Module ServicesConstantsPublic`.
+A thin OS-services wrapper. The `[PredeclaredId]` singleton `Services` is the entry point; `ServiceManager` carries per-service configuration; `ServiceCreator(Of T)` is the generic factory; `ServiceState` is a read-only snapshot. The user-facing enums live in `Public Module ServicesConstantsPublic`.
 
-Public user-facing surface (three concrete classes + one generic class + one interface + four enums):
+Plumbing, with **no doc page**: the Win32 API wrappers; the `Private Module` declarations (`ServicesAPIs`, `ServicesHelper`, and `ServicesConstants`, the private half of the constants file); the `ServiceControlHandlerCallback_Trampoline` helper; and the private interfaces `IServiceCreator` / `IServiceManagerInternal`, pure implementation detail like `WinNamedPipesLib`'s `INamedPipe*Internal` interfaces. Do not show the underscored members that implement them on the concrete classes either.
+
+Public user-facing surface:
 
 | Symbol                          | Kind                  | Role                                                                                              |
 |---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------|
@@ -17,10 +19,6 @@ Public user-facing surface (three concrete classes + one generic class + one int
 | `ServiceStartConstants`         | Enum                  | `tbServiceStartAuto`, `tbServiceStartOnDemand`, etc.                                              |
 | `ServiceControlCodeConstants`   | Enum                  | `vbServiceControlStop`, `vbServiceControlPause`, `vbServiceControlContinue`, etc.                  |
 | `ServiceStatusConstants`        | Enum                  | `vbServiceStatusRunning`, `vbServiceStatusStartPending`, `vbServiceStatusStopped`, etc.            |
-
-The two private interfaces (`IServiceCreator`, `IServiceManagerInternal`) are pure implementation detail, like `WinNamedPipesLib`'s `INamedPipe*Internal` interfaces. **No doc page**, and do not show the underscored implementing members on the concrete classes either.
-
-The `Private Module` declarations (`ServicesAPIs`, `ServicesConstants`, `ServicesHelper`) are internal: **no doc page**.
 
 ## `Services` public members
 
@@ -124,7 +122,7 @@ Public enums (in `Public Module ServicesConstantsPublic`), one page each under `
 
 - `ServiceTypeConstants` — `tbServiceTypeAdapter`, `tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeOwnProcess`, `tbServiceTypeShareProcess`, `tbServiceTypeOwnProcessInteractive`, `tbServiceTypeShareProcessInteractive`. The driver values (`tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeAdapter`) are only meaningful when registering a kernel-mode driver — twinBASIC services compile to a user-mode EXE and should use `tbServiceTypeOwnProcess` (one service per EXE) or `tbServiceTypeShareProcess` (multiple services hosted in one EXE; the example uses this). The `Interactive` variants are kept for compatibility but Windows Vista and later disallow them; flag with a `> [!NOTE]`.
 - `ServiceStartConstants` — `tbServiceStartAuto`, `tbServiceStartBoot`, `tbServiceStartOnDemand`, `tbServiceStartDisabled`, `tbServiceStartDriverSystem`. `tbServiceStartBoot` and `tbServiceStartDriverSystem` only apply to kernel drivers.
-- `ServiceControlCodeConstants` — 18 values mirroring the Win32 `SERVICE_CONTROL_*` constants. Source-side prefix is `vbServiceControl*` (carried over from VB6 — note the prefix is `vb`, not `tb`, in this enum; surface as-is, don't try to rationalise).
+- `ServiceControlCodeConstants` — values mirroring the Win32 `SERVICE_CONTROL_*` constants. Source-side prefix is `vbServiceControl*` (carried over from VB6 — note the prefix is `vb`, not `tb`, in this enum; surface as-is, don't try to rationalise).
 - `ServiceStatusConstants` — `vbServiceStatusStopped`, `vbServiceStatusStartPending`, `vbServiceStatusStopPending`, `vbServiceStatusRunning`, `vbServiceStatusContinuePending`, `vbServiceStatusPausePending`, `vbServiceStatusPaused`. Same `vb` prefix.
 
 Format pages like `WebView2/Enumerations/wv2PrintOrientation.md` — single intro paragraph, a value table with `{: #vbServiceXxx }` anchors per row for deep-linking.

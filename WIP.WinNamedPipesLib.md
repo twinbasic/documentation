@@ -1,12 +1,12 @@
 # WinNamedPipesLib Package — Working Notes
 
-See [WIP.md](WIP.md) for the cross-package maintenance guide. Sister packages: [WinServicesLib](WIP.WinServicesLib.md), [WinEventLogLib](WIP.WinEventLogLib.md).
+Sister packages: [WinServicesLib](WIP.WinServicesLib.md), [WinEventLogLib](WIP.WinEventLogLib.md).
 
-An IOCP-based async pipe framework. Four user-facing classes: `NamedPipeServer` and `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` and `NamedPipeClientConnection` on the client side. The Win32 API wrappers, the package-internal `OverlappedTypeConstants` enum, the IOCP helper module, and the four `INamedPipe*Internal` interfaces (each declared beside its public class as a refcount / dispatch helper for the IOCP worker threads) are plumbing and get no doc page.
+An IOCP-based async pipe framework. The user-facing classes: `NamedPipeServer` and `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` and `NamedPipeClientConnection` on the client side. The Win32 API wrappers, the package-internal `OverlappedTypeConstants` enum, the IOCP helper module, and the `Private` `INamedPipe*Internal` interfaces (each declared beside its public class as a refcount / dispatch helper for the IOCP worker threads) are plumbing and get no doc page.
 
-The four classes are each tagged `[COMCreatable(False)]`. Only the manager and server classes can be instantiated by user code (with `New`). The two `Connection` classes are constructed internally and passed back through events and return values.
+Each class is tagged `[COMCreatable(False)]`. Only the manager and server classes can be instantiated by user code (with `New`). The two `Connection` classes are constructed internally and passed back through events and return values.
 
-Public user-facing surface (four classes — two on each side):
+Public user-facing surface:
 
 | Class                       | Role                                                                                                          |
 |-----------------------------|---------------------------------------------------------------------------------------------------------------|
@@ -32,7 +32,7 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[EventInterfaceId(...)]`,
 - `ServerReady()` — fires once after `Start()` when every IOCP worker has joined.
 - `ClientConnected(Connection As NamedPipeServerConnection)` — a new client connection has completed.
 - `ClientDisconnected(Connection As NamedPipeServerConnection)` — the connection has dropped and every outstanding async operation has returned.
-- `ClientMessageReceived(Connection As NamedPipeServerConnection, ByRef Cookie As Variant, ByRef Data() As Byte)` — a message arrived. *Data* is a transient view over the IOCP read buffer (a manually built `SAFEARRAY` whose backing memory is reused after the event). Copy it to keep it past the event handler.
+- `ClientMessageReceived(Connection As NamedPipeServerConnection, ByRef Cookie As Variant, ByRef Data() As Byte)` — a message arrived. *Data* is a transient view over the IOCP read buffer: copy it to keep it past the event handler (see *`Data() As Byte` transience* below).
 - `ClientMessageSent(Connection As NamedPipeServerConnection, ByRef Cookie As Variant)` — a previously-issued `AsyncWrite` has completed.
 
 **Public methods**:
@@ -61,7 +61,7 @@ Tagged `[COMCreatable(False)]`. Not directly user-instantiable.
 - `Public Sub AsyncWrite(ByRef Data() As Byte, Optional ByRef Cookie As Variant = Empty)` — writes a message back to this specific client. Returns immediately; `NamedPipeServer.ClientMessageSent` fires when the write completes.
 - `Public Sub AsyncRead(Optional ByRef Cookie As Variant = Empty, Optional OverlappedStruct As LongPtr)` — manually issues a read. Only needed when `NamedPipeServer.ContinuouslyReadFromPipe = False`; otherwise the server keeps the read pump fed automatically.
 
-No public events — message-received and connection-dropped notifications come through the parent `NamedPipeServer`. The class declares an internal `INamedPipeServerConnectionInternal` interface that the IOCP loop uses for refcounting; that interface is `Private` and gets no doc page.
+No public events — message-received and connection-dropped notifications come through the parent `NamedPipeServer`.
 
 ## `NamedPipeClientManager` public members
 
@@ -74,7 +74,7 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[EventInterfaceId(...)]`,
 - `FreeThreadingEvents As Boolean = False`
 - `ContinuouslyReadFromPipe As Boolean = True`
 
-These four are read once on the first `Connect()` call and propagated to every `NamedPipeClientConnection` created through that manager; subsequent changes do not affect connections that already exist. Source comment in `NamedPipeClientConnection` confirms: *"tip: set it in NamedPipeClientConnections before Connect()"*.
+They are read once on the first `Connect()` call and propagated to every `NamedPipeClientConnection` created through that manager; subsequent changes do not affect connections that already exist. Source comment in `NamedPipeClientConnection` confirms: *"tip: set it in NamedPipeClientConnections before Connect()"*.
 
 **Public methods**:
 
@@ -112,8 +112,8 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[ClassId(...)]`, `[EventI
 **Documented gaps / TODOs from `_README.txt`** (surface on the landing page):
 
 - *"we need a method to allow closing a client connection from the server side"* — there is no `NamedPipeServerConnection.Disconnect` or `.Close` user-method today. The server can stop the whole pipe (`NamedPipeServer.Stop`) but cannot selectively drop one client.
-- *"named pipe error should be raised via Error events (rather than throwing an error on the worker threads)"* — internal IOCP errors currently bubble up as VBA run-time errors on worker threads rather than as `Error` events. No `Error` event exists on any of the four classes yet.
-- *"remove max size 131072 of messages"* — the `MessageBufferSize` initial-buffer default is 131072 bytes. The IOCP overflow path (`ERROR_MORE_DATA` → larger buffer → re-issue read) does handle larger messages, but there may be a hard cap somewhere the author wants to remove; surface this as *"see TODO list in `_README.txt`"* rather than making a stronger claim.
+- *"named pipe error should be raised via Error events (rather than throwing an error on the worker threads)"* — internal IOCP errors currently bubble up as VBA run-time errors on worker threads rather than as `Error` events. No class has an `Error` event yet.
+- *"remove max size 131072 of messages"* — 131072 is the `MessageBufferSize` default, and the overflow path (see `MessageBufferSize`) does handle larger messages, but there may be a hard cap somewhere the author wants to remove; surface this as *"see TODO list in `_README.txt`"* rather than making a stronger claim.
 - *"currently a lot of duplicate code in server + client"* — internal-refactor note. **Not** surfaced on the docs.
 
 **Cookie pattern.** Every `AsyncRead` and `AsyncWrite` accepts an optional *Cookie* (`Variant`). Whatever the consumer passes in flows through the IOCP completion buffer and is handed back out on the matching `MessageReceived` / `MessageSent` event. This is the package's mechanism for correlating individual writes with their completion notifications when many are in flight.
@@ -173,7 +173,7 @@ Dim commandID As String = propertyBag.ReadProperty("CommandID")
 …
 ```
 
-Two reasons this pattern matters and should be surfaced on the docs:
+Why the docs surface this pattern:
 
 1. **The transient-`Data()` problem is solved by `PropertyBag`.** Assigning to `PropertyBag.Contents` deep-copies the byte buffer; once the assignment returns, the original IOCP buffer can be recycled without invalidating the data. This is the cleanest answer to *"how do I keep the data past the event handler?"* — call out on every `MessageReceived` / `ClientMessageReceived` page entry as the recommended capture mechanism.
 2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on the property names (`"CommandID"`, `"ResponseCommandID"`, `"ResponseData"`, `"Data"`) and `PropertyBag` handles the encoding / decoding. Cross-link [`PropertyBag` reference](docs/Reference/Default/VBRUN/PropertyBag/index.md) from the index landing.

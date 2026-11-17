@@ -1,22 +1,13 @@
 # The IDE Help Add-in
 
-See [WIP.md](WIP.md) for the maintenance guide. This file covers the twinBASIC IDE add-in
-that shows the documentation for the symbol under the cursor, and the harness that tests IDE
-add-ins by machine, which the add-in is developed against.
+This file covers the twinBASIC IDE add-in that shows the documentation for the symbol under
+the cursor, and the harness that tests IDE add-ins by machine, which the add-in is developed
+against.
 
 **The add-in** is in [add-in/](add-in/) (Stage 4, below): F1 to a page, the
 help pane, the compiler's hover to tell which `Add`, a name with no page shown by its
 declaration and `[Description]`, offline help served from an archive in the DLL, hover help,
 a detached window, a settings panel, and only the packages the project references.
-
-- `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
-- Stage 2's questions are held, most of them, by probe lanes that fail when a later IDE
-  build behaves differently.
-- Every build publishes `tB/symbols.json` under a drift guard that fails the build when one
-  of its URLs goes.
-- The site reads a `theme` parameter, and the help pane passes the IDE's theme with it, and
-  a `pane` parameter, with which a page shows without the site's navigation and header
-  (Stage 4, increment 2).
 
 A fact about the IDE that a probe lane tests is stated for **BETA 1007**, the build it was
 last checked on. The lanes run on the newest install, BETA 1007 or later (the oldest build
@@ -26,21 +17,20 @@ offset is given, because offsets move with every build. Each fact is one of thre
 
 - stated plainly: read in the IDE's code or registry;
 - marked *(reported)*: from a static reading or a harvested finding, not re-checked;
-- marked with a probe number (**P1** to **P21**): only running the IDE can settle it.
+- marked with a probe number (**P1**, **P2**, ...): only running the IDE can settle it.
   [Stage 2](#stage-2-probes-that-decide-the-design) lists them.
 
 ## Goals
 
 1. **Help for the symbol under the cursor.** A key press opens the documentation page for
-   the identifier at the cursor, or for the selection. F1 (P1 and P2 do not rule it out).
+   the identifier at the cursor, or for the selection: F1 (Stage 4, increment 1).
 2. **A help pane.** A dockable tool window with search and a page view, so that reading the
    documentation does not mean leaving the IDE.
 3. **Theme-aware.** It follows the IDE's light, dark and classic themes.
 
-It also makes a documentation promise real. [Permanent
-Links](docs/Documentation/Permanent-Links.md) says that "the IDE help system" relies on the
-`/tB/` URLs, but the IDE has no documentation help today: its scripts contain neither
-`docs.twinbasic.com` nor `/tB/` *(reported)*. This add-in is the first real consumer of that
+[Permanent Links](docs/Documentation/Permanent-Links.md) says that "the IDE help system"
+relies on the `/tB/` URLs, but the IDE has no documentation help: its scripts contain neither
+`docs.twinbasic.com` nor `/tB/` *(reported)*. This add-in is the first consumer of that
 contract. [WIP.Authoring.md](WIP.Authoring.md#description-attributes-are-not-connected-to-this-documentation)
 waits on it before `[Description]` text and these pages can be connected.
 
@@ -74,25 +64,23 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   passes it to the compiler when it starts it and when it asks it to load the add-ins.
   Measured on BETA 1007 by
   [test/addin/appdata.test.mjs](test/addin/appdata.test.mjs), with a probe add-in that
-  prints the file it was loaded from: an IDE started with `APPDATA` naming a folder of the
-  lane's own loaded the probe from `<APPDATA>\twinBASIC\addins\win32`, and not a second
-  copy placed in `addins` itself. **The compiler loads from the folder it is sent, not from
-  its own `%APPDATA%`**: with `commonFolderRootPath` pointed at a second folder and the
-  compiler restarted, it loaded the copy there, while the probe still read the first folder
-  in its own `APPDATA`. So a DLL in the user's folder loads into every IDE the user starts,
-  from any install, and into every IDE `tbbuild`, `tbrun` and `examples.bat` start. An IDE
-  started with `APPDATA` naming another folder loads none of the user's add-ins, which is
-  how the add-in lanes keep them out (Stage 1, item 3). The FAQ's answer to "Does twinBASIC
-  support addins?" names the `win32` and `win64` folders and says that a DLL placed in
-  `addins\` itself is not loaded.
+  prints the file it was loaded from: with `APPDATA` naming a folder of the lane's own, the
+  probe loaded from `<APPDATA>\twinBASIC\addins\win32`, and a copy in `addins` itself did
+  not. **The compiler loads from the folder it is sent, not from its own `%APPDATA%`**: with
+  `commonFolderRootPath` pointed at a second folder and the compiler restarted, it loaded the
+  copy there, while the probe still read the first folder in its own `APPDATA`. So a DLL in
+  the user's folder loads into every IDE the user starts, from any install, `tbbuild`'s,
+  `tbrun`'s and `examples.bat`'s included. An IDE started with `APPDATA` naming another
+  folder loads none of the user's add-ins, which is how the add-in lanes keep them out
+  (Stage 1, item 3). The FAQ's answer to "Does twinBASIC support addins?" names the `win32`
+  and `win64` folders and says that a DLL placed in `addins\` itself is not loaded.
 - **An add-in runs inside the compiler's process (P10).** The process id an add-in read with
   `GetCurrentProcessId` was that of `twinBASIC_win32_noDEP.exe`, which `twinBASIC.exe` starts
   as a direct child, beside the page server `twinBASIC_win32.exe --ide=<pid>`. So an add-in
-  sees the environment the IDE was started with. **A compiler restart is a new process**: the
-  toolbar's restart button (`#restartIcon`, bound to `tbCompiler_Restart`, which calls
-  `root.forceTerminate()`) ended the compiler, and the next one, with a new process id,
-  loaded the add-in again and ran its `OnProjectLoaded` a second time. The DEBUG CONSOLE was
-  not cleared; the IDE added `restarting from MEMORY [<project>]`.
+  sees the environment the IDE was started with. **A compiler restart is a new process**,
+  with a new process id (P9, below). The toolbar's restart button is `#restartIcon`, bound to
+  `tbCompiler_Restart`, which calls `root.forceTerminate()`. The DEBUG CONSOLE is not
+  cleared; the IDE adds `restarting from MEMORY [<project>]`.
 - **Load failures have their own messages** in the compiler's strings: `Failed to load
   addin.  LoadLibrary() failed.`, `Entry point not found.  Addin may have been compiled for
   a newer version of the twinBASIC IDE.`, `Entry point 'tbCreateCompilerAddin' call
@@ -108,24 +96,21 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   test that presses Shift must not do it while a project is opening.
 - **The linker exports `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3`, and the
   loader takes three names (P14).** Read in the compiler's code and measured on BETA 1007 by
-  [test/addin/entry.test.mjs](test/addin/entry.test.mjs). The loader --- the code that
-  pushes the address of the string `tbCreateCompilerAddin_v2` in `twinBASIC_win32.dll`,
-  found with `dumpbin /disasm`; the same in `twinBASIC_win64.dll` --- asks `GetProcAddress` for
+  [test/addin/entry.test.mjs](test/addin/entry.test.mjs). The loader, in
+  `twinBASIC_win32.dll` and `twinBASIC_win64.dll` (the code that pushes the address of the
+  string `tbCreateCompilerAddin_v2`; `dumpbin /disasm` finds it), asks `GetProcAddress` for
   `tbCreateCompilerAddin`, then `tbCreateCompilerAddin_v2`, then `tbCreateCompilerAddin_v3`,
   and calls the first it finds **the same way whichever it is**: one argument, the `Host`,
   `stdcall` on win32. It asks what that returns for `IAddInV1` ---
-  `{F1BAB9A7-09A3-436C-8B57-A57A76C5DF98}`, the package's own --- and reads its `Name`. For
-  each `[DllExport]` function, the linker swaps the export name for `tbCreateCompilerAddin_v3`
-  when the function's name is `tbCreateCompilerAddin`, and exports nothing under the name
-  written. So the three names are not three signatures: the suffix is a version stamp, and an
-  IDE whose loader does not know the stamp refuses the DLL. With the probe's one export
-  patched in four copies, the plain name, `_v2` and `_v3` all loaded, and `_v4` did not, with
-  `[EntryV4.dll] Failed to load addin.  Entry point not found.  Addin may have been compiled
-  for a newer version of the twinBASIC IDE.` in the DEBUG CONSOLE and an `Unknown Addin` in
-  the compiler's list. Both of P7's builds, win32 and win64, exported `_v3` alone. The BETA
-  1007 install has the three names in the loader of `twinBASIC_win32.dll` and of
-  `twinBASIC_win64.dll`, and its shipped Global Search add-in exports `_v3` alone, in both
-  folders.
+  `{F1BAB9A7-09A3-436C-8B57-A57A76C5DF98}`, the package's own --- and reads its `Name`. The
+  linker exports a `[DllExport]` function named `tbCreateCompilerAddin` as
+  `tbCreateCompilerAddin_v3` and under no other name. So the three names are not three
+  signatures: the suffix is a version stamp, and an IDE whose loader does not know the stamp
+  refuses the DLL. With the probe's one export patched to each name, the plain name, `_v2` and
+  `_v3` loaded, and `_v4` did not: `[EntryV4.dll] Failed to load addin.  Entry point not
+  found.  Addin may have been compiled for a newer version of the twinBASIC IDE.` in the DEBUG
+  CONSOLE and an `Unknown Addin` in the compiler's list. P7's win32 and win64 builds, and the
+  shipped Global Search add-in in both folders, export `_v3` alone.
 - **Add-ins cannot be switched off.** The Add-Ins menu lists the loaded add-ins with ticks,
   and every item calls `notSupportedMenuOption()` *(reported)*.
 - **A compiler restart loads every add-in again, from the file in its folder then (P9).**
@@ -239,7 +224,7 @@ Read in `toolWindowElementAddChild` and `toolWindowElementSetProperty`, and meas
   (P9). None of the shipped samples leaves the id out.
 - **An add-in's toolbar button is `#addinButton-<id>`**, with the id the add-in gave
   `AddButton`, inside `#rootMenu2`, and its caption as its `title`.
-- **`HtmlElements.Add(id, tagName)` accepts any tag.** The four IDE widget tags (`chartjs`,
+- **`HtmlElements.Add(id, tagName)` accepts any tag.** The IDE's widget tags (`chartjs`,
   `monaco`, `listview`, `virtuallistview`) become a `div` with extra setup; every other name
   goes straight to `document.createElement`, so `iframe` is not refused. A parent is found
   with `querySelector(":scope #"+id)`, so element ids must be valid CSS identifiers.
@@ -275,8 +260,7 @@ Read in `toolWindowElementAddChild` and `toolWindowElementSetProperty`, and meas
   stored as a function on the element, or on the object at the end of the property path,
   under that name (`toolWindowElementSetPropertyCallback`) --- that function is what
   `raiseEvent` calls. `raiseEvent` climbs `parentNode` to the first node with a
-  `rootEventHandler` and calls `rootEventHandler[name](event)`. Only three kinds of node
-  have one: a `listview` or `virtuallistview` container (the list view object), the shadow
+  `rootEventHandler` and calls `rootEventHandler[name](event)`. Only these nodes have one: a `listview` or `virtuallistview` container (the list view object), the shadow
   root of an `AddMonacoWidget` widget (the widget's own element), and one of the IDE's
   dialogs. **So `raiseEvent` from plain tool-window HTML throws (P12):**
   `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, at the shadow
@@ -440,22 +424,20 @@ offline site itself instead (Stage 4, increment 5), so this route is not taken.
   (`alert("need to massage workspace edits here...")`), Find with an invalid regular
   expression, and an unknown message on any of the compiler's sockets. A notification's
   "Copy to clipboard" link also calls `alert()`, but plain `ShowNotification` messages hide
-  that link. **An alert that opened before the harness attached cannot be dismissed over
-  CDP**: the page then answers nothing, and the harness reports it as the likely cause. The
-  IDE's own candidates are its "IDE startup failure" alert and "Bad command line syntax.",
-  which `launchIde`'s single argument never provokes.
+  that link. An alert that opened before the harness attached cannot be dismissed over CDP
+  ([WIP.Harness.md, Operating the IDE and reading
+  it](WIP.Harness.md#operating-the-ide-and-reading-it)).
 
 ### IDE state outside the install
 
 - **All IDE settings are in `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE`**:
-  `IDESettings` (13 values --- `GENERAL`, `GENERAL2`, `LAYOUTv2`, `WEBPANEL_SETTINGS`,
+  `IDESettings` (`GENERAL`, `GENERAL2`, `LAYOUTv2`, `WEBPANEL_SETTINGS`,
   `targetArchitectureMemory`, the licence values, ...), `ProjectState` (one value per project
-  ever opened), `RecentlyOpened` (21 values) and `Window` (6). Every IDE a user runs shares
-  them, and so does every IDE a harness starts. Every IDE a harness starts is given
-  `--no-save-ide-settings` and `--no-update-recent-files` (`IDE_FLAGS` in
-  [tb-ide.mjs](scripts/lib/tb-ide.mjs)), which keep it from writing `IDESettings` and
-  `RecentlyOpened`. It still writes `ProjectState` for the temp projects it opens, so every
-  harness tool puts that back ([Stage 1](#stage-1-testing-add-ins-by-machine)).
+  ever opened), `RecentlyOpened` and `Window`. Every IDE a user runs shares them, and so does
+  every IDE a harness starts. `IDE_FLAGS` ([tb-ide.mjs](scripts/lib/tb-ide.mjs), WIP.md's
+  rule) keep a harness IDE from writing `IDESettings` and `RecentlyOpened`. It still writes
+  `ProjectState` for the temp projects it opens, so every harness tool puts that back
+  ([Stage 1](#stage-1-testing-add-ins-by-machine)).
 - **The `.twinproj` association** is `HKCU\Software\Classes\.twinproj` →
   `twinBASIC.ProjectFile`, and it points at the newest install's `twinBASIC.exe`. **The IDE
   rewrites `DefaultIcon` and `shell\open\command` when its path differs** (an IDE copy in
@@ -516,28 +498,17 @@ has the harness side of each item.
 3. **The registry is left as it was found**, for every harness tool:
    [scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs), described in
    [WIP.Harness.md, What a run leaves in the
-   registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back).
-   - It saves `HKCU\Software\Classes\.twinproj` and `twinBASIC.ProjectFile` before a run and
-     restores them once the last lane has ended, and never puts back an association that
-     points into the temp folder.
-   - It deletes the `ProjectState` values the run created. Match paths with either separator:
-     some tools store them with forward slashes (`C:/Users/.../Temp/tbprobe/...`).
-   - It saves the IDE's `Window` key, the geometry the user's own IDE opens at, and puts it
-     back value by value, because the IDE writes it when its window is resized and when an
-     options change flips `RealTitlebar`.
-   - Every lane IDE gets `--no-save-ide-settings` and `--no-update-recent-files`, so the
-     recent list, the theme, the panel layouts and the build target remembered for each
-     project path are never written, and a lane cannot inherit `win64` from an earlier
-     one. The runner reads the recent list and the remembered targets afterwards and
-     fails the run (exit 3) if either names a lane's folder.
-   - The add-in runner (item 7) records the `SaveSetting` keys a lane names and puts them back.
+   registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back): the
+   `.twinproj` association and the IDE's `Window` key put back value by value, the
+   `ProjectState` values the run created deleted (match paths with either separator: some
+   tools store them with forward slashes, `C:/Users/.../Temp/tbprobe/...`), and the recent
+   list and the remembered build targets, which `IDE_FLAGS` keep a lane from writing (so a
+   lane cannot inherit `win64` from an earlier one), checked afterwards (exit 3). The add-in
+   runner (item 7) records the `SaveSetting` keys a lane names and puts them back.
    - Every IDE a lane starts, the add-in builds' included, gets an `APPDATA` of the lane's
      own, `<work>\appdata`, and the lane checks afterwards that the IDE's add-ins folder is
      under it (`checkAddinsRoot` in `tb-ide-addins.mjs`). So the user's add-ins never load
      into a test IDE, and the user need not move them out to run the tests.
-
-   The complete answer would be a separate Windows account for test runs, which only the
-   user can create.
 4. **Build, then load.** `buildAddin` in [scripts/lib/tb-addin.mjs](scripts/lib/tb-addin.mjs)
    builds the add-in with the lane's copy into `<work>\out\`, for win32 or win64, and
    `addAddin` in `tb-ide-copy.mjs` then puts the DLL in the copy's `addins\<arch>`. Built
@@ -551,48 +522,33 @@ has the harness side of each item.
 5. **Operating the IDE and reading it**, as library calls over CDP:
    [scripts/lib/tb-operate.mjs](scripts/lib/tb-operate.mjs), with `readCrash` in
    `tb-ide.mjs`, described in [WIP.Harness.md, Operating the IDE and reading
-   it](WIP.Harness.md#operating-the-ide-and-reading-it).
-   - open a file: `fs.tree.resolvePath("twinbasic:/<Project>/Sources/<file>")`, then
-     `openEditors.openFile(node,false,false,false,line,col)`, line and column counted from 1;
-   - move the cursor or select: `window.editor` is the one Monaco code editor, given the
-     model of whichever file's tab is selected (`setPosition`, `setSelection`,
-     `getModel().getValue()`). Not `monaco.editor.getEditors()`, which also
-     returns editors that add-ins created *(reported)*;
-   - press keys: `Input.dispatchKeyEvent` key-down, then key-up, with real `key` and
-     `code` values, less than 500 ms apart;
-   - click: real `Input.dispatchMouseEvent` presses at the element's centre. The IDE's own
-     controls ignore `element.click()`. `click` waits up to five seconds for its target,
-     since a list view draws a row a moment after the row is in its data;
-   - ask which add-ins loaded: `loadedAddins(c)` in `tb-ide-addins.mjs`, which lists a DLL
-     that failed to load as `Unknown Addin`;
-   - build the open project: `buildProject(c)` in `tb-ide.mjs`;
-   - read a tool window through `toolWindowsById[<guid>].bodyElement`; read the DEBUG
-     CONSOLE's backing array, notifications and message boxes; dismiss any `alert()`;
-     notice a compiler restart or crash, as `tbbuild`'s console check does.
+   it](WIP.Harness.md#operating-the-ide-and-reading-it): open a file at a line and column;
+   move the cursor or select in `window.editor`, the one Monaco code editor, given the model
+   of whichever file's tab is selected (not `monaco.editor.getEditors()`, which also returns
+   editors that add-ins created *(reported)*); press keys; click with real mouse presses,
+   since the IDE's own controls ignore `element.click()`; ask which add-ins loaded
+   (`loadedAddins(c)` in `tb-ide-addins.mjs`); build the open project (`buildProject(c)`);
+   read a tool window through `toolWindowsById[<guid>].bodyElement`, the DEBUG CONSOLE's
+   backing array, notifications and message boxes; dismiss any `alert()`; notice a compiler
+   restart or crash.
 6. **No real side effects: `TB_ADDIN_TEST`.** An add-in's URL opener treats the variable as
    set when it is not empty, and then prints `open <url>` to the DEBUG CONSOLE instead of
-   starting a browser. On a private desktop a real browser would start where nobody can see
-   it and outlive the run. `launchIde` in [tb-ide.mjs](scripts/lib/tb-ide.mjs) sets it to `1`
-   for **every** IDE the harness starts, `tbbuild`'s, `tbrun`'s and `examples.bat`'s
-   included, because each of them loads whatever add-ins the user has installed, on a desktop
-   nobody watches; a caller's `env` can set it otherwise, or leave it out with the value
-   `undefined`. `openedUrls(c, { since })` in [tb-operate.mjs](scripts/lib/tb-operate.mjs)
-   reads the `open <url>` lines back, and `consoleMark(c)` in `tb-ide-console.mjs` takes the
-   mark that `since` names, so a scenario asks what was opened after the key it pressed. A
-   line counts only when what follows `open ` has no white space in it, as a URL has none.
-   `PrintText` stores its text escaped (`<b>` as `&lt;b&gt;`), so a URL comes back exactly as
-   printed, `&` included. The rule rests on P10, which is a lane:
-   [test/addin/probes/env](test/addin/probes/env) with [env.test.mjs](test/addin/env.test.mjs).
+   starting a browser, which on a private desktop would start where nobody can see it and
+   outlive the run. `launchIde` in [tb-ide.mjs](scripts/lib/tb-ide.mjs) sets it to `1` for
+   **every** IDE the harness starts, and `openedUrls(c, { since })` reads the `open <url>`
+   lines back, so a scenario asks what was opened after the key it pressed: [WIP.Harness.md,
+   An add-in under test opens nothing](WIP.Harness.md#an-add-in-under-test-opens-nothing).
+   The rule rests on P10, which is a lane: [test/addin/probes/env](test/addin/probes/env)
+   with [env.test.mjs](test/addin/env.test.mjs).
 7. **A runner.** [scripts/addin_test.mjs](scripts/addin_test.mjs), with the lanes in
    [test/addin/](test/addin/) and what a scenario gets in
    [scripts/lib/tb-lane.mjs](scripts/lib/tb-lane.mjs), described in [WIP.Harness.md, The
    add-in test runner](WIP.Harness.md#the-add-in-test-runner). A lane is one scenario file
    under `node:test`, run in a process of its own with its own port and copy of the install;
    the runner owns the registry, the add-ins' saved settings included, and checks it
-   afterwards. Ctrl+C and a lane timeout both end the lanes and still put the registry back.
-   The wrapper is `addin-test.bat`, outside every gate and CI for the reason `examples.bat`
-   is: it needs Windows and a twinBASIC install. `removeTree` retries a delete that an ending
-   IDE still blocks, since on Node 24 `rmSync`'s own `maxRetries` does not.
+   afterwards, Ctrl+C and a lane timeout included. The wrapper is `addin-test.bat`, outside
+   every gate and CI for the reason `examples.bat` is: it needs Windows and a twinBASIC
+   install.
 
    **Stage 4's code is tested end to end**, through the editor: the help lane puts the
    cursor or a selection on each case and reads what the add-in opened. Word extraction and
@@ -602,8 +558,8 @@ has the harness side of each item.
    under the runner leaves its registry entries to the runner, which sweeps only the lanes'
    folders.
 
-Two scenarios hold Stage 1: both pass under `addin-test.bat`, with the whole registry,
-`IDESettings` included through hashes, identical around the run.
+Stage 1's own scenarios pass under `addin-test.bat`, with the whole registry,
+`IDESettings` included through hashes, identical around the run:
 
 - **Sample 10:** toolbar button, then its tool window, then a message box (the three-button
   box answered `button2`, the follow-up answered `ok`, then a notification and a DEBUG
@@ -646,7 +602,7 @@ run, and the failure says what to update. The lanes and what rests on each:
 - [parent.test.mjs](test/addin/parent.test.mjs) (P21): the NOTE on the FileSystemItem
   page's **Parent**, and the reproducer of its entry in BUGS-TO-REPORT.md.
 
-A probe that settles a question once stays in scratch. So do the two P3 checks that need the
+A probe that settles a question once stays in scratch. So do the P3 checks that need the
 network or a changed WebView2: the live site in the frame, and the colour scheme with
 WebView2 preferring light.
 
@@ -654,11 +610,11 @@ The table gives each answer in brief; the sections above have the detail.
 
 | # | Question | What it decides |
 |---|---|---|
-| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? **BETA 1007: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
+| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? **BETA 1007: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. | the bug report in BUGS-TO-REPORT.md; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
 | P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **BETA 1007: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well. | F1 or another key --- F1 |
 | P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? **BETA 1007: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too (checked outside the lane, on BETA 1005). Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
 | P4 | Does `innerHTML` render, and do inline handlers in it run page script? **BETA 1007: yes, and yes.** Inline handlers run as the IDE page's own script, with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
-| P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **BETA 1007:** hover gives the declaration, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
+| P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **BETA 1007:** hover gives the declaration, then a heading naming where it is declared (`in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols`), a class's members by its default interface. Definition gives the declaration in the package's own source, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? Needs a DLL placed there, which the user's own IDE would load too --- **ask before running it against the real `%APPDATA%`.** **BETA 1007: yes**, from `addins\win32` there and not from `addins` itself. The compiler loads from the folder the page sends it. The lane points `APPDATA` at a folder of its own, so no DLL goes in the user's. | harness isolation --- every lane IDE gets an `APPDATA` of its own |
 | P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **BETA 1007: yes, and yes.** The target a project opens in picks the compiler, and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
 | P8 | Is a loaded add-in DLL locked against being overwritten? **BETA 1007: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
@@ -714,7 +670,7 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
   only, never a `redirect_from` alias. **A member is either a page or a heading.**
   `Collection.Add` has its own page, `/tB/Modules/Collection/Add`; `ToolWindows.Add` is a
   heading on its class page, and its URL uses the id tbdocs gives that heading (`### Add`
-  gives `#add`), read from the build and never computed a second time. Two kinds of alias:
+  gives `#add`), read from the build and never computed a second time. Aliases:
   the `$`, `B` and `W` variants share the base page (`LenB` → `/tB/Modules/Strings/Len`), and
   attributes are `/tB/Core/Attributes#<name in lowercase>`.
 - **The reading rules**, in [builder/symbols.mjs](builder/symbols.mjs)'s header: a page's
@@ -729,7 +685,7 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
   package page gives at least one entry**; a build names any that stops.
 - **`symbols:`**, an optional frontmatter key, names what a page documents when its title
   cannot: the (Default) module is `_HiddenModule`, and the comparison operators page
-  documents `=`, `<>` and four more. A page's first heading `# \ and \= operators` must be
+  documents `=`, `<>` and the other comparison operators. A page's first heading `# \ and \= operators` must be
   written `\\=`, since `\=` is a markdown escape.
 - **From the packages:** [builder/package-api.json](builder/package-api.json), which
   `node indexer/twin-index.mjs derive` ([indexer/lib/package-api.mjs](indexer/lib/package-api.mjs))
@@ -738,8 +694,8 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
   `inter-metrics.json`, because CI has no install. It
   supplies each symbol's package, container and kind, lists the public symbols that have no
   page (documentation coverage as a side effect), and supplies each class's default
-  interface, which is what the compiler names a class's members by (P5). Four facts about
-  the packages shaped it:
+  interface, which is what the compiler names a class's members by (P5). Facts about the
+  packages that shaped it:
   - **A package is known by its project name, not its folder's.** TwinBasicAssertions is
     `Assert`, all three CEF builds are `cefPackage` (their declared APIs are identical, and
     the generator checks that they stay so), and AppGlobalClassObject is
@@ -790,7 +746,7 @@ has the complete list):
   (`/tB/Modules/DateTime/Timer`).
 - `Add` --- `Collection.Add`, `ToolWindows.Add`, `HtmlElements.Add` and
   `KeyboardShortcuts.Add`.
-- `Item` --- `Collection.Item`, and `Item` on six tbIDE classes (`Editors`, `Folder`,
+- `Item` --- `Collection.Item`, and `Item` on tbIDE classes (`Editors`, `Folder`,
   `HtmlElements`, `HtmlElementProperties`, `HtmlEventProperties`, `Toolbars`).
 
 **Data types** (owner, 2026-10-18) are the one exception to the `/tB/` rule:
@@ -817,9 +773,8 @@ Each increment has its scenarios in the lanes. The site reads `theme=dark|light`
 as query parameters, since the add-in cannot reach into a cross-site frame; the IDE's own
 server answers a URL with a query string with a 404 (P13), and the add-in's server
 (increment 5) ignores the query, so the parameters work offline too. Worked on by hand, a
-new build replaces the loaded one without ending the IDE: rename the loaded DLL aside, put
-the new build in its place, and click the compiler's restart button (P9). The lanes need
-not: a restart saves a harness about a second against opening a new IDE.
+new build replaces the loaded one without ending the IDE, by the rebuild loop under
+[Loading](#loading) (P9); the lanes open a new IDE instead, which costs them about a second.
 
 1. **F1 to a page**, tested by [help.test.mjs](test/addin/help.test.mjs) on BETA
    1007. F1 takes the selection or the name under the cursor (below) and looks it up in the
@@ -928,9 +883,9 @@ not: a restart saves a harness about a second against opening a new IDE.
      when the IDE has no saved place for it (`floatingToolWindowsData`), which nothing in BETA
      1042 writes, so a resize by hand is undone too (BUGS-TO-REPORT.md's
      toolwindow-show-suggested-size), and then centres the
-     panel by its laid-out size, so a CSS `min()` works. A plain 640px was taller than the page
-     of a 1200 by 900 IDE window at 150% (800 by 600): the IDE centred it at a negative
-     `top`, its title bar partly above the page, and it covered the toolbar. The lane checks 480 by 640 in a
+     panel by its laid-out size, so a CSS `min()` works. A plain 640px is taller than the page
+     of a 1200 by 900 IDE window at 150% (800 by 600): the IDE centres it at a negative
+     `top`, its title bar partly above the page, over the toolbar. The lane checks 480 by 640 in a
      page of 1600 by 1000, and 480 by 510, inside the page, in one of 800 by 600.
 
    **The pane has an id of its own**, never none: every window given no id is the same
@@ -1064,11 +1019,9 @@ not: a restart saves a harness about a second against opening a new IDE.
      click on one whose `data-href` starts with it is taken in the capture phase and sent
      to the add-in, which shows the page in the pane.
    - **The hover stays past the editor's edge** (P18). The editor is created with
-     `fixedOverflowWidgets`, so a long hover reaches past the code editor's edge. The IDE
-     draws `.monaco-hover` at `z-index: 1000 !important`, above the dock
-     resizer along that edge and the dock's drop targets, so the mouse sliding down the
-     hover past the edge keeps it. The add-in adds nothing for this, with hover help on or
-     off. The `help` and `help-offline` lanes check the IDE's behaviour: the test makes the
+     `fixedOverflowWidgets`, so a long hover reaches past the code editor's edge, and the
+     IDE's `z-index` for `.monaco-hover` keeps it while the mouse slides down it past the
+     edge. The add-in adds nothing for this, with hover help on or off. The `help` and `help-offline` lanes check the IDE's behaviour: the test makes the
      page short enough that the hover reaches past the editor's bottom, and slides the
      mouse down it across the edge.
    - **In the lanes**, the floating pane covers the middle of the code editor, so the cases
@@ -1079,11 +1032,10 @@ not: a restart saves a harness about a second against opening a new IDE.
      runner](WIP.Harness.md#the-add-in-test-runner)): `Lane.open` fixes it as it attaches. The
      IDE opens its window at the size the user's own IDE last left in the `Window` key
      (`twinBASIC_IDE\Window`), which the harness puts back but never sets: at 1200 by 900, not
-     maximized, at 150%, the page is 800 by 600, the pane floats at 480 by 640, centred, over
-     the toolbar's buttons and most of the editor, and the Help button, the restart button and
-     every mouse case after them fail. The pane's first size fits such a page (increment 2),
-     but it still covers most of it, so the fixed size stays. The lane's second IDE is opened
-     with `page` 800 by 600 for the case that checks the pane's first size there.
+     maximized, at 150%, the page is 800 by 600. The pane's first size fits such a page
+     (increment 2), but, centred, it covers most of it, and the Help button, the restart button
+     and the mouse cases need the toolbar and the editor clear. So the fixed size stays. The lane's second IDE is opened with `page` 800
+     by 600 for the case that checks the pane's first size there.
 7. **A detached window**, tested by the `help` and `help-offline` lanes on BETA 1007
    (owner's request): the pane can be moved to another monitor. The owner's choices: the add-in shows a window of its own, a twinBASIC Form holding the
    WebView2 package's control (P19), rather than a `window.open` from the page, which would
@@ -1286,8 +1238,8 @@ not: a restart saves a harness about a second against opening a new IDE.
     reaches the main WebView2's zoom; CSS `zoom` on the page leaves Monaco at its old width
     and puts context menus and hovers at the pointer's position times the zoom; the font
     options scale text but not icons or controls. Emulated device scaling (what a WebView2
-    `ZoomFactor` does) was right throughout, so whole-IDE zoom needs that host call
-    upstream. The probe and pictures are in `.claude/scratch/zoom/`.
+    `ZoomFactor` does) is right throughout, so whole-IDE zoom needs that host call
+    upstream.
 13. **A keyboard shortcut editor** (owner, 2026-11-12: on by default, Table first, the built-in
     group read-only with no actions, conflicts across every active group), tested by the
     `ide-test` lane `keyeditor` (`test/ide/keyeditor.test.mjs`, the script put into the page
@@ -1511,8 +1463,8 @@ needed); lines joined with `_`; numbers, which miss the index. `GetSelectionInfo
 lines and columns from 1, as Monaco does (the help lane's cases depend on it).
 
 **Settings:** per project through `Project.SaveMetaData` / `LoadMetaData`, add-in-wide
-through `SaveSetting` / `GetSetting` --- which is the shared registry tree, so the runner's
-registry restore has to include it.
+through `SaveSetting` / `GetSetting`, in the shared registry tree ([IDE state outside the
+install](#ide-state-outside-the-install)).
 
 **The add-in's own parser**, deferred (increment 3 takes the page's socket instead), and
 the route once the socket is gone, if the API never gains a call for it:
@@ -1560,16 +1512,14 @@ Recommended, and not yet confirmed:
   another exception, since the IDE's own samples use it that way and it is the only way a
   list view reports a click.
 - **Isolation starts with restoring the registry** (Stage 1, item 3), and a private
-  `APPDATA` for every lane IDE (P6). A separate Windows account for test runs comes only if
-  that proves not to be enough.
+  `APPDATA` for every lane IDE (P6). A separate Windows account for test runs, the complete
+  answer, which only the user can create, comes only if that proves not to be enough.
 
 ## Rules
 
 The rules for testing add-ins bind every session and are in
-[WIP.md, Driving the twinBASIC compiler](WIP.md#driving-the-twinbasic-compiler): no test
-add-in in the real install's `addins\` or in `%APPDATA%\twinBASIC\addins\`, no real browser
-from a test, every `SaveSetting` application named in `lanes.mjs`, IDEs ended by pid, and
-one project per IDE.
+[WIP.md, Driving the twinBASIC compiler](WIP.md#driving-the-twinbasic-compiler) and
+[WIP.Harness.md, Rules](WIP.Harness.md#rules).
 
 **A change a user of the add-in would notice gets an entry in `add-in/CHANGELOG.md` and a
 new version** (owner, 2026-10-20), in the same commit: `project.versionMajor`, `Minor`,

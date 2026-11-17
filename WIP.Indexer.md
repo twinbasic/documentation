@@ -1,12 +1,60 @@
 # twinBASIC Documentation --- The Package Indexer
 
 `indexer/twin-index.mjs` turns the sources of the twinBASIC packages into `api.json`
-snapshots and lists the documentation work a new build leaves. **What to do** is in
-[WIP.md](WIP.md#the-package-indexer); how to run it and the format of `api.json` are in
+snapshots and lists the documentation work a new build leaves. **What to do** is under
+[Rules](#rules) below; how to run it and the format of `api.json` are in
 [indexer/README.md](indexer/README.md); the published account is the
 [Tools-Build entry](docs/Documentation/Tools-Build.md#twin-index). This file says **why it is
 built the way it is**, and keeps the decisions and open items that still decide something.
-History is in git.
+
+## Rules
+
+- **Run `analyze` to find what a page set lacks**, before and after a batch of pages; see the
+  [per-symbol workflow](WIP.Authoring.md#per-symbol-workflow).
+- **`draft` places what `analyze` lists**: each page's file, parent and permalink, from the
+  section's own layout, in `indexer/.packages/draft/`. To have Claude write the drafts, pass the
+  parsed `indexer/.packages/draft/manifest.json` as `args` to the Workflow tool with `scriptPath:
+  "indexer/draft/workflow.mjs"` --- only when the owner asks for it, since it runs one agent per
+  batch of twelve pages and three per package. It writes pages and compiles their samples, and
+  commits nothing; read every draft against its source before committing it. The workflow is
+  described in this file only ([`draft` and the doc-draft workflow](#draft-and-the-doc-draft-workflow)):
+  nothing under `docs/Documentation/` may require Claude.
+- **A documented package is pinned at its `indexed_from`**: `sync` reads it at that version and
+  writes its snapshot only of that version; **`sync --upgrade` (with `--package` for one) is the
+  only way past the pin** (owner). A plain `sync` lists what is newer, and moves a package the
+  store holds past its pin back to it ([Pinning](#pinning)). **`sync
+  --query` (`--builtin` for the bundled packages) lists what changed upstream and writes
+  nothing**: run it to see what work is waiting.
+- **Bump a section's `indexed_from` when its package is re-indexed**: `sync --upgrade`,
+  `analyze`, the pages, the bump, then a plain `sync`, which writes the new snapshots, and
+  `derive`; commit the pages, the new `indexed_from`, the new snapshots and `derive`'s
+  `builder/package-api.json` together. `analyze` compares with the snapshot at `HEAD` and only
+  when its `version` is the `indexed_from` tag; committing the snapshots on their own, or the
+  bump without them, drops the next `analyze` into audit mode. The bump fails the build until
+  each callout labelled with the old version is checked against the new one and its label
+  moved, or the callout removed: `analyze` lists them as the package's `recheck_callout` tasks.
+- **After a new twinBASIC build, check again every callout labelled with an older one**, with
+  `node scripts/recheck_callouts.mjs` (`--plan` first; [Tools-Defects](docs/Documentation/Tools-Defects.md#recheck-callouts)).
+  It runs what each callout's marker names, each check once, one tool after another, moves the
+  label of each callout whose evidence all holds, and lists the rest: *changed* (read the
+  callout, then fix or remove it, rule 6 under *Plain-English prose* in WIP.Authoring.md), *not checked* (run again
+  alone with `--from <report>` before believing it) and *by hand* (`none`). A full run takes
+  hours; `--kinds` and `--only` cut it. An `analyze` of the whole reference (no `--package`) also
+  lists the callouts labelled `BETA <n>` below the build the store's built-in packages come from,
+  in `indexer/.packages/callouts.json`.
+- **A change to `scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`,
+  `indexer/lib/api-model.mjs` or `indexer/lib/vb6-preprocess.mjs`, or to `format` in
+  `api.json`, regenerates the committed snapshots in the same commit**, with a plain `sync`
+  (never `--upgrade`), which indexes each documented package again at its pin. Otherwise
+  `analyze` reports the scanner's changes as changes to the API. Run `derive --check` too,
+  which reads the pinned build: a scanner change can change `builder/package-api.json`.
+- **There is one scanner, `parseTwin`.** A misread declaration is fixed in
+  `scripts/lib/twin-api.mjs` and pinned in `scripts/check_symbol_index.mjs`, never worked
+  around in `indexer/`.
+- **`derive` regenerates `builder/package-api.json`**, the packages' declared API that the
+  build's symbol index (`tB/symbols.json`, for the IDE help add-in) is annotated from
+  ([WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build));
+  it needs a twinBASIC install (or `--release`). It is a step of every re-index (the bump above).
 
 ## The job
 
@@ -59,9 +107,9 @@ file (the project name). The list is every module `api-model.mjs` imports, and t
 fails when an import is added and the list is not; `package-files.mjs` is not on it, because
 its output is what the store keeps.
 
-**No user name in a committed file.** The manifest records the source (`install` or
-`release`) and the BETA number, never the install's path, which holds a user name. Snapshot
-paths are relative to `Sources/`.
+**No user name in a committed file** ([WIP.md](WIP.md#donts)): the manifest records the
+source (`install` or `release`) and the BETA number, and snapshot paths are relative to
+`Sources/`.
 
 ## One scanner
 
@@ -83,7 +131,7 @@ the probes in `check_symbol_index.mjs` and the comments in `twin-api.mjs` hold t
   and a Class: a Variant with the warning TB0003, unless a type character gives the type. A
   Type takes no initialiser (TB5182) but a bare name.
 - **`Abstract` and `Virtual` are not modifiers.** `Public Abstract Sub Y()` is a Variant
-  variable named `Abstract` followed by a Sub the parser refuses (TB5182). Thirteen more words
+  variable named `Abstract` followed by a Sub the parser refuses (TB5182). These words
   (`Shared`, `Partial`, `Overrides`, `Overloads`, `MustOverride`, `MustInherit`,
   `NotInheritable`, `Iterator`, `Async`, `Naked`, `Unsafe`, `Extern`, `Inline`) are refused the
   same way, and stay on the shared list until a source is found that needs them gone.
@@ -112,15 +160,15 @@ Branches of an `#If` are read as alternatives that each start from the block str
 ## api.json format 4 and the `#If` merge
 
 `format` changes whenever the shape does, and `sync` indexes a package again when the store
-holds another number. Format 3 merges the declarations in the branches of an `#If`
-(`#If VBA7 Then ... As LongPtr #Else ... As Long`) into **one member with a `signatures` list**,
+holds another number. The declarations in the branches of an `#If`
+(`#If VBA7 Then ... As LongPtr #Else ... As Long`) merge into **one member with a `signatures` list**,
 a condition on each. Separate members with no condition would make an `#If` pair look like
 overloads and hide a changed condition from the differ.
 
-Format 4 (owner, 2026-11-15) adds two things. **Every declaration under an `#If` keeps its
-`cond`**, a member, field or value the merge leaves alone included: format 3 kept it only on
-the alternatives of a merge, so a Declare under one branch alone (tbKMode's `KfLowerIrql`, x86
-only) or a Sub and a Declare of one name in the two branches (`InterlockedIncrement`) read as
+Format 4 (owner, 2026-11-15): **every declaration under an `#If` keeps its
+`cond`**, a member, field or value the merge leaves alone included; kept only on the
+alternatives of a merge, a Declare under one branch alone (tbKMode's `KfLowerIrql`, x86
+only) or a Sub and a Declare of one name in the two branches (`InterlockedIncrement`) would read as
 unconditional. And **a Declare records what it binds** (`lib`, or `libConst` for `Lib
 DETOURS`, `entry`, `cdecl`, `fastcall`, `wide`, `params`), read by `declareParts`, so that a tool checking a package's Declares against
 Windows reads them from the snapshot rather than parsing twinBASIC again; `builder/package-api.json`
@@ -131,19 +179,15 @@ name and kind. The rules for what counts as an alternative (same block, name, ki
 and Declare-ness, more than one condition; two declarations under one condition are
 overloads) are in the README.
 
-**A change to the fingerprinted code or to `format` means regenerating the committed snapshots
-from the version they record (`indexed_from`), in the same commit as the change.** If it does
-not, `analyze` compares the new scanner's output with the old scanner's and reports the
-scanner's changes as changes to the API. A plain `sync` does it, because each documented
-package is pinned (next section).
+A change to the fingerprinted code or to `format` regenerates the committed snapshots in the
+same commit ([Rules](#rules)).
 
 ## Pinning
 
 **A documented package is pinned at its section's `indexed_from`** (owner, 2026-11-16), and
-`sync` reads it at that version unless `--upgrade` moves it. Before pinning, `sync` fetched
-the newest TWINSERV version of every contributed package, so regenerating the snapshots after
-a scanner change would have moved every section with a newer version on TWINSERV at once
-(four on 2026-11-16), silently, in a commit about the scanner.
+`sync` reads it at that version unless `--upgrade` moves it. Without the pin, regenerating the
+snapshots after a scanner change would move every section with a newer version on TWINSERV at
+once, silently, in a commit about the scanner.
 
 - **The pin is `indexed_from`, not the working-tree snapshot's `version`** (owner). The two
   agree at every commit; `indexed_from` is the one a person writes. The price: a plain `sync`
@@ -185,9 +229,8 @@ a scanner change would have moved every section with a newer version on TWINSERV
 
 - **Snapshots are committed only for the documented packages**, default, built-in and
   contributed. The packages no section documents and the extra CEF builds are indexed into
-  the store and left out of the repository. A package joins when its section does; `sync`
-  writes the snapshot of a documented package whenever the store holds it at its pin
-  (`syncSnapshots`, under *Pinning*).
+  the store and left out of the repository. A package joins when its section does
+  (`syncSnapshots`, under [Pinning](#pinning)).
 - **They are taken from the build each section's `indexed_from` names**, not from a newer
   one, so that the pages and the baseline agree and `analyze` of a newer build shows the real
   distance.
@@ -306,11 +349,21 @@ cache.
   review still finds what no compile finds: the drafts state only what the code says, so
   where the package differs from the object it replaces (VBScript's **RegExp**, run under
   `cscript`) nothing says so, and claims read from the code but never run (`$0`, a lone `$`)
-  need a probe page. Running the doubts is the Check agent's (above); the review
-  still reads the pages against the sources.
+  need a probe page. Running the doubts is the Check agent's (above).
 - **It is not in the published docs.** `draft` is (Tools-Build), because its plans serve a
-  person writing pages by hand; the workflow is described here and in `WIP.md`, because
-  nothing under `docs/Documentation/` may require Claude.
+  person writing pages by hand; the workflow is not ([Rules](#rules)).
+
+## A Public Enum inside a Private Module
+
+The indexer counts a Public Enum as public even inside a Private Module, because the members of a
+built-in package's are reached qualified with the library name
+(`WinNativeCommonCtls.ImlDrawTransparent`), and the enum's type name only through its library
+symbol written with an asterisk (`*WinNativeCommonCtls`, as `ImlDrawConstants` says). On BETA 1042
+the bare member and the bare type name of `ImlDrawConstants` are TB5079, as is
+`As WinNativeCommonCtls.ImlDrawConstants` without the asterisk. An enum in a Public Module is
+reachable bare in every form: `OrientationConstants`, in `Public Module Miscellaneous2`. A
+contributed package whose internal module holds such an enum names that module in
+`exclude_from_docs` (tbRegExp's `StaticRegex`; tbProjPacker's `modImpExp` and `modWin32`).
 
 ## Open items
 
@@ -328,8 +381,8 @@ cache.
   shows as documented once any page carries it. Update mode does not audit, but finds a
   changed symbol's `doc_page` the same way.
 - **`indexer/TWINSERV-protocol.md` stays where it is, as reference beside the code.** It
-  describes a third party's HTTP API, which is neither a reason nor a decision, and folding 239
-  lines of it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which
+  describes a third party's HTTP API, which is neither a reason nor a decision, and folding
+  it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which
   calls only `query` and `download`; the rest (login, publish, version check, the IDE-to-compiler
   commands) is there for whoever writes a publisher tool. It is reverse-engineered from
   the IDE's own files, of which it keeps no copy, and describes BETA 1010. Check it against

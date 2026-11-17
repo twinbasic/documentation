@@ -1,14 +1,81 @@
 # twinBASIC Documentation --- The Build Pipeline and Its Gates
 
 Why the pipeline and each gate are built the way they are: what each one checks,
-the failure it guards against, and the rule that follows. [WIP.md](WIP.md) keeps
-the roster, the wrapper commands and the rules themselves under [The gates, and
-where their internals are](WIP.md#the-gates-and-where-their-internals-are).
+the failure it guards against, and the rule that follows. It keeps the roster,
+under [The gate roster](#the-gate-roster); [WIP.md](WIP.md) keeps the wrapper
+commands and the rules every session follows, under [The gates, and where their
+internals are](WIP.md#the-gates-and-where-their-internals-are).
 
 **Read this before adding a gate, changing one, or adding any rewrite over
 markdown source or rendered HTML.** Each gate here guards a failure that every
 other gate passes. The recurring shape is a check that quietly stops checking,
 which reports exactly what a healthy tree reports.
+
+## The gate roster
+
+**The Tools and Scripts page is a landing page and group pages.**
+`Tools.md` holds the batch wrappers (and with them the two numbered gate lists
+`check_gate_lists.mjs` reads from that file and no other), the command-line
+conventions and the configuration files. Every other tool's entry is on one of
+`docs/Documentation/Tools-<Group>.md` --- Build, Site-Checks, Toolchain-Tests,
+Compiler, Samples, IDE, Defects --- published at
+`/Documentation/Development/Tools-<Group>`. The permalinks are flat, as the
+tbdocs Builder's children are, because a `Tools/` folder beside `Tools.html`
+makes the link check resolve `Tools#anchor` to the folder. **A new tool gets an
+entry on the group page it fits and a node in
+`docs/Documentation/Images/Tools-Groups.dot`**, the map on the landing page; a
+link to a tool's entry names the group page, never `Tools#<tool>`.
+
+The roster, by wrapper ([Tools and Scripts](docs/Documentation/Tools.md) owns the lists;
+[WIP.md](WIP.md#the-gates-and-where-their-internals-are) says what that means for a page):
+
+| wrapper | gate | asks |
+|---|---|---|
+| `build.bat` | link + integrity check | broken intra-site links, missing pages, malformed `redirect_from`, duplicate ids, remote `<img src>`, sitemap / search-index gaps, canonical mismatches; it runs on the worker lanes that produced the HTML |
+| `build.bat` | publish allowlist | refuses any file that may not ship, and aborts the build rather than flipping an exit code |
+| `build.bat` | page-count baseline | a rise rewrites `builder/page-baseline.json` and says so; a fall fails the build. Only a build into `docs/_site` writes it |
+| `build.bat` | symbol-index URLs | every URL `tB/symbols.json` has published is still in it; a lost one (most often a reworded member heading) fails the build |
+| `build.bat` | nav integrity | every nav-visible `parent:` resolves to exactly one page |
+| `build.bat` | Gantt sections | every task handed to the build's Gantt chart has a section and a place in the chart |
+| `check.bat` | `check_tree_fresh` | the tree is not older than the sources that produced it |
+| `check.bat` | `check_dot_fit` | every diagram label sits inside the box Graphviz drew for it |
+| `check.bat` | `pick_a11y_sample --check`, `check_a11y` | see [WIP.A11y.md](WIP.A11y.md) |
+| `check.bat` | `check_shot_sizes` | every page that shows a screenshot of `test/shots/manifest.json` declares the size its pixels and scale give ([WIP.ShotReview.md](WIP.ShotReview.md#one-way-to-take-pictures), rule 4) |
+| `test.bat` | `check_code_regions` | no source or HTML rewrite alters a code region, and a rewrite still fires on prose beside a fence (the mirror fault) |
+| `test.bat` | `check_regex_safety` | no regex in the tree can backtrack exponentially |
+| `test.bat` | `check_package_tests` | every NOTE and WARNING of a contributed section with a test project names its cases, every case is named and well formed, `expect.json` is for the documented version, `RunAll.twin` is current; `PENDING` only shrinks |
+| `test.bat` | `check_callout_evidence` | every callout labelled `BETA <n>` names what checks it, every marker's item exists, and `scripts/lib/recheck.mjs` relabels as it should |
+| `test.bat` | `check_symbol_index` | the symbol index still places each kind of symbol, from fixtures |
+| `test.bat` | `check_twin_parsers` | the three scanners of twinBASIC source agree on the shared modifiers, and hold for the shapes each is known to misread |
+| `test.bat` | `check_attribute_sweep` | the attribute sweep's skeletons, its reading of diagnostics and its isolating runner behave, against fixtures and a scripted fake IDE |
+| `test.bat` | `check_cli` | every tool parses its command line strictly, refuses an unknown flag or an empty value, prints its recorded errors, and has a `--help` that ends in one `Exit codes:` block |
+| `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |
+| `test.bat` | `check_lint` | Biome finds nothing in the tooling, warnings included, and the formatter would change no file |
+| `test.bat` | `test/search.test.mjs` | the search entries, the page's tokenizer and query code, and the index all behave as the build's (a `node --test` line is a gate, named by its path) |
+| `test.bat` | `test/search-index.test.mjs` | the search index built on several threads is, byte for byte, the one `lunr()` builds on one |
+| `test.bat` | `test/render.test.mjs` | `builder/render.mjs`'s markdown-it plugins, and the links of a page's markdown copy, on inputs no page holds |
+| `test.bat` | `test/strftime.test.mjs` | `builder/strftime.mjs`'s `formatDate`, which no build calls |
+| `test.bat` | `test/compact-image.test.mjs` | what an embedded image keeps (`scripts/lib/compact-image.mjs`), and, with `IMAGESTRIP_EXE` set, that `scripts/imagestrip/` does the same |
+| `test.bat` | `test/svgshot.test.mjs` | the SVG screenshot converter, its bundles and font cuts, and the shared screenshot modules (`shot-change`, `shot-queue`, `shot-stage`, `shot-policy`, `shot-manifest`, `shot-revision`) |
+| `test.bat` | `test/shot-review.test.mjs` | the screenshot review tool (`scripts/shot_review.mjs`): its session, pages, runs, writes under docs and commit. Needs git |
+| `test.bat` | `test/example-batches.test.mjs` | `check_examples.mjs`'s probes: batching, crash isolation, the canaries, the fence classifier and `check_run`, with no IDE |
+| `test.bat` | `test/ide-folders.test.mjs` | `shutdownIde` and `shutdownIdeAsync` remove the IDE's temp folder and profile once it is gone, and no other folder |
+| `test.bat` | `test/broker.test.mjs` | `tbbroker` and its client (`scripts/lib/tb-broker.mjs`); skipped unless `TBBROKER_EXE` names a built broker |
+| `test.bat` | `test/addin-project.test.mjs` | `builder/addin-project.mjs` packs exactly the files git tracks in `add-in/`, the same bytes from a CRLF and an LF checkout. Needs git |
+| `test.bat` | `test/indexer.test.mjs` | the package indexer (`indexer/lib/`) changes a snapshot only when the API changes |
+| `test.bat` | `test/ide-js.test.mjs` | `scripts/ide_js.mjs` and `scripts/ide-js/lib.mjs` on a few lines of minified JavaScript, and that the tool writes only under `%TEMP%` |
+| `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes, and patch only the members `PATCHES` lists |
+| `test.bat` | `check_impexp_parity` | the Node and Python editions of `impexp` (and, with `IMPEXP_EXE`, the twinBASIC one) behave alike |
+| `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
+
+What each gate checks in full is in its entry on its `Tools-<Group>.md` page. Which
+wrapper a new gate goes in, and how CI runs them: [What belongs in test.bat rather than
+check.bat](#what-belongs-in-testbat-rather-than-checkbat).
+
+The nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during COMPUTE and aborts the build on two failure modes, both otherwise silent:
+
+- **Ambiguity** — multiple pages share the title declared in `parent:` and `grand_parent:` is either absent or insufficient to disambiguate. The page would silently appear under every matching parent.
+- **Orphan** — no page has the title declared in `parent:`. The page would silently disappear from the navigation sidebar.
 
 ## The pipeline
 
@@ -38,6 +105,9 @@ the intended differences and nothing else. Build the working tree from a
 checkout, never in place: under `core.autocrlf` a file a tool has rewritten holds
 LF where a fresh checkout writes CRLF, so every file the build copies verbatim
 would differ.
+
+Measured on the dev box: the online build takes about 2 s; the offline pass adds about 700 ms,
+the PDF pass about 150 ms, and `--check` about 1.7 s.
 
 ### A hung build times out and says where it hung
 
@@ -83,24 +153,21 @@ Two details:
   records the lane a task *completed* on, not the one that claimed it.
 
 [builder/PLAN-checks.md](builder/PLAN-checks.md) designs folding `check.bat`'s
-gates into the task graph. The link checker runs there: extraction runs inside
-`flush`, where both trees' final HTML is already in worker memory, so the build
-never writes ~270 MB out only to read it back and re-parse it. The
-`pick_a11y_sample.mjs --check` census and the axe scan's orchestration are not
+gates into the task graph. The link checker runs there already, inside `flush`
+([The link check runs inside the build](#what-belongs-in-testbat-rather-than-checkbat)).
+The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are not
 yet designed; the plan holds measurements and open questions for them.
 
 ## Tooling policy
 
 ### Tooling is JavaScript, and the three remaining `.py` files each have a reason
 
-Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` is Node.js.
-One trap: **a tool that rewrites a file must preserve its line endings
-byte-exactly.** Python's `Path.read_text` / `write_text` round-trip applies
+**A tool that rewrites a file must preserve its line endings byte-exactly.** Python's `Path.read_text` / `write_text` round-trip applies
 universal-newline translation, rewriting any LF file it touches to CRLF on Windows
 --- a whole-file diff for a one-character fix. Some of the tree's markdown files
 are LF, so the trap is live.
 
-Three `.py` files stay, and none is an oversight:
+These `.py` files stay, each for a reason:
 
 - **`scripts/impexp.py`** is not tooling. It is a published download, declared in
   `_config.yml`'s `bundle_extra` beside `impexp.mjs` and offered to readers on
@@ -114,13 +181,12 @@ Three `.py` files stay, and none is an oversight:
 - **`scripts/subset_font.py`** cuts each font an SVG screenshot embeds down to the
   characters it draws (`shoot_docs --svg`, [WIP.Screenshots.md](WIP.Screenshots.md)). It is
   fontTools, the subsetter `build_fonts.py` already relies on. It does not use harfbuzzjs
-  (owner: "don't mess with harfbuzz"), the library whose CFF2 defect keeps `build_fonts.py` in
-  Python. It loads a font without recalculating glyph bounds, because the
+  (owner: "don't mess with harfbuzz"). It loads a font without recalculating glyph bounds, because the
   IDE's icon font stores loose glyph boxes and recalculating them moved icons a pixel, and it
   keeps the hinting (owner's decision) and the font's timestamp, so a picture's SVG is the same
   bytes from one run to the next.
 
-One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is Win32
+One `.ps1` exists. **`scripts/lib/tb-launch.ps1`** is Win32
 calls --- `CreateDesktop`, `CreateProcess` with `STARTUPINFO.lpDesktop`, and the job object
 the IDE runs in (`CreateJobObject`, `AssignProcessToJobObject`) --- which Node cannot make
 without a native FFI addon. Adding one for a few calls would mean
@@ -129,8 +195,8 @@ without a native FFI addon. Adding one for a few calls would mean
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
 you](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 
-Two folders hold a program written in twinBASIC itself, each for a reason of its own.
-The first, **`scripts/imagestrip/`**, strips the metadata from an SVG file and from the images a CSS or
+Some folders hold a program written in twinBASIC itself, each for a reason of its own.
+**`scripts/imagestrip/`** strips the metadata from an SVG file and from the images a CSS or
 SVG file embeds as `data:` URIs, at any depth, for the IDE's own stylesheets. Its users are
 the twinBASIC developers, who run it in their own build, which has twinBASIC and need not
 have Node, so a Node edition of the program would serve nobody. Nothing in this repository
@@ -188,12 +254,10 @@ Tool](docs/Features/Packages/Import-export%20tool.md) as `impexp.twinproj`, whic
 opens in the IDE and builds (`bundle_extra`, `docs/_config.yml`). It is laid out as
 `scripts/imagestrip/` is, `src/` and `impexp.twinproj` packed from it, both checked out byte
 for byte; nothing checks that they agree, so a change to `src/` is packed again by hand
-(`node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src
---overwrite`). It has the same command line, output, exit codes and `--self-test` (the same
-21 tests) as `impexp.mjs` and `impexp.py`, and writes byte-identical project files. Its tests
-are that `--self-test` and the commands of `check_impexp_parity.mjs`, which compares it
-when `IMPEXP_EXE` names its built exe, because no gate can build it; CI never sets the
-variable. The check runs the exe through `launchOnDesktop` with `cwd` (`TBBUILD_CWD` in
+([below](#what-is-not-javascript-and-how-each-is-rebuilt)). It has the same command line,
+output, exit codes and `--self-test` as `impexp.mjs` and `impexp.py`, and writes
+byte-identical project files. `check_impexp_parity.mjs` compares it only when `IMPEXP_EXE`
+names its built exe, because no gate can build it; CI never sets the variable. The check runs the exe through `launchOnDesktop` with `cwd` (`TBBUILD_CWD` in
 `tb-launch.ps1`) set to each case's scratch folder, so it never runs on the user's desktop.
 See [Tools and Scripts](docs/Documentation/Tools-Compiler.md#impexp).
 
@@ -221,8 +285,45 @@ of the tree rather than an instruction. `site_search.mjs` replays the site's rea
 and query logic, because search and navigation fail on different pages. `usecases.md` is the
 catalogue, `protocol.md` is what an evaluator is given. **This asks whether the docs *work*,
 which is orthogonal to whether they are accurate** — most findings involve sentences
-that are individually true. Mine this file for cases: it is substantially a catalogue of
-"this shipped broken and nobody noticed", and each entry is a use case waiting to be written.
+that are individually true. Mine this file for cases: much of it is a catalogue of
+"this shipped broken and nobody noticed", and each entry is a use case to write.
+
+### What is not JavaScript, and how each is rebuilt
+
+The section above says why each exception exists. What a change to each needs, since no gate
+can build the twinBASIC ones:
+
+- **`scripts/lib/tb-launch.ps1`** also lists and captures the windows on a private desktop
+  (`desktopWindows`, `captureWindow` in `tb-ide.mjs`).
+- **`scripts/imagestrip/`**: after a change to its `src/`, pack `imagestrip.twinproj` again
+  with `impexp`, run its own `[TestCase]`s with `tbrun --tests`, and run the half of
+  `test/compact-image.test.mjs` that tests it with `IMAGESTRIP_EXE` set to its exe.
+- **`scripts/impexp/`**: after a change to its `src/`, pack `impexp.twinproj` again with
+  `impexp` (`node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src --overwrite`)
+  and run `node scripts/check_impexp_parity.mjs` with `IMPEXP_EXE` set to its exe, whose
+  `--self-test` and command sequence are its tests. **A change to what impexp does, or to its
+  self-test, is made in all three editions** in one commit; CI compares only the Node and
+  Python ones.
+- **`scripts/broker/`** is a twinBASIC program too, `tbbroker`, which hands out private
+  desktops, slots and ports to every tool on the machine, launcher-re's `tblaunch` among them,
+  and needs desktops, process handles and overlapped pipes, which Node cannot make without a
+  native addon (owner: twinBASIC). It is laid out as imagestrip is. After a change to its
+  `src/`, pack it (`node scripts/impexp.mjs import scripts/broker/tbbroker.twinproj scripts/broker/src --overwrite`),
+  install it with `node scripts/tbbroker.mjs install`, and run `test/broker.test.mjs` with
+  `TBBROKER_EXE` set to `%LOCALAPPDATA%\tbbroker\tbbroker.exe`.
+- **tblaunch (the launcher repository) compiles every file of `scripts/impexp/src/Sources/` but
+  `Program.twin`, by name, from this checkout**, under a `Sub Main` of its own: renaming or
+  adding a module there, or giving one a public name tblaunch also has (`Json`, `Launcher`,
+  `Container`, `Pack`, `Session`, `Install`, `Fmt`, `StdIo` and others), breaks its build, so
+  tell the tblaunch session first. tblaunch packs a folder with `Impexp.PackTree`, through a
+  class of its own that implements `ImpexpSource`: a change to the members of either is made
+  with the tblaunch session too.
+- **tblaunch compiles every file of `scripts/broker/src/Sources/` but `Program.twin` and
+  `BrokerHost.twin`, by name, from this checkout**, as it does impexp's, and has a `BrokerHost`
+  of its own: what differs between the two programs (the name in messages, the output, the
+  version's suffix, the server's command line) is in `BrokerHost` and nowhere else, so a change
+  to its members, a renamed or added module, or a public name tblaunch also has, is made with
+  the tblaunch session.
 
 ## The gates, and the machinery they guard
 
@@ -232,9 +333,9 @@ that are individually true. Mine this file for cases: it is substantially a cata
 
 `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` are in `test.bat`, whatever a note under `builder/PLAN-*.md` says.
 
-**Both CI workflows run every one of these scripts as its own step, unconditionally** --- CI never invokes the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
+**Both CI workflows run every one of these scripts as its own step, unconditionally** --- CI never invokes the `.bat` files. The steps are one list, the composite action `.github/actions/run-gates/action.yml`, which both workflows call; adding a gate is in [WIP.md](WIP.md#the-gates-and-where-their-internals-are). So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
-**The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`. The check walks the HTML on the worker lanes that produced it: both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk --- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production.
+**The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`. The check walks the HTML on the worker lanes that produced it: both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk (`--check-audit-index`, [below](#the-link-checks-two-front-ends-and-the-gate-that-catches-divergence)).
 
 It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
@@ -297,7 +398,7 @@ Unlike the link check, **a finding here aborts the build**. A broken link still
 leaves a tree worth inspecting; a tree with a private key in it is a tree nobody
 should be one `upload-pages-artifact` away from publishing.
 
-Four details of the policy are essential:
+Details of the policy that matter:
 
 - **`SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` are separate sets, and must stay
   separate.** The build emits `.xml` and `.json`; a contributor has no business
@@ -340,9 +441,9 @@ both CI workflows.
 node scripts/check_publish_policy.mjs
 ```
 
-**Adding a new asset type is a one-line edit to `publish-policy.mjs`, and that is
-the point:** the cost is paid once, by the person who knows they are adding it,
-instead of silently by whoever drops a key file into `docs/` years from now.
+**Adding a new asset type is a one-line edit to `publish-policy.mjs`**, paid once by
+the person who knows they are adding it, instead of silently by whoever drops a key
+file into `docs/` later.
 
 ### Never rewrite markdown source without knowing what is code
 
@@ -390,7 +491,7 @@ attributes across `<span>` boundaries, so `src="/vs/loader.js"` never appears as
 a contiguous byte sequence. Inline spans get no such treatment. **Do not rely on
 that accident.**
 
-Three mechanisms exist, and a new rewrite must use one of them:
+A new rewrite must use one of these mechanisms:
 
 - **Source rewrites** go inside `applyPreRenderRewrites` in
   [builder/render.mjs](builder/render.mjs), between `maskCode` and its
@@ -474,7 +575,20 @@ rather than by eye.
 each segment's ends, which is harmless beside a block-level `<pre>` but, beside
 an inline `<code>`, welds the code to the word next to it --- `a <code>x</code> b`
 would come out as `ax b`. Trimming is conditional on which element bounds the
-segment, so `<pre>` boundaries trim as they always did.
+segment, so `<pre>` boundaries still trim.
+
+### Source dashes in alt text
+
+**Alt text converts too.** markdown-it's own `replacements` rule does not descend into an
+image token's children, but `kramdownDashesPlugin` ([builder/render.mjs](builder/render.mjs),
+registered after it) walks with `walkTokens`, which recurses, so it reaches image alt and
+converts the dash like any other text. Measured: **zero literal `--` survives in any `alt=`
+anywhere in the built site**, in all three trees.
+
+> **Verify through `builder/`, never a bare markdown-it.** A plain `markdown-it` with
+> `typographer: true` leaves `--` in alt text untouched, so a test against the npm
+> dependency tells you nothing about this site. Render through the pipeline, or read
+> the built HTML.
 
 ### HTML comments never reach the output
 
@@ -516,8 +630,8 @@ browser does, then `pageAtSitePath`: a page's URL, its `redirect_from:` alias, o
 `byUrl` leaves out (its key would be "", which `resolveLink` must not match). A link table entry
 carries its page's copy across to the workers (`serializeLinkTables`: `[key, permalink,
 markdownUrl]`). A link to a file is the HTML's URL; a pure fragment stays, since the copy is the
-same document. When the links were moved to the copies (2026-11-16), markdown-it's links in each
-copy, against those of the same copy with its links as written, gave on 1,538 pages: 19,783 to the
+same document. Measured 2026-11-16, markdown-it's links in each copy, against those of the
+same copy with its links as written, gave on 1,538 pages: 19,783 to the
 copy of the page the HTML reaches, 9,358 to where the HTML's go (in-page fragments, other sites,
 484 files), none wrong. The link scan finds `](dest)` and `[label]: dest`, not a footnote's
 `[^1]: text`; markdown-it finds the same links on every page but those inside comments, which the
@@ -528,7 +642,7 @@ The copies cost about 13 MB in the online tree and nothing in the offline tree o
 an offline page's `<link>` goes to the website's copy, by the general rule for a file only the
 website holds (`computeWebsiteUrl`), which the offline check excuses (`isWebsiteOnlyLink`). The
 recheck of the page the Gantt chart is injected into builds the same exemption
-(`websiteOnlyExemption` in `tbdocs.mjs`), since `BuildInfo.html` now has such a link too.
+(`websiteOnlyExemption` in `tbdocs.mjs`), since `BuildInfo.html` has such a link too.
 
 `llms.txt`'s note for a page is the first sentence of its introduction, the part above its first
 `<h2>`, from `renderedContent` (`pageSummary`, `seo.mjs`), which is also the page's
@@ -538,23 +652,25 @@ and no description; the fix is the sentence the authoring rules ask for under th
 here. `llms.txt` also names `tB/symbols.json`, the lookup an agent needs (the site's search runs
 in the browser, on a 55 MB index), and `nav.html`.
 
+The copies and `llms.txt` are made by `builder/markdown-copy.mjs` and `builder/llms-txt.mjs`. A copy is the page's source with what reads differently on the page changed, outside code: the front matter, the HTML comments, the `{{tbdocs:...}}` placeholders and the links. **A new syntax that the render turns into something else** (a placeholder, a link scheme like `tb:`) **is handled in the copy too, through the same function** (`resolveTarget`, `expandDownloadPlaceholders`, `substituteCounts`), or the copy publishes it as written. `check_code_regions.mjs` holds the copy to the source's code. `llms_txt.optional` in `docs/_config.yml` names top-level pages by title, so renaming one fails the build until it is edited.
+
 ### The nav: a part on each page, the whole in one file
 
-Measured on 2026-11-16, before the change: an online page held the whole nav tree, 223 KB of
-`InStr.html`'s 247 KB (19 of its 25 KB gzipped, 1,539 links), and before `<main>`, which began at
-byte 236,127. Agents' fetch tools ignore `<link rel="alternate">`, convert the HTML and cut it at a
-budget, so they saw the nav and not the page. The offline tree already held only each page's part
-(37 KB, `<main>` at byte 25,700), with `nav.js` filling in the rest. Now the online page does too:
-`InStr.html` is 38 KB (7 KB gzipped), `<main>` at byte 27,522, and the link check reads 195,476
-link occurrences in the online tree where it read 2,463,234.
+**A page holds only its part of the nav tree, in both trees** (owner): the top level and its
+own branch. Online, the whole tree is `/nav.html`, a page of its own that `writeAux` writes, which
+`docs/assets/js/nav-tree.js` grafts in once the page has loaded and the "Contents" link after the
+nav opens; offline it is `assets/js/nav.js`. **Never put the whole tree back into the online
+pages**: measured on 2026-11-16, it was 223 KB of `InStr.html`'s 247 KB (19 of its 25 KB
+gzipped, 1,539 links), all before `<main>` (byte 236,127), and agents' fetch tools ignore
+`<link rel="alternate">`, convert the HTML and cut it at a budget, so they saw the nav and not
+the page. With its part only, `InStr.html` is 38 KB (7 KB gzipped), `<main>` at byte 27,522,
+and the link check reads 195,476 link occurrences in the online tree, not 2,463,234.
 
-The online tree's whole tree is `nav.html`, a page of its own, by the owner's choice, not `nav.js`
-as offline:
+A page of its own online, rather than a `nav.js` as offline, is the owner's choice:
 
 - **A reader without JavaScript keeps the whole tree,** one link away: the "Contents" link after
   each page's nav opens `nav.html`, every branch shown (its expanders hidden by its own style,
-  since nothing could expand one). That was the reason the online pages had carried the whole
-  tree. It is also a list of every page for an agent, which `llms.txt` names.
+  since nothing could expand one). It is also a list of every page for an agent, which `llms.txt` names.
 - **Nothing blocks the page.** `nav.js` is a 241 KB script loaded before the page's own; online,
   `nav-tree.js` is deferred and fetches `nav.html` when the browser is idle, or when an entry is
   expanded first. The part each page holds is exactly what shows when it opens (an entry off the
@@ -658,7 +774,7 @@ node scripts/check_code_regions.mjs --verbose
 node scripts/check_code_regions.mjs --self-test
 ```
 
-Two details are essential. **It imports the chain rather than reconstructing
+**It imports the chain rather than reconstructing
 it**, so removing the mask from one rewrite changes what the gate runs and is
 caught --- a gate that exercised `maskCode` alone would pass. And **its probes
 ride along in the normal run**, because the corpus is clean: a sweep that finds
@@ -704,12 +820,19 @@ allowlist, regex-safety gate and axe scan all pass on a tree with corrupted code
 samples in the published book, because the corruption is inside `<code>` and none
 of them looks there.
 
-**Walk `docs/` for markdown with `markdownFiles`, never a private `readdir`.** A
+**Walk `docs/` for markdown with `markdownFiles`** ([WIP.md](WIP.md#donts)). A
 recursive `readdir` that drops the output trees from its results afterwards has
 already descended into `_serve`, which a running preview deletes and rewrites on
 every rebuild, and dies with `ENOENT` when a folder vanishes under it.
 [lib/markdown-files.mjs](lib/markdown-files.mjs) skips the top-level `_site*`,
 `_serve*` and `_pdf*` folders before entering them.
+
+**A content edit reaches only the corpus sweep**, which reads `DOCS_DIR` (`<repo>/docs`):
+a page that provokes a rewrite into *altering* a code region fails it. The fixed probes run
+against their own sources whatever the tree holds. So after adding an unusual code construct
+--- a fence whose contents include a fence marker, a 4-space indented block, an admonition
+wrapping a fence --- run `test.bat` and read the built page as well: for the mirror fault the
+gate asserts that the mask and the admonition scan still work, not that your page renders.
 
 ### The page-count drift guard
 
@@ -725,7 +848,7 @@ fires on ordinary work gets switched off. A rise costs nothing, so the number
 stays current by itself; only a fall wants a decision, and
 `--update-page-baseline` records it, in the same commit as the deletion.
 
-Three rules about it, each a comment where it is decided: the first and third in
+Its rules, each a comment where it is decided: the first and third in
 [builder/baseline.mjs](builder/baseline.mjs), which holds the comparison the page
 and symbol guards share, and the second in
 [scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs):
@@ -762,8 +885,8 @@ exits 2 instead.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
 both CI workflows: probes against a scratch baseline, no browser, no
-built tree, some of them on who may write. **It is not optional bookkeeping** --- the guard is silent on a
-healthy tree, so a green build is exactly what a guard that has stopped working
+built tree, some of them on who may write. **It is needed because the guard is silent
+on a healthy tree**, so a green build is exactly what a guard that has stopped working
 produces. One probe replays the loss of 37 pages; the two that look redundant
 (foreign source root, missing baseline under CI) each guard one of the rules
 above.
@@ -777,14 +900,13 @@ recorded, the two look the same. The book pass of the link check lists the links
 from the book to pages it does not carry, but on a pass marked informational that
 list reads as noise.
 
-Two halves make it work, and the second is what makes the first worth having.
 **`left_out:` in `_book.yml` names every page that is out on purpose, with a
 `reason:`**, and `bookCoverage()` in `builder/book.mjs` warns about a page that is
 in neither. Every page has an entry one way or the other, so a warning is a
 decision nobody has made. Without the list the warning fires for dozens of pages
 on every build, which is a warning nobody reads.
 
-It reports five things, all empty on a consistent manifest: a page in no entry, a page
+It reports, all empty on a consistent manifest: a page in no entry, a page
 in the book and in `left_out:`, a book entry that selects no page, a `left_out:` entry
 that matches none (a page renamed or deleted), and a landing or foreword URL no page
 publishes at. **They are warnings, not failures**: the book is complete for the
@@ -809,7 +931,7 @@ under `docs/`. Dropping the chaptered-landing site fails ten of the twelve; igno
 `tB/symbols.json` is written by the `symbolIndex` task
 ([builder/symbols.mjs](builder/symbols.mjs)) for the IDE help add-in; why it exists and
 what it has to say is [WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build).
-Three decisions about the build side, each with the alternative it rules out:
+Decisions about the build side, each with the alternative it rules out:
 
 - **The entries come from the rendered pages, and the packages only annotate them.** A
   URL is a `permalink:` as written or that plus the id the render gave a heading, read
@@ -848,7 +970,7 @@ out `-text`: a CRLF checkout of the copy would differ from the LF the build writ
 build.
 
 `scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
-CI workflows: over a hundred probes on fixtures, no tree, no install. The scanner's probes are
+CI workflows: probes on fixtures, no tree, no install. The scanner's probes are
 the traps the packages' `.twin` sources contain, the community packages' included, and what
 a declaration's record says (signature, attributes with their arguments, description, return
 type, accessor, the project name). A block of them holds the forms `parseTwin` could lose
@@ -871,6 +993,10 @@ members are placed before the rest**, so a member's URL is the heading under
 Properties and not a prose section of the same name above it (`Screen.Fonts` is
 `#fonts-1`, its `### Fonts`, not a prose `#fonts`).
 
+### The Downloads page
+
+Cards are `<div class="download-card">` inside `<div class="download-grid">` (styles at the end of `custom.scss`), with the theme's `.btn` for each file. The release job publishes every same-site link on the built page that has the `download` attribute, beside the zip and the PDF, so a new download needs no change to the workflow. `{{tbdocs:size:<site path>}}` gives a published file's size and `{{tbdocs:packageTestRows}}` the test projects' rows, both expanded before render; the help add-in's size is prose ("about 61 MB"; it is also on the Help Add-In page, with the archive's "about 60 MB"), because its project embeds the offline tree, this page included, so it cannot be known before render. The PDF's release URL spells it `twinBASIC.Book.pdf`: GitHub turns the space into a dot, and the spaced name 404s. The footer's **Read Offline** link (`read_offline_link` in `_config.yml`) goes to the page's `#read-offline`.
+
 ### The help add-in's project file
 
 Every build of `docs`, CI's included, writes `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj`
@@ -891,18 +1017,16 @@ The decisions, each with what it rules out:
   `add-in/Resources/HELP/` could pick up the archive of an earlier build whenever this
   one wrote none (`--no-help-archive`, `--serve`, another `--dest`, a fixture): that
   case packs no archive, and the summary line says `without the offline archive`.
-  The archive is made **before** the Gantt injection, so it holds `BuildInfo.html`
-  without the chart: the chart holds the build's timings, and a download that held it
-  would differ from one build of a tree to the next. `recheckHelpArchive` checks at
-  the end of `runBuild` that the offline tree still lists the archive's files and
-  differs from it in `BuildInfo.html` and `assets/images/gantt.svg` alone.
-  `gantt.svg` is a tracked 105-byte placeholder in `docs/assets/images/`, copied into
-  both trees as a static file, so it is in the archive's file list; the injection
-  overwrites it in the trees and the archive keeps the placeholder.
+  The archive is made **before** the Gantt injection and leaves out both files the
+  injection writes, `BuildInfo.html` and `assets/images/gantt.svg`
+  ([The help archive](#the-help-archive)): the chart holds the build's timings, and a
+  download that held it would differ from one build of a tree to the next.
+  `recheckHelpArchive` checks at the end of `runBuild` that the offline tree still lists
+  the archive's files and that only those two differ.
 - **The task waits for every writer of the offline tree.** `flushJoin` (the render
   lanes write each page's offline HTML in their flush), `scss` (the offline
-  stylesheet) and `writeOffline` (statics, theme assets, redirect stubs, `nav.js`,
-  `search-data.js`). Nothing else writes there before the injection; a writer added
+  stylesheet), `searchIndex` (`search-index.js`) and `writeOffline` (statics, theme
+  assets, redirect stubs, `nav.js`). Nothing else writes there before the injection; a writer added
   later and missed here fails the build in `recheckHelpArchive`, which is why that
   check compares every file's content.
 - **The offline tree has no copy, and its link goes to the website.** The project
@@ -954,6 +1078,16 @@ The decisions, each with what it rules out:
   same bytes, and the file in exactly the trees it is given; and `checkHelpArchive`
   against small trees.
 
+The download is about 61 MB with the archive, 1 MB without. The publish allowlist exempts
+its one path in the trees only ([The publish allowlist](#the-publish-allowlist)). A failure
+(no git) fails the build with exit 1 and the index audit names the missing file. **Don't
+build the DLLs in CI from it**: that needs a twinBASIC install; the download is the project,
+and the reader builds it. `test/addin-project.test.mjs` is the gate.
+
+### The help archive
+
+- **The help archive is the `helpArchive` task of the build's graph.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, once every task that writes into the offline tree has finished (`flushJoin`, `scss`, `searchIndex`, `writeOffline`; the archive task lists exactly those) and **before** the Gantt injection. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. It reads the file back to verify it. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
+
 ### Build-time counts as named values
 
 `{{tbdocs:pages}}` in a page renders as the number of pages the build
@@ -972,8 +1106,7 @@ by-package section above it is still a half-edit that nothing reports.
 express both sentences the site writes: all the packages, and the ones the IDE
 ships but a project references on demand, for which "built-in" is reserved. A
 sentence that says `{{tbdocs:builtInPackages}}` cannot drift into the other set's
-number. **A count name is also a way of naming the set**, which is a second thing
-it buys beyond not going stale.
+number. **A count name is also a way of naming the set**, besides not going stale.
 
 **A name is a derivation over build state, never a constant.** A registry
 holding a fixed page count would not remove the stale figure, only move it
@@ -984,12 +1117,11 @@ be derived it does not get a name.
 layer is the whole design. Code is immune without a rule for it, because a
 fence and an indented block are *block* tokens with no children and an inline
 code span is a token type of its own --- so an inline walk cannot reach any of
-them. On a corpus whose subject matter is programming languages that matters
-more than it sounds: it is the same hazard as [Never rewrite markdown source
+them. It is the hazard of [Never rewrite markdown source
 without knowing what is code](#never-rewrite-markdown-source-without-knowing-what-is-code),
 avoided by construction rather than by a mask.
 
-Three consequences of that design:
+Consequences of that design:
 
 - **The walk has to recurse, for image alt.** An `image` token carries its alt
   as its own children, so a flat walk stops at the image. markdown-it's own
@@ -1011,6 +1143,8 @@ cannot be an error inside the rule: markdown-it emits an unrecognised inline
 verbatim, so the rule would publish the typo rather than fail. The message
 names the file, the line and the nearest match.
 
+Nothing checks this, because a gate on counts in prose does not pay: a list-count rule (the number before a list against its items) flags about 50 paragraphs, 2 of them wrong, and a rule checking member counts against the indexer's API snapshots (following `interfaces`, `implements` and `extends`) agrees on 35 of 42 and finds none wrong, the rest being own-versus-inherited, a named subset or another subject. A count that restates a list is stale about as often as not; one of a product's API, written once per package version, almost never.
+
 ### The gate-list gate, and a gate that guarded one file
 
 [scripts/check_gate_lists.mjs](scripts/check_gate_lists.mjs) compares
@@ -1025,7 +1159,7 @@ owns the lists and the others cite it, but nothing enforces that convention: any
 page can restate a count, wrongly. Hence the sweep over `README.md` and every
 developer page.
 
-Five shapes are recognised, each a form a count can take in prose:
+The shapes recognised, each a form a count can take in prose:
 
 | shape | example |
 |---|---|
@@ -1043,7 +1177,7 @@ and **the kramdown attribute block has to be skipped to get there**
 (`{: #tests-of-the-toolchain }` sits between the two), or the rule silently skips
 the one section it exists for.
 
-Two judgement calls:
+Judgement calls:
 
 - **Only the *first* bare `N gates` in a wrapper's section counts as its
   total.** Later ones are legitimate subset claims. The cost runs the other
@@ -1060,7 +1194,7 @@ Which gates a wrapper runs is read by `scripts/lib/gate-roster.mjs`
 through the same module.
 
 A change to the sweep is checked on real pages, not only on the probes: put a wrong
-count back into a page, in each of the five shapes, and confirm the gate names every
+count back into a page, in each shape, and confirm the gate names every
 site.
 
 Most of its probes cover the sweep, positive and negative. One puts a fenced `## ` line, the shape of Wisdom.md's `staging.md`
@@ -1136,7 +1270,7 @@ degree 3 on the same pattern --- while agreeing on exponential-or-not, which is
 what the gate rests on, and on every classification probe. A degree is a
 ranking aid for reading a census, not a number to write into prose.
 
-Three implementation details are essential:
+Implementation details that matter:
 
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Classification probes, both directions:
@@ -1167,8 +1301,7 @@ an *unchecked* regex rather than a passing one (`--census` prints them).
 #### It reads constructed regexes too
 
 **Building a pattern out of shared fragments is the ordinary way to avoid writing
-a sub-pattern several times**, and a literals-only scan cannot see one --- so a gate
-whose coverage you leave by writing idiomatic JavaScript is not covering much.
+a sub-pattern several times**, and a literals-only scan cannot see one.
 `check_gate_lists.mjs` builds all its patterns this way.
 
 [scripts/lib/regex-fold.mjs](scripts/lib/regex-fold.mjs) folds a construction to
@@ -1196,8 +1329,7 @@ modelled calls does (`--census` lists them).
 **The unresolved constructions are a list with a reason each, not a count.**
 *`pattern` is a function parameter --- check the call sites* says where to look;
 *`re` is a `let`, so its value is not fixed* says not to bother, because it is a
-glob compiler building a pattern character by character. That is the difference
-between a blind spot someone can close and one they can only watch.
+glob compiler building a pattern character by character.
 
 Fold probes ride along in the normal run, some that must resolve to an
 exact pattern and some that must be refused with a reason. **The negative ones
@@ -1213,6 +1345,8 @@ are what say it does not.
 **CI never downloads.** `process.env.CI` selects offline mode (`--fetch-assets` / `--no-fetch-assets` override it), and in offline mode a referenced-but-uncommitted asset throws rather than fetching. If CI could fetch, an author who wrote the markdown but forgot to commit the image would get a green build while the published site went on hotlinking a third party -- the exact failure the whole mechanism exists to prevent. A fetch *failure* in dev mode is softer: warn, keep building, and flip the exit code, so one dead video doesn't block a local preview.
 
 The render-side halves are `videoLinkPlugin` (marked link -> poster frame + outbound link) and `remoteImagePlugin` (user-attachment `<img src>` -> the vendored copy), both in [builder/render.mjs](builder/render.mjs). Both emit **root-absolute** paths, because the PDF book flattens every page into one document and a page-relative src resolves against the book root there.
+
+Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` has no async image loading, so an image still pending when the page-breaking pass runs raises instead of degrading. The build refuses a remote `<img src>` unconditionally ([how](#what-belongs-in-testbat-rather-than-checkbat)); the site has no embeds.
 
 ### Pictures in two themes
 

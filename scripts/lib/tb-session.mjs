@@ -8,7 +8,7 @@
 // openProject() then runs `closeProjectSafely`, which ends the old project's
 // compiler and loads the new project in a new one. Calling `root.loadProject`
 // over CDP is NOT a switch: it skips the close, and the tree keeps the old
-// project (WIP.Harness.md, "One project per IDE"). Nothing here enables CDP's
+// project (WIP.Harness.md, "One IDE per project, or one per lane"). Nothing here enables CDP's
 // Debugger domain either: the page holds about 90 `debugger;` statements.
 //
 // What a reused IDE carries from one project to the next, and what this undoes

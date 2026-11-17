@@ -4,9 +4,8 @@ A localhost tool for reviewing what `shoot_docs.mjs` and `replay.mjs` decided ab
 picture, overriding it, starting retakes and replays, and committing the result:
 `node scripts/shot_review.mjs`. It applies each verdict under `docs/` as it arrives, takes a
 review's decisions and allowances, starts and stops its runs from its runs page, and commits
-the session's own files from its commit page. It is documented in `Tools-IDE.md`, and its
-tests, `test/shot-review.test.mjs`, are a gate of `test.bat`. The design was agreed with the
-owner on 2026-10-31.
+the session's own files from its commit page. The design was agreed with the owner on
+2026-10-31. Its tests and documentation are listed at the end of [Where the code is](#where-the-code-is).
 
 The tool covers everything the command-line screenshot tools do, interactively, with a person
 deciding where a threshold cannot (owner). The tools that take and draw the pictures stay, and
@@ -48,7 +47,7 @@ Two decisions are made by fixed thresholds, and neither threshold holds for ever
 - **The decision rules keep their parameters** (levels, shares, rectangles left out). The
   region measure of [the queue](#the-queue) chooses what is shown first and decides nothing;
   adding it to the rules is a later enhancement.
-- **The queue shows pictures by regions, fringe against block** ("option 3"), not by a band
+- **The queue shows pictures by regions, fringe against block**, not by a band
   of percentages round the bar, which has the size dependence of the bar itself.
 - **A capture that differs from one already decided goes back to the queue**, showing the
   last decision, instead of having that decision applied to it.
@@ -122,11 +121,11 @@ program's window says so in the table, `window: true`, and a shot whose take and
 fails), each dark picture and the light one when it is under docs. A card shows the PNG, whether
 it has an SVG, the manifest's build and its allowances, and for a picture with no SVG why: the
 table's for a window, else the newest SVG verdict of this session or of an archived one that says
-(owner's option 1: no drawing; `noSvgReason`, which takes "refused", "accepted" but not written,
+(owner: no drawing; `noSvgReason`, which takes "refused", "accepted" but not written,
 and "none drawn", and passes over a verdict of an SVG left with its PNG and not judged), else
 "unknown". Groups: no SVG of a program's window, no SVG, not under docs, an allowance or a
 decision, with an SVG (collapsed). The No SVG group has **Judge their SVGs again from their
-bundles**, a replay with `--recheck` of those with a bundle: option 2 on demand. A card opens the
+bundles**, a replay with `--recheck` of those with a bundle, on demand. A card opens the
 picture's page of verdicts when the session has one, else a plain page: the baseline's picture,
 the file, its SVG, why it has none, and Retake and Replay, previous and next in this page's order.
 
@@ -248,8 +247,8 @@ as noise (294 of the 361 pictures the BETA 1010 retake changed at their old size
 difference). A capture kept as within noise counts the pixels 2 levels off or more instead
 (`FAINT_LEVEL`, owner, 2026-10-31): its own noise is often a row of text one level off
 (Menu_File_Project.light on BETA 1034: every one of its 1,258 differing pixels 1 level off, and
-cores of 37 to 96 px surviving at level 1, none at 2). An SVG's count the pixels at its bar's
-levels. A picture is in **Needs a look** when:
+cores of 37 to 96 px surviving at level 1, none at 2). An SVG's regions count the pixels at its
+bar's levels. A picture is in **Needs a look** when:
 
 - **PNG**: the tool took the new capture, but nothing survives (most likely noise: a caret, a
   clock, a fringe), or what survives is small (a block or two the size of a word: a real
@@ -434,16 +433,14 @@ command-line tools, and reads and writes through modules they call too:
 | A PNG's size | `pngSize(bytes)` in `scripts/lib/png.mjs`: `[width, height]` from the header, null for bytes without the PNG signature and IHDR; the one reader under `scripts/` (`shot-policy.mjs`'s verdicts keep `{w, h}`, through `sizeOf`). `builder/theme-pictures.mjs` and `builder/vendor-assets.mjs` keep their own: `builder/` may import nothing under `scripts/` but `impexp.mjs` (`biome.jsonc`) |
 
 A change to a shared module is made with no change in behaviour first, in a commit of its own,
-before the tool uses it. `shoot_docs.mjs` cannot run in a gate, so a change is checked by its
-tests in `test/svgshot.test.mjs` (pure functions) and by a retake of a few pictures before and
-after (`--only`, `--svg`), which must report the same states: [Checking a move](#checking-a-move).
+before the tool uses it, and checked as [Checking a move](#checking-a-move) says.
 
 ### Checking a move
 
 `shoot_docs.mjs` cannot run in a gate. A change that touches what it decides or writes is
-checked by its unit tests in `test/svgshot.test.mjs` and by these runs, before the change and
-after, in a worktree (they write under `docs/`; `git checkout -- docs` after each). Every
-state line must be the same, bytes and percentages aside. The three setups they use
+checked by its unit tests in `test/svgshot.test.mjs` (pure functions) and by these runs, before
+the change and after, in a worktree (they write under `docs/`; `git checkout -- docs` after
+each). Every state line must be the same, bytes and percentages aside. The setups they use
 (`no-project`, `projects`, `project`) do not need the built site.
 
 ```sh
@@ -534,13 +531,13 @@ The tool's own parts, besides the shared modules under [Factoring](#factoring).
 pages, writes under docs, server); the modules it shares with the command-line tools are
 tested in `test/svgshot.test.mjs`. It is a step of `test.bat`, of the `run-gates` action, of
 Tools.md's list and of Building.md's command, with an entry of its own in
-`Tools-Toolchain-Tests.md` and a row in WIP.md's roster. The tool is `shot_review.mjs` in
+`Tools-Toolchain-Tests.md` and a row in WIP.Build.md's roster. The tool is `shot_review.mjs` in
 `Tools-IDE.md`, node `i10` in `Tools-Groups.dot` and `t29` for its tests, a line on the
 landing page, and WIP.md's *Which file to open* row.
 
 ## One way to take pictures
 
-Four rules (owner, 2026-11-09), so that a retake from a terminal shows in the tool like any
+Rules (owner, 2026-11-09), so that a retake from a terminal shows in the tool like any
 other run, and the tool's commit leaves nothing behind:
 
 1. **Every screenshot run is a run of the session**: `shoot_docs.mjs`, `replay.mjs`,
@@ -602,5 +599,5 @@ hash of the file's text), and the applier honours it only while that still holds
 
 ## Open
 
-Nothing. Adding the queue's region measure to the decision rules is a later enhancement
+Adding the queue's region measure to the decision rules, a later enhancement
 ([Decisions](#decisions-owner)).

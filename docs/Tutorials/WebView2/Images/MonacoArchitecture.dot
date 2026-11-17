@@ -1,7 +1,7 @@
 // Source for MonacoArchitecture.svg, beside the page that uses it. The SVG
 // is a build artifact: tbdocs regenerates it whenever this file is newer.
 // See the CEF twin's source for why Inter's metrics have to be installed
-// before layout, and WIP.md, "Diagrams", for the mechanism.
+// before layout, and WIP.Typography.md, "Diagrams", for the mechanism.
 
 digraph wv2_monaco {
     rankdir=LR

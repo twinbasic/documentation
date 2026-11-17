@@ -86,7 +86,7 @@ const results = await pipeline(
 const followUps = [
   'Read every drafted page against its source before committing it; the drafts are drafts.',
   'Run build.bat and check.bat; a new page may need a nav parent or a link fixed.',
-  "Commit each section's pages with its new indexed_from, the new snapshots (indexer/snapshots/) and, for a built-in or default package, builder/package-api.json from twin-index derive (WIP.md, The package indexer).",
+  "Commit each section's pages with its new indexed_from, the new snapshots (indexer/snapshots/) and, for a built-in or default package, builder/package-api.json from twin-index derive (WIP.Indexer.md, Rules).",
 ]
 if (packages.some((p) => p.mode === 'audit')) {
   followUps.push(
@@ -107,7 +107,7 @@ function draftPrompt(pkg, batch) {
 
 Read first:
 1. ${batch.file} -- your tasks. Each names the page \`file\` to write or change; its \`parent\` title; its \`permalink\` (null: use the form its sibling pages use); whether it is \`new\`, or goes \`inline\` on the one page its type has; the \`signature\`; and the \`source\` file in the indexer's store that declares it. \`model\` is a page of the same kind in the same section: follow its structure, headings and frontmatter. The file also gives the section's folder and landing page.
-2. WIP.Authoring.md: "Page template", "Example" and "See Also"; "Cross-section linking" if a page links outside its section.
+2. WIP.Authoring.md: "Page template", "Example" and "See Also"; "Plain-English prose", its rules and its word tables; "Cross-section linking" if a page links outside its section.
 3. Each source file named in your tasks, once.
 
 Then, for each task:

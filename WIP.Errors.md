@@ -4,8 +4,6 @@ The plan for adding to every documented procedure, statement and operator the ru
 it raises, and for the tools that measure them. No VB or VBA reference answers *which errors
 can this raise* (a reader's request), and a reader writing an error handler needs exactly that.
 
-Like WIP.md, this file is not rendered through tbdocs.
-
 ## Where things stand
 
 The tooling, the central page and the VBA modules are in place: each module's file under
@@ -24,7 +22,7 @@ No row is `bug: pending`, and no question is open.
 - **Measured, not copied.** Every row is observed in twinBASIC and in VB6. Microsoft's pages
   are a source of cases to try, never of answers. A statement about VB6 names only what was
   run in VB6 (a `Long` array, not "any typed array").
-- **Runtimes** (2026-10-22). Four, for everything: twinBASIC 32-bit, compared with
+- **Runtimes** (2026-10-22), for everything: twinBASIC 32-bit, compared with
   VB6, and twinBASIC 64-bit, compared with **64-bit VBA, whose behaviour must be respected**
   (owner): a difference between twinBASIC 64-bit and 64-bit VBA is a bug, exactly as one from
   VB6 is, with a NOTE and a queued reproducer. **Where VB6 and 64-bit VBA differ, twinBASIC does as 64-bit VBA
@@ -51,11 +49,10 @@ No row is `bug: pending`, and no question is open.
   written for it. An extension is decided the same way for every argument (2026-10-22):
   it may be one where its behaviour makes sense and has no bugs; otherwise it is a bug.
 - **Content that twinBASIC and VB6 both contradict is the page's fault** (2026-10-21): it is
-  commented out, not deleted, as `<!-- VBA: <why it is out> ... -->`, outside any table, so
-  the VBA text is kept for docs that will one day switch between VB6, VBA and twinBASIC
-  (WIP.Authoring.md, *twinBASIC deviations from VBA to flag*). The `vbUseCompareOption` rows
-  of six *compare* tables and two "**Null** is returned" sentences of String are such comments.
-- **Interactive procedures** (2026-10-22, the questions D1 to D4): **D1**, MsgBox and InputBox
+  commented out, not deleted, as `<!-- VBA: <why it is out> ... -->`, by the rule in
+  WIP.Authoring.md, *twinBASIC deviations from VBA to flag*. The `vbUseCompareOption` rows
+  of the *compare* tables and two "**Null** is returned" sentences of String are such comments.
+- **Interactive procedures** (2026-10-22): **D1**, MsgBox and InputBox
   may be called under the `dialog` harness. **D2**, SendKeys may be given strings that send
   keys, under the `keys` harness, once the patch is shown to catch every runtime's calls.
   **D3**, Beep takes no arguments and either works or does not: no case, no harness and no
@@ -210,14 +207,14 @@ Their reference is on the Tools pages:
   `messages.yml`, each error number's message.
 - `errors/harnesses/<name>.bas` --- the harnesses (*Harnesses*, below).
 - `node scripts/errors.mjs run [<file.yml>] [--only <regex>]` --- builds one probe from the data
-  per runtime, runs it, and compares each case with the data. All four runtimes by default
+  per runtime, runs it, and compares each case with the data. Every runtime by default
   (`--runtime tb|win64|vb6|vba64`, repeatable, picks some). By hand only: it needs twinBASIC,
-  VB6 and 64-bit Office. A run of every file in all four takes a few minutes; one page about 15 s.
+  VB6 and 64-bit Office. A run of every file in every runtime takes a few minutes; one page about 15 s.
   `--only` is a plain regex (a leading `/` is read as a delimiter: write `Mid\.md$`, not `/Mid\.md`). A case a
   compiler refuses is reported and dropped, and the probe rebuilt. `generate <dir>` writes the
   probes without running them; `--keep` keeps the ones `run` built.
 - `node scripts/errors.mjs write` --- writes each page's section and the central page's index.
-- `node scripts/errors.mjs messages` --- measures `messages.yml` in all four runtimes.
+- `node scripts/errors.mjs messages` --- measures `messages.yml` in every runtime.
 - `scripts/check_errors.mjs` --- the gate in `test.bat` and CI: data in order, every section
   what `write` makes of it, no section without data, the index current, the central page's
   shortcut. No runtime needed. A data problem makes `run` exit 2 with only "the data has
@@ -375,7 +372,7 @@ then `SendInput` one event at a time; AppActivate `SetForegroundWindow` and `Set
   Without it a probe has no privilege and every accepted value raises 70.
 - **`registry`** --- `SaveSetting`, `GetSetting`, `GetAllSettings`,
   `DeleteSetting`. A case names the application `registry_App`, `tbdocsErrorsProbe` and the
-  process id (the four runtimes run at once, and a shared key let one runtime's cleanup remove
+  process id (the runtimes run at once, and a shared key would let one runtime's cleanup remove
   another's section), and `registry_Begin` and `registry_End` delete
   that application's whole key under `HKCU\Software\VB and VBA Program Settings` with
   `SHDeleteKeyW` (`DeleteSetting` raises 5 in VB6 and VBA for a key that has a subkey), keeping
@@ -488,9 +485,9 @@ Read first: [WIP.Harness.md](WIP.Harness.md) (`tbbuild`, `tbrun`), [WIP.Build.md
    (*VBA 7.1 (VBE7.DLL 7.01.1158) in 64-bit Microsoft 365 Access*). A filed entry's issue is the
    owner's to edit.
 6. **Gates**: `build.bat` (0 broken), `node scripts/check_errors.mjs`, `test.bat`;
-   `check.bat` once per batch. Commit on staging (the owner's choice for this work), one-line
-   message, no Co-Authored-By trailer. **When another session shares the checkout, `git add`
-   by path**, never `-A`, so its files are not swept into the commit.
+   `check.bat` once per batch. Commit on staging (the owner's choice for this work). **When
+   another session shares the checkout, `git add` by path**, never `-A`, so its files are not
+   swept into the commit.
 7. Update *Where things stand* and the batch's row below, keeping here only what the batch
    leaves that a later one needs (a rule, an owner's ruling), and list the questions for the
    owner.
@@ -523,7 +520,7 @@ What the probes must respect (BETA 1010; `errors.mjs` already does all of it):
   that crashes or hangs is a WARNING by hand, never a case, and so is a silent wrong value found
   while writing a reproducer (a value, not an error). A WARNING by hand names its reproducer in
   `<!-- test: bug <slug> -->` on the line above it (and `errors <name>` when it cites the data's
-  rows too), as every callout labelled `BETA <n>` does (WIP.md, rule 6); the generated callouts
+  rows too), as every callout labelled `BETA <n>` does (WIP.Authoring.md, rule 6); the generated callouts
   need none.
 - **The probe is one module**: a case cannot declare a class, an interface or a `Type`. A
   harness can hold a `Type`, an `Enum`, a `Declare` and procedures; a fact that needs a class
@@ -571,7 +568,7 @@ when there is budget. The VBA modules are done; what is left:
 | 11 | Core file I/O statements (`Open`, `Get`, `Put`, `Input`, ...: errors 52--75). The Core pages Open, Name, Get, Put, Print and Line Input have hand NOTEs for `file-errors-unspecified`, which the rows' generated NOTEs replace | 15 | not started |
 | 12 | Core arrays and control flow (`ReDim`, `Erase`, `Resume`, `Return`, ...); ReDim has data already, in `errors/Core.yml`. A Core batch also takes `Set X = obj` where *X* is declared as an interface *obj* does not have: twinBASIC raises -2147467262 (`E_NOINTERFACE`), VB6 13 (not checked in VB6 yet, not queued) | 15 | not started |
 | 13 | Operators: the matrix generator and its pages | 25 | not started |
-| 14 | VB package (37 pages) and the VBRUN pages that document members rather than constants: properties and methods that raise 380, 383, 387 and the like; needs forms | 37 + part of 134 | not started |
+| 14 | VB package and the VBRUN pages that document members rather than constants: properties and methods that raise 380, 383, 387 and the like; needs forms | 37 + part of 134 | not started |
 | 15 | Built-In packages | 195 | not started |
 
 Page counts are the folders' `.md` files on 2026-10-20, index pages included; a batch's first

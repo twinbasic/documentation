@@ -1,7 +1,7 @@
 # Text browsers — the plan
 
 The site should read well in a browser with no CSS and no JavaScript. A survey with lynx,
-w3m, links and ELinks found the page text fine and five problems in the page furniture:
+w3m, links and ELinks found the page text fine and these problems in the page furniture:
 
 1. A picture in two themes prints its description twice.
 2. Controls that only work with JavaScript are in the HTML (figure buttons, copy buttons, nav
@@ -10,9 +10,8 @@ w3m, links and ELinks found the page text fine and five problems in the page fur
 4. The footer links run together.
 5. Nothing checks any of this.
 
-Item 1 has been investigated and nothing has been built: the owner paused the work on
-2026-11-17, with the recommendation below not yet approved. Items 2 to 5 have been surveyed but
-not decided or built, in [Items 2 to 5](#items-2-to-5).
+Nothing is built. The owner paused item 1 on 2026-11-17, with its recommendation below not yet
+approved. Items 2 to 5 are surveyed, not decided: [Items 2 to 5](#items-2-to-5).
 
 ## The benchmark (owner)
 
@@ -66,7 +65,7 @@ So the second `<img>` of a pair prints nothing in both w3m and lynx only in two 
 that image is the one shown, so it still needs a name for a screen reader, and in both forms the
 name has to come from ARIA.
 
-Two rules bear on this:
+Rules that bear on this:
 
 - **An `<img>` with only `srcset` is valid.** The HTML standard says "At least one of the src and
   srcset attributes must be present."
@@ -114,12 +113,11 @@ images: a global ARIA attribute overrides it. That was not checked in the other 
 
 ## Recommendation: R1 (not yet approved)
 
-Only two forms of the second image are silent in both w3m and lynx: no `src` with `alt=""`, or
-`alt=" "`.
+Of the two silent forms of the second image (above):
 
 - **`alt=" "` fails the gate.** axe's `image-alt` (WCAG A, part of `check.bat`) fails any alt made
   only of whitespace (`alt-space-value`, `/^\s+$/`), even when `aria-label` names the image.
-- **The ARIA name then has to go somewhere.** Put it on the `<img>` itself (A2) and it breaks ARIA
+- **With no `src` and `alt=""`, the ARIA name has to go somewhere.** Put it on the `<img>` itself (A2) and it breaks ARIA
   in HTML and fails `presentation-role-conflict`. It also relies on the conflict resolution that
   was checked only in Chrome. Put it on a `role="img"` wrapper and it is plain ARIA that every
   engine supports, valid as written.
@@ -179,8 +177,7 @@ browsers: `Full sizeFull size`.
 
 ## Redoing the measurements
 
-The scripts lived in a session's scratch directory and were not kept. This is enough to write
-them again:
+No script for these measurements is kept. To write one again:
 
 - **Serve and rewrite:** serve `docs/_site` from Node and rewrite each pair per candidate on the
   fly. Use a fresh browser context per mode.
@@ -194,21 +191,20 @@ them again:
   - axe, as listed above;
   - each figure's boxes from `getBoundingClientRect`.
 
-Three things that misled the first runs:
+What misleads a measurement:
 
 - **A closed `<details>` hides its pictures** from both the accessibility tree and the network.
-- **Lazy loads were counted too early.** Building's pictures are about 19,000 px down the page,
-  and a fixed-step scroll took the count before their loads were issued.
+- **Lazy loads counted too early.** Building's pictures are about 19,000 px down the page,
+  and a fixed-step scroll takes the count before their loads are issued.
 - **Screenshot bytes of the same markup differ between runs** (3 to 6 of 6 figures equal), so
   compare geometry, not screenshots.
 
 ## Items 2 to 5
 
-Surveyed on 2026-11-16, before the owner chose the benchmark. The survey dumped these pages of
-`docs/_site` in all four browsers: `index.html`, `tB/Modules/Strings/Left.html`,
-`Features/Compiler-IDE/IDE-Features.html`, `Documentation/Development/index.html`,
-`Downloads.html`, `Videos.html`, `nav.html` and `FAQ.html`. Nothing is decided or built for any
-of these items.
+Surveyed on 2026-11-16 by dumping these pages of `docs/_site` in all four browsers:
+`index.html`, `tB/Modules/Strings/Left.html`, `Features/Compiler-IDE/IDE-Features.html`,
+`Documentation/Development/index.html`, `Downloads.html`, `Videos.html`, `nav.html` and
+`FAQ.html`.
 
 ### What is already fine
 
@@ -248,8 +244,6 @@ The build writes each of these into the HTML, and each does nothing without its 
   first paint, or the nav moves when they appear.
 - **Not `<a download>`.** Making the figure's download buttons into such links would make them
   work without JavaScript, but it would put their text into both browsers' output.
-
-`figure.js` and the figure CSS are also what item 1's R1 changes.
 
 ### Item 3: inline diagrams
 
@@ -303,7 +297,7 @@ Things that only CSS keeps apart print as one run:
 - **Two images with no whitespace between them**, which glue together in w3m and links2. Item 1's
   `…highlightedThe Project…` is one.
 
-There are two ways to fix a run:
+Ways to fix a run:
 
 - make it a list (`<ul>`) that the CSS lays out in a row;
 - put a separator in the markup and have the CSS hide it.
@@ -337,8 +331,8 @@ it:
 
 ### A browser with CSS but no JavaScript
 
-Dillo and NetSurf were not installed. The survey stood in for them with headless Chrome through
-puppeteer, JavaScript off, at 1280×900, on `Left` and `IDE-Features`:
+Dillo and NetSurf are not installed. Headless Chrome through puppeteer, JavaScript off, at
+1280×900, on `Left` and `IDE-Features`, stands in for them:
 
 - The page looks as it does with JavaScript, and the theme follows the OS.
 - The search box, the nav arrows and the figure bar are drawn, and do nothing.

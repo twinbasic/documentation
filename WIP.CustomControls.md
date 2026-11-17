@@ -2,9 +2,9 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-Two source-side packages, **one** doc-side package (`docs/Reference/Built-In/CustomControls/`). The source halves split by *role*: a **DESIGNER** framework (the abstract surface a custom control hooks into: `ICustomControl`, `ICustomForm`, the `CustomControlContext` / `CustomFormContext` / `CustomControlTimer` / `CustomControlsCollection` CoClasses, the `SerializeInfo` / `Canvas` UDTs and the enums) and a **runtime** half (the eight concrete `Waynes…` controls, shared appearance helpers and mixin base classes).
+Two source-side packages, **one** doc-side package (`docs/Reference/Built-In/CustomControls/`). The source halves split by *role*: a **DESIGNER** framework (the abstract surface a custom control hooks into: `ICustomControl`, `ICustomForm`, the `CustomControlContext` / `CustomFormContext` / `CustomControlTimer` / `CustomControlsCollection` CoClasses, the `SerializeInfo` / `Canvas` UDTs and the enums) and a **runtime** half (the concrete `Waynes…` controls, shared appearance helpers and mixin base classes).
 
-The public user-facing surface, grouped by role:
+The public surface, by role:
 
 ## Concrete controls
 
@@ -31,7 +31,7 @@ The state-holder classes (`WaynesButtonState`, `WaynesSliderState`, `WaynesTextB
 
 ## Shared appearance helpers
 
-These helpers are reachable through `Public WithEvents …` properties on one or more of the eight controls:
+These helpers are reachable through `Public WithEvents …` properties on the controls:
 
 | Class           | Reached as                                                                          |
 |-----------------|-------------------------------------------------------------------------------------|
@@ -53,7 +53,7 @@ Each helper that has a small companion shares its page with it: `Corner` inlines
 
 ## DESIGNER framework surface
 
-The framework half, which a *control author* writes against. Documented under `docs/Reference/Built-In/CustomControls/Framework/`:
+What a *control author* writes against, documented under `docs/Reference/Built-In/CustomControls/Framework/`:
 
 | Symbol                       | Kind                | Role                                                                                  |
 |------------------------------|---------------------|---------------------------------------------------------------------------------------|
@@ -78,4 +78,4 @@ Public enums under `docs/Reference/Built-In/CustomControls/Enumerations/`:
 - `Customtate` — **probable typo** for `CustomState`. Has the same three members as `WindowState` (`tbNormal` / `tbMinimized` / `tbMaximized`) and isn't referenced anywhere else in the package. Document it (since it's `Public`), but add a `> [!NOTE]` callout flagging the typo and pointing readers to `WindowState`.
 - `ColorRGBA`, `PixelCount`, `PointSize` — these are declared as `Enum` only because twinBASIC doesn't yet have a `Type Foo = Long` alias syntax. Each carries a `FIXME` comment ("Substitute for an ALIAS to Long") and a single `[_MAX] = 0` placeholder member. Document them as **typedefs for `Long`** (the underlying storage type), not as real enums. Say in each that user code sees the alias, as in `Public Width As CustomControls.PixelCount`. These enum stand-ins go away when the alias syntax lands.
 
-Plus the two enums nested inside `WaynesSlider`: `SliderDirection` and `SliderDisplayValueFormat`. They live on the `WaynesSlider/index.md` page rather than under `Enumerations/` (locally scoped to the slider).
+The enums nested inside `WaynesSlider`, `SliderDirection` and `SliderDisplayValueFormat`, are on the `WaynesSlider/index.md` page rather than under `Enumerations/`, since they are scoped to the slider.

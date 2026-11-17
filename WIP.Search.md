@@ -11,8 +11,8 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 
 Everything needed to continue is in this file and in `eval/`.
 
-**Where it stands.** No decision is open. The candidates for further work are
-under "Next"; the user picks.
+**Where it stands.** No decision is open; the user picks the next work from
+"Next".
 
 **The eval** (`node eval/search_quality.mjs`, ground truth `intent-6`,
 11,714 queries): 97.4% at rank 1, 99.1% in the top 10.
@@ -28,9 +28,8 @@ under "Next"; the user picks.
 | labels | 89.6% | 376 | `Copy Path`, an IDE label typed whole ([Term entries](#term-entries)) |
 
 Six bare names are out of tier order, and every prose query's `behind` page is
-within the top 3 (42 of 42). Compare categories, not totals, across ground
-truths: the name-and-kind set lowers the overall hit@1. The "Known misses"
-below were counted on `intent-5`, not on these figures.
+within the top 3 (42 of 42). The "Known misses" below were counted on
+`intent-5`, not on these figures.
 
 **Known misses (185 at rank 1)**, each recorded where it was diagnosed:
 - 158 name-and-kind queries, mostly properties; not diagnosed yet
@@ -42,25 +41,19 @@ below were counted on `intent-5`, not on these figures.
 - 1 page title, `Input #`, at 2 behind the `Input` function: the query trims
   to `input`, and the title set skips one-word titles.
 - 3 prose queries, `declaration`, `comment` and `default property`, whose
-  Glossary definitions are 2nd, 5th and 5th. That is right by the user's
-  ruling (a Glossary definition counts within the top 5). An entry would
-  reorder the bare names `Declare` and `Comments`
-  ([Index entry decisions](#index-entry-decisions)), and one for `default
-  property` would put it above CommandButton's `Default`
+  Glossary definitions are 2nd, 5th and 5th, which the user's ruling counts.
+  An entry would reorder the bare names `Declare` and `Comments`, and one for
+  `default property` would put it above CommandButton's `Default`
   ([Index entry decisions](#index-entry-decisions)).
 
 **Next**, for the user to choose from:
 1. **The 158 name-and-kind misses.** Diagnose them as the whole-title probes
    were: group by cause, measure a knob, ship only what makes nothing worse.
    93 aren't in the top 50 at all.
-2. **The cost of one-letter words.** `a p` takes about 250 ms and a single
-   letter 80–110 ms, lunr's own work. Cheaper means changing the query, and
-   so the ranking, for instance not completing a one-letter word
-   ([lunr patches](#lunr-patches)).
-3. **More content and index entries**, under the rules below. Open:
-   `COM interop` (no clear target) and three content gaps: subclassing,
-   IntelliSense and conditional breakpoints (first find out whether the IDE
-   has the last two). See
+2. **The cost of one-letter words**: "Cost left" under
+   [lunr patches](#lunr-patches).
+3. **More content and index entries**, under the rules below: `COM interop`
+   and the open content gaps under
    [Known misses and limits](#known-misses-and-limits).
 4. **An extra word hides a page.** `memory window`, `history panel`,
    `registry access`: the all-words pass finds a few pages holding both
@@ -138,9 +131,8 @@ page for words it doesn't contain. So authors mark index entries by hand
 - A Glossary definition counts as a right answer for its term within the top
   5; it needn't be first. Where several pages answer a query, they should
   all appear in the results, in the order the user chose.
-- lunr's cost rules out extra query passes for now (the reason the
-  name-and-kind set leaves out `sub` and `member` rather than spelling a Sub
-  as `method`).
+- lunr's cost rules out extra query passes for now (see the name-and-kind
+  set under [Ground truth sets](#ground-truth-sets)).
 - Use Sonnet agents for mechanical and exploratory work.
 - Review every agent's work before committing it. Agents produce false
   explanations (see [X1t](#rejected-tier-specific-exact-fields-x1t)), a
@@ -220,8 +212,8 @@ page for words it doesn't contain. So authors mark index entries by hand
   the query trims the same way. A name that must keep them (`#If`, `<>`) has
   to spell them as word characters.
 - A REQUIRED clause names every field too, so it scores in helper fields such
-  as `exact` unless it is given the text fields. That leak can put the wrong
-  page first (`With statement`) and push others down (`error handling`).
+  as `exact` unless it is given the text fields (the passes under "Query
+  construction" show what that leak does).
 - A REQUIRED clause matches if the term is in *any* of its fields, and it
   scores as well. To require a word without scoring it in some field, give
   the REQUIRED clause boost 0 (its terms enter the query vector at zero
@@ -233,9 +225,9 @@ page for words it doesn't contain. So authors mark index entries by hand
   at 1 (`pinIndexFieldLengths`).
 - Every field costs a slot on every term of the whole index, not just on the
   entries that use it: `add()` creates an empty object per field for each new
-  term. Three sparse fields took 24 MB more heap; one takes 5 MB. Prefer
-  encoding a variant inside one field (secondary entries carry one more `_`)
-  to adding a field.
+  term (heap measured under "Hand-marked index entries"). Prefer encoding a
+  variant inside one field (secondary entries carry one more `_`) to adding a
+  field.
 - A trailing wildcard completes a plain word to every token it begins,
   including whole qualified names: `form*` reaches every `form.*` in
   `qualified`. Harmless at a low field boost, it lifts a container by its
@@ -247,15 +239,12 @@ page for words it doesn't contain. So authors mark index entries by hand
   change can start it. Patched; see "lunr patches". Check a
   candidate change with every title as a query, not only the eval, since the
   eval never types `a`.
-- The search data must keep the page's HTML entities: the results panel
-  inserts titles and content with `innerHTML` and highlights by lunr's
-  character positions in that text. Decode inside the index instead, per
-  token, after the tokenizer splits (`Token#update` keeps the position); see
-  "lunr patches".
-- lunr 2.3.9's `Set#union` copies both sets, and `Index#query` unions once
-  per expanded term and field of a REQUIRED clause, so a short wildcard word
-  is quadratic. Patched (`accumulateSetUnions()`); see "lunr patches".
-  Profile before guessing: `node --cpu-prof`.
+- The search data must keep the page's HTML entities, so they are decoded
+  inside the index, per token, after the tokenizer splits; see "lunr
+  patches".
+- lunr 2.3.9's `Set#union` makes a short wildcard word quadratic. Patched
+  (`accumulateSetUnions()`); see "lunr patches". Profile before guessing:
+  `node --cpu-prof`.
 
 ## The problem
 
@@ -316,9 +305,8 @@ section, name and kind, labels, and a larger prose set. The harness reports hit@
 MRR (capped at rank 20), results by symbol kind, cost (size raw and gzipped,
 index build time in the browser, heap) and the queries that changed rank
 between two configurations. It is [eval/search_quality.mjs](eval/search_quality.mjs);
-its baseline is [eval/search_baseline.json](eval/search_baseline.json). Run
-`node eval/search_quality.mjs --compare eval/search_baseline.json` to measure
-a change against it.
+its baseline is [eval/search_baseline.json](eval/search_baseline.json) (how
+to run it: Tools, above).
 
 ### Why the design is what it is
 
@@ -378,10 +366,10 @@ single boost:
 
 - `names`: the bare name of every symbol in `tB/symbols.json` whose URL is
   the entry's `relUrl` (ignoring a trailing slash or `index`), space-separated
-  and deduplicated. Client boost 100.
+  and deduplicated. Boost 100.
 - `qualified`: the `Container.Name` form of the same symbols (only those that
   have a container -- a bare statement or operator does not), space-separated
-  and deduplicated. Client boost 500 (see "Qualified names and stem twins").
+  and deduplicated. Boost 500 (see "Qualified names and stem twins").
 
 - In the build, `searchData` also waits for `symbolIndex`. Both run on the
   main thread after `renderJoin`. `symbolIndex` returns its symbols, and
@@ -389,9 +377,6 @@ single boost:
   `search.mjs`). Workers derive sections; the join is a map lookup per entry.
 - `renderEntryString` adds `names` / `qualified` only when non-empty, so a
   page with no symbols produces the same bytes as without the join.
-- In the client, `this.field('names', { boost: 100 })` and
-  `this.field('qualified', { boost: 500 })`. The title keeps 200 and content
-  keeps 2.
 
 ### 3. Query construction
 
@@ -406,10 +391,10 @@ In the client's `update()`, for each token the tokenizer produces:
   matches its exact entry first. Making the parts required (lunr's
   `presence.REQUIRED`) is rejected: qualified hit@10 falls from 97.9% to
   88.6%.
-- **Asterisk guard.** Drop tokens made only of `*`. If nothing is left, show
-  no results. A search for `*` or `**` otherwise throws inside lunr's query
-  engine and search stops working. (Trimming query tokens, see "Query
-  construction", subsumes this.)
+- **Asterisk guard.** A token made only of `*` is dropped, and a query left
+  with none shows no results; otherwise `*` or `**` throws inside lunr's
+  query engine and search stops working. Trimming query tokens ("Query
+  construction") does this.
 
 ### 4. The index's one definition, and the two copies of the client
 
@@ -449,10 +434,9 @@ unchanged, so it inherits query changes.
 
 - **Stop words kept, so short common words crowd.** `VB` is a prefix of many
   `vbXxx` constant names in `names`; `Lock`, `Time$`, `Column`, `Index`
-  crowd the same way. Everything is judged by reader intent, not by the
-  rank an earlier index gave; see [Reader intent](#reader-intent).
-- **Operators (24 symbols)** are unsearchable by their text under this design;
-  exact names find them. See [Future work](#future-work).
+  crowd the same way. Results are judged by [Reader intent](#reader-intent).
+- **Operators** are unsearchable by their text under this design; exact names
+  find them. See [Future work](#future-work).
 - **Ground-truth bias.** Most queries are symbol names, so the numbers favour
   API lookup. The symbols field comes from the same data as the ground
   truth. The held-out check limits that concern, but does not remove it. The
@@ -460,90 +444,68 @@ unchanged, so it inherits query changes.
 
 ## Design §5: stop words, dot runs, and a lazy build
 
-Three independent changes, in both client copies and the eval replica.
+Independent changes, in both client copies and the eval replica. Each is
+also on the patch list in
+[builder/vendor/just-the-docs/README.md](builder/vendor/just-the-docs/README.md),
+which describes the mechanism; what follows is what that list does not say.
 
 ### A. Keep lunr's stop words in the index
 
-lunr's **index** pipeline runs `lunr.stopWordFilter` by default, dropping
-words like `do`, `for`, `if`, `is`, `on`, `with`, `each` from every field. Its
-**search** pipeline never runs that filter, so a query for `Do` still carries
-the token `do`, which would exist nowhere in the index. Many twinBASIC keywords
-are English stop words, so with the filter every keyword query misses its own
-entry (`Do` ranks 18th, `For` 17th, `With` 55th, `Is` 177th). So the
-`lunr(function(){...})` builder removes it:
-`this.pipeline.remove(lunr.stopWordFilter);`. Every keyword query is then at
-rank 1, and it isn't specific to twinBASIC's keyword list. The cost: a few
-short, extremely common tokens
-(mostly other `vbXxx` constant name prefixes and `Index`/`Lock`/`Column`/`Time$`)
-crowd into more results; see "Known regressions" above.
+lunr's index pipeline drops stop words (`do`, `for`, `if`, `is`, `on`,
+`with`, `each`) and its search pipeline does not, so with the filter every
+keyword query misses its own entry (`Do` ranks 18th, `For` 17th, `With`
+55th, `Is` 177th). `configure()` in `builder/search-index.mjs` removes it
+(`pipeline.remove(lunr.stopWordFilter)`). Every keyword query is then at rank
+1, and the fix isn't specific to twinBASIC's keyword list. The cost: a few
+short, extremely common tokens (mostly other `vbXxx` constant name prefixes
+and `Index`/`Lock`/`Column`/`Time$`) crowd into more results; see "Known
+regressions" above.
 
 ### B. Split runs of two or more dots
 
-Without this, titles like `Do...Loop`, `For Each...Next` and `If...Then...Else`
-tokenise as a single opaque token (`do...loop`). lunr's tokenizer decides where to split
-by testing *one character at a time* against `separator`, so a `\.{2,}`
-alternative inside that regex can never match. A wrapper around
-`lunr.tokenizer` handles it: for a string input, every run of 2+ dots becomes the same
-number of spaces (`s.replace(/\.{2,}/g, m => new Array(m.length + 1).join(' '))`;
-spaces rather than deleting the dots, so that character offsets used for
-match highlighting stay valid), then the original tokenizer runs. Non-string
-input (arrays, `null`) passes through unchanged, since lunr also calls its
-tokenizer with those.
-
-The wrapper is installed once, where the separator is set, and has to
-carry `separator` itself: the original tokenizer reads
-`lunr.tokenizer.separator` at call time, so once `lunr.tokenizer` points at
-the wrapper, that lookup resolves to the *wrapper's* own `.separator`. The
-wrapper sets `wrapper.separator = /[\s\-\/]+/`, the client's separator, so
-`/` still splits (`a/b` → `a`, `b`). It runs on the shared global `lunr`, so
-it applies to the index build and every query alike.
+Titles like `Do...Loop`, `For Each...Next` and `If...Then...Else` would
+otherwise tokenise as one token (`do...loop`), and a `\.{2,}` alternative in
+the separator can never match (see "How lunr behaves here"). A wrapper around
+`lunr.tokenizer` turns every run of two or more dots into as many spaces,
+not nothing, so that highlight offsets stay valid, then runs the original;
+non-string input (arrays, `null`), which lunr also passes its tokenizer,
+goes through unchanged. The wrapper carries `separator` itself, set to the
+client's `/[\s\-\/]+/`, so `/` still splits (`a/b` → `a`, `b`). It runs on
+the shared global `lunr`, so it applies to the index build and every query
+alike.
 
 ### C. Load the index lazily, on the first keystroke, with visible feedback
 
-A page loads nothing for search until the reader types: `initSearch()` only
-defines *how* to load the index (`loadIndex(onSuccess, onError)`) and hands
-that function to `searchLoaded()`. `searchLoaded()` wires up the search box's
-listeners at once but calls `loadIndex()` only on the first `keyup` that
-leaves the box non-empty. The build writes the index ("The pre-built index"
-below), and the load stays lazy, since it is still about 10 MB gzipped and
-most of a second.
-
-That first keystroke calls `loadIndexNow()`:
-- It shows "Loading search index..." in the same slot and style as "No
-  results found" (`.search-no-result`, reused rather than adding a class) and
-  the same text in the `a11y-status` live region.
-- It yields (a `requestAnimationFrame` raced by a 100 ms timer, since frames
-  never fire in a hidden tab, then `setTimeout(fn, 0)`) so that the message
-  paints before the load starts.
+A page loads nothing for search until the first `keyup` that leaves the box
+non-empty. The load stays lazy because the index ("The pre-built index"
+below) is about 10 MB gzipped and takes most of a second. Beyond the patch
+list:
+- The loading message is "Loading search index..." in the slot and style of
+  "No results found" (`.search-no-result`, reused rather than adding a
+  class), with the same text in the `a11y-status` live region.
 - The load hands the main thread back between its steps (parsing the data,
-  parsing the index, `lunr.Index.load`), so the reader can keep typing.
-- A keystroke during the load leaves the message in place until results
+  parsing the index, `lunr.Index.load`), so the reader can keep typing. A
+  keystroke during the load leaves the message in place until results
   replace it, with no empty panel in between, online and offline.
-
-When `loadIndex()` finishes, `finishLoad()` searches whatever is in the box
-*at that moment*, not what was typed when the load started. Only one load is
-in flight at a time (`indexLoading`, checked at the top of `loadIndexNow()`);
-a keystroke mid-load just updates `currentInput` and returns from `update()`.
-A failed load (bad XHR status, parse error, an index of another build, or an
-exception loading it) shows "Search is unavailable" plus the matching
-`a11y-status` text and leaves the index `null`, so the next keystroke
-retries from scratch.
-
-`update()` keeps its prefix (the dedup check, the `search-active` class, the
-iOS scroll workaround) and its keyboard/focus/blur listeners. The query part
-is `doSearch(input)`, gated behind `if (index === null) {
-loadIndexNow(); return; }`. `searchLoaded()` takes `loadIndex`, not
-`(index, docs)`.
-
-`builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` works the same way,
-adding the offline tree's script to the page on the first keystroke.
+- Only one load is in flight (`indexLoading`, checked at the top of
+  `loadIndexNow()`); a keystroke mid-load updates `currentInput` and returns
+  from `update()`, and `finishLoad()` searches what is in the box when the
+  load ends.
+- A load fails on a bad XHR status, a parse error, an index of another build
+  or an exception loading it; it shows "Search is unavailable" and leaves the
+  index `null`, so the next keystroke retries from scratch.
+- `update()` keeps its prefix (the dedup check, the `search-active` class,
+  the iOS scroll workaround) and its keyboard/focus/blur listeners. The query
+  part is `doSearch(input)`, gated behind
+  `if (index === null) { loadIndexNow(); return; }`.
+- `builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` adds the offline
+  tree's script to the page on the first keystroke.
 
 ## The pre-built index
 
-**Decided (owner, 2026-10-29).** The reader's annoyance: a page that builds
-the index itself builds it again on every page's first search. The owner
-chose the pre-built index now and a compact index format as the eventual fix
-("Future work"), not keeping the page alive between navigations. The ways not
+**Decided (owner, 2026-10-29).** A page that builds the index itself builds
+it again at every page's first search. The owner chose the pre-built index
+now and a compact index format as the eventual fix ("Future work"). Not
 chosen:
 
 - **Keeping the index between pages.** No browser storage helps: the
@@ -555,7 +517,7 @@ chosen:
   `max-age=600` and an ETag.
 - **Keeping the page alive** (navigating by fetching the next page and
   swapping its content): the one way to build the index once per tab;
-  touches navigation, scroll, focus and accessibility. Not chosen.
+  touches navigation, scroll, focus and accessibility.
 
 **What the page does.** The build writes `assets/js/search-index.json`:
 `{"docs": ..., "index": ...}`, the search entries (`search-data.json`,
@@ -637,18 +599,15 @@ is the price of the index (owner).
 Code comments cite steps: 1 bug fixes (asterisk guard, tokenizer separator in
 the replica); 2 the harness; 3 h3 entries and folding; 4 the symbols fields
 and smart dot split; 5 stop words, dot runs and lazy build (5A, 5B, 5C are
-"Design §5" A, B, C). A change ships as its own commit recording its numbers
-from the harness.
+"Design §5" A, B, C).
 
 ## Reader intent
 
 ### The criterion
 
-A reader either finds what they want at the top or doesn't, so "small
-regressions" are not acceptable, and neither is an earlier index's rank as a
-reference. A result is judged by what a reader typing the query most
-plausibly wants. Rank 1 is the measure that matters; hit@10 and MRR are
-secondary.
+By the user's criteria (under "Resuming this work"), a result is judged by
+what a reader typing the query most plausibly wants. Rank 1 is the measure
+that matters; hit@10 and MRR are secondary.
 
 A bare name counts as correct only for the best tier that documents it, not
 for any page documenting that name (the eval still reports that looser rule
@@ -745,18 +704,13 @@ a changed ranking. Each set below names the label it counts under.
   section, and the definition ranks first on its own text, so it needs no
   index entry.
 
-The eval's symbol queries are one word each, so its page-title and
-page-plus-section sets are its only multi-word queries. The two probe scripts
-under `eval/search-experiments/probes/` (`spaced.mjs`, `kinds.mjs`) cover the
-rest; see Tools above.
+The multi-word queries the eval lacks are covered by the probe scripts; see
+Tools above.
 
 ### Where each piece lives
 
-The online client is the vendored
-`builder/vendor/just-the-docs/assets/js/just-the-docs.js`.
-`builder/offline.mjs` replaces `initSearch()` with its own copy
-(`JTD_INITSEARCH_FN_REPLACEMENT`). The fields are declared once, in
-`builder/search-index.mjs` (Design §4). Everything else the search uses sits outside `initSearch()`
+The index's one definition and the client's two copies are under Design §4.
+Everything else the search uses sits outside `initSearch()`
 (`doSearch()`, `exactName()`, `indexField()`, `qualifiedField()`,
 `stemTwins()`, `boostWholeTitles()`, `namesTheThing()` and the lunr patches),
 so the offline page shares it. `eval/site_search.mjs` is the replica, which
@@ -829,7 +783,7 @@ and its hex code, and appends `_` (`#if` → `_23if_`, `time$` → `time_24_`,
 `<>` → `_3c_3e_`). The index trims non-word characters from token ends, which
 would turn `#If` into `if` and `<>` into nothing; spelled out, they survive,
 so `#If`, `Time$` and `Error$` stay distinct from `If`, `Time` and the `Error`
-statement, and the 24 operators are findable. The final `_` keeps a whole-name
+statement, and the operators are findable. The final `_` keeps a whole-name
 query off every longer name that starts with it (`Node` against `Nodes`,
 `ListItem` against `ListItems`, `vbForm` against `vbFormCode`): the trimmer
 keeps `_` as a word character, and every Porter stemmer rule anchors on the
@@ -987,9 +941,6 @@ its name and kind, before the page condition above):
   function`, `Stop method`).
 - Optional only when no result has the name in its title or as its exact
   name: 91.1%, none worse. This is the rule in use, with the page condition.
-
-A plural kind word does not make a name (`Delegate Types`), see "Query
-construction".
 
 ### Whole titles
 
@@ -1179,9 +1130,9 @@ build: keep terms in their plain form.
 - The terms are appended to the entry's content as plain words, so the
   all-words pass, which requires every word in the text fields, still finds a
   marked entry.
-- `pinIndexFieldLengths` sets the field's average length to 1: BM25 compares
-  a field's length with its average over every entry, and `index` is empty on
-  nearly every entry, so a marked entry would look a thousand times too long.
+- `pinIndexFieldLengths` sets the field's average length to 1. `index` is
+  empty on nearly every entry, so otherwise a marked entry would look a
+  thousand times too long (see "How lunr behaves here").
 
 The boosts sit in the code beside every other boost, not in
 `docs/_config.yml`: the client reads no site config.
@@ -1240,8 +1191,7 @@ permalink prefixes; today `/tB/IDE`).
 - `symbols.json` is unchanged (`headingsOf()` reads `<hN` only), and the book
   prefixes every ` id="`.
 
-**Measured** (BETA tree at 3f5e0aaa, online tree only; the lab's tools are in
-`.claude/scratch/ide-docs/search-lab`, not in the repository):
+**Measured** (BETA tree at 3f5e0aaa, online tree only):
 
 | | entries | raw | gzip |
 |---|---|---|---|
@@ -1264,7 +1214,7 @@ control` 4 to 5 are the same kind of shift. `watches` and `DPI awareness` have a
 hand mark each. `call stack` has none (owner): `Inspecting#call-stack` is third,
 behind the Debugging page's **CALL STACK** row and a Breakpoints term.
 
-**Rejected**, so that nobody tries them again:
+**Rejected:**
 
 | option | why not |
 |---|---|
@@ -1292,8 +1242,8 @@ The rules for writing entries are under "Rules for index entries" above. The
 decisions behind them, and what the measurements ruled out:
 
 - **A Glossary definition counts as a right answer for its term, within the
-  top 5.** A term whose Glossary definition already ranks first gets no
-  entry.
+  top 5** (the user's criteria), so a term whose Glossary definition already
+  ranks first gets no entry.
 - **A term whose stem is a bare name's reorders that name, so there is no
   entry for it.** `declaration` (stem `declar`) puts `Declare` 2nd; `comment`
   puts the `Comments` property 2nd; their Glossary definitions are 2nd and 5th
@@ -1313,10 +1263,9 @@ decisions behind them, and what the measurements ruled out:
 - **A one-word term matches every query holding the word.** The Packages
   page's `twinpack` entry beats `Importing a Package from a TWINPACK File`
   typed whole; a secondary entry on the Importing page puts it back first.
-- **A term matches only whole words.** `type character` doesn't match `type
-  char`, so each spelling a reader types is its own term (`register COM
-  dll`, `register dll`, `create dll`, `typedecl char`, `typedecl character`).
-  Capitals don't matter.
+- **A term matches only whole words**, so each spelling a reader types is
+  its own term (`register COM dll`, `register dll`, `create dll`, `typedecl
+  char`, `typedecl character`).
 - **Decided by the user:** `user defined types` and `user types` go to Type,
   then UDTs; `event handlers` to Handlers, then the Forms tutorial's handler
   step; `namespaces` to a Glossary definition that links the relevant
@@ -1364,8 +1313,8 @@ decisions behind them, and what the measurements ruled out:
 - A page whose first heading does not read as its title, or whose prose comes
   before its first heading, gets a prefix entry beside its first section (the
   page's URL, the text before the first heading, often empty).
-  The first-heading rule matters for four pages: Shape, Timer, and two prose
-  pages whose h1 differs from the title and whose second heading repeats it
+  The first-heading rule matters for Shape, Timer, and two prose pages whose
+  h1 differs from the title and whose second heading repeats it
   (`Features/Standard-Library/New-Functions`, `Challenges/1`).
 
 ### Rejected: tier-specific exact fields (X1t)
@@ -1432,8 +1381,9 @@ The counts are in "Resuming this work"; the diagnoses are here.
   `TbExpressionService.Compile` first. Noted, not changed.
 - **Open content gaps:** `COM interop` (no clear target: Categories' COM and
   Automation list, Interfaces-CoClasses, ActiveX Registration), subclassing
-  (only the FAQ mentions it), IntelliSense (no page names the feature) and
-  conditional breakpoints (the Debug menu shows none; check the IDE first).
+  (only the FAQ mentions it), IntelliSense (no page names the feature; check
+  the IDE has it first) and conditional breakpoints (the Debug menu shows
+  none; check the IDE first).
 
 ## Future work
 
@@ -1455,7 +1405,7 @@ the page as it is.
 
 ### Operators
 
-All 24 operator symbols (`<` `<=` `<>` `=` `>` `>=` `&` `&=` `/` `/=` `^` `^=`
+Every operator symbol (`<` `<=` `<>` `=` `>` `>=` `&` `&=` `/` `/=` `^` `^=`
 `\` `\=` `<<` `<<=` `-` `-=` `*` `*=` `+` `+=` `>>` `>>=`) are at rank 1,
 through exact names that spell non-word characters (`<>` → `_3c_3e_`). The
 causes, which explain why operators need exact names:

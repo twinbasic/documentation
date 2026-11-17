@@ -1,14 +1,12 @@
 # twinBASIC Documentation — Font subsetting notes
 
-Companion to [WIP.md](WIP.md)'s [Typography](WIP.md#typography) section. This file covers
-*producing* the six committed `.woff2` files under `docs/assets/fonts/`: the generator, why
+Companion to [WIP.Typography.md](WIP.Typography.md). This file covers
+*producing* the committed `.woff2` files under `docs/assets/fonts/`: the generator, why
 the Unicode coverage and the axis pinning are what they are, and the JavaScript port of the
 generator, which is blocked on a harfbuzzjs build defect documented here in full. Everything
 about *using* the faces --- the `@font-face` wiring, the dark-theme specificity trap, the
-PDF's font handling, the diagram width tables --- is in WIP.md's Typography section and
+PDF's font handling, the diagram width tables --- is in
 [WIP.Typography.md](WIP.Typography.md).
-
-Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fine here.
 
 ## Regenerating the fonts
 
@@ -53,7 +51,7 @@ several megabytes and every platform ships one --- and the stacks end with
 `"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"` to make that fallback
 deterministic rather than leaving it to each UA's last-resort lookup.
 
-Two content rules follow from the coverage audit; do not revert them:
+Content rules that follow from the coverage audit; do not revert them:
 
 - Use U+2713 CHECK MARK, not U+2714 HEAVY CHECK MARK. No text face in the stack
   carries U+2714, so it renders from the platform emoji font --- coloured on
@@ -86,11 +84,11 @@ is what fontTools' `--name-IDs=*` and `--layout-features=*` mean.
 > the surviving axes) and dropped on a full one, correctly in both cases; it just no longer
 > has anything to reconcile. Both subset APIs return success.
 
-It is visible rather than subtle. Pinned at `opsz` 11, Source Serif's `A` is drawn with its
+Pinned at `opsz` 11, Source Serif's `A` is drawn with its
 ink reaching x=720 --- matching fontTools to 2 units --- inside an advance of 664, the
 `opsz` 20 value. The glyph overhangs its own advance by 56/1000 em, so letters collide.
 
-The evidence, each line closing a door the previous one left open:
+The evidence:
 
 | control | result |
 |---|---|
@@ -123,8 +121,7 @@ success, and why the same missing function also leaves `head`'s bbox at its sent
 Why upstream does not catch it: HarfBuzz *has* a regression test for exactly this
 (`instantiate_cff2_update_metrics.tests`, PR #4189), but its CFF2 goldens are copied from
 hb-subset's own output (`no_fonttools`), and the suite never runs an `HB_NO_DRAW` build.
-harfbuzzjs's tests do not exercise pinning at all. harfbuzzjs has subset CFF2 since 1.5.0,
-silently wrong.
+harfbuzzjs's tests do not exercise pinning at all.
 
 **The fix is one line in harfbuzzjs**: `#undef HB_NO_DRAW` in `config-override-subset.h`
 (or `-DHB_CONFIG_OVERRIDE_LAST_H`, which harfbuzzjs 1.2.0 builds with, and is correct).
@@ -132,9 +129,9 @@ There is a secondary design point for upstream HarfBuzz --- a subsetter that can
 CFF2 instance metrics should refuse rather than emit a font with mismatched outlines and an
 invalid `head` --- but the actionable report is harfbuzzjs's.
 
-**Not yet reported upstream.** A full sweep of both trackers
-(every open issue and PR, closed-issue term searches, Discussions, and the `subset-font` /
-`subfont` / `cn-font-split` wrappers) finds nothing. Two look-alikes are different bugs: #6068
+**Not yet reported upstream.** A sweep of both trackers (open issues and PRs, closed-issue
+term searches, Discussions, and the `subset-font` / `subfont` / `cn-font-split` wrappers)
+found nothing. Two look-alikes are different bugs: #6068
 (HVAR advances frozen on partial instancing; fixed) and the open #4029 (glyf `hhea` bounds
 not recomputed when the metrics map is empty --- the same shape, a different table). Both
 repos' `main` carried the defect when last checked.
@@ -142,15 +139,13 @@ repos' `main` carried the defect when last checked.
 **Status.** Decided: wait for the harfbuzzjs fix rather than take the Pyodide route or
 leave the script Python for good. harfbuzzjs 1.6.2 is a pure HarfBuzz 14.5.0 bump
 (byte-identical WASM to what was tested), so the first release that can help is whatever
-comes after it. The report is drafted at `.claude/harfbuzzjs-issue.md` (gitignored, like
-everything under `.claude/`) and is to be filed by the maintainer from their own account;
-once it is, put the issue number here so a later reader can check whether a fixed release
-exists before starting the port.
+comes after it. The report is drafted at `.claude/harfbuzzjs-issue.md`, for the owner to
+file; once it is, put the issue number here so a later reader can check whether a fixed
+release exists before starting the port.
 
 **Consequences here.** `build_fonts.py` keeps its Python until a fixed harfbuzzjs ships. That
-costs nothing anyone notices: dev tooling that runs about once a year, needs a network
-connection regardless, and emits committed artifacts, so `build.bat` still needs neither
-Python nor a network. **Nothing currently shipped is affected** --- the committed faces were
+costs little: it runs about once a year and needs a network connection regardless (see
+[Regenerating the fonts](#regenerating-the-fonts)). **Nothing currently shipped is affected** --- the committed faces were
 built by fontTools and are correct. When the port happens:
 
 - It is `harfbuzzjs` + **`woff2-encoder`** + a ~70-line ZIP reader. Not `wawoff2`: it
@@ -162,13 +157,13 @@ built by fontTools and are correct. When the port happens:
   the output at its default, through `harfbuzz.wasm`, and refuse to write if any advance
   differs; assert `head.xMin <= head.xMax` while there. A subset build that has regressed
   in this way would otherwise pass every other gate in the repository.
-- There is no HarfBuzz-free JS route. Surveyed against the six requirements (read the
+- There is no HarfBuzz-free JS route. Surveyed against these requirements (read the
   release archives, *partial* instancing of both gvar and CFF2, subsetting that keeps
   GSUB/GPOS remapped, whole `name` table, WOFF2 out, `npm install` only): fontkit,
   opentype.js, fonteditor-core, samsa-core, lib-font, Typr, allsorts, skera/klippa,
   skeravar, slice-web, cn-font-split all fail partial instancing or layout retention or
   both, most by a wide margin and each verified in their source rather than their README.
-  The only thing that meets all six is fontTools itself under Pyodide (`@web-alchemy/
+  The only thing that meets all of them is fontTools itself under Pyodide (`@web-alchemy/
   fonttools`, ~15 MB, pinned to a stale 4.56.0) --- CPython in WASM, which satisfies "no
   Python" as a technicality and nothing more.
 - One workaround is **declined**: stop pinning `opsz` on Source Serif, keep

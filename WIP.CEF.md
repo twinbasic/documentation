@@ -2,9 +2,9 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-The entire user-facing surface lives in one source file (`CefControl.twin`): the private `CefBrowserBaseCtl` (where every event / method / property is declared), the private `CefEnvironmentOptions`, and the public `CefBrowser` control which inherits from `CefBrowserBaseCtl`. Everything else under the source tree (`CefControlGlobalWnd`, `APIs`, `MainModule`, `Registry`, `SpecialFolders`, the `CEF\Aliases` / `ApiEntryPoints` / `Globals` / `Initialize` / `Misc` modules, the 30 `_cef_*_t` internal enums and structs, the `CrossProcessIPC` IPC brokers, and every `Implementations/*` callback handler) is `Private Class` / `Private Module` plumbing and gets no doc page. Two user-facing enums live inside otherwise-private files: `CefLogSeverity` in the `_cef_log_severity_t` enum file, and `cefPrintOrientation` inline in `BrowserOM.twin`.
+The entire user-facing surface lives in one source file (`CefControl.twin`): the private `CefBrowserBaseCtl` (where every event / method / property is declared), the private `CefEnvironmentOptions`, and the public `CefBrowser` control which inherits from `CefBrowserBaseCtl`. Everything else under the source tree (`CefControlGlobalWnd`, `APIs`, `MainModule`, `Registry`, `SpecialFolders`, the `CEF\Aliases` / `ApiEntryPoints` / `Globals` / `Initialize` / `Misc` modules, the `_cef_*_t` internal enums and structs, the `CrossProcessIPC` IPC brokers, and every `Implementations/*` callback handler) is `Private Class` / `Private Module` plumbing and gets no doc page. Two user-facing enums live inside otherwise-private files: `CefLogSeverity` in the `_cef_log_severity_t` enum file, and `cefPrintOrientation` inline in `BrowserOM.twin`.
 
-Public user-facing surface (one control + one options class + two enums):
+The public surface:
 
 | Symbol                       | Kind                                  | Role                                                                                          |
 |------------------------------|---------------------------------------|-----------------------------------------------------------------------------------------------|
@@ -21,11 +21,11 @@ Public user-facing surface (one control + one options class + two enums):
 
 The `CefBrowser` public surface:
 
-- **Events (12):** `Create`, `Ready`, `Error`, `NavigationStarting`, `NavigationComplete`, `SourceChanged`, `DocumentTitleChanged`, `DOMContentLoaded`, `PrintToPdfCompleted`, `PrintToPdfFailed`, `JsAsyncResult`, `JsMessage`.
-- **Methods (14):** `Initialize`, `Navigate`, `NavigateToString`, `Reload`, `GoBack`, `GoForward`, `ExecuteScript`, `JsRun`, `JsRunAsync`, `PostWebMessage`, `SetVirtualHostNameToFolderMapping`, `ClearVirtualHostNameToFolderMapping`, `OpenDevToolsWindow`, `PrintToPdf`.
-- **Properties (12):** `DocumentURL` (Get/Let), `DocumentTitle` (Get), `ZoomFactor` (Get/Let), `UserAgent` (Get/Let), `CanGoBack` (Get), `CanGoForward` (Get), `CefMajorVersion` (Get), `Visible` (Get/Let), `hWnd` (Get), `Parent` (Get), `EnvironmentOptions` (field), `CreateInitialized` (field, `Boolean`, defaults `True`). Plus a `Hidden` `Align` (Get/Let) inherited boilerplate. Plus the inherited rect-dockable surface (`Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, …).
+- **Events:** `Create`, `Ready`, `Error`, `NavigationStarting`, `NavigationComplete`, `SourceChanged`, `DocumentTitleChanged`, `DOMContentLoaded`, `PrintToPdfCompleted`, `PrintToPdfFailed`, `JsAsyncResult`, `JsMessage`.
+- **Methods:** `Initialize`, `Navigate`, `NavigateToString`, `Reload`, `GoBack`, `GoForward`, `ExecuteScript`, `JsRun`, `JsRunAsync`, `PostWebMessage`, `SetVirtualHostNameToFolderMapping`, `ClearVirtualHostNameToFolderMapping`, `OpenDevToolsWindow`, `PrintToPdf`.
+- **Properties:** `DocumentURL` (Get/Let), `DocumentTitle` (Get), `ZoomFactor` (Get/Let), `UserAgent` (Get/Let), `CanGoBack` (Get), `CanGoForward` (Get), `CefMajorVersion` (Get), `Visible` (Get/Let), `hWnd` (Get), `Parent` (Get), `EnvironmentOptions` (field), `CreateInitialized` (field, `Boolean`, defaults `True`), a `Hidden` `Align` (Get/Let) inherited boilerplate, and the inherited rect-dockable surface above.
 
-`CefEnvironmentOptions` is four bare `Public` fields:
+`CefEnvironmentOptions` is bare `Public` fields:
 
 | Field                      | Type             |
 |----------------------------|------------------|
@@ -45,4 +45,4 @@ The `CefBrowser` public surface:
 
 `CefBrowser.NavigationComplete` has `IsSuccess` and `WebErrorStatus` parameters, but `OnNavigationComplete_UI` hard-codes `IsSuccess = True` and `WebErrorStatus = 0`, with `FIXME` comments. The event entry says so.
 
-**Multi-version source.** The same `.twin` sources compile against three CEF runtimes (v49 / v109 / v145) selected via the `CEF_VERSION` conditional-compilation argument on the project. At runtime, `CefBrowser.CefMajorVersion` returns the value picked at compile time. The user picks a runtime at deploy time by downloading the matching ZIP from `github.com/twinbasic/cef-runtimes` and extracting to `%LocalAppData%\twinBASIC_CEF_Runtime\`, or by overriding `CefBrowser.EnvironmentOptions.BrowserExecutableFolder` before / during the `Create` event. The runtime download + version-picking section lives on `CEF/index.md`.
+**Multi-version source.** The same `.twin` sources compile against the CEF runtimes v49, v109 and v145, selected via the `CEF_VERSION` conditional-compilation argument on the project. At runtime, `CefBrowser.CefMajorVersion` returns the value picked at compile time. The user picks a runtime at deploy time by downloading the matching ZIP from `github.com/twinbasic/cef-runtimes` and extracting to `%LocalAppData%\twinBASIC_CEF_Runtime\`, or by overriding `CefBrowser.EnvironmentOptions.BrowserExecutableFolder` before / during the `Create` event. The runtime download + version-picking section lives on `CEF/index.md`.

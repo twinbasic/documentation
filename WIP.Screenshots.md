@@ -5,6 +5,16 @@ them from a live IDE: every picture of the IDE the documentation holds, annotati
 and the program windows and web pages that sit beside them. The owner's decisions behind it are marked (owner).
 A run is reviewed, and its decisions overridden, with `node scripts/shot_review.mjs`: [WIP.ShotReview.md](WIP.ShotReview.md).
 
+## Rules
+
+- **A run that would write under `docs/` is a run of the review session** (owner; `scripts/lib/shot-front.mjs`, [WIP.ShotReview.md](WIP.ShotReview.md#one-way-to-take-pictures), rule 1), and so is one of `replay.mjs` and `chromeshot.mjs`. Typed in a terminal, such a run is handed to `shot_review.mjs` when that is open for the checkout and followed there; otherwise the terminal's process opens the session and runs it as the tool would, staged, its verdicts applied as they arrive. It refuses `--diffs`, `--bundles` and `--against-disk`, which only `--out` elsewhere or `--stage` take.
+- **The Windows user name must never be in a published picture**, and a path on the tool's own folder is virtual (owner): how each run checks and rewrites, under [The IDE the tool drives](#the-ide-the-tool-drives) and [Capture](#capture).
+- **Every picture is taken in two themes by one IDE, and both must say the same**; **the reference is the picture at git `HEAD` first, then the file** (owner). [Capture](#capture) and [The tool](#the-tool) say how.
+- **Settle by a condition, never a fixed sleep, and a picture that shows some state sets it itself** rather than relying on the shots before it.
+- **Every setup runs on a private desktop**, started only when a shot in it is selected; `web` is puppeteer's Chrome on one of its own, never headless and never on the user's desktop. `web`, `webpage` and the package-server setups need the network, and never publish.
+- No wrapper; outside every gate and CI, as `try-help-addin.bat` is. Run `build.bat` first. Options and exit codes: [The tool](#the-tool).
+- **The GitHub pictures of `Documentation/Building.md` are taken by the Chrome extension in `scripts/svgshot/` and by no session** (owner: only the owner signs in to GitHub; no session opens a pull request, posts anything on GitHub or uses the owner's account): [Pictures from a signed-in Chrome](#pictures-from-a-signed-in-chrome). **The folder `scripts/svgshot/` is the extension's root, and Chrome loads nothing from outside it and no Node module**: `capture.mjs`, `annotate.mjs`, `private-words.mjs`, `snapshot-svg.mjs`, `snapshot-trim.mjs`, `font-rules.mjs`, `colour-filter.mjs`, `gradient.mjs`, `util.mjs` and `chrome/` import nothing else, which `test/svgshot.test.mjs` checks by following the imports. **A capture or a bundle never goes under `docs/`**, and what is published is checked for the Windows user name, git's `user.name` and `user.email` and each `find` of `scripts/svgshot/private.json`, which git ignores: by `chromeshot.mjs` before it writes anything, and by `replay.mjs`.
+
 ## What there is to retake
 
 Every menu, dialog, panel and editor view of the IDE is HTML in the IDE's page, so all are
@@ -14,7 +24,7 @@ pages are taken beside them.
 
 ### Pictures still outside the tool
 
-Ten images under `docs/`, each for a stated reason:
+Each for a stated reason:
 
 - **The six GitHub walkthrough pictures** of `Documentation/Building.md` (compare-changes,
   create-pull-request, merge-pull-request, confirm-merge, choose-workflow, run-workflow): the
@@ -90,16 +100,12 @@ Measured:
     `ReadFileDataBase64("GetRecentsList")`), nothing read or written. A shot sets them before it
     opens the New / Open Project dialog (`setRecents`), and that dialog's remembered section, the
     setting `NEWFRONTPAGE`, is neither read nor saved (`PAGE_DEFAULTS`);
-  - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
-    tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
-    private APPDATA — see Machine state in the pictures. The IDE is started with
-    `--no-save-ide-settings` and `--no-update-recent-files` (`IDE_FLAGS`), so it writes none
-    of it;
-  - the licence line on About (`LICENCE: tB Licence: NOT READY` when the licence check has not
-    finished) — the same section;
-  - the Windows user name: the visible-text check (text boxes included) covers every picture,
-    run before the first capture and again when a capture is chosen, with the SVG under
-    `--svg`: the page can draw again in between, as Project Settings does, putting the real
+  - the IDE's settings and About's licence line (`NOT READY` until the licence check has
+    finished): [Machine state in the pictures](#machine-state-in-the-pictures-owner);
+  - the Windows user name: the page's visible text, text boxes included, is searched before
+    the first capture and again when a capture is chosen, with the SVG under `--svg`, and for a
+    program's window the texts of the window and its children; the run fails when it is there.
+    The page can draw again in between, as Project Settings does, putting the real
     build path back over the template a shot had set in the page only (a shot that sets a
     value types it, `input` and `change`, so the page keeps it). The `settings` setups open
     their project with the templates' own build path (`startSettings`), so that a row drawn
@@ -123,9 +129,9 @@ Measured:
   between versions a few pixels apart by 1-14 grey levels: dialog shadow edges, the status bar's
   scaled Ko-fi bitmap, panel dividers, rounded corners. `captureBeyondViewport` and
   `fromSurface: false` are stable but drop the scrollbars and the cut-outs' alpha, so neither is
-  usable. Measured on BETA 1010 (launcher-re, `plan/PLAN-webview-ide.md` section 24: 194 shots,
-  about 35,000 captures, alone and with six IDEs at once), a picture of a still state is final at
-  its first capture once the page is quiet and two frames are drawn. So `capture` has no rest: it
+  usable. Measured on BETA 1010 (194 shots, about 35,000 captures, alone and with six IDEs at
+  once), a picture of a still state is final at its first capture once the page is quiet and two
+  frames are drawn. So `capture` has no rest: it
   captures back to back until one equals the file on disk or two in a row agree, and a picture
   that has not changed costs one capture. **A picture two captures agree on that is not the file
   is not kept at once** (owner): `capture` captures on at `CAPTURE_GAPS` (150 ms rising to 1.5 s)
@@ -163,8 +169,9 @@ Measured:
   differ says so in `themeWords`, naming them: First_Run_Options and Menu_Tools_IDEOptions show the
   theme's own name (`SHOWS_ITS_THEME`). A window taken once has no pair.
 - **The tool's folder is virtual in a picture** (owner). Nothing writes at a drive's root, so
-  `PACKAGE_ROOT` is `TOOL_ROOT`, `.claude\tbshots` in the checkout, and every picture shows it as
-  `SHOWN_ROOT`, `C:\tbshots`, a folder that does not exist (`scripts/lib/shot-root.mjs`).
+  `PACKAGE_ROOT` is `TOOL_ROOT`, `.claude\tbshots` in the checkout (gitignored, removed at the end
+  of a run), and every picture shows it as `SHOWN_ROOT`, `C:\tbshots`, which is never created
+  (`scripts/lib/shot-root.mjs`).
   `Lane`'s `onAttach` installs the rewrite before a project loads, and `capture` again, for a
   page that has reloaded: the DOM's text setters and the page's `TEXTtoHTML`, whose `&#92;` no pattern
   would find, rewrite what they are given at once, because the console measures a row in the
@@ -230,9 +237,10 @@ Measured:
 
 ## Annotations
 
-An SVG layer the tool adds to the IDE page above everything (`z-index` max,
-`pointer-events: none`), drawn in CSS pixels, so it scales with the 2x capture and survives a
-cut-out as a kept element.
+An SVG layer `scripts/svgshot/annotate.mjs` adds to the IDE page above everything (`z-index`
+max, `pointer-events: none`) before the capture and removes after it, the clip growing to hold
+it. It is drawn in CSS pixels, so it scales with the 2x capture and survives a cut-out as a kept
+element.
 
 **Anchors**, resolved in the page at shot time:
 - an element: a CSS selector, optionally narrowed by its text (`{css: ".buttonGroupItem", text: "Samples"}`);
@@ -276,8 +284,12 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   `--dry-run` lists; the IDE options (`--ide`, `--jobs`, `--svg`, `--bundles`, `--diffs`,
   `--against-disk`) are refused with it. One noise rule: the capture's `nearly`, `--cleanup`
   and the review tool all call `withinNoise` (`scripts/lib/shot-change.mjs`).
-- **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's nine,
-  `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
+- **Setups**: one IDE each --- `no-project` (`Lane.openNoProject` with `includeProjects`: the
+  menus, cut out with alpha, the dialogs that need no project, and the empty panels, each floated
+  on its own, after the dialogs), `help` (builds the add-in as `try-help-addin.bat` does, opens
+  `test/addin/helpdemo`, `TB_DOCS_HELP_REAL_TITLEBAR=0`: the `docs/IDE/AddIns/Images/Help_<Name>.png`
+  pictures), `project` (the demo without the add-in: About, which needs the compiler's licence
+  answer, and IDE Options, whose font lists need a project), `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
   opened; once a search settles, its results list is told through its own `notifyChangedItem`
   that every row changed, so that it measures them again (owner): it keeps a row's height from
@@ -310,7 +322,22 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 - **Shots**: a table of `{out, setup, take, annotate?}`, `out` the picture's path under
   `docs/`; `--only` matches it or its `.light.png`, and selects the shot in both themes.
   `take(ctx)` brings the IDE to the state and returns the clip (or the parts of a composite);
-  `annotate` is a list of primitives.
+  `annotate` is a list of primitives. A shot of a program's window says `window: true`, and one
+  whose take and table disagree fails. The tool finds each name it presses F1 on by searching
+  the demo's source, not by line. **`--list`** starts no IDE: it prints the table as one line of
+  JSON (`[{out, setup, once, window}]`), which the review tool's page of every picture reads.
+- **The manifest, `test/shots/manifest.json`** (`scripts/lib/shot-manifest.mjs`;
+  [WIP.ShotReview.md](WIP.ShotReview.md#remembered-overrides)), records the build of each picture
+  a run writes, and holds each picture's allowances (its noise rule's limits and rectangles left
+  out, its SVG's bar) and a review's decisions, each tied to the bytes it was made on;
+  `decidePicture` and `decideSvg` (`scripts/lib/shot-policy.mjs`) judge with them, in a run, in
+  `--cleanup` and in `replay.mjs`, so a run from a terminal and one from the review tool come out
+  the same. It is read and written only for the default `--out`.
+- **`--stage <dir>`** (a new or empty folder git ignores) writes nothing under `docs/`, to the
+  bundle cache or to the manifest, and puts each capture, its SVG, bundle, difference pictures,
+  strength maps and verdict there (`scripts/lib/shot-stage.mjs`), for the review tool to apply;
+  **`--events`** prints a `@@shot-event` line per event, and a line `stop` on stdin then ends the
+  run as at its normal end. `replay.mjs` takes both ([WIP.ShotReview.md](WIP.ShotReview.md#runs)).
 - **Two themes**: each job takes its shots in dark, then `backToPrepared` (no menu
   or dialog, the tabs opened since closed with their changes discarded, the Tabs List's
   Recently Closed as it was, and the keys the takes added to `ctx` dropped), the IDE switched to
@@ -1038,8 +1065,6 @@ Taken on BETA 1010, in both themes where the theme shows.
   publishes weekly, so its line would change every run, and it is 23 MB).
 - **`a1331a0e`** is the Enabled Libraries tab with the embedded package's tick ringed: BETA 1005
   deletes the copy at once and asks nothing, and `Updating a package.md` says so.
-- **`packPublishPackage1`** is not retaken: `packagePublisherPublish` opens the sign-in form when no
-  publisher is signed in, before the confirmation box.
 - **`e749e10f`**: the gear is the Project Explorer's;
   the dialog is shown whole with the gear beside it (2324 px wide; a smaller page does not make
   the dialog narrower, it covers the gear). The full dialog fills Available COM References
@@ -1193,7 +1218,7 @@ the PNG was just captured from, and the build shows it in place of the PNG
 **Owner's decisions:**
 
 - Text is real text, in per-picture subsets of the fonts the IDE drew it with, cut by fontTools
-  (`scripts/subset_font.py`), hinting kept. Glyph outlines render poorly and are not used;
+  (`scripts/subset_font.py`, which needs Python with fontTools), hinting kept. Glyph outlines render poorly and are not used;
   nor is harfbuzzjs ("don't mess with harfbuzz").
 - The PNG and the SVG are both committed. One SVG per theme, not a single SVG switching on CSS
   variables.
@@ -1279,14 +1304,9 @@ the PNG was just captured from, and the build shows it in place of the PNG
   it has no answer for is a *miss*, counted by `renderBundle`, and replay lists a picture whose
   misses are new since its capture, whose PNG hash changed, or whose bundle lacks a style now
   read, with the `--only` command that retakes them. **A change to what is read from the page
-  that no miss shows raises `BUNDLE_VERSION`**, in the same change. Version 3 keeps every web
-  font rule whose range holds a character a run draws, and a text field's selection; it reads
-  no older bundle, and replay lists every older one as needing a retake. Reading one would
-  replay a split font with the one file a version 1 bundle kept and a picture with an inline
-  `<svg>` without it, a family the page declares twice (the IDE's `codicon`, its own file and
-  then Monaco's) from the last rule alone, which is all a version 2 bundle kept, and a field
-  with a selection as one without; and nothing in such a bundle says which pictures have any
-  of these. Answering misses offline in headless
+  that no miss shows raises `BUNDLE_VERSION`**, in the same change: a bundle of an older version
+  is not read, and replay lists it as needing a retake, since nothing in it says which pictures
+  the change affects. Answering misses offline in headless
   Chromium, and drawing bundles in `tbdocs`, are later steps, not done: the second needs the
   bundles committed, so cleaned of the user name, and complete, since CI
   has no Windows fonts to measure with.
@@ -1643,8 +1663,11 @@ The six GitHub pictures need the owner's account, so no agent can take them, and
 taken by hand are PNGs that cannot be drawn again. The owner's decision (2026-11-05): a Chrome
 extension that does what `shoot_docs.mjs --svg` does in the IDE's WebView, so that a capture can
 be replayed later. How to use it is in
-[Tools-IDE](docs/Documentation/Tools-IDE.md#svgshot-extension); only the owner signs in, and no
-session opens a pull request, posts anything on GitHub or uses the owner's account.
+[Tools-IDE](docs/Documentation/Tools-IDE.md#svgshot-extension).
+`node scripts/svgshot/chromeshot.mjs <capture | folder>` turns what the extension saves into
+`X.png`, `X.light.png`, their SVGs and their bundles, a capture of the whole window trimmed first
+to the area `chrome/shots.mjs` names (`trim.mjs`); `chrome_try.mjs` tries the extension on a
+public page in a Chrome of its own.
 
 **The folder `scripts/svgshot/` is the extension** (`manifest.json` there; its own files in
 `chrome/`). An unpacked extension loads nothing from outside its root, and a build step that
@@ -1663,14 +1686,9 @@ does not close it. It is also a page: a service worker has no `URL.createObjectU
 `data:` URL over 2 MB does not reach `chrome.downloads`. Permissions are `debugger`, `downloads`
 and `sidePanel`, with no host permission and no `tabs`; a capture works on those alone.
 
-**What the capture needs of the browser, checked on 2026-11-06** in Chrome for Testing 148 through
-`chrome.debugger`, logged out, on `github.com/twinbasic/documentation`: every one of
-`DOMSnapshot.captureSnapshot`, `DOM.*`, `CSS.getPlatformFontsForNode`, `Page.getResourceTree`,
-`Page.getResourceContent`, `Page.getLayoutMetrics`, `Page.createIsolatedWorld`,
-`Page.captureScreenshot`, `Emulation.setDeviceMetricsOverride`, `Emulation.setEmulatedMedia`,
-`Runtime.evaluate` and `Runtime.callFunctionOn` answers, at display scales 1, 1.25 and 1.5. All 29
-of GitHub's style sheets are readable (`crossorigin`), and its page has no web font file to fetch
-(`document.fonts` holds one face, with no `url()`).
+**Every CDP call the capture needs answers through `chrome.debugger`** (Chrome for Testing 148,
+2026-11-06, at display scales 1, 1.25 and 1.5). GitHub's style sheets are all readable
+(`crossorigin`), and its page has no web font file to fetch.
 
 **The display's scale is the one thing that differs from the IDE.** The IDE gets
 `--force-device-scale-factor=1`; the owner's Chrome cannot, and the dev box is at 144 DPI. At

@@ -1,9 +1,7 @@
 # The IDE section — finishing it
 
 Every page of the IDE section (`docs/IDE/`, `/tB/IDE`) is fit for the book, and
-`docs/_book.yml` holds no IDE entry under `left_out:`: keep it so. This file covers the
-structure, the conventions, where each fact comes from, and how a chapter is written. Owner
-decisions:
+`docs/_book.yml` holds no IDE entry under `left_out:`: keep it so. Owner decisions:
 
 - task chapters plus a reference part;
 - flat permalinks, with redirects for a page that moves;
@@ -34,7 +32,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 1 | A tour of the IDE (landing page) | `/tB/IDE` | `index.md` |
 | 2 | Starting a project | `/tB/IDE/Starting/` + children | New Project, Splash Screen, FAQ's first-launch and VBP-import parts |
 | 3 | Projects and files | `/tB/IDE/Projects` | Project Explorer (file and object views, Add, context menu; no resource editors: images preview, the rest open as text), references and packages (links to Features/Packages), Export Project (from Menu/File) |
-| 3a | Project Settings (reference) | `/tB/IDE/Project-Settings` | `Project Settings.md`, kept whole; **its anchors stay**, as 19 links use them |
+| 3a | Project Settings (reference) | `/tB/IDE/Project-Settings` | `Project Settings.md`, kept whole; **its anchors stay**, as other pages link to them |
 | 4 | Writing code | `/tB/IDE/Code` + children | Editor, Find/Replace, Outline, Open Editors, History, Diagnostics, `Features/Compiler-IDE/CodeLens` |
 | 5 | Designing forms and reports | `/tB/IDE/Forms`, `/tB/IDE/Reports` | tbForm, Toolbox, Properties, the Format menu's operations, tbReport |
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
@@ -109,7 +107,7 @@ for contributors.
   beyond its label is left to the picture.
 - **Headings** in sentence case, with no icon and no shortcut inside them.
 - **The section names no build**, except in a defect callout's label, `> [!NOTE] BETA 1010`
-  (owner's standing rule; WIP.md rule 6). Lines such
+  (owner's standing rule; rule 6 in WIP.Authoring.md). Lines such
   as "Components list coming soon" go, unless the IDE itself shows that text and the page says
   so.
 - **Defects the twinBASIC developers already know of** (owner) are not queued, but a page that
@@ -118,7 +116,7 @@ for contributors.
     the right-click menu still shows beside it, opens the Object Browser);
   - accepting a function from the completion list by typing `(` doubles the parenthesis
     (`Area(()`).
-- Callouts follow WIP.md rule 6. A twinBASIC defect found while writing goes into
+- Callouts follow rule 6 in WIP.Authoring.md. A twinBASIC defect found while writing goes into
   `BUGS-TO-REPORT.md` with a reproducer, never into a page alone.
 
 ## Where the facts come from
@@ -128,11 +126,11 @@ for contributors.
   name, since offsets move between builds:
   - `ideCommands`: every command id, such as `tbEditor_ClipboardPasteAsComment`, and its default
     keys;
-  - `ideOptionsSchema`: the IDE Options, one flat list of about 30 options;
+  - `ideOptionsSchema`: the IDE Options, as one flat list;
   - `rootMenu…offsetHeight` blocks: the menus;
   - `runningProcessesContainer`: the running programs, shown as **PROCESS** boxes in the
     status bar (not in the Run menu);
-  - `createDropDowns`: the editor's three combo boxes;
+  - `createDropDowns`: the editor's combo boxes;
   - `showDesignerContextMenu`: the form designer's context menu;
   - `tbFormDesigner_MenuEditor*`: the menu editor;
   - `tbProblems_*`: Diagnostics;

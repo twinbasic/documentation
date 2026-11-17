@@ -7,22 +7,15 @@ documentation does not yet say, and drafts additions for human review. Plans in
 APIs, and the repository's npm packages through `lib/markdown.mjs`, which
 `extract/merger.mjs` reads `staging.md` with.
 
-Wisdom runs occasionally, so its invocation detail lives here and not in
-[WIP.md](WIP.md). WIP.md keeps only the rule that Wisdom is an exception to.
-Open this file when running the tool.
-
 ## Why its public page is allowed to name Claude
 
-WIP.md's rule is that **nothing under `docs/Documentation/` should require
-Claude, an agent or a skill to follow** --- the audience is a contributor with
-an editor and a terminal.
-
-**[Wisdom](docs/Documentation/Wisdom.md) is a deliberate exception and stays
-public.** The tool has no manual mode to document --- Phase 3 *is* a set of
-Claude agents, and a page describing it without them would describe nothing. A
-reviewer applying the rule will read its "tell Claude: …" instructions as a
-scope violation and propose moving the *public page* to a maintainer file.
-That is declined: leave `docs/Documentation/Wisdom.md` where it is.
+**[Wisdom](docs/Documentation/Wisdom.md) is the deliberate exception to WIP.md's
+rule that nothing under `docs/Documentation/` should require Claude, an agent or
+a skill to follow, and stays public.** The tool has no manual mode to document
+--- Phase 3 *is* a set of Claude agents, and a page describing it without them
+would describe nothing. A reviewer applying the rule reads its "tell Claude: …"
+instructions as a scope violation and proposes moving the page to a maintainer
+file. That is declined: leave `docs/Documentation/Wisdom.md` where it is.
 
 ## What each phase takes
 
@@ -33,7 +26,7 @@ That is declined: leave `docs/Documentation/Wisdom.md` where it is.
 
 ## Phase 3 --- Extract invocation
 
-Phase 3 runs Claude agents over the processed thread `.md` files and drafts documentation additions. The default flow is **incremental**: only threads whose Discord-side content changed since the last successful merge are re-extracted. With the incremental `export` and `process` phases, the routine update is three commands with no flags:
+Phase 3 runs Claude agents over the processed thread `.md` files and drafts documentation additions. The default flow is **incremental**: only threads whose Discord-side content changed since the last successful merge are re-extracted. The routine update is three commands with no flags:
 
 ```
 node wisdom/wisdom.mjs export

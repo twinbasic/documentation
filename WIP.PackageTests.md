@@ -1,6 +1,6 @@
 # Package test cases --- why they are built this way
 
-What to do is in [WIP.md](WIP.md) (*Where things live*, the contributed packages) and in
+What to do is in [WIP.Contributed.md](WIP.Contributed.md#rules) and in
 [test/package-tests/README.md](test/package-tests/README.md). This file says why.
 
 ## What the test cases are for

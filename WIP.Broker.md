@@ -11,9 +11,9 @@ then the reasons.
 
 **Desktops leak in DWM.** On Windows 10 22H2 (19045) every `CreateDesktop` leaves composition
 objects in `dwm.exe` that are never freed after the desktop is gone (about two handles per
-desktop), and DWM walks that state on every window change. Two days of tests that made one
-desktop per launch left DWM at 23,000 handles and 1 GB (a fresh DWM: about 2,000), and dragging
-a window took seconds; restarting DWM cured it at once. Measured on BETA 1007, 2026-10-16:
+desktop), and DWM walks that state on every window change. Two days of tests with one desktop
+per launch left DWM at 23,000 handles and 1 GB (a fresh DWM: about 2,000), and dragging a window
+took seconds; restarting DWM cured it. Measured on BETA 1007, 2026-10-16:
 
 | | DWM handles |
 |---|---|
@@ -24,12 +24,12 @@ a window took seconds; restarting DWM cured it at once. Measured on BETA 1007, 2
 So a desktop is made once and held for as long as the broker runs, and handed from one launch to
 the next.
 
-**Fixed ports collide.** A fixed port per tool, claimed by lock files among the tools, does not
-work: nothing outside those tools (launcher-re included) knows the locks, and on the dev box the
+**Fixed ports collide.** Lock files among the tools cannot protect a fixed port per tool:
+nothing outside those tools (launcher-re included) knows the locks, and on the dev box the
 TCP dynamic port range is 1024--65535 (the Windows default is 49152--65535; `netsh int ipv4 show
 dynamicport tcp`), so every port Windows picks for anyone --- each compiler's six listening
 sockets, the page server's, every loopback WebSocket the IDE page opens, any program's outgoing
-connection --- can land on a tool's fixed port. No lock among the tools can prevent that.
+connection --- can land on a tool's fixed port.
 
 So ports are mostly not chosen: **WebView2 given `--remote-debugging-port=0`**
 (after the IDE's own `=<port>` argument; the last one wins) binds a port Windows picks and writes
@@ -178,7 +178,7 @@ dropped. A lease with `port` that finds no port fails `no-port` at once rather t
    for a launch through `tb-launch.ps1` in a job (the launcher lives exactly as long as the job,
    and so the IDE); `hold` the program's own pid for one with no job (a `--keep` IDE), so that the
    lease outlives the tool that started it and ends when the IDE is closed.
-5. **When done**, `release` the lease, or simply close the connection or end the process. The
+5. **When done**, `release` the lease, or close the connection or end the process. The
    desktop is handed out again once the job has ended and its windows have gone.
 6. **If the connection is lost** (the broker was stopped or failed), the leases it held are void.
    What runs on their desktops keeps them alive, and a new broker finds them dirty and waits for
