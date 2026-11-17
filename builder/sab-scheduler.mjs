@@ -4,9 +4,11 @@
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-export const MAX_TASKS = 512;
+// render:i and flush:i take 2 x SLICES_PER_WORKER x lanes of the tasks, and
+// the fan-outs after them (fan-out.mjs) up to a few per lane more.
+export const MAX_TASKS = 1024;
 export const MAX_LANES = 64;
-export const MAX_EDGES = 2048;
+export const MAX_EDGES = 4096;
 export const SLICES_PER_WORKER = 10;
 
 // Status values (Int32)
@@ -34,10 +36,12 @@ export const HANDLERS = {
   dot: 5,
   buildInfo: 6,
   render: 7,
-  helpArchive: 8,
   writePdf: 9,
   checkBook: 10,
-  searchIndex: 11,
+  // The pieces of fan-outs (fan-out.mjs).
+  indexAdd: 12,
+  indexVectors: 13,
+  archiveDeflate: 14,
 };
 
 // ── SAB layout ───────────────────────────────────────────────────────────────
@@ -271,6 +275,7 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
       perWorkerDeps,
       expectedDeps,
       idlePriority: def.idle_priority ?? 0,
+      priority: def.priority ?? 0,
     });
   }
 
@@ -533,6 +538,9 @@ export function verifySchedulerSAB(taskDefs, views, idMapping) {
       const wantPri = def.idle_priority ?? 0;
       if (Atomics.load(views.idlePriority, idx) !== wantPri)
         errors.push(`idlePriority "${name}": got ${Atomics.load(views.idlePriority, idx)}, want ${wantPri}`);
+      const wantClaim = def.priority ?? 0;
+      if (Atomics.load(views.priority, idx) !== wantClaim)
+        errors.push(`priority "${name}": got ${Atomics.load(views.priority, idx)}, want ${wantClaim}`);
     }
   }
 

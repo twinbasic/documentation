@@ -25,9 +25,21 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
+import { crc32, inflateRawSync } from "node:zlib";
 import { addinProjectOf, formatAddinProject, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
 import { downloadsKept, helpArchiveSkips } from "../builder/help-archive-step.mjs";
-import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
+import {
+  checkHelpArchive,
+  collectEntries,
+  crc32Combine,
+  deflateUnit,
+  groupUnits,
+  listFiles,
+  PIECE_BYTES,
+  planUnits,
+  writeArchive,
+  writeHelpArchive,
+} from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { importProject, packFiles, readProject } from "../scripts/impexp.mjs";
 
@@ -293,6 +305,103 @@ describe("the help archive checked against the offline tree", () => {
       "Videos/tB.html: in the tree, not in the archive",
       "assets/images/gantt.svg: in the tree, not in the archive",
     ]);
+  });
+
+  // An archive's entries, read through its central directory: each name with
+  // its method, its CRC-32 and its bytes, a deflated entry inflated in one pass.
+  function entriesOf(zipFile) {
+    const buf = readFileSync(zipFile);
+    const endAt = buf.length - 22;
+    const out = new Map();
+    let at = buf.readUInt32LE(endAt + 16);
+    for (let i = 0; i < buf.readUInt16LE(endAt + 10); i++) {
+      const method = buf.readUInt16LE(at + 10);
+      const size = buf.readUInt32LE(at + 20);
+      const nameLength = buf.readUInt16LE(at + 28);
+      const local = buf.readUInt32LE(at + 42);
+      const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+      const body = buf.subarray(start, start + size);
+      out.set(buf.toString("utf8", at + 46, at + 46 + nameLength), {
+        method,
+        crc: buf.readUInt32LE(at + 16),
+        data: method === 8 ? inflateRawSync(body) : body,
+      });
+      at += 46 + nameLength;
+    }
+    return out;
+  }
+
+  // Text that deflates, and differs all along: a counter in a sentence.
+  const longText = (bytes) => {
+    let s = "";
+    for (let i = 0; s.length < bytes; i++) s += `Line ${i} of a page that the help archive holds, ${i * 7919}.\n`;
+    return s.slice(0, bytes);
+  };
+
+  test("deflates a large file in pieces that are one stream, with the file's CRC-32", async () => {
+    // Three pieces and a part of one; a file of exactly two; one at the limit,
+    // which is deflated whole; a stored type over the limit, which is not cut.
+    const files = {
+      "big.js": longText(3 * PIECE_BYTES + 12345),
+      "two.html": longText(2 * PIECE_BYTES),
+      "whole.html": longText(PIECE_BYTES),
+      "small.css": longText(300),
+      "picture.png": Buffer.from(longText(PIECE_BYTES + 99)),
+    };
+    const { src, zip } = await written("h-pieces", files);
+    const entries = entriesOf(zip);
+    for (const [name, text] of Object.entries(files)) {
+      const e = entries.get(name);
+      const source = Buffer.from(text);
+      assert.ok(e.data.equals(source), `${name} does not inflate to the file`);
+      assert.equal(e.crc, crc32(source), `${name}'s CRC-32`);
+      assert.equal(e.method, name.endsWith(".png") ? 0 : 8, `${name}'s method`);
+    }
+    assert.deepEqual(
+      planUnits(listFiles(src)).map((u) => (u.piece ? `${u.name} ${u.piece[0] + 1}/${u.piece[1]}` : u.name)),
+      [
+        "big.js 1/4",
+        "big.js 2/4",
+        "big.js 3/4",
+        "big.js 4/4",
+        "picture.png",
+        "small.css",
+        "two.html 1/2",
+        "two.html 2/2",
+        "whole.html",
+      ],
+    );
+    assert.deepEqual(await checkHelpArchive({ src, zip }), []);
+  });
+
+  test("gives the same archive however the units are grouped and ordered", async () => {
+    const { src, zip } = await written("h-groups", {
+      "a.html": longText(2 * PIECE_BYTES + 5),
+      "b.html": longText(700),
+      "c/d.html": longText(PIECE_BYTES + 1),
+    });
+    const files = listFiles(src);
+    const units = planUnits(files);
+    for (const groups of [1, 2, 5]) {
+      const dealt = groupUnits(units, groups);
+      assert.equal(dealt.flat().length, units.length);
+      const results = dealt.reverse().flatMap((group) => group.map((u) => deflateUnit(src, u)));
+      const again = path.join(tmp, `h-groups-${groups}.zip`);
+      await writeArchive({ out: again, files, entries: collectEntries(files, results) });
+      assert.ok(readFileSync(again).equals(readFileSync(zip)), `${groups} group(s) give other bytes`);
+    }
+    // A piece that never arrived is named, not left out.
+    const short = units.filter((u) => !(u.name === "a.html" && u.piece[0] === 1)).map((u) => deflateUnit(src, u));
+    assert.throws(() => collectEntries(files, short), /a\.html: piece 2 of 3 was never deflated/);
+  });
+
+  test("combines the CRC-32s of two runs of bytes into that of both", () => {
+    const data = Buffer.from(longText(50000));
+    for (const cut of [0, 1, 255, 256, 32768, 49999, 50000]) {
+      const a = data.subarray(0, cut);
+      const b = data.subarray(cut);
+      assert.equal(crc32Combine(crc32(a), crc32(b), b.length), crc32(data), `cut at ${cut}`);
+    }
   });
 
   test("names a file the Downloads page offers that the archive would hold", async () => {

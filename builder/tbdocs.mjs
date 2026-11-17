@@ -114,7 +114,24 @@ import {
   packAllPackageTests,
   writePackageTests,
 } from "./package-tests.mjs";
-import { recheckHelpArchive } from "./help-archive-step.mjs";
+import {
+  finishHelpArchive,
+  helpArchiveOut,
+  planHelpArchive,
+  planLateFiles,
+  recheckHelpArchive,
+} from "./help-archive-step.mjs";
+import { fanOut } from "./fan-out.mjs";
+import {
+  assembleIndexJson,
+  indexSliceCount,
+  invertedIndexJson,
+  loadSearchLunr,
+  mergeSlices,
+  packTotals,
+  planIndexSlices,
+  writeSearchIndex,
+} from "./search-index.mjs";
 import { baselineWrites } from "./baseline.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
@@ -198,6 +215,21 @@ function registerBarrier(scheduler, views, join, joinIdx, prefix, n) {
   for (let i = 0; i < n; i++) expected.push(`${prefix}:${i}`);
   scheduler.tasks.set(join, { ...def, expected });
   setDepCount(views, joinIdx, n);
+}
+
+// The help archive's groups of units (help-archive-step.mjs) as lane tasks
+// `${prefix}:i`, which helpArchive joins.
+function fanOutArchive(scheduler, from, prefix, root, groups, priority = 1) {
+  fanOut(scheduler, {
+    from,
+    prefix,
+    handler: "archiveDeflate",
+    payloads: groups.map((units) => ({ root, units })),
+    joins: ["helpArchive"],
+    ganttSection: "Write",
+    priority,
+    describe: (p) => p.units.map((u) => (u.piece ? `${u.name}, piece ${u.piece[0] + 1} of ${u.piece[1]}` : u.name)),
+  });
 }
 
 // Does this run skip the offline or the PDF pass? --no-offline and --no-pdf
@@ -1011,20 +1043,114 @@ const TASKS = {
     submit() {},
   },
 
-  // Write search-index.json, the search entries searchData wrote to
-  // search-data.json and their lunr index in one file, which the page loads
-  // instead of building the index -- see builder/search-index.mjs and
-  // WIP.Search.md, "The pre-built index" -- and the offline tree's
-  // search-index.js, which wraps it as a script. It
-  // runs on a lane (cpu-worker.mjs), reading search-data.json from disk: the
-  // main thread runs one task at a time, and as one of them the index held
-  // back the book and the offline tree. The index is built on threads of
-  // its own. The offline file is written here rather than by writeOffline so
-  // that the rest of the offline tree need not wait for the index;
-  // helpArchive, which zips that tree, waits for both.
-  searchIndex: {
+  // The search index: the entries searchData wrote to search-data.json and
+  // their lunr index, in search-index.json, which the page loads instead of
+  // building the index (builder/search-index.mjs; WIP.Search.md, "The
+  // pre-built index"), and the offline tree's search-index.js, which wraps it
+  // as a script. Six tasks, so that the work runs on the lanes:
+  //
+  //   indexSlices      main  cuts the entries into one slice per lane
+  //   indexAdd:i       lane  adds slice i to a builder that stays on the lane
+  //   indexMerge       main  merges the slices' postings; broadcasts the totals
+  //   indexTerms       main  writes the inverted index's JSON, meanwhile
+  //   indexVectors:i   lane  slice i's field vectors, on indexAdd:i's lane
+  //   searchIndex      main  joins the JSON and writes both files
+  //
+  // The offline file is written here rather than by writeOffline so that the
+  // rest of the offline tree need not wait for the index; archiveLate
+  // deflates it for the help archive.
+  indexSlices: {
     expected: ["searchData"],
-    handler: "searchIndex",
+    runOnMain: true,
+    execute({ searchData }, ctx) {
+      if (ctx.opts.dryRun) return { entries: 0, slices: 0, docs: {}, payloads: [] };
+      // The text the build wrote, so that what is indexed is what the file holds.
+      const docs = JSON.parse(searchData.json);
+      const entries = Object.keys(docs).length;
+      const payloads = planIndexSlices(loadSearchLunr(), docs, indexSliceCount(entries, ctx.workerCount));
+      return { entries, slices: payloads.length, docs, payloads };
+    },
+    submit(out, _state, scheduler) {
+      const { payloads } = out;
+      delete out.payloads; // in the lanes' payload now; the results map need not keep it
+      fanOut(scheduler, {
+        from: "indexSlices",
+        prefix: "indexAdd",
+        handler: "indexAdd",
+        payloads,
+        joins: ["indexMerge"],
+        ganttSection: "Index",
+        priority: 2,
+        describe: (p) => [`slice ${p.slice}: ${Object.keys(p.docs).length} entries`],
+      });
+      fanOut(scheduler, {
+        from: "indexSlices",
+        prefix: "indexVectors",
+        handler: "indexVectors",
+        payloads: payloads.map((p) => ({ slice: p.slice })),
+        after: ["indexMerge"],
+        pinTo: "indexAdd",
+        joins: ["searchIndex"],
+        ganttSection: "Index",
+        priority: 2,
+        describe: (p) => [`slice ${p.slice}`],
+      });
+    },
+  },
+
+  // Merges what each indexAdd:i added (search-index.mjs, mergeSlices) and
+  // broadcasts the totals the vectors need, before the task is marked done,
+  // so they are queued on every lane before one can claim an indexVectors:i.
+  // indexAdd:i are added to `expected` by indexSlices.submit.
+  indexMerge: {
+    expected: ["indexSlices"],
+    runOnMain: true,
+    execute(inputs) {
+      const added = [];
+      for (let s = 0; s < inputs.indexSlices.slices; s++) {
+        const a = inputs[`indexAdd:${s}`];
+        // Asserted: a slice missing here would quietly drop its entries' words.
+        if (!a) throw new Error(`search index: slice ${s} never reached the merge`);
+        added.push(a);
+      }
+      const { merged, totals } = mergeSlices(added);
+      return { merged, totals: packTotals(totals) };
+    },
+    submit(out, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("indexTotals", out.totals);
+    },
+  },
+
+  // The inverted index's JSON (search-index.mjs, invertedIndexJson), on the
+  // main thread while the lanes make the vectors.
+  indexTerms: {
+    expected: ["indexMerge"],
+    runOnMain: true,
+    execute({ indexMerge }) {
+      return { json: invertedIndexJson(indexMerge.merged) };
+    },
+    submit() {},
+  },
+
+  // Joins the index's JSON and writes search-index.json and the offline
+  // tree's search-index.js. indexVectors:i are added to `expected` by
+  // indexSlices.submit.
+  searchIndex: {
+    expected: ["indexSlices", "indexMerge", "indexTerms"],
+    runOnMain: true,
+    async execute(inputs, ctx, state) {
+      const { indexSlices: plan, indexTerms } = inputs;
+      if (ctx.opts.dryRun) return { entries: 0, slices: 0, bytes: 0 };
+      const vectors = [];
+      for (let s = 0; s < plan.slices; s++) {
+        const v = inputs[`indexVectors:${s}`];
+        if (typeof v !== "string") throw new Error(`search index: slice ${s}'s vectors never arrived`);
+        vectors.push(v);
+      }
+      const json = assembleIndexJson(loadSearchLunr(), vectors, indexTerms.json);
+      const written = await writeSearchIndex(ctx.destRoot, json, plan.docs, { offline: !skipsOffline(ctx, state) });
+      return { ...written, slices: plan.slices };
+    },
     submit() {},
   },
 
@@ -1072,26 +1198,64 @@ const TASKS = {
     submit() {},
   },
 
-  // Write the IDE help add-in's archive of the offline tree -- see
-  // builder/help-archive-step.mjs. The offline tree must be complete, so it
-  // waits for every task that writes into it: flushJoin (the pages, written by
-  // the render lanes' flushes), scss (the offline stylesheet), searchIndex
-  // (search-index.js) and writeOffline (the rest: statics, theme assets,
-  // redirect stubs, nav.js).
+  // The IDE help add-in's archive of the offline tree -- see
+  // builder/help-archive-step.mjs, whose header lays out the four tasks. The
+  // offline tree must be complete, so the archive waits for every task that
+  // writes into it: archivePlan for flushJoin (the pages, written by the render
+  // lanes' flushes), scss (the offline stylesheet) and writeOffline (the rest:
+  // statics, theme assets, redirect stubs, nav.js), and archiveLate for
+  // searchIndex (search-index.js, LATE_FILES), so that the rest is deflated
+  // while the index is built.
   // Nothing else writes there before the Gantt injection, which runBuild does
   // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
-  // is injected after this task; the archive leaves out both files it writes
+  // is injected after these tasks; the archive leaves out both files it writes
   // (HELP_ARCHIVE_SKIP), and would otherwise hold BuildInfo.html without it.
-  // It runs on a worker (cpu-worker.mjs), so the main thread writes the book
-  // meanwhile; it reads skipOffline from dispatch's broadcast.
-  helpArchive: {
-    expected: ["flushJoin", "scss", "searchIndex", "writeOffline"],
-    handler: "helpArchive",
-    // The zip crosses the thread boundary as a plain Uint8Array; make it a
-    // Buffer again, without copying, for addinProject.
-    submit(out) {
-      if (out.zip) out.zip = Buffer.from(out.zip.buffer, out.zip.byteOffset, out.zip.byteLength);
+  archivePlan: {
+    expected: ["flushJoin", "scss", "writeOffline"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const offlineRoot = skipsOffline(ctx, state) ? null : `${ctx.destRoot}-offline`;
+      const out = helpArchiveOut({
+        src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
+        offlineRoot,
+        serve: !!ctx.opts.serve,
+        dryRun: !!ctx.opts.dryRun,
+        disabled: !!ctx.opts.skipHelpArchive,
+      });
+      return planHelpArchive({ out, offlineRoot, groups: ctx.workerCount });
     },
+    submit(plan, _state, scheduler) {
+      fanOutArchive(scheduler, "archivePlan", "archiveDeflate", plan.root, plan.groups);
+    },
+  },
+
+  // search-index.js, deflated for the archive once searchIndex has written it.
+  archiveLate: {
+    expected: ["archivePlan", "searchIndex"],
+    runOnMain: true,
+    execute({ archivePlan: plan }, ctx) {
+      return planLateFiles({ plan, groups: ctx.workerCount });
+    },
+    // Before archivePlan's groups: the index's file is the last the archive waits for.
+    submit(late, _state, scheduler) {
+      const { root } = scheduler.results.get("archivePlan");
+      fanOutArchive(scheduler, "archiveLate", "archiveLateDeflate", root, late.groups, 2);
+    },
+  },
+
+  // Writes the archive from what every group deflated, and reads it back.
+  // archiveDeflate:i and archiveLateDeflate:i are added to `expected` by the
+  // two plans' submits.
+  helpArchive: {
+    expected: ["archivePlan", "archiveLate"],
+    runOnMain: true,
+    execute(inputs) {
+      const groups = Object.entries(inputs)
+        .filter(([name]) => name.startsWith("archiveDeflate:") || name.startsWith("archiveLateDeflate:"))
+        .map(([, g]) => g);
+      return finishHelpArchive({ plan: inputs.archivePlan, late: inputs.archiveLate, groups });
+    },
+    submit() {},
   },
 
   // Write the help add-in's project file, packed from add-in/, into the online
@@ -1248,9 +1412,13 @@ const TASKS = {
   // Produce _site-pdf/ on a worker (cpu-worker.mjs), while the main thread
   // writes the offline tree and checks the links. Sources CSS directly:
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
+  // Priority 2, as the index's slices have: with checkBook it is as long as the
+  // index's chain after it, and at 0 it waited for every slice and then ended
+  // the build.
   writePdf: {
     expected: ["bookPayload"],
     handler: "writePdf",
+    priority: 2,
     submit() {},
   },
 
@@ -1377,6 +1545,7 @@ const TASKS = {
     expected: ["writePdf"],
     handler: "checkBook",
     pin_to_predecessor: "writePdf",
+    priority: 2,
     submit() {},
   },
 
@@ -1695,8 +1864,8 @@ export async function runBuild(opts) {
   const searchIndexStats = results.get("searchIndex");
   if (searchIndexStats?.bytes) {
     console.log(
-      `  ${pc.bold("search:")} index of ${searchIndexStats.entries} entries built on ` +
-        `${searchIndexStats.workers} thread(s), ${(searchIndexStats.bytes / 1048576).toFixed(1)} MB`,
+      `  ${pc.bold("search:")} index of ${searchIndexStats.entries} entries built in ` +
+        `${searchIndexStats.slices} slice(s), ${(searchIndexStats.bytes / 1048576).toFixed(1)} MB`,
     );
   }
   const symbolStats = results.get("symbolIndex");

@@ -9,17 +9,16 @@ import { parentPort, workerData } from "node:worker_threads";
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateDot } from "./dot.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
-import { helpArchiveStep } from "./help-archive-step.mjs";
+import { deflateGroup } from "./help-archive-step.mjs";
 import { writePdf } from "./pdf.mjs";
 import { unpackBookPayload } from "./book-payload.mjs";
-import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { createMarkdownIt, renderPhase } from "./render.mjs";
 import { markdownCopy, markdownCopyRel } from "./markdown-copy.mjs";
 import { navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
-import { writeSearchIndex } from "./search-index.mjs";
+import { addSlice, loadSearchLunr, sliceVectors, unpackTotals } from "./search-index.mjs";
 import { computeChunkSeo } from "./seo.mjs";
 import { pictureSvgOutputs, pngPictures } from "./theme-pictures.mjs";
 import { deriveOfflinePage, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
@@ -57,8 +56,8 @@ let _shared = null; // _sharedSAB decoded, once per lane
 
 // What dispatch broadcast. A task that reads it runs after dispatch, but the
 // message is not here by then: this lane may still be inside the pull loop
-// that claimed the task, so yield until it lands, as taskData does. A
-// searchIndex claimed that way threw here.
+// that claimed the task, so yield until it lands, as taskData does. A task
+// claimed that way threw here.
 async function sharedData() {
   while (!_sharedSAB) await new Promise((resolve) => setImmediate(resolve));
   _shared ??= unpackShared(_sharedSAB);
@@ -220,29 +219,29 @@ const handlers = {
     return { buildInfo };
   },
 
-  // On a worker because it is the main thread's longest task after the
-  // pages are written, and it needs nothing from the main thread that
-  // dispatch has not already broadcast: it reads the offline tree from disk.
-  async helpArchive() {
-    const { skipOffline } = await sharedData();
-    return helpArchiveStep({
-      src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
-      offlineRoot: skipOffline ? null : `${ctx.destRoot}-offline`,
-      serve: !!ctx.opts.serve,
-      dryRun: !!ctx.opts.dryRun,
-      disabled: !!ctx.opts.skipHelpArchive,
-    });
+  // One slice of the search index (search-index.mjs, step 1): its entries
+  // added to a builder that stays on this lane, for the indexVectors:i pinned
+  // here; what it returns goes to indexMerge.
+  async indexAdd(taskIdx) {
+    const { slice, docs, twins } = await fanOutPayload(taskIdx);
+    const { state, added } = addSlice(loadSearchLunr(), docs, twins);
+    _indexSlices.set(slice, state);
+    return added;
   },
 
-  // search-index.json, the entries of the search-data.json searchData wrote
-  // with their lunr index, and the offline tree's search-index.js. On a lane
-  // because the main thread runs one task at a time, and the index takes a
-  // second or two: as a main-thread task it held back the book and the
-  // offline tree. It builds on threads of its own (search-index.mjs).
-  async searchIndex() {
-    if (ctx.opts.dryRun) return { entries: 0, workers: 0, bytes: 0 };
-    const { skipOffline } = await sharedData();
-    return writeSearchIndex(ctx.destRoot, { offline: !skipOffline });
+  // The same slice's field vectors (step 3), with the totals indexMerge
+  // broadcast; the builder is let go.
+  async indexVectors(taskIdx) {
+    const { slice } = await fanOutPayload(taskIdx);
+    const state = _indexSlices.get(slice);
+    if (!state) throw new Error(`search index: slice ${slice} was not added on lane ${myLane}`);
+    _indexSlices.delete(slice);
+    return sliceVectors(loadSearchLunr(), state, unpackTotals(await taskData("indexTotals"), slice));
+  },
+
+  // One group of the help archive's units (help-archive-step.mjs).
+  async archiveDeflate(taskIdx) {
+    return deflateGroup(await fanOutPayload(taskIdx));
   },
 
   // The PDF tree, from what bookPayload packed on the main thread. The book
@@ -382,12 +381,31 @@ let _pendingFlush = [];
 let _taskData = new Map(); // key → SAB a main-thread task broadcast (broadcastTaskData)
 let _bookCheck = null; // writePdf's book for checkBook, which is pinned to the same lane
 
+let _indexSlices = new Map(); // search index slice -> its builder, from indexAdd for indexVectors
+
 // The data a main-thread predecessor broadcast for this task. The message
 // is queued before the predecessor is marked done, but this lane may still
 // be inside the pull loop that claimed the task, so yield until it lands.
 async function taskData(key) {
   while (!_taskData.has(key)) await new Promise((resolve) => setImmediate(resolve));
   return _taskData.get(key);
+}
+
+// A fan-out piece's payload (fan-out.mjs): its fan-out's SharedArrayBuffer is
+// broadcast as `fan:<base>:<count>`, and the scheduling SAB holds where in it
+// each piece's JSON is. Waits for the broadcast as taskData does.
+const FAN_KEY = /^fan:(\d+):(\d+)$/;
+async function fanOutPayload(taskIdx) {
+  for (;;) {
+    for (const [key, sab] of _taskData) {
+      const m = FAN_KEY.exec(key);
+      if (!m || taskIdx < Number(m[1]) || taskIdx >= Number(m[1]) + Number(m[2])) continue;
+      const offset = Atomics.load(views.payloadOffset, taskIdx);
+      const length = Atomics.load(views.payloadLength, taskIdx);
+      return JSON.parse(new TextDecoder().decode(new Uint8Array(sab, offset, length)));
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
 let _checkEnv = null; // set by renderEnvInit when --check is on
 let _checkChunk = null; // builder/check.mjs's checkChunk, imported with it
@@ -440,6 +458,7 @@ parentPort.on("message", (msg) => {
     _pendingFlush = [];
     _taskData = new Map();
     _bookCheck = null;
+    _indexSlices = new Map();
     pullLoop();
     return;
   }

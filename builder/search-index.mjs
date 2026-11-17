@@ -10,30 +10,36 @@
 // keeps its own copies of what a query needs too -- the tokenizer, exactName,
 // indexTermKey -- and test/search.test.mjs checks that they agree with these.
 //
-// The index is built on several threads. lunr has no way to merge two
-// indexes, but most of a build is independent per entry, so:
+// The index is built in slices, which the build runs on its lanes as tasks
+// of its graph (tbdocs.mjs: indexSlices, indexAdd:i, indexMerge, indexTerms,
+// indexVectors:i, searchIndex). lunr has no way to merge two indexes, but
+// most of a build is independent per entry, so:
 //
-//   1. each worker adds a contiguous run of the entries to a lunr.Builder of
-//      its own, and returns its postings, its counts and its field lengths;
-//   2. the postings are merged, every term numbered as one build would number
-//      it (in order of first appearance, entry by entry), and each term's
-//      document count and each field's average length are worked out over all
-//      the entries;
-//   3. each worker makes its entries' field vectors (lunr's own
-//      createFieldVectors) with those totals;
-//   4. the JSON is written as lunr's toJSON writes it.
+//   1. each slice, a contiguous run of the entries, is added to a
+//      lunr.Builder of its own (addSlice), which returns its postings, its
+//      counts and its field lengths;
+//   2. the postings are merged (mergeSlices), every term numbered as one
+//      build would number it (in order of first appearance, entry by entry),
+//      and each term's document count and each field's average length are
+//      worked out over all the entries;
+//   3. each slice's builder makes its entries' field vectors (sliceVectors,
+//      lunr's own createFieldVectors) with those totals;
+//   4. the JSON is written as lunr's toJSON writes it (invertedIndexJson,
+//      assembleIndexJson).
 //
 // The result is byte for byte what lunr(config) and JSON.stringify make on
 // one thread, which test/search-index.test.mjs checks, for any number of
-// workers. The token set, a third of a one-thread build, is never made here:
+// slices. The token set, a third of a one-thread build, is never made here:
 // it is not part of the JSON, and Index.load makes it in the page.
+//
+// Nothing here starts a thread: every step runs on the thread that calls it,
+// and the build's graph decides where (WIP.Build.md, "No task starts a
+// thread"). buildIndexJson runs every step on one thread, for the tests and
+// for any tool that wants the index outside a build.
 
-import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
 
 import { writeFileMkdirp } from "./write.mjs";
 
@@ -303,140 +309,249 @@ export function buildIndex(lunr, docs) {
   });
 }
 
-// How many threads the build gives an index of `entries` entries: about half
-// the machine, since the build's own lanes are busy writing and checking the
-// trees meanwhile; at most eight (on 16 threads, the site's index took 1.9 s
-// on four, 1.6 s on six, 1.4 s on eight); and one for every 500 entries, so
-// that a small tree (a test fixture) starts no thread at all.
-export function defaultIndexWorkers(entries = Infinity) {
-  return Math.max(1, Math.min(8, Math.floor(os.availableParallelism() / 2), Math.floor(entries / 500)));
+// How many slices the build cuts an index of `entries` entries into:
+// SLICES_PER_LANE for each lane, so that a lane that finishes early takes
+// another while a lane still busy with something else catches up; and one for
+// every 500 entries, so that a small tree (a test fixture) is one slice.
+export const SLICES_PER_LANE = 2;
+export function indexSliceCount(entries, lanes) {
+  return Math.max(1, Math.min(lanes * SLICES_PER_LANE, Math.floor(entries / 500)));
 }
 
-// The index of `docs` as lunr's JSON, built on `workers` threads (one: on
-// this thread, by lunr itself). Every worker count gives the same bytes.
-export async function buildIndexJson(docs, { workers = defaultIndexWorkers(), lunrPath = LUNR_PATH } = {}) {
-  const lunr = loadSearchLunr(lunrPath);
+// `docs` cut into `count` slices, contiguous runs of the entries in order,
+// each with the stem twins of every entry (qualifiedField needs all of them).
+// Each is what one addSlice takes: { slice, docs, twins }. The runs are of
+// about equal text rather than of equal entries: adding an entry costs about
+// as much as its text is long, and the entries run from a line to a page.
+export function planIndexSlices(lunr, docs, count) {
   const ids = Object.keys(docs);
-  const n = Math.max(1, Math.min(workers, ids.length));
-  if (n === 1) return JSON.stringify(buildIndex(lunr, docs));
-
+  const n = Math.max(1, Math.min(count, ids.length));
   const twins = [...stemTwins(lunr, docs)];
-  const slices = Array.from({ length: n }, (_, s) =>
-    ids.slice(Math.floor((s * ids.length) / n), Math.floor(((s + 1) * ids.length) / n)),
-  );
-  const pool = slices.map(() => new IndexWorker());
-  try {
-    // 1. Each worker adds its entries.
-    const added = await Promise.all(
-      pool.map((worker, s) => {
-        const slice = {};
-        for (const id of slices[s]) slice[id] = docs[id];
-        return worker.request({ step: "add", lunrPath, docs: JSON.stringify(slice), twins });
-      }),
-    );
-
-    // 2. The postings merged, each term numbered as one build numbers it:
-    //    a worker's terms come in the order it met them, and the slices in
-    //    the order of their entries.
-    const fields = FIELDS.map(([name]) => name);
-    const merged = new Map();
-    const lengths = Object.fromEntries(fields.map((f) => [f, [0, 0]]));
-    let documentCount = 0;
-    const numbers = added.map(({ terms, df, postings, lengths: own, documentCount: count }) => {
-      documentCount += count;
-      for (const f of fields) {
-        lengths[f][0] += own[f][0];
-        lengths[f][1] += own[f][1];
-      }
-      const number = new Int32Array(terms.length);
-      for (let k = 0; k < terms.length; k++) {
-        let m = merged.get(terms[k]);
-        if (!m) {
-          m = { number: merged.size, df: 0, parts: fields.map(() => []) };
-          merged.set(terms[k], m);
-        }
-        m.df += df[k];
-        const parts = postings[k].split(FIELD_SEPARATOR);
-        for (let f = 0; f < fields.length; f++) if (parts[f]) m.parts[f].push(parts[f]);
-        number[k] = m.number;
-      }
-      return number;
-    });
-    // lunr.idf, from the term's document count over every entry.
-    const idf = new Float64Array(merged.size);
-    for (const m of merged.values()) {
-      const x = (documentCount - m.df + 0.5) / (m.df + 0.5);
-      idf[m.number] = Math.log(1 + Math.abs(x));
+  const weight = (doc) => 64 + (doc.content?.length ?? 0) + (doc.title?.length ?? 0) + (doc.names?.length ?? 0);
+  let total = 0;
+  for (const id of ids) total += weight(docs[id]);
+  const slices = Array.from({ length: n }, (_, s) => ({ slice: s, docs: {}, twins }));
+  let s = 0;
+  let inSlice = 0;
+  let sofar = 0;
+  ids.forEach((id, k) => {
+    // Move on once this slice has an entry and its share, or once the
+    // entries left are only enough for one in each slice still to come.
+    if (s < n - 1 && inSlice > 0 && (sofar >= ((s + 1) * total) / n || ids.length - k <= n - 1 - s)) {
+      s++;
+      inSlice = 0;
     }
-    // calculateAverageFieldLengths(), and pinIndexFieldLengths().
-    const averageFieldLength = {};
-    for (const f of fields) averageFieldLength[f] = lengths[f][0] / lengths[f][1];
-    averageFieldLength.index = 1;
+    slices[s].docs[id] = docs[id];
+    inSlice++;
+    sofar += weight(docs[id]);
+  });
+  return slices;
+}
 
-    // 3. Each worker makes its entries' field vectors.
-    const vectors = await Promise.all(
-      pool.map((worker, s) =>
-        worker.request({ step: "vectors", numbers: numbers[s], idf, documentCount, averageFieldLength }),
-      ),
-    );
+// Step 1: one slice's entries, added to a builder of its own. Returns the
+// builder and its terms, which sliceVectors takes later on the same thread,
+// and what mergeSlices takes: each term (in the order this builder met it)
+// with its document count and its postings field by field, and each field's
+// total length.
+export function addSlice(lunr, docs, twins) {
+  const builder = newBuilder(lunr);
+  const twinSet = twins instanceof Set ? twins : new Set(twins);
+  for (const id in docs) builder.add(entryFor(lunr, docs, id, twinSet));
 
-    // 4. lunr's toJSON: the terms sorted, the postings as JSON.stringify
-    //    writes them (`_index`, then each field, its refs in numeric order).
-    const invertedIndex = [...merged.keys()].sort().map((term) => {
+  const fields = Object.keys(builder._fields);
+  // In the order the builder met them (each posting's _index), not in key
+  // order, which puts terms that look like numbers ("1", "2025") first.
+  const terms = new Array(builder.termIndex);
+  for (const term in builder.invertedIndex) terms[builder.invertedIndex[term]._index] = term;
+  const df = new Int32Array(terms.length);
+  const postings = new Array(terms.length);
+  for (let k = 0; k < terms.length; k++) {
+    const posting = builder.invertedIndex[terms[k]];
+    const parts = [];
+    // lunr.idf counts an entry once for each field it has the term in.
+    for (const f of fields) {
+      df[k] += Object.keys(posting[f]).length;
+      parts.push(JSON.stringify(posting[f]).slice(1, -1));
+    }
+    postings[k] = parts.join(FIELD_SEPARATOR);
+  }
+  const lengths = Object.fromEntries(fields.map((f) => [f, [0, 0]]));
+  for (const ref in builder.fieldLengths) {
+    const field = lengths[lunr.FieldRef.fromString(ref).fieldName];
+    field[0] += builder.fieldLengths[ref];
+    field[1] += 1;
+  }
+  return {
+    state: { builder, terms },
+    added: { terms, df, postings, lengths, documentCount: builder.documentCount },
+  };
+}
+
+// Separates a term's per-field postings in what addSlice returns. JSON text
+// never holds a raw control character: JSON.stringify escapes them.
+export const FIELD_SEPARATOR = "\u{1}";
+
+// Step 2: what every slice added, in slice order, merged. Each term is
+// numbered as one build numbers it: a slice's terms come in the order it met
+// them, and the slices in the order of their entries. Returns the merged
+// postings (for invertedIndexJson), each slice's term numbers, each term's
+// idf, and the totals createFieldVectors needs (for sliceVectors).
+export function mergeSlices(added) {
+  const fields = FIELDS.map(([name]) => name);
+  const merged = new Map();
+  const lengths = Object.fromEntries(fields.map((f) => [f, [0, 0]]));
+  let documentCount = 0;
+  const numbers = added.map(({ terms, df, postings, lengths: own, documentCount: count }) => {
+    documentCount += count;
+    for (const f of fields) {
+      lengths[f][0] += own[f][0];
+      lengths[f][1] += own[f][1];
+    }
+    const number = new Int32Array(terms.length);
+    for (let k = 0; k < terms.length; k++) {
+      let m = merged.get(terms[k]);
+      if (!m) {
+        m = { number: merged.size, df: 0, parts: fields.map(() => []) };
+        merged.set(terms[k], m);
+      }
+      m.df += df[k];
+      const parts = postings[k].split(FIELD_SEPARATOR);
+      for (let f = 0; f < fields.length; f++) if (parts[f]) m.parts[f].push(parts[f]);
+      number[k] = m.number;
+    }
+    return number;
+  });
+  // lunr.idf, from the term's document count over every entry.
+  const idf = new Float64Array(merged.size);
+  for (const m of merged.values()) {
+    const x = (documentCount - m.df + 0.5) / (m.df + 0.5);
+    idf[m.number] = Math.log(1 + Math.abs(x));
+  }
+  // calculateAverageFieldLengths(), and pinIndexFieldLengths().
+  const averageFieldLength = {};
+  for (const f of fields) averageFieldLength[f] = lengths[f][0] / lengths[f][1];
+  averageFieldLength.index = 1;
+  return { merged, totals: { numbers, idf, documentCount, averageFieldLength } };
+}
+
+// Step 3: lunr's createFieldVectors over one slice's builder (addSlice's
+// state), with every term numbered as the whole index numbers it, and the
+// counts and averages of every entry (`totals`, from mergeSlices, with
+// `numbers` this slice's). Returns the vectors as toJSON writes them, in the
+// order of the slice's entries; "" for a slice with none.
+export function sliceVectors(lunr, { builder, terms }, { numbers, idf, documentCount, averageFieldLength }) {
+  for (let k = 0; k < terms.length; k++) builder.invertedIndex[terms[k]]._index = numbers[k];
+  builder.documentCount = documentCount;
+  builder.averageFieldLength = averageFieldLength;
+  const ownIdf = lunr.idf;
+  lunr.idf = (posting) => idf[posting._index];
+  try {
+    builder.createFieldVectors();
+  } finally {
+    lunr.idf = ownIdf;
+  }
+  return Object.keys(builder.fieldVectors)
+    .map((ref) => JSON.stringify([ref, builder.fieldVectors[ref].toJSON()]))
+    .join(",");
+}
+
+// Step 4a: lunr's toJSON of the inverted index, from mergeSlices' merged
+// postings: the terms sorted, the postings as JSON.stringify writes them
+// (`_index`, then each field, its refs in numeric order). The text between
+// the brackets.
+export function invertedIndexJson(merged) {
+  const fields = FIELDS.map(([name]) => name);
+  return [...merged.keys()]
+    .sort()
+    .map((term) => {
       const m = merged.get(term);
       let s = `[${JSON.stringify(term)},{"_index":${m.number}`;
       for (let f = 0; f < fields.length; f++) s += `,${JSON.stringify(fields[f])}:{${m.parts[f].join(",")}}`;
       return `${s}}]`;
-    });
-    const pipeline = newBuilder(lunr).searchPipeline.toJSON();
-    return (
-      `{"version":${JSON.stringify(lunr.version)},"fields":${JSON.stringify(fields)},` +
-      `"fieldVectors":[${vectors.filter(Boolean).join(",")}],` +
-      `"invertedIndex":[${invertedIndex.join(",")}],"pipeline":${JSON.stringify(pipeline)}}`
-    );
-  } finally {
-    await Promise.all(pool.map((worker) => worker.close()));
-  }
+    })
+    .join(",");
 }
 
-// Separates a term's per-field postings in what a worker returns. JSON text
-// never holds a raw control character: JSON.stringify escapes them.
-export const FIELD_SEPARATOR = "\u0001";
+// Step 4b: the index's JSON, from each slice's vectors in slice order and
+// invertedIndexJson's text.
+export function assembleIndexJson(lunr, vectors, invertedIndex) {
+  const fields = FIELDS.map(([name]) => name);
+  const pipeline = newBuilder(lunr).searchPipeline.toJSON();
+  return (
+    `{"version":${JSON.stringify(lunr.version)},"fields":${JSON.stringify(fields)},` +
+    `"fieldVectors":[${vectors.filter(Boolean).join(",")}],` +
+    `"invertedIndex":[${invertedIndex}],"pipeline":${JSON.stringify(pipeline)}}`
+  );
+}
 
-// One worker thread (search-index-worker.mjs), which keeps its builder between
-// the two steps. A request's answer, or the worker's failure, settles it.
-class IndexWorker {
-  constructor() {
-    this.worker = new Worker(new URL("./search-index-worker.mjs", import.meta.url));
-    this.pending = null;
-    const fail = (err) => {
-      this.failure = err;
-      this.pending?.reject(err);
-      this.pending = null;
-    };
-    this.worker.on("message", (msg) => {
-      const pending = this.pending;
-      this.pending = null;
-      if (!pending) return;
-      if (msg.error) pending.reject(new Error(`search index worker: ${msg.error}`));
-      else pending.resolve(msg.result);
-    });
-    this.worker.on("error", fail);
-    this.worker.on("exit", (code) => fail(new Error(`search index worker exited with code ${code}`)));
-  }
+// The index of `docs` as lunr's JSON, every step on this thread, in `slices`
+// slices. Every slice count gives the same bytes, and they are lunr()'s.
+export function buildIndexJson(docs, { slices = 1, lunrPath = LUNR_PATH } = {}) {
+  const lunr = loadSearchLunr(lunrPath);
+  const plan = planIndexSlices(lunr, docs, slices);
+  const states = [];
+  const added = plan.map((p) => {
+    const { state, added: a } = addSlice(lunr, p.docs, p.twins);
+    states.push(state);
+    return a;
+  });
+  const { merged, totals } = mergeSlices(added);
+  const vectors = states.map((state, s) => sliceVectors(lunr, state, { ...totals, numbers: totals.numbers[s] }));
+  return assembleIndexJson(lunr, vectors, invertedIndexJson(merged));
+}
 
-  request(msg) {
-    if (this.failure) return Promise.reject(this.failure);
-    return new Promise((resolve, reject) => {
-      this.pending = { resolve, reject };
-      this.worker.postMessage(msg);
-    });
-  }
+// ── Between threads ────────────────────────────────────────────────────────
 
-  async close() {
-    this.worker.removeAllListeners("exit");
-    await this.worker.terminate();
+// mergeSlices' totals, packed into one SharedArrayBuffer for the lanes that
+// make the vectors: a header (its length, then JSON of where each slice's term
+// numbers are), then as float64 the document count, each field's average
+// length in FIELDS order, and each term's idf, then as int32 every slice's term
+// numbers. A lane reads it in place (unpackTotals).
+export function packTotals({ numbers, idf, documentCount, averageFieldLength }) {
+  const fields = FIELDS.map(([name]) => name);
+  const ranges = [];
+  let ints = 0;
+  for (const n of numbers) {
+    ranges.push([ints, n.length]);
+    ints += n.length;
   }
+  const head = new TextEncoder().encode(JSON.stringify({ ranges, terms: idf.length }));
+  const headBytes = 8 + Math.ceil(head.length / 8) * 8;
+  const floats = 1 + fields.length + idf.length;
+  const sab = new SharedArrayBuffer(headBytes + floats * 8 + ints * 4);
+  new Uint32Array(sab, 0, 1)[0] = head.length;
+  new Uint8Array(sab, 8, head.length).set(head);
+  const f64 = new Float64Array(sab, headBytes, floats);
+  f64[0] = documentCount;
+  fields.forEach((f, i) => {
+    f64[1 + i] = averageFieldLength[f];
+  });
+  f64.set(idf, 1 + fields.length);
+  const i32 = new Int32Array(sab, headBytes + floats * 8, ints);
+  for (let s = 0; s < numbers.length; s++) i32.set(numbers[s], ranges[s][0]);
+  return sab;
+}
+
+// packTotals' SharedArrayBuffer, read in place, with `numbers` slice `s`'s.
+export function unpackTotals(sab, s) {
+  const fields = FIELDS.map(([name]) => name);
+  const headLength = new Uint32Array(sab, 0, 1)[0];
+  const { ranges, terms } = JSON.parse(new TextDecoder().decode(new Uint8Array(sab, 8, headLength).slice()));
+  if (!ranges[s]) throw new Error(`search index: no term numbers for slice ${s}`);
+  const headBytes = 8 + Math.ceil(headLength / 8) * 8;
+  const floats = 1 + fields.length + terms;
+  const f64 = new Float64Array(sab, headBytes, floats);
+  const averageFieldLength = {};
+  fields.forEach((f, i) => {
+    averageFieldLength[f] = f64[1 + i];
+  });
+  const [at, length] = ranges[s];
+  return {
+    documentCount: f64[0],
+    averageFieldLength,
+    idf: f64.subarray(1 + fields.length),
+    numbers: new Int32Array(sab, headBytes + floats * 8 + at * 4, length),
+  };
 }
 
 // ── The file the page loads ────────────────────────────────────────────────
@@ -463,17 +578,19 @@ export function offlineSearchIndexJs(fileText) {
   return `window.SEARCH_INDEX = JSON.parse('${literal}');\n`;
 }
 
-// The build's searchIndex task (cpu-worker.mjs): reads the search-data.json
-// the build wrote under `destRoot`, and writes search-index.json beside it
-// and, when `offline`, search-index.js in the offline tree.
-export async function writeSearchIndex(destRoot, { offline }) {
-  const docs = JSON.parse(await fs.readFile(path.join(destRoot, "assets/js/search-data.json"), "utf8"));
-  const entries = Object.keys(docs).length;
-  const workers = defaultIndexWorkers(entries);
-  const text = searchIndexFile(await buildIndexJson(docs, { workers }), docs);
-  await writeFileMkdirp(path.join(destRoot, "assets/js/search-index.json"), text);
+// Where the two files go: search-index.json in the online tree, and
+// search-index.js in the offline one.
+export const SEARCH_INDEX_REL = "assets/js/search-index.json";
+export const OFFLINE_SEARCH_INDEX_REL = "assets/js/search-index.js";
+
+// The build's searchIndex task (tbdocs.mjs): writes search-index.json under
+// `destRoot` and, when `offline`, search-index.js in the offline tree, from
+// the index's JSON and the entries it indexes.
+export async function writeSearchIndex(destRoot, indexJson, docs, { offline }) {
+  const text = searchIndexFile(indexJson, docs);
+  await writeFileMkdirp(path.join(destRoot, SEARCH_INDEX_REL), text);
   if (offline) {
-    await writeFileMkdirp(path.join(`${destRoot}-offline`, "assets/js/search-index.js"), offlineSearchIndexJs(text));
+    await writeFileMkdirp(path.join(`${destRoot}-offline`, OFFLINE_SEARCH_INDEX_REL), offlineSearchIndexJs(text));
   }
-  return { entries, workers, bytes: Buffer.byteLength(text) };
+  return { entries: Object.keys(docs).length, bytes: Buffer.byteLength(text) };
 }
