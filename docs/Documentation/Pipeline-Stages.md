@@ -41,6 +41,7 @@ Every task shares three pieces of mutable state: the `pages[]` array, the `stati
 | `breadcrumbs` | `nav` | `Page[]` | Ancestor chain from the root to the current page, nearest-first. |
 | `children` | `nav` | `Page[]` | Immediate child pages in nav order. |
 | `renderedContent` | `render:i` | `string` | HTML body produced by markdown-it. Set on the worker, merged back into the master page via the render delta. |
+| `headings` | `render:i` (`headingsOf`) | `object[]\|undefined` | The page's headings, each `{ level, id, text }`, read from `renderedContent` on the worker. Set only on a page the symbol index reads (`isSymbolPage`); `symbolPlace` reads it. |
 | `searchIndexMarks` | `render:i` (`searchIndexMarksPlugin`) | `object[]\|undefined` | The [index entries](Authoring#index-entries-for-the-site-search) on the page's headings, each `{ id, index, index_also }` with the raw attribute values, removed from the heading before the HTML is written. Set only on a page that has any. Read by `deriveSearchEntries` on the same worker; never merged back to main. |
 | `seoTitle` | `render:i` (`computeChunkSeo`) | `string` | HTML-stripped, whitespace-collapsed page title for `<title>` and `og:title`. |
 | `seoFullTitle` | `render:i` (`computeChunkSeo`) | `string` | `"<seoTitle> \| <siteTitle>"` for non-home pages; equals `seoTitle` on the home page. |
@@ -74,7 +75,9 @@ Each task's `execute()` or `submit()` stores its output on `state.site`; downstr
 | Field | Type | Set by | Description |
 |---|---|---|---|
 | `sitePaths` | `Set<string>` | `dispatch` | All site-relative paths reachable in the online tree (pages + statics + redirects + theme assets). Used by the offline rewrite in every render worker, by `scss` and by `writeOffline`. |
-| `searchChunks` | `Array<Array<entry>>` | `dispatch` (allocated), `render:i.submit` (filled) | Per-chunk search entries collected from the render workers. Read by `searchData`. |
+| `searchChunks` | `Array<Array<entry>>` | `dispatch` (allocated), `render:i.submit` (filled) | Per-chunk search entries collected from the render workers. Read by `searchEntries`. |
+| `searchKeys` | `Array<Array<object>>` | `dispatch` (allocated), `render:i.submit` (filled) | For each entry of `searchChunks`, the keys `settleLabels` compares it by, and its labels (`entryKeys`). Read by `searchEntries`. |
+| `searchPacked` | `Array<SharedArrayBuffer>` | `dispatch` (allocated), `render:i.submit` (filled) | Each chunk's entries as its lane packed their text (`packSearchEntries`). Read by `searchData`, and by every lane's `indexAdd:i`, which `indexSlices` sends them to. |
 | `checkTrees` | `object\|null` | `dispatch` | Per-tree `{ rels, baseurl }` for each tree being checked, or `null` when `--check` is off. Broadcast to the workers so each lane can build its own tree index. When non-null, the check runs everywhere downstream. |
 | `checkChunks` | `Array<object>` | `dispatch` (created empty), `flush:i.submit` (appended) | Per-chunk findings, keyed by tree, in arrival order. Read by `linkJoin`. |
 | `checkChunkCount` | `number` | `dispatch` | How many chunks `linkJoin` must see. A short list is an error: the check examined less than the whole site. |
@@ -368,8 +371,12 @@ Handler (`render` in `cpu-worker.mjs`):
 5. When `env.offlineBase` is set: for each writable page, call `withPartialNav` to cut the page's nav down to its part of the tree, then `deriveOfflinePage`. Then, for each writable page, `withOnlineNav` cuts the online page's nav down to its part, with the "Contents" link and `nav-tree.js` after it.
 6. Store `{ destPath, html, offlineHtml, offlineMisses, markdown }` on the worker's `_pendingFlush` FIFO for the matching `flush:i`, `markdown` being the page's markdown copy and its path.
 7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries, with any [index entries](Authoring#index-entries-for-the-site-search) the page's frontmatter or headings name. Remove `sourcePage` and the chunk-local `i` before returning (main assigns global indices).
+8. For the tasks that follow the last chunk, which every lane waits for, the part of their work that one page or one entry decides:
+   - `headingsOf(p.renderedContent)` for each page the symbol index reads (`isSymbolPage` in `symbols.mjs`), for `symbolPlace`.
+   - `entryKeys(e)` for each entry --- the keys `settleLabels` compares it by, and its labels --- for `searchEntries`. The entries themselves hold no `labels`.
+   - `packSearchEntries(searchEntries)` --- the chunk's entries in one `SharedArrayBuffer`, each as the head and the tail of its text in `search-data.json`. `searchData` copies them into the file, and the lanes that build the search index read their entries from them.
 
-Returns `{ pages, searchEntries }`. The `submit()` callback (registered by `dispatch.submit`) merges `renderedContent` / `offlineMisses` into the master `Page` objects via `state.pageByDest`, and writes `searchEntries` into `state.searchChunks[i]`.
+Returns `{ pages, searchEntries, searchKeys, searchPacked }`. The `submit()` callback (registered by `dispatch.submit`) merges `renderedContent` / `offlineMisses` / `headings` into the master `Page` objects via `state.pageByDest`, and writes the other three into `state.searchChunks[i]`, `state.searchKeys[i]` and `state.searchPacked[i]`.
 
 ### `renderJoin` (main, `on_demand`)
 
@@ -380,7 +387,7 @@ renderJoin.expected = ["render:0", …, "render:N-1"]   // and depCount set to N
 renderJoin.execute() → {}
 ```
 
-Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `bookPayload`.
+Barrier over every `render:i`. Unblocks `symbolPlace`, `searchEntries` and `bookPayload`.
 
 > [!IMPORTANT]
 > **A dependency count of zero does not mean the submits have run**, so the `expected`
@@ -444,55 +451,69 @@ writeAssets.expected = ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"
 
 Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS and project static files, and writes generated CSS (`tb-highlight.css` from `state.site.highlightCss`). **Does not** write page HTML; the `flush:i` tasks do. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to copied files and generated assets.
 
+### From the last chunk to the search index: `packageApi`, `symbolPlace`, `searchEntries`
+{: #symbolplace-main }
+
+```js
+packageApi.expected    = ["dispatch"]                      // main
+symbolPlace.expected   = ["renderJoin", "packageApi"]      // main
+searchEntries.expected = ["renderJoin", "symbolPlace"]     // main
+```
+
+When the last render chunk ends, every lane waits until `indexSlices` gives it a slice of the search index, and `indexSlices` waits for `symbolPlace` and `searchEntries`. The three run one after another on the main thread, so they do only the work that needs every page. The render lanes do the part that one page or one entry decides, as [`render:i`](#renderi-worker-dynamic) lists. A task that only writes a file comes after them: `symbolIndex` and `searchData`. `TASKS` declares the three before every other task that can be ready at that moment, because the main thread takes the first ready task in declaration order.
+
+- **`packageApi`** reads and parses `builder/package-api.json`, the package half of the symbol index, while the lanes render. The build fails, naming `node indexer/twin-index.mjs derive`, if the file is missing.
+- **`symbolPlace`** makes the symbol index in memory: `symbolPages(state.pages)`, then `deriveSymbolIndex({ pages, api })` from `symbols.mjs`. It depends on `renderJoin` because an entry's anchor is the id the render gave its heading; each page's headings came back with its render chunk. Returns `{ pages, api, result }`.
+- **`searchEntries`** makes the final search entries: `consolidateSearchEntries(state.searchChunks, symbolPlace.result.symbols, state.searchKeys)` from `search.mjs`. It flattens the per-chunk entry arrays, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), drops the term entries a main term answers and gives each remaining label to its entry (`settleLabels`), renumbers the global `i` index, and joins the symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields --- see `WIP.Search.md`'s "Design" §2). Returns `{ entries, places }`: `places[n]` is entry n's chunk and its place in that chunk, by which `searchData` and `indexSlices` find the entry's packed text.
+
 ### `searchData` (main)
 
 ```js
-searchData.expected = ["renderJoin", "prepDest", "symbolIndex"]
+searchData.expected = ["searchEntries", "prepDest"]
 ```
 
-Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. It flattens the per-chunk entry arrays and joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields -- see `WIP.Search.md`'s "Design" §2). It then renumbers the global `i` index, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The workers did the heavy work (heading split, content sanitisation, URL encoding); this task only joins and concatenates. It depends on `symbolIndex` for the `symbols` array.
+Writes `assets/js/search-data.json` with `writeSearchData` from `search.mjs`. The file's bytes are assembled, not serialised again (`searchDataBytes`): each entry's head and tail are copied from the buffer its render lane packed (`state.searchPacked`), and the main thread writes only the entry's number and the fields it got since. Returns `{ entries, json, docs }`: `json` is the file's bytes, which the link check reads, and `docs` is the entries as the file holds them (`searchDocs`), which `searchIndex` writes into `search-index.json`. The task runs while the lanes add their slices.
 
 ### The search index: `indexSlices` to `searchIndex`
 {: #searchindex-worker }
 
 ```js
-indexSlices.expected    = ["searchData"]                                   // main
+indexSlices.expected    = ["searchEntries"]                                // main
 indexAdd:i.expected     = ["indexSlices"]                                  // worker, dynamic
 indexMerge.expected     = ["indexSlices", "indexAdd:0", ...]               // main
 indexTerms.expected     = ["indexMerge"]                                   // main
 indexVectors:i.expected = ["indexSlices", "indexMerge", "indexAdd:i"]      // worker, dynamic, pinned to indexAdd:i
-searchIndex.expected    = ["indexSlices", "indexMerge", "indexTerms", "indexVectors:0", ...]   // main
+searchIndex.expected    = ["indexSlices", "indexMerge", "indexTerms", "searchData", "indexVectors:0", ...]   // main
 ```
 
-These tasks build the lunr index of the entries that `searchData` wrote, and write it. The functions are in `search-index.mjs`. lunr cannot merge two indexes, but most of a build is independent for each entry, so the index is built in slices, each a run of consecutive entries:
+These tasks build the lunr index of the search entries, and write it. The functions are in `search-index.mjs`. lunr cannot merge two indexes, but most of a build is independent for each entry, so the index is built in slices, each a run of consecutive entries:
 
-1. **`indexSlices`** parses the text of `search-data.json` as `searchData` returned it, and cuts the entries into slices of about equal text (`planIndexSlices`): two for each lane, and at most one for every 500 entries, so a small tree is one slice. Its `submit` adds an `indexAdd:i` and an `indexVectors:i` for each slice with [`fanOut`](#fan-outmjs).
-2. **`indexAdd:i`** adds its slice to a `lunr.Builder` that stays on its lane (`addSlice`), and returns the slice's terms, postings and field lengths.
+1. **`indexSlices`** cuts the entries into slices of about equal text (`planIndexSegments`): two for each lane, and at most one for every 500 entries, so a small tree is one slice. The entries do not travel with the slices. Each render lane packed its chunk's entries into a `SharedArrayBuffer`, and `submit` broadcasts all of them, with the stem twins (`stemTwins`), as the task data `"indexEntries"`. A slice's payload then says where its entries are among the chunks, the number of its first entry, which entries of those runs were dropped, and the fields an entry got after its page was rendered. `submit` adds an `indexAdd:i` and an `indexVectors:i` for each slice with [`fanOut`](#fan-outmjs).
+2. **`indexAdd:i`** reads its slice's entries from the chunks' buffers (`sliceDocs`, `readSearchEntries`), adds them to a `lunr.Builder` that stays on its lane (`addSlice`), and returns the slice's terms, postings and field lengths.
 3. **`indexMerge`** merges the postings (`mergeSlices`). It numbers each term as one build would, and works out each term's document count and each field's average length over all the entries. It broadcasts those totals to the lanes as the task data `"indexTotals"` (`packTotals`).
 4. **`indexTerms`** writes the JSON of the inverted index (`invertedIndexJson`) on the main thread, while the lanes make the vectors.
 5. **`indexVectors:i`** makes its slice's field vectors with the totals (`sliceVectors`). It is pinned to the lane that ran `indexAdd:i`, which holds the slice's builder.
-6. **`searchIndex`** joins the JSON (`assembleIndexJson`) and writes the files (`writeSearchIndex`). Returns `{ entries, slices, bytes }`.
+6. **`searchIndex`** joins the JSON (`assembleIndexJson`) and writes the files (`writeSearchIndex`), with the entries `searchData` returned as `docs`. Returns `{ entries, slices, bytes }`.
 
 The result is byte for byte what `lunr()` makes on one thread, for any number of slices, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks.
 
 `searchIndex` writes `assets/js/search-index.json`: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. `archiveLate` and `checkReport` wait for it.
 
-The index tasks are drawn in their own colour in the Gantt chart, and their main-thread tasks in the band `Index`.
+The index tasks are drawn in their own colour in the Gantt chart, and their main-thread tasks in the band `Index`, with `symbolPlace` and `searchEntries` before them.
 
 ### `symbolIndex` (main)
 
 ```js
-symbolIndex.expected = ["renderJoin", "prepDest"]
-symbolIndex.execute() → { entries, urls, gaps, unplaced, symbols }
+symbolIndex.expected = ["symbolPlace", "prepDest"]
+symbolIndex.execute() → { entries, urls, gaps, unplaced, json }
 ```
 
-Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` (the build fails, naming `node indexer/twin-index.mjs derive`, if it is missing), then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. It depends on `renderJoin` because an entry's anchor is the id the render gave its heading, read from `renderedContent`. Takes ~50 ms. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
+Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index), from what [`symbolPlace`](#symbolplace-main) placed: `serializeSymbolIndex(...)` from `symbols.mjs`. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
 
 The result fields:
 
 - `urls`: every distinct URL in the index. `runBuild` passes it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard.
 - `unplaced`: the package pages that gave no entry; the summary prints them.
-- `symbols`: the array `deriveSymbolIndex` returned, each `{ name, container, url, ... }`. Only `searchData` uses it.
 - `json`: the text of `tB/symbols.json`. `runBuild` passes it to `syncAddinIndex` from `addin-index.mjs` for the help add-in's copy, and `addinProject` packs it into the add-in's project file.
 
 `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early.
@@ -966,7 +987,13 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSearchDataFromChunks` | `(searchChunks, destRoot, symbols) → Promise<{ entries, json }>` | Per-chunk consolidator. Flattens, joins `symbols` onto the matching entries by URL (`joinSymbolsToEntries`), renumbers global `i`, writes `assets/js/search-data.json`. Used by the `searchData` task. |
+| `consolidateSearchEntries` | `(searchChunks, symbols, keyChunks?) → { entries, places }` | Per-chunk consolidator. Flattens, checks the index terms, settles the labels (`settleLabels`), renumbers global `i` and joins `symbols` onto the matching entries by URL (`joinSymbolsToEntries`). `places[n]` is entry n's `[chunk, place in the chunk]`. Used by the `searchEntries` task. |
+| `settleLabels` | `(entries, keys?) → entries` | Drops a term entry that a main index term answers, and makes each label no heading, title, term entry or mark answers a secondary index term of its entry. `keys` are the entries' `entryKeys`; without them it works them out. |
+| `entryKeys` / `labelKey` | `(entry, key?) → object` / `(name) → string` | What `settleLabels` compares of one entry, and a name as it compares names. The render workers call `entryKeys`. |
+| `packSearchEntries` / `readSearchEntries` | `(entries) → SharedArrayBuffer` / `(sab, from?, to?) → object[]` | A chunk's entries, each as the head and the tail of its text in `search-data.json`, in one buffer; and a run of them read back, each `{ doc, title, content, url, relUrl }`. |
+| `searchDataBytes` | `(entries, places, packed) → Buffer` | `search-data.json`'s bytes: each entry's number and late fields, around the head and tail copied from its chunk's buffer. |
+| `searchDocs` | `(entries) → object` | The entries as `search-data.json` holds them, parsed, without a parse of the file. |
+| `writeSearchData` | `({ entries, places }, packed, destRoot) → Promise<{ entries, json, docs }>` | Writes `assets/js/search-data.json`. Used by the `searchData` task. |
 | `joinSymbolsToEntries` | `(entries, symbols) → entries` | Attaches `names` / `qualified` / `primary` (the names that are types or language elements) to each entry whose `relUrl` matches a symbol's `url`, after normalising both (strip a trailing `/index` or `/index.html`, then a trailing slash; the `#fragment`, if any, is compared as-is). Mutates and returns `entries`. |
 | `deriveSearchEntries` | `(pages, site) → object[]` | Pure compute. One entry per heading-bounded section of each titled page. Each entry: `{ i, doc, title, content, url, relUrl, sourcePage }`. Called by render workers, which drop `sourcePage` and the chunk-local `i` before posting back. |
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte for byte. |
@@ -980,7 +1007,11 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 |---|---|---|
 | `writeSearchIndex` | `(destRoot, indexJson, docs, { offline }) → Promise<{ entries, bytes }>` | Writes `search-index.json` and, when `offline`, the offline tree's `search-index.js`, from the index's JSON and the entries. Used by the `searchIndex` task. |
 | `indexSliceCount` | `(entries, lanes) → number` | The slices the build cuts an index into: two for each lane, at most one for every 500 entries. |
-| `planIndexSlices` | `(lunr, docs, count) → { slice, docs, twins }[]` | The entries cut into `count` runs of about equal text, each with the stem twins of every entry: what one `addSlice` takes. |
+| `planIndexSlices` | `(lunr, docs, count) → { slice, docs, twins }[]` | The entries cut into `count` runs of about equal text, each with the stem twins of every entry: what one `addSlice` takes. `buildIndexJson` uses it. |
+| `cutIndexSlices` | `(docs[], count) → [from, to][]` | Where those runs start and end. |
+| `planIndexSegments` | `(entries, places, count) → { slice, first, segments, dropped, late }[]` | The build's slices, cut as `planIndexSlices` cuts them. Each says where its entries are among the render chunks' packed entries, and what was decided about them after the render. Used by the `indexSlices` task. |
+| `sliceDocs` | `(plan, read) → docs` | One slice's entries by number, as `addSlice` takes them, from its plan and the chunks' packed entries. |
+| `stemTwins` | `(lunr, docs) → Set<string>` | The qualified names that the stemmer merges with another name's. |
 | `addSlice` | `(lunr, docs, twins) → { state, added }` | One slice added to a `lunr.Builder` of its own. `state` holds the builder for `sliceVectors`; `added` is the slice's terms, postings and field lengths, for `mergeSlices`. |
 | `mergeSlices` | `(added[]) → { merged, totals }` | The slices' postings merged, each term numbered as one build numbers it, and the totals the vectors need: each slice's term numbers, each term's idf, the document count and each field's average length. |
 | `sliceVectors` | `(lunr, state, totals) → string` | lunr's `createFieldVectors` over one slice's builder, as `toJSON` writes the vectors. |
@@ -997,7 +1028,8 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `symbolPages` | `(pages) → object[]` | The pages under `/tB/`, each as `{ src, url, title, parent, symbols, excludeFromDocs, headings }`, `headings` read from `renderedContent`. |
+| `symbolPages` | `(pages) → object[]` | The pages under `/tB/`, each as `{ src, url, title, parent, symbols, excludeFromDocs, headings }`. `headings` is the page's own when its render worker set it, and is read from `renderedContent` otherwise. |
+| `isSymbolPage` | `(page) → boolean` | Whether `symbolPages` reads a page: one under `/tB/`, or a summary page. |
 | `headingsOf` | `(html) → { level, id, text }[]` | Every heading of a rendered page, in order, with the id the render gave it. A scan for `<hN`, not a regex over the page. |
 | `deriveSymbolIndex` | `({ pages, api }) → { symbols, interfaces, packages, gaps, unplaced }` | Pure compute. The entries, the interface-to-class and package-name maps, the public symbols no page documents, and the package pages that gave no entry. |
 | `serializeSymbolIndex` | `(result, api) → string` | The published file: a header, then one entry to a line. |
@@ -1113,7 +1145,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
 | `packTests` | `package-tests.mjs` | `packAllPackageTests` over the `"packageTests"` task data; imports the module when it runs. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
-| `indexAdd` | `search-index.mjs` | `addSlice` over the slice in its `fanOutPayload`; keeps the builder in `_indexSlices` for `indexVectors`. |
+| `indexAdd` | `search-index.mjs` | `addSlice` over its slice's entries, which `sliceDocs` reads from the `"indexEntries"` task data as the plan in its `fanOutPayload` says; keeps the builder in `_indexSlices` for `indexVectors`. |
 | `indexVectors` | `search-index.mjs` | `sliceVectors` over the builder `indexAdd` kept on this lane, with the `"indexTotals"` task data. |
 | `archiveDeflate` | `help-archive-step.mjs` | `deflateGroup` over the units in its `fanOutPayload`. Runs `archiveDeflate:i` and `archiveLateDeflate:i`. |
 | `writePdf` | `pdf.mjs` | Waits for the `"book"` task data, unpacks it with `unpackBookPayload`, writes the PDF tree and keeps the book for `checkBook`. |

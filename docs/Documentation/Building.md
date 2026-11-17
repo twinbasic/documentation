@@ -188,7 +188,7 @@ A watchdog catches this. When no task has completed for two minutes, it abandons
     Blocked on a predecessor (consequence, not cause):
       renderJoin  <- render:19
       flushJoin  <- flush:19
-      searchData  <- renderJoin
+      symbolPlace  <- renderJoin
       flush:19  <- render:19
       ... and 8 more
 

@@ -59,6 +59,9 @@ digraph scheduler {
     Fi   [label=<flush:i<BR/><FONT POINT-SIZE="10">[W] pinned</FONT>>,    fillcolor="#e8f0fe", color="#4285f4"]
     FJ   [label=<flushJoin<BR/><FONT POINT-SIZE="10">[M]</FONT>>,         fillcolor="#fef7e0", color="#f9ab00"]
     WA   [label=<writeAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    PA   [label=<packageApi<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
+    SP   [label=<symbolPlace<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    SE   [label=<searchEntries<BR/><FONT POINT-SIZE="10">[M]</FONT>>,     fillcolor="#fef7e0", color="#f9ab00"]
     SDt  [label=<searchData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
     SYM  [label=<symbolIndex<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     AP   [label=<addinProject<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
@@ -127,12 +130,18 @@ digraph scheduler {
     HI  -> WA
     VA  -> WA
 
-    RJ -> SDt
+    DP -> PA
+    PA -> SP
+    RJ -> SP
+
+    RJ -> SE
+    SP -> SE
+
+    SE -> SDt
     PD -> SDt
 
-    RJ -> SYM
+    SP -> SYM
     PD -> SYM
-    SYM -> SDt
 
     SYM -> AP
     PD  -> AP
@@ -147,7 +156,7 @@ digraph scheduler {
     WX -> WO
     WA -> WO
 
-    SDt -> IS
+    SE  -> IS
     IS  -> IAi
     IAi -> IM
     IAi -> IVi
@@ -155,6 +164,7 @@ digraph scheduler {
     IM  -> IVi
     IT  -> SI
     IVi -> SI
+    SDt -> SI
 
     FJ   -> APl
     SCSS -> APl
