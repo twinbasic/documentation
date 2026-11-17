@@ -564,9 +564,21 @@ const TASKS = {
             `X.light.png needs X.png in the same folder:\n${unpaired.map((r) => `  ${r}`).join("\n")}`,
         );
       }
-      return { pages, staticFiles, config, pictureSizes };
+      // Where each page's text is in the buffers the pieces' lanes packed
+      // (packPageText), for the render chunks' payloads (dispatch.submit).
+      const pageText = { sabs: results.map((r) => r.text.sab), at: new Map() };
+      for (const [piece, r] of results.entries()) {
+        for (const [i, page] of r.pages.entries()) {
+          pageText.at.set(page.srcRel, [piece, r.text.spans[2 * i], r.text.spans[2 * i + 1]]);
+        }
+      }
+      return { pages, staticFiles, config, pictureSizes, pageText };
     },
-    submit(out, state) {
+    submit(out, state, scheduler) {
+      // The render lanes read the pages' text from these; a chunk is claimed
+      // long after, and its handler waits for the message as for any task data.
+      for (const [i, sab] of out.pageText.sabs.entries()) scheduler.pool.broadcastTaskData(`pageText:${i}`, sab);
+      state.pageTextAt = out.pageText.at;
       state.pages = out.pages;
       state.staticFiles = out.staticFiles;
       state.site.config = out.config;
@@ -945,7 +957,7 @@ const TASKS = {
       const lateChunks = chunks.flatMap((chunk, i) => (chunk.some((p) => latePages.has(p.srcRel)) ? [i] : []));
       return { chunks, sharedSAB, lateChunks };
     },
-    submit(out, _state, scheduler) {
+    submit(out, state, scheduler) {
       const N = out.chunks.length;
       const views = scheduler._views;
       const idMap = scheduler._idMapping;
@@ -1081,7 +1093,15 @@ const TASKS = {
       registerBarrier(scheduler, views, "flushJoin", flushJoinIdx, "flush", N);
 
       // 6. Pack payload, broadcast, account, activate.
-      const payloadSAB = packPayloads(views, renderBase, out.chunks);
+      //    A chunk's payload is its pages without their text, and where each
+      //    one's text is in the buffers discover broadcast: the text is most of
+      //    a page, and as JSON of every page it was a third of this task. A
+      //    page with no place there keeps its text in the payload.
+      const payloads = out.chunks.map((chunk) => {
+        const texts = chunk.map((p) => state.pageTextAt.get(p.srcRel) ?? null);
+        return { pages: chunk.map((p, i) => (texts[i] ? { ...p, rawContent: undefined } : p)), texts };
+      });
+      const payloadSAB = packPayloads(views, renderBase, payloads);
       scheduler.addDynamicTasks(2 * N + 2); // N render + N flush + renderJoin + flushJoin
       scheduler.pool.broadcastDynamicData(payloadSAB, out.sharedSAB);
       activateDynamicTasks(views, renderBase, 2 * N); // render:i activate (depCount 0);

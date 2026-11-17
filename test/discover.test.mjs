@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { assemble, cutPieces, discover, listSources } from "../builder/discover.mjs";
-import { readPiece } from "../builder/discover-read.mjs";
+import { packPageText, pageText, readPiece } from "../builder/discover-read.mjs";
 import { deriveTreeRels } from "../builder/check-tree.mjs";
 import { fnmatchPathname, matchesAny } from "../builder/fnmatch.mjs";
 
@@ -171,6 +171,32 @@ describe("the source tree's inventory", () => {
     assert.deepEqual(found.pages, pieces.pages);
     assert.deepEqual(found.staticFiles, pieces.staticFiles);
     assert.equal(warned.length, 1);
+  });
+});
+
+// A render chunk's payload names where each page's text is in the buffer the
+// lane that read the page packed (packPageText). The site's own pages are
+// nearly all ASCII, where a length in characters and one in bytes agree.
+describe("the pages' text, packed for the render lanes", () => {
+  test("each page's text is read back as it was, whatever its characters", () => {
+    const pages = [
+      "plain\r\ntext\n",
+      "",
+      "za\u{17C}\u{F3}\u{142}\u{107} \u{2014} \u{1F600} \u{65E5}\u{672C}",
+      "after",
+    ].map((rawContent) => ({ rawContent }));
+    const { sab, spans } = packPageText(pages);
+    assert.equal(spans.length, 2 * pages.length);
+    assert.equal(sab.byteLength, Buffer.byteLength(pages.map((p) => p.rawContent).join(""), "utf8"));
+    for (const [i, page] of pages.entries()) {
+      assert.equal(pageText(sab, spans[2 * i], spans[2 * i + 1]), page.rawContent);
+    }
+  });
+
+  test("no pages pack into an empty buffer", () => {
+    const { sab, spans } = packPageText([]);
+    assert.equal(sab.byteLength, 0);
+    assert.deepEqual(spans, []);
   });
 });
 

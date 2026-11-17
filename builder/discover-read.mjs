@@ -56,6 +56,36 @@ export function readPiece(srcRoot, { pageRels, statSrcs, pairs }) {
   return { pages, plain, warnings, sizes, pairSizes };
 }
 
+/**
+ * The pages' text (`rawContent`) as UTF-8 in one SharedArrayBuffer, for the
+ * lanes that render them (tbdocs.mjs: discover broadcasts it, and a render
+ * chunk's payload names where each page's text is instead of holding it). The
+ * lane that read the pages packs them, so the main thread never turns the
+ * site's text into JSON for the chunks.
+ *
+ * @param {{ rawContent: string }[]} pages
+ * @returns {{ sab: SharedArrayBuffer, spans: number[] }} `spans` holds each
+ *   page's offset and length in bytes, two numbers a page, in the pages' order
+ */
+export function packPageText(pages) {
+  const spans = [];
+  let total = 0;
+  for (const page of pages) {
+    const length = Buffer.byteLength(page.rawContent, "utf8");
+    spans.push(total, length);
+    total += length;
+  }
+  const sab = new SharedArrayBuffer(total);
+  const bytes = Buffer.from(sab);
+  for (const [i, page] of pages.entries()) bytes.write(page.rawContent, spans[2 * i], spans[2 * i + 1], "utf8");
+  return { sab, spans };
+}
+
+/** One page's text, from what packPageText packed. */
+export function pageText(sab, offset, length) {
+  return Buffer.from(sab, offset, length).toString("utf8");
+}
+
 // A PNG file's width and height in pixels, from its header; null when it is no PNG.
 function pngSize(file) {
   const fd = openSync(file, "r");

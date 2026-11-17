@@ -6,7 +6,7 @@
 import { promises as fsP } from "node:fs";
 import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
-import { readPiece } from "./discover-read.mjs";
+import { packPageText, pageText, readPiece } from "./discover-read.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 
 // A lane boots in two stages. The first is this module's static imports: the
@@ -96,8 +96,11 @@ const handlers = {
   // One piece of the source tree (tbdocs.mjs, discoverList): its pages read
   // and their frontmatter parsed, its static files sized. The one handler
   // that runs after the first stage of the boot alone.
+  // The pages' text goes back a second time, packed for the render lanes
+  // (packPageText): the buffer is shared, not copied.
   async discoverRead(taskIdx) {
-    return readPiece(ctx.srcRoot, await fanOutPayload(taskIdx));
+    const result = readPiece(ctx.srcRoot, await fanOutPayload(taskIdx));
+    return { ...result, text: packPageText(result.pages) };
   },
 
   async warmInit() {
@@ -337,7 +340,13 @@ const handlers = {
   async render(taskIdx) {
     const offset = Atomics.load(views.payloadOffset, taskIdx);
     const length = Atomics.load(views.payloadLength, taskIdx);
-    const chunk = JSON.parse(new TextDecoder().decode(new Uint8Array(_payloadSAB, offset, length)));
+    const { pages: chunk, texts } = JSON.parse(new TextDecoder().decode(new Uint8Array(_payloadSAB, offset, length)));
+    // A page's text is not in the payload: it is where the lane that read the
+    // page packed it (discoverRead), in the buffer discover broadcast.
+    for (const [i, p] of chunk.entries()) {
+      const at = texts[i];
+      if (at) p.rawContent = pageText(await taskData(`pageText:${at[0]}`), at[1], at[2]);
+    }
 
     const env = _renderEnv;
 
