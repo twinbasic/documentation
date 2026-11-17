@@ -116,4 +116,97 @@ Module WDMExportTests
         Expect.Done
     End Sub
 
+    Private Function ReadByte(ByVal p As LongPtr) As Byte
+        GetMem ReadByte, p, 1
+    End Function
+
+    ' The export directory of an x64 image mapped at base, or 0.
+    Private Function ExportDirectoryOf(ByVal base As LongPtr) As LongPtr
+        Dim nt As LongPtr = base + ReadLong(base + &H3C)
+        Dim opt As LongPtr = nt + 24
+        If ReadLong(nt) <> &H4550 Or ReadInteger(opt) <> &H20B Then Return 0
+        If ReadLong(opt + 112) = 0 Then Return 0
+        Return base + ReadLong(opt + 112)
+    End Function
+
+    ' The address of the routine an x64 image mapped at base exports under name, or 0.
+    Private Function ExportByName(ByVal base As LongPtr, ByVal name As String) As LongPtr
+        Dim dir As LongPtr = ExportDirectoryOf(base)
+        If dir = 0 Then Return 0
+        Dim names As LongPtr = base + ReadLong(dir + 32)
+        Dim ords As LongPtr = base + ReadLong(dir + 36)
+        For i As Long = 0 To ReadLong(dir + 24) - 1
+            If ReadAnsi(base + ReadLong(names + 4 * i)) = name Then
+                Dim index As Long = CLng(ReadInteger(ords + 2 * i)) And &HFFFF&
+                Return base + ReadLong(base + ReadLong(dir + 28) + 4 * index)
+            End If
+        Next
+        Return 0
+    End Function
+
+    ' The address of the routine an x64 image mapped at base exports as ordinal n, or 0; named is
+    ' set when an export name refers to it.
+    Private Function ExportByOrdinal(ByVal base As LongPtr, ByVal n As Long, ByRef named As Boolean) As LongPtr
+        Dim dir As LongPtr = ExportDirectoryOf(base)
+        If dir = 0 Then Return 0
+        Dim index As Long = n - ReadLong(dir + 16)
+        If index < 0 Or index >= ReadLong(dir + 20) Then Return 0
+        Dim ords As LongPtr = base + ReadLong(dir + 36)
+        For i As Long = 0 To ReadLong(dir + 24) - 1
+            If (CLng(ReadInteger(ords + 2 * i)) And &HFFFF&) = index Then named = True
+        Next
+        Return base + ReadLong(base + ReadLong(dir + 28) + 4 * index)
+    End Function
+
+    ' The system service number a Zw routine of the x64 kernel loads before it jumps to the
+    ' service dispatcher (mov eax, n; jmp), or -1.
+    Private Function KernelServiceNumber(ByVal p As LongPtr) As Long
+        If p = 0 Then Return -1
+        For i As Long = 0 To 32
+            If ReadByte(p + i) = &HB8 And ReadByte(p + i + 5) = &HE9 Then Return ReadLong(p + i + 1)
+        Next
+        Return -1
+    End Function
+
+    ' The system service number an Nt routine of the x64 ntdll.dll loads (mov r10, rcx; mov eax, n),
+    ' or -1.
+    Private Function NtdllServiceNumber(ByVal p As LongPtr) As Long
+        If p = 0 Then Return -1
+        If ReadLong(p) <> &HB8D18B4C Then Return -1
+        Return ReadLong(p + 4)
+    End Function
+
+    ' The x64 kernel exports ZwCreateUserProcess with no name, as ordinal 2: the routine there loads
+    ' the service number of ntdll's NtCreateUserProcess. A Declare that imports it by name names no
+    ' export; Alias "#2" imports it by ordinal. ZwClose, exported by name, is the control for the
+    ' reading of the two kinds of stub.
+    [TestCase]
+    Public Sub ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2()
+        Expect.Begin
+        Dim folder As String = Environ$("SystemRoot") & If(LenB(Of LongPtr) = 8, "\System32\", "\Sysnative\")
+        Dim flags As Long = LOAD_LIBRARY_AS_DATAFILE Or LOAD_LIBRARY_AS_IMAGE_RESOURCE
+        Dim hk As LongPtr = LoadLibraryExW(StrPtr(folder & "ntoskrnl.exe"), 0, flags)
+        Dim hn As LongPtr = LoadLibraryExW(StrPtr(folder & "ntdll.dll"), 0, flags)
+        Expect.IsTrue hk <> 0, "the x64 ntoskrnl.exe is mapped"
+        Expect.IsTrue hn <> 0, "the x64 ntdll.dll is mapped"
+        If hk <> 0 And hn <> 0 Then
+            Dim k As LongPtr = hk And (Not CLngPtr(3))
+            Dim n As LongPtr = hn And (Not CLngPtr(3))
+            Dim control As Long = NtdllServiceNumber(ExportByName(n, "NtClose"))
+            Expect.IsTrue control >= 0, "ntdll's NtClose is read as a system-service stub"
+            Expect.AreEqual control, KernelServiceNumber(ExportByName(k, "ZwClose")), "the service number of the kernel's ZwClose, against ntdll's NtClose"
+            Dim named As Boolean
+            Dim p As LongPtr = ExportByOrdinal(k, 2, named)
+            Expect.IsTrue p <> 0, "the kernel exports ordinal 2"
+            Expect.IsFalse named, "ordinal 2 of the kernel has an export name"
+            Expect.IsTrue ExportByName(k, "ZwCreateUserProcess") = 0, "the kernel exports no name ZwCreateUserProcess"
+            Dim want As Long = NtdllServiceNumber(ExportByName(n, "NtCreateUserProcess"))
+            Expect.IsTrue want >= 0, "ntdll's NtCreateUserProcess is read as a system-service stub"
+            Expect.AreEqual want, KernelServiceNumber(p), "the service number of the kernel's ordinal 2, against ntdll's NtCreateUserProcess"
+        End If
+        If hk <> 0 Then FreeLibrary hk
+        If hn <> 0 Then FreeLibrary hn
+        Expect.Done
+    End Sub
+
 End Module

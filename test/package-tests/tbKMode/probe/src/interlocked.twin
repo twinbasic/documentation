@@ -1,0 +1,8 @@
+' Calls InterlockedIncrement: a procedure of the package in a 64-bit build, a Declare in a 32-bit one.
+Module Driver
+    Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
+        Dim n As Long
+        InterlockedIncrement n
+        Return STATUS_SUCCESS
+    End Function
+End Module

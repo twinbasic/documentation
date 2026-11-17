@@ -89,7 +89,8 @@ End Module
   they call a helper, so that the package's `Lib "ntoskrnl.exe"` Declares never reach the kernel).
   It is not published, and it needs no `RunAll`.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
-  TBMANLIB_Dialog's and xCalendar's do.
+  TBMANLIB_Dialog's and xCalendar's do, and so does one about what a program built with the package
+  holds (tbKMode's builds small drivers and reads their import tables).
 
 ## Tying the pages to the cases
 

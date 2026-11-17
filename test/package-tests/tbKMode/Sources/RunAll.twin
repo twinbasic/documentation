@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "tbKMode 0.3.0.5: 479 test cases"
+        Expect.StartRun "tbKMode 0.3.0.5: 480 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -1135,6 +1135,10 @@ Module RunAll
         Err.Clear
         WDMExportTests.Declares_NameExportsOfTheKernel
         Expect.EndCase "WDMExportTests.Declares_NameExportsOfTheKernel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2
+        Expect.EndCase "WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer

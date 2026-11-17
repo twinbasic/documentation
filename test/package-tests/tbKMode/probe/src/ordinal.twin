@@ -1,0 +1,11 @@
+' Calls ZwCreateUserProcess through a Declare of its own with Alias "#2": the 64-bit kernel exports the
+' routine with no name, as ordinal 2, and the driver imports it by that ordinal.
+Module Driver
+    Private Declare PtrSafe Function ZwCreateUserProcessByOrdinal Lib "ntoskrnl.exe" Alias "#2" (ProcessHandle As LongPtr, ThreadHandle As LongPtr, ByVal ProcessDesiredAccess As Long, ByVal ThreadDesiredAccess As Long, ByVal ProcessObjectAttributes As LongPtr, ByVal ThreadObjectAttributes As LongPtr, ByVal ProcessFlags As Long, ByVal ThreadFlags As Long, ByVal ProcessParameters As LongPtr, ByVal CreateInfo As LongPtr, ByVal AttributeList As LongPtr) As Long
+
+    Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
+        Dim hp As LongPtr, ht As LongPtr
+        ZwCreateUserProcessByOrdinal hp, ht, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        Return STATUS_SUCCESS
+    End Function
+End Module
