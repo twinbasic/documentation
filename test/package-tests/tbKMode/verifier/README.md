@@ -5,7 +5,8 @@ and nothing else: no twinBASIC install, no Visual Studio, no WDK. It is to be re
 beside the package's test project; until then it lives here, and every file it needs is in this
 folder.
 
-**No driver is loaded, installed, signed or started**: the tool reads files.
+**No driver is loaded, installed, signed or started**, and no installer is run: the tool reads
+files.
 
 ## Commands
 
@@ -14,43 +15,59 @@ node verify.mjs imports MyDriver.sys
 node verify.mjs kernels
 ```
 
-- **`imports <driver.sys> ...`** checks a built driver's import table: it may import from no
-  user-mode DLL, since the kernel loads none for a driver, and each routine it imports from
-  `ntoskrnl.exe`, `hal.dll` or `fltmgr.sys` must be exported by that file in every Windows version
-  of `db/kernels.json`. A routine that some versions lack is named with those versions, such as
-  **ExFreePool2**, which Windows 10 does not export. An export with no name, such as
-  **ZwCreateUserProcess** (ordinal 2), is checked as `#2`, which is how a driver whose Declare says
-  `Alias "#2"` imports it. Only a 64-bit driver's routines are checked: the database has no x86
-  kernels. A 32-bit driver is still checked for user-mode DLLs.
-- **`kernels [--cache <dir>]`** writes `db/kernels.json`, which the zip ships, so a user never
-  needs to run it. It finds each file of `config/kernels.json` in each Windows version there in
-  [Winbindex](https://winbindex.m417z.com/)'s index, downloads that build from the Microsoft symbol
-  server, checks its SHA-256 against the index, and records its export table. The files are kept
-  in the cache (default `%TEMP%\tbkmode-verifier\symbols`), never in this folder: only their
-  export tables are recorded. About 65 MB the first time.
+- **`imports <driver.sys> ...`** checks a built driver's import table. It may import from no
+  user-mode DLL, since the kernel loads none for a driver. Each routine it imports from
+  `ntoskrnl.exe`, `hal.dll` or `fltmgr.sys` must be exported by each build of that file the
+  database holds for the driver's arch: for a 64-bit driver, each Windows version's file; for a
+  32-bit one, the x86 import libraries of WDK 10.0.22621. A routine that some versions lack is
+  named with those versions, such as **ExFreePool2**, which Windows 10 does not export. An export
+  with no name, such as **ZwCreateUserProcess** (ordinal 2), is checked as `#2`, which is how a
+  driver whose Declare says `Alias "#2"` imports it.
+- **`kernels`** updates `db/kernels.json`, which the zip ships, so a user never needs to run it.
+  It fetches only what `config/kernels.json` names and the database lacks: a run with nothing new
+  to fetch touches no network. `--refresh` moves each Windows version to its newest build;
+  `--rebuild` starts from an empty database. Downloads are kept in `--cache` (default
+  `%TEMP%\tbkmode-verifier`), never in this folder: only the export tables are recorded.
 
 Exit codes: 0 done (for `imports`, every driver passed), 1 a driver failed, 2 the command line was
 refused or the command could not run.
 
 ## The database
 
-`db/kernels.json` holds, for each file, the builds it was read from (Windows version, build number,
-update and SHA-256) and each export with the indexes of the builds that have it, one export to a
-line. Two things in it come from how the sources work:
+`db/kernels.json` holds, for each file, the builds it was read from and each export with the
+indexes of the builds that have it, one export to a line. A build comes from one of two sources:
+
+- **`symbol`**: an x64 file of one Windows version. `kernels` finds its newest build in
+  [Winbindex](https://winbindex.m417z.com/)'s index, downloads it from the Microsoft symbol server
+  (about 65 MB for all of them), checks its SHA-256 against the index and records its exports.
+- **`wdk`**: what a WDK's import libraries say a file exports on one arch, the only source for x86,
+  whose files Winbindex does not index. WDK 10.0.22621 is the last with x86 kernel-mode libraries.
+  `kernels` reads its installer, `wdksetup.exe`, as data: the manifest inside it names the package
+  of headers and libraries and the CABs it consists of, which are served beside the installer.
+  Only those are downloaded (about 28 MB), each checked against the manifest's SHA-1, and expanded
+  with Windows' `expand.exe`. For x86 the libraries also give each routine's decorated symbol,
+  kept under `symbols`: `@KfRaiseIrql@4` is a `__fastcall` routine taking 4 bytes of arguments,
+  `_KeLowerIrql@4` a `__stdcall` one.
+
+What the database holds is kept: a past WDK does not change, and a Windows version's build changes
+only with `--refresh`. Three things in it come from how the sources work:
 
 - The symbol server keys a file by its PE timestamp and image size, and some builds share both
   (`hal.dll`, a small stub, is built with the same ones again and again). The server then returns
   one of them; a file whose timestamp and size are the key's is taken, its own SHA-256 recorded,
   and the index's in `indexSha256`.
-- `absent` names the Windows versions with no build of a file in Winbindex. From Windows 11 24H2
-  the HAL is part of the kernel, and Winbindex has no `hal.dll` for those versions; `imports`
+- `absent` names the Windows versions with no x64 build of a file in Winbindex. From Windows 11
+  24H2 the HAL is part of the kernel, and Winbindex has no `hal.dll` for those versions; `imports`
   reports them as not checked.
+- On x86 some routines are exported by `hal.dll`, not `ntoskrnl.exe`, such as **KfRaiseIrql**,
+  **KeAcquireSpinLock** and **ExAcquireFastMutex**; on x64 the kernel exports them.
 
 ## Planned
 
-- `check`: the package's declarations against a database of the WDK (structure layouts,
-  enumeration and constant values, prototypes and calling conventions), shipped with the zip, and
-  the layout and value test modules written from it, which today's `../wdk/` tools write with
-  Visual Studio and the WDK.
+- `check`: the package's declarations against the database (each Declare's file and entry point
+  per arch, `FastCall` and the bytes of its arguments on x86) and against a database of the WDK
+  (structure layouts, enumeration and constant values, prototypes), shipped with the zip, and the
+  layout and value test modules written from it, which today's `../wdk/` tools write with Visual
+  Studio and the WDK.
 - A self-test with no network, run by the documentation's `test.bat`.
 - The zip, and its card on the Downloads page.

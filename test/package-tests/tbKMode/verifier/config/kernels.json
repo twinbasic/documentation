@@ -1,5 +1,5 @@
 {
-  "comment": "The kernel-mode files whose exports db/kernels.json records, and the Windows versions they are taken from. Each version is named as Winbindex names it (`winbindex`, a name or a list of names); the newest build under those names is taken. Windows 10 21H2 and 22H2 share one kernel, build 19045, and Winbindex files its newer updates under 21H2. x64 only: Winbindex indexes no x86 files, and twinBASIC builds no arm64 code.",
+  "comment": "What db/kernels.json records. `files`: the kernel-mode files. `windows`: the Windows versions whose x64 files are taken from the Microsoft symbol server, each named as Winbindex names it (`winbindex`, a name or a list of names), the newest build under those names; Windows 10 21H2 and 22H2 share one kernel, build 19045, and Winbindex files its newer updates under 21H2. `wdkLibraries`: WDK packages whose import libraries are read, for the files' exports on an arch the symbol server's index does not cover: WDK 10.0.22621 is the last with x86 kernel-mode libraries, its bundle read as data (never run) and only the named package fetched. twinBASIC builds no arm64 code, so there is none.",
   "files": ["ntoskrnl.exe", "hal.dll", "fltmgr.sys"],
   "windows": [
     { "name": "Windows 10 22H2", "winbindex": ["22H2", "21H2"] },
@@ -7,5 +7,13 @@
     { "name": "Windows 11 24H2", "winbindex": "11-24H2" },
     { "name": "Windows 11 25H2", "winbindex": "11-25H2" },
     { "name": "Windows 11 26H1", "winbindex": "11-26H1" }
+  ],
+  "wdkLibraries": [
+    {
+      "wdk": "10.0.22621.5193",
+      "arch": "x86",
+      "bundle": "https://go.microsoft.com/fwlink/?linkid=2330411",
+      "package": "package_WindowsDriverKitHeadersandLibs_x86_en_us"
+    }
   ]
 }

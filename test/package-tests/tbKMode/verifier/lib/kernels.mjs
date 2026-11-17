@@ -1,17 +1,30 @@
-// The exports of Windows' kernel-mode files, by Windows version: the files are found in Winbindex's
-// index (winbindex.m417z.com, which records each file's hash, timestamp and image size by Windows
-// update), downloaded from the Microsoft symbol server by that timestamp and size, checked against
-// the hash, and reduced to their export tables. Only the export tables are kept in the database;
-// the files stay in the download cache.
+// The exports of Windows' kernel-mode files, the kernel database (db/kernels.json), from two kinds of
+// source:
+//
+// - symbol: the x64 files themselves, by Windows version. Each is found in Winbindex's index
+//   (winbindex.m417z.com, which records each file's hash, timestamp and image size by Windows
+//   update), downloaded from the Microsoft symbol server by that timestamp and size, checked against
+//   the hash, and reduced to its export table.
+// - wdk: the import libraries of a WDK, which name what a driver built with that WDK imports from
+//   each file. They are the only source for x86, whose kernels Winbindex does not index; the last
+//   WDK with x86 kernel-mode libraries is 10.0.22621. On x86 they also give each routine's decorated
+//   symbol, which says its calling convention and the bytes of its arguments.
+//
+// The database is updated, not rebuilt: what it holds is kept, and only what the config names and
+// the database lacks is fetched. `refresh` moves each Windows version to its newest build; a WDK's
+// libraries never change, so nothing refetches them but `rebuild`.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
+import { fetchBundlePackage, filesUnder } from "./burn.mjs";
+import { importLibrary } from "./importlib.mjs";
 import { exportsOf, peHeaders } from "./pe.mjs";
 
 const WINBINDEX = "https://winbindex.m417z.com/data/by_filename_compressed";
 const SYMBOLS = "https://msdl.microsoft.com/download/symbols";
 const AGENT = { "user-agent": "tbkmode-verifier" };
+export const FORMAT = 2;
 
 /** Compares two dotted build numbers, such as 19045.6396 and 19045.7850. */
 function compareBuilds(a, b) {
@@ -30,20 +43,22 @@ export async function winbindexIndex(file) {
 }
 
 /**
- * The newest amd64 build of a file in one Windows version of a Winbindex index, or null.
+ * The newest amd64 build of a file under one or more Winbindex version names, or null.
  *
  * @returns {{sha256: string, build: string, update: string, timestamp: number, sizeOfImage: number, size: number} | null}
  */
-export function newestBuild(index, version) {
+export function newestBuild(index, versions) {
   let best = null;
   for (const [sha256, entry] of Object.entries(index)) {
     const info = entry.fileInfo;
     if (!info?.timestamp || !info.virtualSize || info.machineType !== 0x8664) continue;
-    for (const [update, u] of Object.entries(entry.windowsVersions?.[version] ?? {})) {
-      const build = u.updateInfo?.releaseVersion ?? u.windowsVersionInfo?.releaseVersion;
-      if (!build) continue;
-      if (!best || compareBuilds(build, best.build) > 0)
-        best = { sha256, build, update, timestamp: info.timestamp, sizeOfImage: info.virtualSize, size: info.size };
+    for (const version of [versions].flat()) {
+      for (const [update, u] of Object.entries(entry.windowsVersions?.[version] ?? {})) {
+        const build = u.updateInfo?.releaseVersion ?? u.windowsVersionInfo?.releaseVersion;
+        if (!build) continue;
+        if (!best || compareBuilds(build, best.build) > 0)
+          best = { sha256, build, update, timestamp: info.timestamp, sizeOfImage: info.virtualSize, size: info.size };
+      }
     }
   }
   return best;
@@ -55,9 +70,11 @@ export function symbolServerUrl(file, timestamp, sizeOfImage) {
   return `${SYMBOLS}/${file}/${key}/${file}`;
 }
 
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
 /**
- * A file from the cache, or else downloaded from the symbol server: `{bytes, sha256}`. The cache
- * holds each file under the hash the index gives.
+ * A file from the cache, or else downloaded from the symbol server: `{bytes, sha256, shared}`. The
+ * cache holds each file under the hash the index gives.
  *
  * The symbol server keys a file by its PE timestamp and image size only, so two builds that share
  * both share one key, and the server returns one of them: hal.dll, a small stub since Windows 10, is
@@ -90,8 +107,6 @@ export async function fetchFile(cache, file, build, log = () => {}) {
   return { bytes, sha256: got, shared: got !== build.sha256 };
 }
 
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-
 /** Names first, in code-unit order, then the ordinal-only exports ("#n") by number. */
 function byExportKey(a, b) {
   const x = a.startsWith("#");
@@ -102,52 +117,193 @@ function byExportKey(a, b) {
 }
 
 /**
- * Builds the kernel database from a config (config/kernels.json): for each file, the build of each
- * Windows version and the export table of each, merged into one map from export to the builds that
- * have it. An export by ordinal only is recorded as "#<ordinal>". Deterministic: the same builds
- * give the same bytes.
+ * The database as a working model: per file, its builds, each with the Set of its export keys, the
+ * versions found absent, and the x86 decorated symbols.
  */
-export async function buildKernelDatabase(config, { cache, log = () => {} }) {
-  const files = {};
-  for (const file of config.files) {
-    log(`index ${file}`);
-    const index = await winbindexIndex(file);
-    const builds = [];
-    const absent = [];
+function decode(db) {
+  const model = new Map();
+  for (const [file, f] of Object.entries(db?.files ?? {})) {
+    const builds = f.builds.map((b) => ({ ...b, exports: new Set() }));
+    for (const [key, ids] of Object.entries(f.exports)) for (const id of ids) builds[id].exports.add(key);
+    model.set(file, { builds, absent: [...(f.absent ?? [])], symbols: { ...(f.symbols ?? {}) } });
+  }
+  return model;
+}
+
+/** Back from the working model to the database: builds in a stable order, exports sorted. */
+function encode(model, files) {
+  const order = (b) => (b.source === "symbol" ? `0 ${b.arch} ${b.order ?? 0}` : `1 ${b.arch} ${b.wdk}`);
+  const out = {};
+  for (const file of files) {
+    const m = model.get(file);
+    if (!m) continue;
+    const builds = [...m.builds].sort((a, b) => (order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0));
     const exports = new Map();
-    for (const w of config.windows) {
-      const labels = [w.winbindex].flat();
-      const build = labels
-        .map((l) => newestBuild(index, l))
-        .filter(Boolean)
-        .reduce((a, b) => (!a || compareBuilds(b.build, a.build) > 0 ? b : a), null);
-      if (!build) {
-        log(`  ${w.name}: no amd64 build of ${file} in Winbindex`);
-        absent.push(w.name);
-        continue;
-      }
-      const { bytes, sha256: got, shared } = await fetchFile(cache, file, build, (m) => log(`  ${m}`));
-      const h = peHeaders(bytes);
-      if (h.machine !== "x64") throw new Error(`${file} ${build.build} is ${h.machine}, not x64`);
-      const id = builds.length;
-      const record = { windows: w.name, build: build.build, update: build.update, sha256: got };
-      if (shared) record.indexSha256 = build.sha256;
-      builds.push(record);
-      for (const e of exportsOf(bytes)) {
-        const key = e.name ?? `#${e.ordinal}`;
+    builds.forEach((b, id) => {
+      for (const key of b.exports) {
         if (!exports.has(key)) exports.set(key, []);
         exports.get(key).push(id);
       }
-      log(`  ${w.name}: ${build.build} (${build.update})`);
-    }
+    });
     const sorted = {};
     for (const k of [...exports.keys()].sort(byExportKey)) sorted[k] = exports.get(k);
-    files[file] = { arch: "x64", builds, absent, exports: sorted };
+    const symbols = {};
+    for (const k of Object.keys(m.symbols).sort(byExportKey)) symbols[k] = m.symbols[k];
+    out[file] = {
+      builds: builds.map(({ exports: _, order: __, ...rest }) => rest),
+      absent: m.absent,
+      exports: sorted,
+      symbols,
+    };
   }
   return {
-    format: 1,
+    format: FORMAT,
     comment:
-      "The exports of Windows' kernel-mode files, from the Microsoft symbol server (keys from Winbindex). Each export lists the indexes of the builds that have it; '#n' is an export by ordinal n with no name. `absent` names the Windows versions for which Winbindex has no build of the file. `indexSha256` is the hash Winbindex gives a build whose key the symbol server answers with another build's file.",
-    files,
+      "The exports of Windows' kernel-mode files. A build of source 'symbol' is an x64 file of one Windows version from the Microsoft symbol server (keys from Winbindex); one of source 'wdk' is what that WDK's import libraries say the file exports, for its arch (the only source for x86). Each export lists the indexes of the builds that have it; '#n' is an export by ordinal n with no name. `absent` names the x64 Windows versions with no build of the file in Winbindex. `indexSha256` is the hash Winbindex gives a build whose key the symbol server answers with another build's file. `symbols` holds the x86 decorated symbol of each export the WDK's libraries name: '@Name@n' is __fastcall, '_Name@n' __stdcall, n the bytes of the arguments.",
+    files: out,
   };
+}
+
+/**
+ * Updates the kernel database (`db`, or null for none) to what the config names, and returns it.
+ *
+ * @param {object} config  config/kernels.json
+ * @param {object | null} db
+ * @param {{cache: string, refresh?: boolean, log?: (m: string) => void}} o
+ */
+export async function updateKernelDatabase(config, db, { cache, refresh = false, log = () => {} }) {
+  if (db && db.format !== FORMAT) {
+    log(`the database is format ${db.format}, this tool writes ${FORMAT}: rebuilt`);
+    db = null;
+  }
+  const model = decode(db);
+  const names = new Set(config.windows.map((w) => w.name));
+  for (const file of config.files) {
+    if (!model.has(file)) model.set(file, { builds: [], absent: [], symbols: {} });
+    const m = model.get(file);
+    // Versions the config no longer names go.
+    m.builds = m.builds.filter((b) => b.source !== "symbol" || names.has(b.windows));
+    m.absent = m.absent.filter((n) => names.has(n));
+    const todo = config.windows.filter(
+      (w) =>
+        refresh || (!m.absent.includes(w.name) && !m.builds.some((b) => b.source === "symbol" && b.windows === w.name)),
+    );
+    if (!todo.length) continue;
+    log(`index ${file}`);
+    const index = await winbindexIndex(file);
+    for (const w of todo) {
+      const order = config.windows.indexOf(w);
+      const found = newestBuild(index, w.winbindex);
+      const held = m.builds.findIndex((b) => b.source === "symbol" && b.windows === w.name);
+      if (!found) {
+        log(`  ${w.name}: no amd64 build of ${file} in Winbindex`);
+        if (held >= 0) m.builds.splice(held, 1);
+        if (!m.absent.includes(w.name)) m.absent.push(w.name);
+        continue;
+      }
+      m.absent = m.absent.filter((n) => n !== w.name);
+      if (held >= 0 && m.builds[held].build === found.build && m.builds[held].update === found.update) {
+        log(`  ${w.name}: ${found.build} (${found.update}), held`);
+        continue;
+      }
+      const {
+        bytes,
+        sha256: got,
+        shared,
+      } = await fetchFile(path.join(cache, "symbols"), file, found, (x) => log(`  ${x}`));
+      const h = peHeaders(bytes);
+      if (h.machine !== "x64") throw new Error(`${file} ${found.build} is ${h.machine}, not x64`);
+      const record = {
+        source: "symbol",
+        arch: "x64",
+        windows: w.name,
+        build: found.build,
+        update: found.update,
+        sha256: got,
+      };
+      if (shared) record.indexSha256 = found.sha256;
+      record.exports = new Set(exportsOf(bytes).map((e) => e.name ?? `#${e.ordinal}`));
+      record.order = order;
+      if (held >= 0) m.builds.splice(held, 1, record);
+      else m.builds.push(record);
+      log(`  ${w.name}: ${found.build} (${found.update})`);
+    }
+    m.absent.sort(
+      (a, b) => config.windows.findIndex((w) => w.name === a) - config.windows.findIndex((w) => w.name === b),
+    );
+  }
+  for (const m of model.values())
+    for (const b of m.builds)
+      if (b.source === "symbol") b.order = config.windows.findIndex((w) => w.name === b.windows);
+
+  for (const lib of config.wdkLibraries ?? []) {
+    const have = config.files.every((file) =>
+      model.get(file).builds.some((b) => b.source === "wdk" && b.wdk === lib.wdk && b.arch === lib.arch),
+    );
+    if (have) continue;
+    log(`WDK ${lib.wdk} ${lib.arch} import libraries`);
+    const { version, dirs } = await fetchBundlePackage(
+      lib.bundle,
+      lib.package,
+      path.join(cache, `wdk-${lib.wdk}-${lib.arch}`),
+      (x) => log(`  ${x}`),
+    );
+    if (version && !version.endsWith(lib.wdk.split(".").slice(2).join(".")))
+      log(`  the package's version is ${version}`);
+    const byFile = new Map(config.files.map((f) => [f, { exports: new Set(), symbols: {} }]));
+    for (const f of filesUnder(dirs)) {
+      const objects = importLibrary(readFileSync(f));
+      if (!objects) continue;
+      for (const o of objects) {
+        if (o.machine !== lib.arch) continue;
+        const entry = byFile.get(o.dll.toLowerCase());
+        if (!entry) continue;
+        const key = o.name ?? `#${o.ordinal}`;
+        entry.exports.add(key);
+        if (lib.arch === "x86" && o.type === "code") entry.symbols[key] = o.symbol;
+      }
+    }
+    for (const [file, entry] of byFile) {
+      const m = model.get(file);
+      m.builds = m.builds.filter((b) => !(b.source === "wdk" && b.wdk === lib.wdk && b.arch === lib.arch));
+      if (!entry.exports.size) {
+        log(`  ${file}: no ${lib.arch} import library`);
+        continue;
+      }
+      m.builds.push({ source: "wdk", arch: lib.arch, wdk: lib.wdk, exports: entry.exports });
+      if (lib.arch === "x86") Object.assign(m.symbols, entry.symbols);
+      log(`  ${file}: ${entry.exports.size} exports`);
+    }
+  }
+  return encode(model, config.files);
+}
+
+/** The database as JSON with one export to a line, so that a new build reads as a short diff. */
+export function kernelDatabaseText(db) {
+  const lines = ["{", `"format": ${db.format},`, `"comment": ${JSON.stringify(db.comment)},`, '"files": {'];
+  const files = Object.entries(db.files);
+  files.forEach(([file, f], i) => {
+    lines.push(`${JSON.stringify(file)}: {`, '"builds": [');
+    lines.push(f.builds.map((b) => JSON.stringify(b)).join(",\n"));
+    lines.push("],", `"absent": ${JSON.stringify(f.absent)},`, '"exports": {');
+    lines.push(
+      Object.entries(f.exports)
+        .map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`)
+        .join(",\n"),
+    );
+    lines.push("},", '"symbols": {');
+    lines.push(
+      Object.entries(f.symbols)
+        .map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`)
+        .join(",\n"),
+    );
+    lines.push("}", i < files.length - 1 ? "}," : "}");
+  });
+  lines.push("}", "}", "");
+  return lines.join("\n");
+}
+
+/** A build's name in a message: its Windows version, or its WDK's libraries. */
+export function buildLabel(b) {
+  return b.source === "symbol" ? b.windows : `the ${b.arch} libraries of WDK ${b.wdk}`;
 }

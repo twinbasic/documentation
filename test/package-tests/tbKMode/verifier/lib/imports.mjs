@@ -1,6 +1,7 @@
 // Whether a built driver can load: every routine it imports must be exported by the kernel-mode file
-// it names, in each Windows version the kernel database records, and it may import from no other
-// file, since the kernel loads no user-mode DLL for a driver.
+// it names, in each build of that file the kernel database records for the driver's arch, and it may
+// import from no other file, since the kernel loads no user-mode DLL for a driver.
+import { buildLabel } from "./kernels.mjs";
 import { importsOf, peHeaders } from "./pe.mjs";
 
 /**
@@ -21,17 +22,19 @@ export function checkDriver(bytes, db) {
       problems.push(`imports from ${dll}, which the kernel does not load for a driver: ${names.join(", ")}`);
       continue;
     }
-    if (h.machine !== kernel.arch) {
-      unchecked.push(`${dll}: the database has the ${kernel.arch} exports, the driver is ${h.machine}`);
+    const ids = kernel.builds.map((b, i) => (b.arch === h.machine ? i : -1)).filter((i) => i >= 0);
+    if (!ids.length) {
+      unchecked.push(`${dll}: the database has no ${h.machine} build of it`);
       continue;
     }
     for (const name of names) {
       const have = new Set(kernel.exports[name] ?? []);
-      const missing = kernel.builds.filter((_, i) => !have.has(i)).map((b) => b.windows);
-      if (missing.length === kernel.builds.length) problems.push(`${dll} exports no ${name}`);
+      const missing = ids.filter((i) => !have.has(i)).map((i) => buildLabel(kernel.builds[i]));
+      if (missing.length === ids.length) problems.push(`${dll} exports no ${name}`);
       else if (missing.length) problems.push(`${dll} of ${missing.join(", ")} exports no ${name}`);
     }
-    if (kernel.absent.length) unchecked.push(`${dll}: the database has no build of ${kernel.absent.join(", ")}`);
+    if (h.machine === "x64" && kernel.absent.length)
+      unchecked.push(`${dll}: the database has no build of ${kernel.absent.join(", ")}`);
   }
   return { machine: h.machine, imports, problems, unchecked, pass: problems.length === 0 };
 }
