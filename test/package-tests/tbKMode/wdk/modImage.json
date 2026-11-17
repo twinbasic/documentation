@@ -1,6 +1,0 @@
-{
-  "fixture": "Image",
-  "headers": ["fltKernel.h", "ntimage.h"],
-  "values": { "UNWIND_HISTORY_TABLE_SIZE": 12 },
-  "comment": "The PE image structures are in the kernel's ntimage.h, which fltKernel.h does not include. UNWIND_HISTORY_TABLE_SIZE is winnt.h's (and rtlsupportapi.h's), which no kernel header declares."
-}

@@ -9,6 +9,8 @@ import { checkDeclares } from "./lib/declares.mjs";
 import { checkDriver } from "./lib/imports.mjs";
 import { readPackage } from "./lib/package.mjs";
 import { kernelDatabaseText, updateKernelDatabase } from "./lib/kernels.mjs";
+import { checkHeaders } from "./lib/headers.mjs";
+import { buildKitDatabase, wdkDatabaseText } from "./lib/wdkdb.mjs";
 
 const here = import.meta.dirname;
 
@@ -25,11 +27,15 @@ Commands:
   kernels                   updates db/kernels.json to what config/kernels.json names: fetches
                             only what the database lacks (x64 files from the Microsoft symbol
                             server, x86 exports from a WDK's import libraries)
+  wdk                       writes db/wdk-<kit>.json for each kit config/wdk.json names that has
+                            none: what its headers declare, for x86 and x64, as the Visual C++
+                            compiler reads them (needs Visual Studio with the C++ tools)
 
 Options:
-  --cache <dir>             kernels: where downloads are kept (default: %TEMP%\\tbkmode-verifier)
+  --cache <dir>             kernels, wdk: where downloads and work files are kept (default:
+                            %TEMP%\\tbkmode-verifier)
   --refresh                 kernels: move each Windows version to its newest build
-  --rebuild                 kernels: start from an empty database
+  --rebuild                 kernels: start from an empty database; wdk: write every kit's again
   --all                     check: list what could not be checked as well
   --json                    check: print the findings as JSON
   -h, --help                print this text and exit
@@ -101,7 +107,7 @@ function printFindings(findings, all) {
   }
   const count = (s) => findings.filter((f) => f.severity === s).length;
   console.log(
-    `\n${count("error")} errors, ${count("warning")} warnings, ${count("unchecked")} not checked${all ? "" : " (--all lists them)"}`,
+    `\n${count("error")} errors, ${count("warning")} warnings, ${count("note")} notes, ${count("unchecked")} not checked${all ? "" : " (--all lists them)"}`,
   );
 }
 
@@ -123,6 +129,26 @@ if (command === "kernels") {
     writeFileSync(KERNEL_DB, text, "utf8");
     console.log(`wrote ${path.relative(process.cwd(), KERNEL_DB)}`);
   }
+} else if (command === "wdk") {
+  if (args.length) fail(`wdk takes no arguments\n${USAGE}`);
+  if (values.refresh) fail(`--refresh is for kernels\n${USAGE}`);
+  const config = JSON.parse(readFileSync(path.join(here, "config", "wdk.json"), "utf8"));
+  const cache = path.resolve(values.cache ?? path.join(tmpdir(), "tbkmode-verifier"));
+  for (const kit of config.kits) {
+    const file = path.join(here, "db", `wdk-${kit.kit}.json`);
+    if (existsSync(file) && !values.rebuild) {
+      console.log(`db/wdk-${kit.kit}.json is there (--rebuild writes it again)`);
+      continue;
+    }
+    const db = await buildKitDatabase(kit, config.headers, {
+      cache,
+      work: path.join(cache, "wdkdb"),
+      log: (m) => console.log(m),
+    });
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, wdkDatabaseText(db), "utf8");
+    console.log(`wrote ${path.relative(process.cwd(), file)}`);
+  }
 } else if (command === "check") {
   if (args.length !== 1) fail(`check needs the package's folder\n${USAGE}`);
   for (const o of ["cache", "refresh", "rebuild"]) if (values[o]) fail(`--${o} is for kernels\n${USAGE}`);
@@ -133,7 +159,19 @@ if (command === "kernels") {
   } catch (e) {
     fail(e.message);
   }
-  const findings = checkDeclares(parsed, db);
+  // The WDK databases, the first kit deciding; a kit with no database is left out, and said.
+  const wdkConfig = JSON.parse(readFileSync(path.join(here, "config", "wdk.json"), "utf8"));
+  const kits = [];
+  for (const k of wdkConfig.kits) {
+    const file = path.join(here, "db", `wdk-${k.kit}.json`);
+    if (existsSync(file)) kits.push({ kit: k.kit, db: JSON.parse(readFileSync(file, "utf8")) });
+    else console.error(`verify: no db/wdk-${k.kit}.json: the WDK ${k.kit} is not checked against`);
+  }
+  const packageConfig = JSON.parse(readFileSync(path.join(here, "config", "tbKMode.json"), "utf8"));
+  const findings = [
+    ...checkDeclares(parsed, db),
+    ...(kits.length ? checkHeaders(parsed, kits, packageConfig) : []),
+  ].sort((a, b) => (a.module < b.module ? -1 : a.module > b.module ? 1 : a.line - b.line));
   if (values.json) console.log(JSON.stringify({ files: parsed.files.length, findings }, null, 1));
   else printFindings(findings, values.all);
   process.exitCode = findings.some((f) => f.severity === "error") ? 1 : 0;

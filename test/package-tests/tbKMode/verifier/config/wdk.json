@@ -1,0 +1,13 @@
+{
+  "comment": "What db/wdk-<kit>.json records. `headers`: the headers the program includes, in order (fltKernel.h brings ntifs.h, ntddk.h and wdm.h; limits.h the C limits the package declares). `kits`: the WDKs, each by its Include folder's version; the first decides (a package that differs from it has an error), each later one adds notes where it differs. WDK 10.0.22621 is the kit tbKMode was written from and the last with x86 kernel-mode support: its kernel headers are read from its bundle's package of headers and libraries, read as data (never run), and its SDK's shared and ucrt headers must be installed. A kit with no bundle must be installed. `verify.mjs wdk` writes a kit's database only when it has none, or with --rebuild.",
+  "headers": ["fltKernel.h", "ntdddisk.h", "mountmgr.h", "ntimage.h", "limits.h"],
+  "kits": [
+    {
+      "kit": "10.0.22621.0",
+      "version": "10.0.22621.5193",
+      "bundle": "https://go.microsoft.com/fwlink/?linkid=2330411",
+      "package": "package_WindowsDriverKitHeadersandLibs_x86_en_us"
+    },
+    { "kit": "10.0.28000.0" }
+  ]
+}

@@ -44,14 +44,16 @@ async function download(url) {
 }
 
 /**
- * Fetches one package of a Burn bundle into `work`, and returns the folders its CABs were expanded
- * into. What is already in `work` with the right hash is not fetched again.
+ * Fetches one package of a Burn bundle into `work`, and returns `{version, dirs, msi}`: the folders
+ * its CABs were expanded into, and with `withMsi` the package's own database (`package.msi`), which
+ * says what each file in them is. What is already in `work` with the right hash is not fetched
+ * again.
  *
  * @param {string} bundleUrl  the bundle's URL (a go.microsoft.com link is followed)
  * @param {string} packageId  the MsiPackage Id in the bundle's manifest
  * @param {string} work       a folder of the cache
  */
-export async function fetchBundlePackage(bundleUrl, packageId, work, log = () => {}) {
+export async function fetchBundlePackage(bundleUrl, packageId, work, log = () => {}, { withMsi = false } = {}) {
   mkdirSync(work, { recursive: true });
   const bundleFile = path.join(work, "bundle.exe");
   const urlFile = path.join(work, "bundle.url");
@@ -77,12 +79,15 @@ export async function fetchBundlePackage(bundleUrl, packageId, work, log = () =>
   const payloads = new Map();
   for (const m of manifest.matchAll(/<Payload\s[^>]*>/g)) payloads.set(/\sId="([^"]*)"/.exec(m[0])?.[1], m[0]);
   const dirs = [];
+  let msi = null;
   for (const [, ref] of pkg.matchAll(/PayloadRef Id="([^"]*)"/g)) {
     const p = payloads.get(ref);
     const attr = (n) => new RegExp(`\\s${n}="([^"]*)"`).exec(p)?.[1];
     const rel = attr("FilePath").replaceAll("\\", "/");
-    if (!rel.endsWith(".cab")) continue;
-    const target = path.join(work, path.basename(rel));
+    const isMsi = rel.endsWith(".msi");
+    if (!rel.endsWith(".cab") && !(isMsi && withMsi)) continue;
+    // The package's own database, which names the files its CABs hold by key.
+    const target = path.join(work, isMsi ? "package.msi" : path.basename(rel));
     const sha1 = (b) => createHash("sha1").update(b).digest("hex").toUpperCase();
     if (!existsSync(target) || sha1(readFileSync(target)) !== attr("Hash")) {
       const url = `${base}/${rel.split("/").map(encodeURIComponent).join("/")}`;
@@ -93,11 +98,15 @@ export async function fetchBundlePackage(bundleUrl, packageId, work, log = () =>
       writeFileSync(`${target}.part`, bytes);
       renameSync(`${target}.part`, target);
     }
+    if (isMsi) {
+      msi = target;
+      continue;
+    }
     const dir = target.replace(/\.cab$/, "");
     if (!existsSync(dir) || !readdirSync(dir).length) expandCab(target, dir);
     dirs.push(dir);
   }
-  return { version, dirs };
+  return { version, dirs, msi };
 }
 
 /** Every file under the folders, recursively. */
