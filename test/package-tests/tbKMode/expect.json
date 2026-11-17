@@ -63,20 +63,12 @@
     },
     "ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY_Layout": {
       "win32": {
-        "fails": "3 of 50 checks failed: LenB of IMAGE_LOAD_CONFIG_DIRECTORY: expected 196, got 192; offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessAffinityMask: expected 48, got 44; offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessHeapFlags: expected 44, got 48"
+        "fails": "2 of 50 checks failed: offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessAffinityMask: expected 48, got 44; offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessHeapFlags: expected 44, got 48"
       },
-      "win64": {
-        "fails": "1 of 50 checks failed: LenB of IMAGE_LOAD_CONFIG_DIRECTORY: expected 328, got 320"
-      }
+      "win64": "pass"
     },
     "ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY32_Layout": {
-      "fails": "3 of 50 checks failed: LenB of IMAGE_LOAD_CONFIG_DIRECTORY32: expected 196, got 192; offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessAffinityMask: expected 48, got 44; offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessHeapFlags: expected 44, got 48"
-    },
-    "ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY64_Layout": {
-      "fails": "1 of 50 checks failed: LenB of IMAGE_LOAD_CONFIG_DIRECTORY64: expected 328, got 320"
-    },
-    "ImageValueTests.IMAGE_POLICY_ID_Values": {
-      "fails": "1 of 13 checks failed: ImagePolicyIdMaximum: expected 14, got 12"
+      "fails": "2 of 50 checks failed: offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessAffinityMask: expected 48, got 44; offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessHeapFlags: expected 44, got 48"
     },
     "ImageValueTests.IMAGE_STORAGE_CLASS_Values": {
       "fails": "1 of 28 checks failed: IMAGE_SYM_CLASS_END_OF_FUNCTION: expected 255, got -1"
@@ -151,7 +143,7 @@
       }
     },
     "WDMLayoutTests.KUSER_SHARED_DATA_Layout": {
-      "fails": "4 of 39 checks failed: LenB of KUSER_SHARED_DATA: expected 2720, got 824; offset of KUSER_SHARED_DATA.Reserved2: expected 780, got 584; offset of KUSER_SHARED_DATA.SystemCall: expected 776, got 768; offset of KUSER_SHARED_DATA.SystemCallPad: expected 792, got 776"
+      "fails": "4 of 39 checks failed: LenB of KUSER_SHARED_DATA: expected 1848, got 824; offset of KUSER_SHARED_DATA.Reserved2: expected 780, got 584; offset of KUSER_SHARED_DATA.SystemCall: expected 776, got 768; offset of KUSER_SHARED_DATA.SystemCallPad: expected 784, got 776"
     },
     "WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout": {
       "win32": {
@@ -174,17 +166,8 @@
       },
       "win64": "pass"
     },
-    "WDMValueTests.EVENT_INFO_CLASS_Values": {
-      "fails": "1 of 5 checks failed: MaxEventInfo: expected 5, got 4"
-    },
     "WDMValueTests.MEMORY_CACHING_TYPE_Values": {
       "fails": "1 of 8 checks failed: MmNotMapped: expected -1, got 7"
-    },
-    "WDMValueTests.NTSTATUS_Values": {
-      "fails": "2 of 1599 checks failed: STATUS_VOLUME_UPGRADE_NOT_NEEDED: expected 1073743065, got -1073740583; STATUS_VOLUME_UPGRADE_PENDING: expected 1073743066, got -1073740582"
-    },
-    "WDMValueTests.POOL_EXTENDED_PARAMETER_TYPE_Values": {
-      "fails": "1 of 5 checks failed: PoolExtendedParameterMax: expected 5, got 4"
     },
     "WDMValueTests.POOL_TYPE_Values": {
       "fails": "3 of 23 checks failed: DontUseThisType: expected 3, got 2; PagedPoolCacheAligned: expected 5, got 3; MaxPoolType: expected 7, got 4"
@@ -193,7 +176,7 @@
       "fails": "1 of 2 checks failed: PROCESS_ALL_ACCESS: expected 2097151, got 2035711"
     },
     "WDMValueTests.Constants_Values": {
-      "fails": "12 of 178 checks failed: MAXUINT16: expected 65535, got -1; MAXUSHORT: expected 65535, got -1; MAXWORD: expected 65535, got -1; MINSHORT: expected 32768, got -32768; MOUNTDEVCONTROLTYPE: expected 77, got 4; MOUNTMGRCONTROLTYPE: expected 109, got 6; PS_ATTRIBUTE_NUMBER_MASK: expected 65535, got -1; RTL_QUERY_REGISTRY_TYPECHECK_MASK: expected -16777216, got 0; SCHAR_MIN: expected -128, got 128; SECURITY_MAX_SID_SIZE: expected 68, got 60; USHRT_MAX: expected 65535, got -1; _UI16_MAX: expected 65535, got -1"
+      "fails": "12 of 207 checks failed: MAXUINT16: expected 65535, got -1; MAXUSHORT: expected 65535, got -1; MAXWORD: expected 65535, got -1; MINSHORT: expected 32768, got -32768; MOUNTDEVCONTROLTYPE: expected 77, got 4; MOUNTMGRCONTROLTYPE: expected 109, got 6; PS_ATTRIBUTE_NUMBER_MASK: expected 65535, got -1; RTL_QUERY_REGISTRY_TYPECHECK_MASK: expected -16777216, got 0; SCHAR_MIN: expected -128, got 128; SECURITY_MAX_SID_SIZE: expected 68, got 60; USHRT_MAX: expected 65535, got -1; _UI16_MAX: expected 65535, got -1"
     },
     "KernelHelperTests.InsertHeadList_LinksTheEntryAfterTheHead": {
       "fails": "4 of 8 checks failed: a.Flink after the first insert: expected \"head\", got \"elsewhere\"; head.Blink after the first insert: expected \"a\", got \"head\"; b.Flink after the second insert: expected \"a\", got \"elsewhere\"; a.Blink after the second insert: expected \"b\", got \"head\""

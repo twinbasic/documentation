@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { inMsvc } from "../wdk/msvc.mjs";
+import { inMsvc } from "../verifier/lib/msvc.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,11 +20,11 @@ export default async function prepare(arch) {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   const dll = path.join(out, "ntoskrnl.exe");
-  const log = inMsvc(
+  const { output } = inMsvc(
     msvcArch,
     out,
     `cl /nologo /W3 /O2 /MT /LD "${path.join(src, "ntoskrnl.c")}" /Fo:"${path.join(out, "ntoskrnl.obj")}" /link /NOLOGO /DLL /DEF:"${path.join(src, "ntoskrnl.def")}" /OUT:"${dll}"`,
   );
-  if (!existsSync(dll)) throw new Error(`the fake ntoskrnl.exe did not build (${msvcArch}):\n${log}`);
+  if (!existsSync(dll)) throw new Error(`the fake ntoskrnl.exe did not build (${msvcArch}):\n${output}`);
   return { TBKMODE_FAKE_KERNEL: dll };
 }
