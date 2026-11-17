@@ -79,7 +79,7 @@ For each contributed package it has test cases for, the documentation project pu
 
 ### tbKMode Verifier
 
-Checks the tbKMode package's declarations, and drivers built with it, against what the Windows kernel exports, for 32-bit and 64-bit drivers.
+Checks the tbKMode package's declarations, and drivers built with it, against what the Windows kernel exports and what the WDK's headers declare, for 32-bit and 64-bit drivers.
 
 <p class="download-meta">ZIP of a Node.js 20.11+ program and its database: extract it and run <code>node verify.mjs</code>.</p>
 
