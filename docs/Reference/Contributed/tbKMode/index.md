@@ -64,10 +64,11 @@ The [Build Output Path](../../../IDE/Project-Settings#build-output-path) ends in
 
 ## See Also
 
+- [tbKMode Verifier](Verifier) -- checks the package's declarations, and a built driver's imports, against the Windows kernel
 - [Project Settings](../../../IDE/Project-Settings) -- the settings of a driver project
 - [Project Types](../../../../Features/Project-Configuration/Project-Types#kernel-mode-drivers) -- kernel-mode drivers in twinBASIC
 - [Experimental Packages](../../Experimental/) -- the packages from TWINSERV that are not yet ready for use in a program
 
 ## Test cases
 
-The notes and warnings of this section are checked by the test cases in [tbKMode-tests.twinproj](tbKMode-tests.twinproj), a twinBASIC project. It uses tbKMode as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.
+The notes and warnings of this section are checked by the test cases in [tbKMode-tests.twinproj](tbKMode-tests.twinproj), a twinBASIC project. It uses tbKMode as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes. The [tbKMode Verifier](Verifier), a Node.js program, checks the package's Declares against what the Windows kernel exports, and a built driver's imports.
