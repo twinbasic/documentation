@@ -234,10 +234,10 @@ Every static task and dependency:
 
 ### Seeds
 
-`config` and `buildInfo` have no predecessors and start at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `scssLight` and `scssDark` wait for `discoverList`, the listing of the source tree, so that the first workers up are free to read it (see [Spine](#spine)). The three worker tasks run while the source tree is read and the main thread prepares the render.
+`config` has no predecessor and starts at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `buildInfo`, `scssLight` and `scssDark` wait for `discoverList`, the listing of the source tree, so that the first workers up are free to read it (see [Spine](#spine)). The three worker tasks run while the source tree is read and the main thread prepares the render.
 
 - `config` (main) --- reads `_config.yml` and applies CLI overrides.
-- `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure.
+- `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure. Only the book's title page states the result, so `bookPayload` waits for it and the render does not.
 - `scssLight` (worker) --- compiles `just-the-docs-combined.scss` against the light palette.
 - `scssDark` (worker) --- the same against the dark palette.
 - `highlighterInit` (main) --- loads the `Light.theme` + `Dark.theme` palette and emits `tb-highlight.css`. Each worker initialises its own Shiki.
@@ -254,10 +254,10 @@ config ┬→ highlighterInit → loadData
                    ├→ buildInit ────────────────────────┤
                    ├→ vendorAssets ────┐                │
                    └→ deriveRedirects ─┴→ markdownInit ─┼→ dispatch → deriveSitemap → resolveBookChapters
-                              buildInfo, dot (workers) ─┘
+                                         dot (worker) ─┘
 ```
 
-- `discoverList` --- lists `docs/` and cuts the listing into two pieces. Each holds every second page file, static file and picture pair, so both have their share of every folder.
+- `discoverList` --- lists `docs/` and cuts the listing into pieces: four on a machine with eight or more logical CPUs, two below that. Piece `i` of `n` holds every `n`-th page file, static file and picture pair, so each has its share of every folder.
 - `discoverRead:i` (worker) --- reads a piece: each page and its frontmatter, each static file's size, each picture pair's dimensions. Every file the inventory opens is opened here, on two lanes at once. A lane needs only the first stage of its boot for this task (see [Worker boot](#worker-boot)), so the pieces are the first work a lane takes. `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit` wait for `discoverList`, which leaves the first lanes free for the pieces.
 - `discover` --- puts the pieces' results together as the sorted pages and static files, refuses a file that is not a publishable type or a light picture with no dark one, and builds `state.pageByDest`.
 - `vendorAssets` --- finds the YouTube video markers and GitHub user-attachment URLs in the pages, downloads any file not already in `docs/assets/thumbnails/` or `docs/assets/attachments/`, and adds the new files to the static-file copy. `markdownInit` and `writeAssets` depend on it.
@@ -326,7 +326,7 @@ Every task and where it runs:
 | Seeds | `highlighterInit` | main | Palette CSS only. |
 | Seeds | `loadData` | main | Reads `_book.yml`. |
 | Spine | `discoverList`, `discover`, `vendorAssets`, `nav`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packageApi` | main | Single-threaded. |
-| Spine | `discoverRead:i` | workers | The two pieces of the source tree, read at once. |
+| Spine | `discoverRead:i` | workers | The pieces of the source tree, read at once. |
 | Spine | `dot` | worker | WASM Graphviz; init hides behind the main spine. |
 | Render | `dispatch`, `prepDest`, `prepPageDirs` | main | `prepDest` and `prepPageDirs` are deferred to after `dispatch`. |
 | Render | `render:i` | worker | Body + SEO + template + offline + search per chunk. |

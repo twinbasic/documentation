@@ -175,12 +175,16 @@ What makes it worth doing, and what to keep when changing it:
   `packTests` and `warmInit`. They are READY at the start otherwise, the first lanes up
   would take them and load the second stage, and the pieces would wait for a lane. The
   listing takes a few hundredths of a second, less than a lane takes to start. The
-  pieces have the highest priority, so the first two lanes that look take them.
-  `buildInfo` does not wait: `dispatch` waits for it, and in a serve rebuild its two
-  `git` processes (0.1 to 0.3 s) are what `dispatch` waits for once `discover` is short.
-- **Two pieces** (`DISCOVER_PIECES`). On four CPUs the other two lanes compile the
-  stylesheets meanwhile; with four pieces `dot` and `packTests` queued behind the reads
-  and `dispatch`, which waits for `dot`, started late.
+  pieces have the highest priority, so the first lanes that look take them.
+  `buildInfo` waits too, since nothing early needs it: see
+  [dispatch does not wait for buildInfo](#dispatch-does-not-wait-for-buildinfo).
+- **Two pieces below eight CPUs, four from eight on** (`discoverPieces`; owner,
+  2026-11-18). On four CPUs the other two lanes compile the stylesheets meanwhile; with
+  four pieces there `dot` and `packTests` queued behind the reads and `dispatch`, which
+  waits for `dot`, started late. With eight lanes or more, four of them reading leave
+  lanes for the rest. On the dev box (16 CPUs) `discover` ended at 0.10 to 0.11 s in a
+  serve rebuild with four pieces, 0.14 to 0.19 s with two; in a one-off build at 0.23 to
+  0.38 s against 0.32 to 0.46 s.
 - **The reads are synchronous.** Asynchronous calls from every lane queue on libuv's one
   pool of four threads; synchronous ones on two lanes are two reads at a time, and the
   lane has nothing else to do. Alone, every page read on one thread takes 67 ms on the
@@ -241,6 +245,41 @@ four. In a serve rebuild the first render started at 0.27 to 0.35 s before and a
 to 0.27 s since (builds 2 to 5 on one pool). A one-off build's first render is within
 the noise of the runs (0.78 to 0.88 s against 0.82 to 0.84 s): the lanes are still
 loading their second stage and Shiki then. `discover` ends when it did. Not measured: CI.
+
+### dispatch does not wait for buildInfo
+
+`buildInfo` is two `git` processes, and only the book's title page states what they
+return (`book.mjs`, `renderTitlePage`). `dispatch` listed it in `expected` and put its
+result in the shared payload, from when every lane held the whole site object; no render
+reads it. On Windows a process takes long to start while every lane boots: `buildInfo`
+took 0.34 to 0.61 s in a one-off build on the dev box (0.15 s in the best run of eight),
+ended later than `markdownInit` did, and `dispatch` started only then, 0.1 to 0.25 s
+late. In a serve rebuild it took 0.03 to 0.3 s, with the same effect. On CI's Linux it
+was done long before.
+
+`bookPayload` waits for it now, which reads `state.site.buildInfo` and runs after the
+render; the shared payload and the lanes' site object hold it no longer. `buildInfo`
+also waits for `discoverList`, as the other early lane tasks do, so that it does not
+take a lane the source tree's pieces want.
+
+Measured on the dev box, with four pieces of the source tree as well (the two changes
+were measured together), the first render starting at:
+
+| | before | since |
+|---|---|---|
+| serve rebuild (builds 2 to 5 on one pool) | 0.25 to 0.27 s | 0.16 to 0.20 s |
+| one-off build, 16 CPUs (4 runs) | 0.76 to 0.87 s | 0.66 to 0.78 s |
+| one-off build, 4 CPUs (8 runs) | 0.91 to 1.20 s | 0.79 to 1.17 s |
+
+On four CPUs nothing changes: the lanes are not up before `dispatch` ends either way,
+and `dispatch` there still waits a few hundredths of a second for `dot` in some runs.
+Not measured: CI, where neither change should show (four CPUs, and `git` is quick).
+
+**`nav` was looked at and gains nothing in a build.** `computeNav` sorted every page's
+children twice and built a map for each page's levels; it now sorts once and the walk
+carries the levels, which takes 6 ms alone on its first call where it took 19 to 24 ms.
+In a build the task still reads 29 to 69 ms (28 to 64 ms before): its time there is
+not its own work but the main thread's share of a machine whose lanes are all booting.
 
 ### What markdownInit is made of
 

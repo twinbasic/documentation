@@ -148,7 +148,7 @@ A task therefore never starts a worker thread or a process for its work, and nev
 
 ## Section 1 --- Seed tasks
 
-The tasks that start the build. `config` and `buildInfo` have no predecessors and are claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `scssLight` and `scssDark` wait for [`discoverList`](#discoverlist-main), as `dot`, `packTests` and `warmInit` do.
+The tasks that start the build. `config` has no predecessor and is claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `buildInfo`, `scssLight` and `scssDark` wait for [`discoverList`](#discoverlist-main), as `dot`, `packTests` and `warmInit` do.
 
 ### `config` (main)
 
@@ -160,7 +160,7 @@ Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url`
 
 ### `buildInfo` (worker)
 
-Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`, which runs two parallel `git` commands (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on failure. The result goes to `state.site.buildInfo`.
+Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`, which runs two parallel `git` commands (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on failure. The result goes to `state.site.buildInfo`, which the book's title page alone states: [`bookPayload`](#bookpayload-main) waits for this task, and `dispatch` does not, so no render waits for `git`.
 
 ### `scssLight` (worker), `scssDark` (worker)
 
@@ -203,11 +203,11 @@ discoverList.execute({ config: { config } }, ctx) →
   { pieces, statics, pairs }
 ```
 
-Calls `listSources(srcRoot, config.exclude ?? [])` and then `cutPieces(listing, count, config.bundle_extra ?? [])`, both from `discover.mjs`. `count` is `DISCOVER_PIECES`, two, or one on a machine with one lane. Each piece is `{ pageRels, statSrcs, pairs }`: every `count`-th `.md` or `.html` file, static file and picture pair, so that each piece has its share of every folder. The `bundle_extra` files are among the static files, and a light picture is paired with its dark one wherever the two are. `statics` and `pairs` are what `discover` needs to put the results in order.
+Calls `listSources(srcRoot, config.exclude ?? [])` and then `cutPieces(listing, count, config.bundle_extra ?? [])`, both from `discover.mjs`. `count` is `discoverPieces(workerCount)`: four on a machine with eight or more logical CPUs, two below that, one on a machine with one lane. Each piece is `{ pageRels, statSrcs, pairs }`: every `count`-th `.md` or `.html` file, static file and picture pair, so that each piece has its share of every folder. The `bundle_extra` files are among the static files, and a light picture is paired with its dark one wherever the two are. `statics` and `pairs` are what `discover` needs to put the results in order.
 
 `submit()` calls `fanOut` with the pieces as payloads, handler `discoverRead`, join `discover` and the highest priority of any lane task.
 
-The lane tasks that would otherwise be claimable before the pieces exist list `discoverList` in their `expected`: `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit`. The first lanes to start therefore find the pieces and nothing else. `buildInfo` does not wait, because `dispatch` waits for it.
+The lane tasks that would otherwise be claimable before the pieces exist list `discoverList` in their `expected`: `buildInfo`, `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit`. The first lanes to start therefore find the pieces and nothing else.
 
 ### `discoverRead:i` (worker)
 
@@ -341,7 +341,7 @@ Adds the packed files' sizes to `state.site.downloads` (`packedDownloads` in `co
 
 ```js
 dispatch.expected = [
-  "nav", "buildInit", "buildInfo", "dot",
+  "nav", "buildInit", "dot",
   "deriveRedirects", "markdownInit",
 ]
 dispatch.execute() → { chunks, sharedSAB, lateChunks }
@@ -352,7 +352,7 @@ dispatch.execute() → { chunks, sharedSAB, lateChunks }
 1. Slices `state.pages` into `workerCount × SLICES_PER_WORKER` chunks (one chunk per worker at most, for small page counts).
 2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than reading `_site/assets/`. The list also holds the path of the help add-in's project file when `_config.yml` declares one (`addinProjectOf`), since [`addinProject`](#addinproject-main) writes it only after the render.
 3. Derives each output tree's inventory with `deriveTreeRels` and runs `unpublishableTreePaths` from `publish-policy.mjs` over it, **throwing** on anything that is not a publishable type. This sweep sees what `discover`'s cannot: redirect stubs, vendored theme assets, and the generated `sitemap.xml` and `search-data.json`. The inventory is shared with `checkTrees` below.
-4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
+4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
 
 `lateChunks` holds the index of each chunk that contains a late page (see [`markdownInit`](#markdowninit-main)). The chunks are cut as for any other page, so a late page stays in the chunk its position gives it.
 
@@ -620,7 +620,7 @@ The deflating is split into **units**: a whole file, or one piece of 1 MB of a l
 ### `bookPayload` (main)
 
 ```js
-bookPayload.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters"]
+bookPayload.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters", "buildInfo"]
 bookPayload.execute() → SharedArrayBuffer
 ```
 
