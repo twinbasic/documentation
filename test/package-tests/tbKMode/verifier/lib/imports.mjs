@@ -30,8 +30,15 @@ export function checkDriver(bytes, db) {
     for (const name of names) {
       const have = new Set(kernel.exports[name] ?? []);
       const missing = ids.filter((i) => !have.has(i)).map((i) => buildLabel(kernel.builds[i]));
-      if (missing.length === ids.length) problems.push(`${dll} exports no ${name}`);
-      else if (missing.length) problems.push(`${dll} of ${missing.join(", ")} exports no ${name}`);
+      if (missing.length === ids.length) {
+        // Another kernel-mode file may export it for this arch: on x86, hal.dll exports KfRaiseIrql.
+        const others = Object.entries(db.files)
+          .filter(
+            ([f, k]) => f !== dll.toLowerCase() && (k.exports[name] ?? []).some((i) => k.builds[i].arch === h.machine),
+          )
+          .map(([f]) => f);
+        problems.push(`${dll} exports no ${name}${others.length ? `; ${others.join(" and ")} does` : ""}`);
+      } else if (missing.length) problems.push(`${dll} of ${missing.join(", ")} exports no ${name}`);
     }
     if (h.machine === "x64" && kernel.absent.length)
       unchecked.push(`${dll}: the database has no build of ${kernel.absent.join(", ")}`);
