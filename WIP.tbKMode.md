@@ -20,8 +20,7 @@ about the package beyond its pages; the rules for every contributed package are 
   (CBoolean, KIRQL, KPROCESSOR_MODE); modImage's aliases are commented out in the package.
 - **Callouts** are labelled with the package version (`0.3.0.5`) or `timeless`, each backed by
   cases or the probe.
-- The owner reviewed modWDM and the landing page at 0.2.0.4; the 0.3.0.5 pages are not reviewed
-  page by page yet.
+- The owner reviewed the 0.3.0.5 pages, the verifier's included (2026-11-17).
 - **A declaration right for the kit the package was written from is no defect**: modSysInfo follows
   the 10.0.22621 SDK (`POLICY_AUDIT_SUBCATEGORY_COUNT` 59, no `FileFsGuidInformation`), and its cases
   check that kit's values (`wdk/modSysInfo.json`, `values` and `sizes`).
@@ -96,8 +95,8 @@ and each file's `#Const` (an undefined constant is Empty).
 
 Issues for fafalone's repository are drafted in the main checkout's `.claude/drafts/`; the owner
 posts them. #1 (modFltMgr, modDisk) and #2 (modSysInfo) were answered by 0.3.0.5 (comment for #2:
-`tbkmode-issue-2-comment.md`). #3 (`tbkmode-issue-3.md`, the package's Settings) and #4
-(`tbkmode-issue-4.md`, the declarations of modWDM and modImage) are drafted for the owner's review.
+`tbkmode-issue-2-comment.md`). #3 (the package's Settings) and #4 (the declarations of modWDM and modImage) are filed
+(2026-11-17), from `tbkmode-issue-3.md` and `tbkmode-issue-4.md`.
 
 ## Leads, not on the pages
 

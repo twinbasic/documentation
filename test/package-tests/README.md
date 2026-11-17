@@ -89,7 +89,7 @@ End Module
   architecture: it builds what the exe needs and returns the variables that name it to the exe
   (tbKMode: a user-mode stand-in for `ntoskrnl.exe`, which the cases load by its full path before
   they call a helper, so that the package's `Lib "ntoskrnl.exe"` Declares never reach the kernel).
-  It is not published, and it needs no `RunAll`.
+  The `exe/` folder is not published, and `RunAll` does not run its cases.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do, and so does one about what a program built with the package
   holds (tbKMode's builds small drivers and reads their import tables).
