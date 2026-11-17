@@ -213,10 +213,12 @@ The lane tasks that would otherwise be claimable before the pieces exist list `d
 
 ```js
 discoverRead:i.expected = ["discoverList"]
-discoverRead:i → { pages, plain, warnings, sizes, pairSizes }
+discoverRead:i → { pages, plain, warnings, sizes, pairSizes, text }
 ```
 
 Handler in `cpu-worker.mjs`: calls `readPiece(srcRoot, piece)` from `discover-read.mjs` with its `fanOutPayload`. It reads each page file and parses its frontmatter into a [page object](#page-objects-pages), sizes each static file, and reads each picture pair's width and height from the two PNG headers. A `.md` or `.html` file with no frontmatter goes to `plain`, with its size: it is a static file. The warnings about unquoted frontmatter values that end in `#` go to `warnings`, which the main thread prints. Frontmatter that does not parse throws, naming the file, and fails the build.
+
+The handler then packs the text of its pages with `packPageText`, and returns it as `text`: one `SharedArrayBuffer` of UTF-8, and each page's offset and length in it. The render lanes read a page's text from there, so the render chunks' payloads hold none.
 
 Every call is synchronous. A lane has nothing else to do while it reads, and two lanes reading at once is what makes the inventory parallel.
 
@@ -227,10 +229,10 @@ This is the one handler a lane runs after the first stage of its boot alone; see
 ```js
 discover.expected = ["config", "discoverList", "discoverRead:0", ...]   // the pieces, added by fanOut
 discover.execute(inputs, ctx) →
-  { pages, staticFiles, config, pictureSizes }
+  { pages, staticFiles, config, pictureSizes, pageText }
 ```
 
-Calls `assemble(srcRoot, plan, results)` from `discover.mjs` with `discoverList`'s plan and each piece's result; a piece that is missing throws. `assemble` sorts the pages by file name and then by path, the static files by path, and puts the `bundle_extra` files after them. The task then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the static files and **throws** if anything is not a publishable type, before any write, and throws for a light picture with no dark one. `submit()` writes the four fields to `SharedState` and populates `state.pageByDest`.
+Calls `assemble(srcRoot, plan, results)` from `discover.mjs` with `discoverList`'s plan and each piece's result; a piece that is missing throws. `assemble` sorts the pages by file name and then by path, the static files by path, and puts the `bundle_extra` files after them. The task then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the static files and **throws** if anything is not a publishable type, before any write, and throws for a light picture with no dark one. `pageText` holds each piece's text buffer and, for each page's `srcRel`, the piece, offset and length of its text. `submit()` broadcasts each buffer to the lanes as the task data `"pageText:<piece>"`, keeps the places as `state.pageTextAt` for `dispatch`, writes the other four fields to `SharedState` and populates `state.pageByDest`.
 
 ### `vendorAssets` (main)
 
@@ -354,7 +356,7 @@ dispatch.execute() → { chunks, sharedSAB, lateChunks }
 
 `lateChunks` holds the index of each chunk that contains a late page (see [`markdownInit`](#markdowninit-main)). The chunks are cut as for any other page, so a late page stays in the chunk its position gives it.
 
-`submit` allocates 2N dynamic SAB slots and writes their handler IDs. It wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dependency `render:i → renderEnvInit`, and pins each `flush:i` to its `render:i`. Unless `downloadSizes` is done already, it also makes each `render:i` of `lateChunks` a successor of `downloadSizes`, with a dependency count of one, so that the chunk becomes claimable when the packed files' sizes are known. Both tasks run on the main thread, so `downloadSizes` cannot finish between the check of its status and the new edge. It packs the per-chunk page data into a payload SAB, registers the `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and activates the `render:i` slots.
+`submit` allocates 2N dynamic SAB slots and writes their handler IDs. It wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dependency `render:i → renderEnvInit`, and pins each `flush:i` to its `render:i`. Unless `downloadSizes` is done already, it also makes each `render:i` of `lateChunks` a successor of `downloadSizes`, with a dependency count of one, so that the chunk becomes claimable when the packed files' sizes are known. Both tasks run on the main thread, so `downloadSizes` cannot finish between the check of its status and the new edge. It packs the per-chunk page data into a payload SAB: for each chunk `{ pages, texts }`, the pages without their `rawContent` and, for each, the piece, offset and length of its text in the buffers `discover` broadcast (`state.pageTextAt`). A page with no place there keeps its `rawContent` in the payload. It registers the `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and activates the `render:i` slots.
 
 ### `prepDest` (main, deferred)
 
@@ -407,7 +409,7 @@ Per-lane render environment setup. Handler:
 
 Handler (`render` in `cpu-worker.mjs`):
 
-1. Reads the chunk JSON from `_payloadSAB` using `payloadOffset[taskIdx]` / `payloadLength[taskIdx]`. When the chunk holds a late page, it waits for the `"downloads"` task data from `downloadSizes` and gives it to the lane's markdown-it, which then has the packed files' sizes.
+1. Reads the chunk JSON from `_payloadSAB` using `payloadOffset[taskIdx]` / `payloadLength[taskIdx]`, and gives each page its `rawContent` with `pageText`, from the `"pageText:<piece>"` task data its place names. When the chunk holds a late page, it waits for the `"downloads"` task data from `downloadSizes` and gives it to the lane's markdown-it, which then has the packed files' sizes.
 2. `await renderPhase(chunk, env.site)` --- markdown-it body render.
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
@@ -777,6 +779,8 @@ The pure core shared by the build's check and the standalone [`scripts/check_lin
 | Symbol | Signature | Description |
 |---|---|---|
 | `readPiece` | `(srcRoot, { pageRels, statSrcs, pairs }) → { pages, plain, warnings, sizes, pairSizes }` | Reads one piece, synchronously: the pages, the files with no frontmatter, the warnings to print, each static file's size and each pair's `[lightW, lightH, darkW, darkH]` or `null`. |
+| `packPageText` | `(pages) → { sab, spans }` | The pages' `rawContent` as UTF-8 in one `SharedArrayBuffer`; `spans` holds each page's offset and length in bytes, two numbers a page. Runs on the lane that read the pages. |
+| `pageText` | `(sab, offset, length) → string` | One page's text, read back. Runs on the lane that renders the page. |
 | `PAGE_EXT` | `RegExp` | The extensions of a file that may be a page: `.md` and `.html`. |
 | `toPosix` | `(path) → string` | A path with forward slashes. |
 
@@ -1201,7 +1205,7 @@ The handler table is built from the imported `HANDLERS` constant:
 
 | Handler | Source | Description |
 |---|---|---|
-| `discoverRead` | `discover-read.mjs` | `readPiece` over the piece in its `fanOutPayload`. Runs after the first boot stage alone. |
+| `discoverRead` | `discover-read.mjs` | `readPiece` over the piece in its `fanOutPayload`, then `packPageText` over its pages. Runs after the first boot stage alone. |
 | `warmInit` | inline | Awaits `initHighlighter()`. |
 | `renderEnvInit` | inline | Unpacks shared SAB, awaits highlighter, reconstructs link tables, builds markdown-it, stores `_renderEnv`. |
 | `flush` | inline | Drains the next `_pendingFlush` batch to disk. |

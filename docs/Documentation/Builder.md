@@ -372,7 +372,7 @@ Worker output flow: a worker posts `{ done: taskIdx, output, timing, lane }` to 
 
 `dispatch.execute()` runs on the main thread and assembles two SAB payloads:
 
-- **Per-task payload SAB** --- one JSON blob per `render:i`, each containing the chunk's `Page` objects. `chunkOffset[i]` / `chunkLength[i]` index into the buffer.
+- **Per-task payload SAB** --- one JSON blob per `render:i`, each containing the chunk's `Page` objects without their text, and where each page's text is. `payloadOffset[i]` / `payloadLength[i]` index into the buffer. The text is in the buffers the `discoverRead:i` lanes packed and `discover` broadcast, so the main thread does not turn the site's text into JSON.
 - **Shared payload SAB** --- one JSON blob broadcast to every worker, containing the site config, site-level SEO constants, the pre-rendered sidebar + chrome (`initData`), the nav tree when the offline tree is built, serialized link tables (`[key, permalink]` pair arrays), the static-file relative-path set, the baseurl, the site-paths set for offline rewriting, the `offline_exclude` patterns, and the `skipOffline` flag.
 
 `dispatch.submit()` allocates 2N dynamic slots from the generic pool in `sab-scheduler.mjs`, writes their handler IDs and per-worker dep lists, adds the successor edges, pins each `flush:i` to its `render:i`, calls `broadcastDynamicData(payloadSAB, sharedSAB)` (one `postMessage` per worker carrying the two SAB references, shared and not cloned), and sets the `render:i` slots to `READY`. Workers see the new tasks on their next scan.

@@ -208,6 +208,40 @@ render started at 1.15 to 1.28 s against 0.96 to 0.99 s in the prototype's runs,
 machine that was not quiet; not measured again since. The change is for CI and for
 serve rebuilds.
 
+### The pages' text does not go through the main thread's JSON
+
+`dispatch.submit` packed every page into the render chunks' payloads as JSON
+(`packPayloads`): 12 MB, nearly all of it the pages' text, 50 to 60 ms on the main thread
+of the dev box between the end of `dispatch` and the lanes' first look at a chunk. The
+timing line's `dispatch=` does not count a `submit`; in the chart it is the gap between
+`dispatch`'s bar and `prepDest`'s.
+
+The text is now packed where it is read. Each `discoverRead:i` lane writes its pages'
+`rawContent` as UTF-8 into one SharedArrayBuffer (`packPageText`,
+`builder/discover-read.mjs`) and returns it beside the pages; a shared buffer is not
+copied on the way back. `discover` broadcasts the buffers (`"pageText:<piece>"`) and
+keeps where each page's text is (`state.pageTextAt`). A chunk's payload is
+`{ pages, texts }`: the pages without `rawContent`, and each one's piece, offset and
+length. `render:i` reads the text back (`pageText`) before it renders.
+
+What to keep when changing it:
+
+- **The main thread still has every page's `rawContent`**: the pages come back from the
+  lanes with it, and `vendorAssets`, `markdownInit` and the later tasks read it. Only the
+  chunks' payloads lost it.
+- **Nothing may change a page's `rawContent` after `discoverRead`**: the render lanes
+  would not see the change. Nothing does today (the one assignment is `buildPage`'s). A
+  page with no place in `state.pageTextAt` keeps its text in the payload, so a page
+  added later still renders.
+- **The gap is a `submit`'s**, so it is on the main thread whatever the lanes do.
+
+Measured on the dev box, from the end of `dispatch`'s bar to the start of `prepDest`'s:
+0.05 to 0.13 s before, 0.01 to 0.02 s since, in one-off builds on sixteen CPUs and on
+four. In a serve rebuild the first render started at 0.27 to 0.35 s before and at 0.23
+to 0.27 s since (builds 2 to 5 on one pool). A one-off build's first render is within
+the noise of the runs (0.78 to 0.88 s against 0.82 to 0.84 s): the lanes are still
+loading their second stage and Shiki then. `discover` ends when it did. Not measured: CI.
+
 ### A hung build times out and says where it hung
 
 Readers get this at [When a build stops instead of
@@ -1517,9 +1551,12 @@ SVGs: online and book do, offline (and so the help archive) does not. Why:
   `offlineExcluded` and `check-tree.mjs` both call): the patterns with no wildcard in a `Set`,
   the others as regular expressions. Testing each path against each pattern, with a regular
   expression made for every test, was most of `dispatch`: 0.32 to 0.39 s on four CPUs
-  (`start /affinity F`), 0.07 to 0.12 s since; 0.14 s and 0.05 s on sixteen. What is left in
-  `dispatch` is the JSON of the shared payload (about 10 ms) and, in its `submit`, of every
-  page for the render chunks (`packPayloads`, 12 MB, 50 to 60 ms). The archive is a stored zip, 37 MB without
+  (`start /affinity F`), 0.07 to 0.12 s since; 0.14 s and 0.05 s on sixteen. On CI (one run
+  each, the second on a faster runner: 16.5 s against 24 s in all) about 0.6 s became about
+  0.1 s, and the first render started near 0.9 s where it had started near 1.5 s. What is left in
+  `dispatch` is the JSON of the shared payload (about 10 ms); its `submit` is the subject of
+  [The pages' text does not go through the main thread's JSON](#the-pages-text-does-not-go-through-the-main-threads-json).
+  The archive is a stored zip, 37 MB without
   the SVGs, and the 310 of them would add 18 MB.
 - **A picture's SVG is never inlined.** `figurePlugin` inlines a diagram's SVG in its figure; a
   picture's (`isPictureSvg`: an `.svg` with its `.png` beside it) stays an `<img>` in the
