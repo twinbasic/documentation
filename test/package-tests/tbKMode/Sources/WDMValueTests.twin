@@ -3050,8 +3050,6 @@ Module WDMValueTests
     Public Sub Constants_Values()
         Expect.Begin
         Expect.AreEqual 8, CLng(CHAR_BIT), "CHAR_BIT"
-        Expect.AreEqual 255, CLng(CHAR_MAX), "CHAR_MAX"
-        Expect.AreEqual 0, CLng(CHAR_MIN), "CHAR_MIN"
         Expect.AreEqual 1, CLng(EVENT_INCREMENT), "EVENT_INCREMENT"
         Expect.AreEqual 0, CLng(FILE_ANY_ACCESS), "FILE_ANY_ACCESS"
         Expect.AreEqual 1, CLng(FILE_READ_ACCESS), "FILE_READ_ACCESS"

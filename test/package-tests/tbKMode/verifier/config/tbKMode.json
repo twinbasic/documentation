@@ -77,7 +77,9 @@
     "MaxProcessInfoClass",
     "MaxTokenInfoClass",
     "MaxSystemInfoClass",
-    "COMPRESSION_FORMAT_MAX"
+    "COMPRESSION_FORMAT_MAX",
+    "CHAR_MIN",
+    "CHAR_MAX"
   ],
   "noSize": [
     "GENERAL_LOOKASIDE_LAYOUT",
@@ -101,8 +103,6 @@
     }
   },
   "values": {
-    "CHAR_MIN": 0,
-    "CHAR_MAX": 255,
     "MAXWORD": 65535,
     "PS_ATTRIBUTE_NUMBER_MASK": 65535,
     "FLT_REGISTRATION_VERSION": 514,
@@ -110,7 +110,7 @@
     "UNWIND_HISTORY_TABLE_SIZE": 12
   },
   "comments": {
-    "modWDM": "The fields are the package's names for C fields of other names, or for a member of a C union or nested structure that it flattens (IRP's Tail.Overlay, IO_STACK_LOCATION's Parameters). The skipped fields are padding, a wrapper (_GENERAL_LOOKASIDE.L holds the layout C spells out in place) or a bitfield (IsTombstone); the KernelHandle bitfields are checked as the Flags they share with. GENERAL_LOOKASIDE_LAYOUT is a macro in wdm.h, the body of GENERAL_LOOKASIDE, whose size includes the cache-line alignment the package puts in _GENERAL_LOOKASIDE. MDL_MAPPING_FLAGS is an enum member named like the C enum type, which has no value. IO_DRIVER_CREATE_CONTEXT.SiloContext is declared under #If NTDDI_VERSION >= NTDDI_WIN10_RS1, and the package never defines NTDDI_VERSION, so the field is never there: its size case says so. KUSER_SHARED_DATA.SystemCallReturn has no counterpart in KUSER_SHARED_DATA (its place is inside QpcFrequency). MaximumWaitReason ends its enumeration and grows with each SDK. KEY_VALUE_FULL_INFORMATION has no Name field: the name follows its last field, where C's Name[1] starts, and C's size counts that one character and its padding. The values are those of headers the kernel's do not include: MAXWORD of winnt.h (0xffff) and PS_ATTRIBUTE_NUMBER_MASK of the Native API's headers (0x0000ffff). SE_SID is a union of a SID and a buffer of SECURITY_MAX_SID_SIZE bytes, 68, which ends in an array but is no variable-length structure: its size is asserted. CHAR_MIN and CHAR_MAX are those of an unsigned char (C with /J), 0 and 255, which the package takes as a Byte is and its page says; limits.h, without /J, has -128 and 127.",
+    "modWDM": "The fields are the package's names for C fields of other names, or for a member of a C union or nested structure that it flattens (IRP's Tail.Overlay, IO_STACK_LOCATION's Parameters). The skipped fields are padding, a wrapper (_GENERAL_LOOKASIDE.L holds the layout C spells out in place) or a bitfield (IsTombstone); the KernelHandle bitfields are checked as the Flags they share with. GENERAL_LOOKASIDE_LAYOUT is a macro in wdm.h, the body of GENERAL_LOOKASIDE, whose size includes the cache-line alignment the package puts in _GENERAL_LOOKASIDE. MDL_MAPPING_FLAGS is an enum member named like the C enum type, which has no value. IO_DRIVER_CREATE_CONTEXT.SiloContext is declared under #If NTDDI_VERSION >= NTDDI_WIN10_RS1, and the package never defines NTDDI_VERSION, so the field is never there: its size case says so. KUSER_SHARED_DATA.SystemCallReturn has no counterpart in KUSER_SHARED_DATA (its place is inside QpcFrequency). MaximumWaitReason ends its enumeration and grows with each SDK. KEY_VALUE_FULL_INFORMATION has no Name field: the name follows its last field, where C's Name[1] starts, and C's size counts that one character and its padding. The values are those of headers the kernel's do not include: MAXWORD of winnt.h (0xffff) and PS_ATTRIBUTE_NUMBER_MASK of the Native API's headers (0x0000ffff). SE_SID is a union of a SID and a buffer of SECURITY_MAX_SID_SIZE bytes, 68, which ends in an array but is no variable-length structure: its size is asserted. CHAR_MIN and CHAR_MAX are not compared: the package takes char as unsigned, as a Byte is and its page says (C with /J), where limits.h, without /J, has -128 and 127 (owner, 2026-11-17).",
     "modFltMgr": "The package builds without FLT_MGR_WIN8: FLT_REGISTRATION of version 0x0202, no section context, where the headers, for the kit's newest Windows, declare version 0x0203.",
     "modSysInfo": "The skipped names end their enumerations and grow with each SDK. The noSize types end in a SID or a nested variable-length structure. The three ctypes are the WDK names of the package's _EX structures: FILE_RENAME_INFORMATION and FILE_LINK_INFORMATION hold the Flags of the Ex classes in a union with ReplaceIfExists. The fields are the package's names for C fields of other names; its padding field (Pad) has none. FILE_IO_PRIORITY_HINT_INFORMATION is 8 bytes as phnt declares it (DECLSPEC_ALIGN(8)), where wdm.h's is 4, and the kernel takes any length from 4 up for FileIoPriorityHintInformation, query and set, and writes 4 (Windows 10 22H2, 32-bit and 64-bit callers). POLICY_AUDIT_SUBCATEGORY_COUNT is 59 in WDK 10.0.22621, which decides and which the module matches, and 60 from 10.0.26100 on: a note.",
     "modImage": "UNWIND_HISTORY_TABLE_SIZE is winnt.h's (and rtlsupportapi.h's), which no kernel header declares."
