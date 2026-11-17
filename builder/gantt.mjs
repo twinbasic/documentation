@@ -28,6 +28,7 @@ const SECTION_W = 24;
 
 const BOOT_STYLE = {
   cold: { label: "cold", cls: "cold" },
+  cold2: { label: "cold", cls: "cold" },
   warmInit: { label: "warm", cls: "boot" },
   renderEnvInit: { label: "env", cls: "env" },
 };
@@ -45,7 +46,7 @@ const BAR_PAD = 4;
 export const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
-  discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
+  discoverList: "Spine", discoverStatic: "Spine", discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine", downloadSizes: "Spine", packageApi: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",

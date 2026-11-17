@@ -63,7 +63,7 @@ import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler } from "./scheduler.mjs";
 import { GANTT_SECTION, groupGanttTimings, renderGantt } from "./gantt.mjs";
 
-import { discover } from "./discover.mjs";
+import { listSources, sortInventory } from "./discover.mjs";
 import { checkPlaceholders, deriveCounts, deriveDownloads, packedDownloads } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
@@ -73,7 +73,7 @@ import { packBookPayload } from "./book-payload.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
 import { assignPackageVersions } from "../lib/callout-labels.mjs";
-import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
+import { isPictureSvg, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import {
   NAV_SCRIPT_REL,
@@ -180,6 +180,9 @@ function failBuild() {
 // summary, and returns.
 
 const workerCount = os.availableParallelism();
+// PROTOTYPE: how many lanes read the pages.
+const DISCOVER_PIECES = Number(process.env.TB_DISCOVER_PIECES) || 2;
+const GATE = process.env.TB_DISCOVER_NOGATE ? [] : ["discoverList"];
 
 // Register a dynamic fan-in barrier: BOTH halves of its invariant, in
 // one call, because writing one without the other is a data-loss bug
@@ -266,7 +269,7 @@ const TASKS = {
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
   buildInfo: {
-    expected: [],
+    expected: GATE,
     handler: "buildInfo",
     submit(out, state) {
       state.site.buildInfo = out.buildInfo;
@@ -276,13 +279,13 @@ const TASKS = {
   // Sass compilation split across two workers so light + dark run in parallel.
   // Each half is ~700 ms total serially; running concurrently saves ~200 ms.
   scssLight: {
-    expected: [],
+    expected: GATE,
     handler: "scssLight",
     submit() {},
   },
 
   scssDark: {
-    expected: [],
+    expected: GATE,
     handler: "scssDark",
     submit() {},
   },
@@ -334,7 +337,7 @@ const TASKS = {
   // no in-tree patches. Runs on a worker as a seed so the Graphviz.load()
   // WASM init (~50 ms) hides behind the main spine.
   dot: {
-    expected: [],
+    expected: GATE,
     handler: "dot",
     submit(out, state) {
       const known = new Set(state.staticFiles.map((f) => f.srcRel));
@@ -402,7 +405,7 @@ const TASKS = {
   // worker has run it, the highlighter persists in module scope across
   // init messages, so survives_reset lets rebuilds skip it.
   warmInit: {
-    expected: [],
+    expected: GATE,
     on_demand: true,
     unique_per_worker: true,
     run_when_idle: true,
@@ -493,16 +496,87 @@ const TASKS = {
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
 
-  discover: {
+  // The source tree's listing, and the page files cut into pieces for the
+  // lanes: each discoverRead:i reads its files and parses their frontmatter
+  // (discover-read.mjs) while the main thread sizes the static files
+  // (discoverStatic), and discover puts the two together. A piece holds every
+  // n-th file of the sorted listing, so that each has its share of every folder.
+  discoverList: {
     expected: ["config"],
     runOnMain: true,
     async execute({ config: { config } }, ctx) {
-      const { pages, staticFiles } = await discover(ctx.srcRoot, config.exclude ?? []);
+      const { pageRels, otherRels } = await listSources(ctx.srcRoot, config.exclude ?? []);
+      const count = Math.max(1, Math.min(DISCOVER_PIECES, ctx.workerCount));
+      const pieces = Array.from({ length: count }, () => ({ srcRels: [], statRels: [], pairs: [] }));
+      for (const [i, rel] of pageRels.entries()) pieces[i % count].srcRels.push(rel);
+      for (const [i, rel] of otherRels.entries()) pieces[i % count].statRels.push(rel);
+      const others = new Set(otherRels);
+      let n = 0;
+      for (const rel of otherRels) {
+        if (!rel.endsWith(".light.png")) continue;
+        const dark = rel.replace(/\.light\.png$/, ".png");
+        if (others.has(dark)) pieces[n++ % count].pairs.push([rel, dark]);
+      }
+      return { pieces };
+    },
+    submit(out, _state, scheduler) {
+      fanOut(scheduler, {
+        from: "discoverList",
+        prefix: "discoverRead",
+        handler: "discoverRead",
+        payloads: out.pieces,
+        joins: ["discover"],
+        ganttSection: "Spine",
+        priority: 3,
+        describe: (p) => [`${p.srcRels.length} files, from ${p.srcRels[0]}`],
+      });
+    },
+  },
+
+  discover: {
+    expected: ["config", "discoverList"],
+    runOnMain: true,
+    async execute(inputs, ctx) {
+      const { config } = inputs.config;
+      const J0 = performance.now();
+      const pages = [];
+      const staticFiles = [];
+      const sizedPairs = [];
+      const asStatic = (srcRel, size) =>
+        staticFiles.push({ srcPath: path.join(ctx.srcRoot, srcRel), srcRel, destRel: srcRel, size });
+      for (let i = 0; i < inputs.discoverList.pieces.length; i++) {
+        const piece = inputs[`discoverRead:${i}`];
+        // Asserted: a piece missing here would quietly drop its pages from the site.
+        if (!piece) throw new Error(`discover: piece ${i} of the page files never arrived`);
+        for (const w of piece.warnings) console.warn(w);
+        if (process.env.TB_DISCOVER_TIMES) {
+          console.error(
+            `DISCOVERREAD ${i}: ${piece.pages.length} pages, stat=${piece.ms.stat} pairs=${piece.ms.pairs} read=${piece.ms.read} parse=${piece.ms.parse} all=${piece.ms.all}; returned ${Date.now() - piece.ms.at} ms before the join began`,
+          );
+        }
+        const { statRels, pairs } = inputs.discoverList.pieces[i];
+        for (const p of piece.pages) pages.push(p);
+        // .md/.html without frontmatter are static files.
+        for (const { srcRel, size } of piece.plain) asStatic(srcRel, size);
+        for (const [j, srcRel] of statRels.entries()) asStatic(srcRel, piece.sizes[j]);
+        pairs.forEach(([light], j) => {
+          if (piece.pairSizes[j]) sizedPairs.push([light, piece.pairSizes[j]]);
+        });
+      }
+      sortInventory(pages, staticFiles);
+      const extra = [];
       for (const entry of config.bundle_extra ?? []) {
         const srcPath = path.resolve(ctx.srcRoot, entry.src);
         const stat = await fs.stat(srcPath);
-        staticFiles.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
+        extra.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
       }
+      staticFiles.push(...extra);
+      // The pairs in the order the static files are in. PROTOTYPE: a pair with a bundle_extra
+      // file in it is not sized.
+      sizedPairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+      const pictureSizes = Object.create(null);
+      for (const [light, size] of sizedPairs) pictureSizes[light] = size;
+      if (process.env.TB_DISCOVER_TIMES) console.error(`DISCOVERJOIN ${Math.round(performance.now() - J0)} ms`);
       // Everything discover() could not parse frontmatter from is about to
       // be copied verbatim into a public tree. `exclude:` is a denylist and
       // only refuses what someone named in advance, so the allowlist runs
@@ -521,7 +595,6 @@ const TASKS = {
             `X.light.png needs X.png in the same folder:\n${unpaired.map((r) => `  ${r}`).join("\n")}`,
         );
       }
-      const pictureSizes = await pairSizes(staticFiles);
       return { pages, staticFiles, config, pictureSizes };
     },
     submit(out, state) {
@@ -1427,7 +1500,7 @@ const TASKS = {
   // On a lane (cpu-worker.mjs), and on no page's path but the late pages': downloadSizes takes
   // the sizes from here, and only the render chunks that hold a late page wait for it.
   packTests: {
-    expected: ["config"],
+    expected: ["config", ...GATE],
     handler: "packTests",
     submit() {},
   },
