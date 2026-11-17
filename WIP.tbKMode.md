@@ -72,8 +72,8 @@ package*). Each folder's README says how.
   smaller than the pointee (ExInitializeNPagedLookasideList), is an error. It cannot find
   CmCallbackReleaseKeyObjectIDEx: a `ByRef UNICODE_STRING` is a `PCUNICODE_STRING`, and the defect
   is that the Get routine gives a pointer. A `Sub` is accepted for a routine that returns a result,
-  except a Try routine's `BOOLEAN` (owner, 2026-11-17: ExTryToAcquireFastMutex); the Try routines
-  that return a 4-byte `LOGICAL` are not included, as the package declares none.
+  except a Try routine's (owner, 2026-11-17): its `BOOLEAN`, `LOGICAL` or `ULONG` says whether it
+  succeeded (ExTryToAcquireFastMutex).
 
 Lessons: a case's failure message holds no address and no list longer than 100 characters; a
 compile case's record holds its line number, so new ones go at the end of a file. A field or type

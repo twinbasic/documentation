@@ -453,12 +453,13 @@ function findingsFor(parsed, model, db, config) {
         }
         const isSub = member.kind === "sub";
         // A Sub may leave a result unread, except where the result is the point of the call: a
-        // Try routine's BOOLEAN says whether it acquired what it tried to (owner).
-        if (isSub && ret === "u1" && TRY_ROUTINE.test(shown))
+        // Try routine's result (a BOOLEAN, a LOGICAL or a ULONG) says whether it acquired what it
+        // tried to (owner).
+        if (isSub && /^[iu]\d/.test(ret) && TRY_ROUTINE.test(shown))
           add(
             "error",
             `return:${member.name}`,
-            `it is a Sub, and the WDK's ${shown} returns a BOOLEAN, whether it succeeded: the caller cannot tell`,
+            `it is a Sub, and the WDK's ${shown} returns whether it succeeded (${kindText(ret)}): the caller cannot tell`,
           );
         if (isSub || !member.returnType) continue;
         if (ret === "v0") {
