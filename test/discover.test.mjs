@@ -1,5 +1,7 @@
 // Unit tests for builder/discover.mjs and builder/discover-read.mjs: the
-// source tree's inventory, which the build reads in pieces on its lanes.
+// source tree's inventory, which the build reads in pieces on its lanes, and
+// for builder/fnmatch.mjs, the patterns the output trees' inventories leave
+// files out by.
 //
 // The build compares its output with the last commit's, so a fault that the
 // site's own tree and its piece count do not reach passes it: an inventory
@@ -16,6 +18,8 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { assemble, cutPieces, discover, listSources } from "../builder/discover.mjs";
 import { readPiece } from "../builder/discover-read.mjs";
+import { deriveTreeRels } from "../builder/check-tree.mjs";
+import { fnmatchPathname, matchesAny } from "../builder/fnmatch.mjs";
 
 // A PNG's first 24 bytes, which is all the build reads of one.
 function pngHeader(width, height) {
@@ -167,5 +171,64 @@ describe("the source tree's inventory", () => {
     assert.deepEqual(found.pages, pieces.pages);
     assert.deepEqual(found.staticFiles, pieces.staticFiles);
     assert.equal(warned.length, 1);
+  });
+});
+
+// The output trees' inventories leave out what offline_exclude names
+// (builder/fnmatch.mjs). The site's own list has few wildcards, and the build's
+// comparison sees only that list.
+describe("the patterns a tree's inventory leaves files out by", () => {
+  test("* stays within a folder, ** crosses folders, ? is one character", () => {
+    assert.equal(fnmatchPathname("a/*.svg", "a/b.svg"), true);
+    assert.equal(fnmatchPathname("a/*.svg", "a/c/b.svg"), false);
+    assert.equal(fnmatchPathname("a/**", "a/c/b.svg"), true);
+    assert.equal(fnmatchPathname("a/?.svg", "a/b.svg"), true);
+    assert.equal(fnmatchPathname("a/?.svg", "a//.svg"), false);
+    assert.equal(fnmatchPathname("a.b", "axb"), false);
+  });
+
+  test("a list matches as its patterns do one by one", () => {
+    const patterns = ["Images/x.svg", "book/**", "*.tmp", "a+b(1).png"];
+    const rels = [
+      "Images/x.svg",
+      "Images/x.svg2",
+      "book/a/b.html",
+      "book",
+      "x.tmp",
+      "d/x.tmp",
+      "a+b(1).png",
+      "aab1.png",
+    ];
+    for (const rel of rels) {
+      const one = patterns.some((pat) => fnmatchPathname(pat, rel));
+      assert.equal(matchesAny(rel, patterns), one, rel);
+    }
+    assert.equal(matchesAny("x", []), false);
+    assert.equal(matchesAny("x", undefined), false);
+  });
+
+  test("a pattern added to a list that was already used is honoured", () => {
+    const patterns = ["a.svg"];
+    assert.equal(matchesAny("b.svg", patterns), false);
+    patterns.push("b.svg");
+    assert.equal(matchesAny("b.svg", patterns), true);
+  });
+
+  test("the offline tree's inventory leaves out what the list names", () => {
+    const common = {
+      pages: [{ destPath: "a\\index.html" }, { destPath: "book\\b.html" }],
+      staticFiles: [{ destRel: "Images\\x.svg" }, { destRel: "Images\\x.png" }],
+      stubs: [],
+      themeAssetRels: [],
+      excludePatterns: ["Images/x.svg", "book/**"],
+    };
+    const offline = deriveTreeRels("offline", common);
+    assert.equal(offline.includes("a/index.html"), true);
+    assert.equal(offline.includes("Images/x.png"), true);
+    assert.equal(offline.includes("Images/x.svg"), false);
+    assert.equal(offline.includes("book/b.html"), false);
+    const online = deriveTreeRels("online", common);
+    assert.equal(online.includes("Images/x.svg"), true);
+    assert.equal(online.includes("book/b.html"), true);
   });
 });
