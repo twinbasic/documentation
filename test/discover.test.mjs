@@ -1,7 +1,7 @@
 // Unit tests for builder/discover.mjs and builder/discover-read.mjs: the
 // source tree's inventory, which the build reads in pieces on its lanes, and
 // for builder/fnmatch.mjs, the patterns the output trees' inventories leave
-// files out by.
+// files out by, and for builder/nav.mjs, the nav the pages' frontmatter gives.
 //
 // The build compares its output with the last commit's, so a fault that the
 // site's own tree and its piece count do not reach passes it: an inventory
@@ -20,6 +20,7 @@ import { assemble, cutPieces, discover, listSources } from "../builder/discover.
 import { packPageText, pageText, readPiece } from "../builder/discover-read.mjs";
 import { deriveTreeRels } from "../builder/check-tree.mjs";
 import { fnmatchPathname, matchesAny } from "../builder/fnmatch.mjs";
+import { computeNav } from "../builder/nav.mjs";
 
 // A PNG's first 24 bytes, which is all the build reads of one.
 function pngHeader(width, height) {
@@ -171,6 +172,92 @@ describe("the source tree's inventory", () => {
     assert.deepEqual(found.pages, pieces.pages);
     assert.deepEqual(found.staticFiles, pieces.staticFiles);
     assert.equal(warned.length, 1);
+  });
+});
+
+// The nav tree, each page's levels in it and each page's list of children all
+// come from one sorted list of children for each page (builder/nav.mjs). The
+// site has few pages with nav_exclude and few parents that reverse their
+// children, and the build's comparison sees only the site.
+describe("the nav the pages' frontmatter gives", () => {
+  const page = (title, frontmatter = {}) => {
+    const permalink = frontmatter.permalink ?? `/${title}`;
+    return { srcRel: `${permalink.slice(1)}.md`, permalink, frontmatter: { title, ...frontmatter, permalink } };
+  };
+  const build = (pages) => {
+    const { navTree } = computeNav(pages, {});
+    return { navTree, by: Object.fromEntries(pages.map((p) => [p.frontmatter.title, p])) };
+  };
+  const shape = (nodes) => nodes.map((n) => (n.children.length ? [n.title, shape(n.children)] : n.title));
+
+  test("children are ordered by nav_order, then by title, and a page's levels are its positions", () => {
+    const { navTree, by } = build([
+      page("Zeta", { nav_order: 1 }),
+      page("Alpha", { nav_order: 2 }),
+      page("b", { parent: "Alpha" }),
+      page("a", { parent: "Alpha" }),
+      page("c", { parent: "Alpha", nav_order: 1 }),
+      page("leaf", { parent: "a", grand_parent: "Alpha" }),
+    ]);
+    assert.deepEqual(shape(navTree), ["Zeta", ["Alpha", ["c", ["a", ["leaf"]], "b"]]]);
+    assert.deepEqual(by.Zeta.navLevels, [1, 1]);
+    assert.deepEqual(by.c.navLevels, [1, 2, 1]);
+    assert.deepEqual(by.leaf.navLevels, [1, 2, 2, 1]);
+    assert.deepEqual(by.leaf.breadcrumbs, [
+      { title: "Alpha", url: "/Alpha" },
+      { title: "a", url: "/a" },
+    ]);
+    assert.deepEqual(
+      by.Alpha.children.map((c) => c.title),
+      ["c", "a", "b"],
+    );
+    assert.deepEqual(by.Zeta.children, []);
+  });
+
+  test("a nav_exclude page is listed among the children, and is not in the tree or counted in the levels", () => {
+    const { navTree, by } = build([
+      page("Top"),
+      page("a", { parent: "Top" }),
+      page("b", { parent: "Top", nav_exclude: true }),
+      page("c", { parent: "Top" }),
+    ]);
+    assert.deepEqual(shape(navTree), [["Top", ["a", "c"]]]);
+    assert.deepEqual(
+      by.Top.children.map((c) => c.title),
+      ["a", "b", "c"],
+    );
+    assert.deepEqual(by.c.navLevels, [1, 1, 2]);
+    assert.equal(by.b.navLevels, undefined);
+  });
+
+  test("child_nav_order reverses both lists", () => {
+    const { navTree, by } = build([
+      page("Top", { child_nav_order: "desc" }),
+      page("a", { parent: "Top" }),
+      page("b", { parent: "Top", nav_exclude: true }),
+      page("c", { parent: "Top" }),
+    ]);
+    assert.deepEqual(shape(navTree), [["Top", ["c", "a"]]]);
+    assert.deepEqual(
+      by.Top.children.map((c) => c.title),
+      ["c", "b", "a"],
+    );
+    assert.deepEqual(by.a.navLevels, [1, 1, 2]);
+  });
+
+  test("a child whose grand_parent names another page's parent is not that page's child", () => {
+    const { navTree, by } = build([
+      page("One"),
+      page("Two"),
+      page("Shared", { parent: "One", permalink: "/One/Shared" }),
+      page("Shared", { parent: "Two", permalink: "/Two/Shared" }),
+      page("x", { parent: "Shared", grand_parent: "Two" }),
+    ]);
+    assert.deepEqual(shape(navTree), [
+      ["One", ["Shared"]],
+      ["Two", [["Shared", ["x"]]]],
+    ]);
+    assert.deepEqual(by.x.navLevels, [1, 2, 1, 1]);
   });
 });
 
