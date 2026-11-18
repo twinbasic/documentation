@@ -20,6 +20,7 @@ you are about to change.
 | start an IDE or a program on a private desktop, choose a port for one, or change `tbbroker` | [WIP.Broker.md](WIP.Broker.md) --- the broker that hands out desktops, slots and ports, and its protocol |
 | a new twinBASIC BETA has been installed | [WIP.NewBeta.md](WIP.NewBeta.md) --- the checklist, in order |
 | change `builder/`, `scripts/`, or any gate | [WIP.Build.md](WIP.Build.md) --- the pipeline and why each gate exists |
+| make the build faster, or measure it | [WIP.BuildSpeed.md](WIP.BuildSpeed.md) --- the rules, how to measure, where the time is, and the work that is open |
 | touch fonts, diagrams, or the PDF's type | [WIP.Typography.md](WIP.Typography.md), then [WIP.Fonts.md](WIP.Fonts.md) for the generator |
 | change the accessibility scan | [WIP.A11y.md](WIP.A11y.md) --- the axe scan, the sample, the fingerprint gate |
 | work on the sample-compiling harness | [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) |
