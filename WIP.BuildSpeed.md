@@ -42,23 +42,27 @@ slicing every 0.1s off until it was perfect. So a 0.1s win is just fine in my bo
 
 ## How to measure
 
-The measuring tools are not in the repository yet: they are local, in
-`.claude/resume-agents/kit/perf/` of the main checkout (gitignored). Each takes the
-repository's Windows path as its first argument unless said.
+`node scripts/build_speed.mjs` ([Tools-Build](docs/Documentation/Tools-Build.md#build-speed))
+does the measuring. It is outside every gate and CI; `test/build-speed.test.mjs` holds
+its reading of the chart to the chart's writer.
 
-| Tool | What it does |
+| Command | For |
 |---|---|
-| `bench.ps1 -Trees <dir>,<dir> -Runs 3 -Out <folder>` | builds each tree on every CPU and on four, prints each "Done in" line, keeps each build's log and `gantt.svg` |
-| `serve-gantt.mjs <repo> <out> <label> [builds]` | builds on one pool, as `--serve` does (the first is cold), and keeps each chart |
-| `gantt-times.mjs <gantt.svg>... --task a,b` | when render started and ended, and named main-thread tasks' times, read from a chart |
-| `svg2png.mjs <gantt.svg>...` | a chart as a PNG beside it, to look at; run from the repository root |
-| `prof-under.mjs <cpuprofile> <fn,fn,...> [depth]` | the inclusive time of named functions in a `--cpu-prof` profile (the main thread's ends `.0.001.cpuprofile`) |
-| `mdinit-bench.mjs`, `instrument-mdinit.mjs` | `markdownInit`'s parts alone, and temporary marks in it printed as a line on stderr |
-| `mask-diff.mjs`, `nav-diff.mjs <old repo> <new repo>` | two checkouts' `maskCode` and `computeNav` compared over the site, then timed |
-| `nav-bench.mjs`, `slices-cpu.mjs`, `terms-bench.mjs`, `sibench3.mjs`, `pdeflate.mjs`, `habench2.mjs` | one part of the build alone: the nav, the index's add by slice count, its merge and terms, the add split into its parts, a file deflated as one stream and as pieces, the archive on one thread |
+| `bench --tree <branch> --tree <base>` | one-off builds of each tree in turn, on every CPU and on four, with each figure's range over the runs; each log and chart is kept in `.build-speed/` |
+| `serve --tree <branch> --tree <base>` | rebuilds on one pool, as `--serve` does (the first build is cold) |
+| `--task a,b` on either | named main-thread tasks' times as well |
+| `times <gantt.svg>...` | the same figures from charts kept earlier |
+| `png <gantt.svg>...` | a chart as a PNG, to look at with the Read tool |
+| `profile <cpuprofile> --fn a,b` | the inclusive time of named functions in a `--cpu-prof` profile |
+| `part <name>` | one part of the build alone on one thread: `markdown-init`, `nav`, `index-slices`, `index-add`, `index-terms`, `deflate`, `archive` |
 
 A base to compare with is the main checkout while the branch is ahead of it, or a detached
-worktree of the commit with a `node_modules` junction.
+worktree of the commit with a `node_modules` junction. `part --tree <dir>` runs that
+tree's modules, so a rewrite is timed against the old code by naming each checkout in turn.
+
+**A new part goes into `scripts/build-speed/parts.mjs`** when a function is timed alone
+for the second time; a one-off comparison of two checkouts' output over every page (the way
+`maskCode` and `computeNav` were checked) is a script in the session's scratchpad.
 
 What goes wrong when measuring:
 
