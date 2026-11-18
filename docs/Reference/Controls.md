@@ -104,6 +104,73 @@ that no package above has. These are by Krool:
   sources are [on GitHub](https://github.com/Kr00l/VBCCR). The **Standard EXE (+VBCCR)**
   template of the [New Project](IDE/Starting/New-Project) dialog makes a project that
   references it already.
+- [VBComDlg](Packages/Contributed/VBComDlg/) holds the **CommonDialog** class, whose members
+  are modelled on those of the VB6 CommonDialog control (`COMDLG32.OCX`).
 
 [Importing a package from TWINSERV](../Features/Packages/Importing-TWINSERV) describes how to
 add one to a project.
+
+## VB6 controls in twinBASIC
+{: #vb6-controls }
+
+This section lists the controls of VB6 and where each is in twinBASIC.
+
+### Intrinsic controls
+
+Every control of the VB6 toolbox that needs no component --- PictureBox to OLE --- has a class of
+the same name in the [VB package](Packages/VB), listed above. Two things differ from VB6:
+
+- The [OLE](Packages/VB/OLE/) control is a stub. A form that holds one loads and lays it out,
+  but the control cannot create, link or activate an OLE object.
+- The DDE members (**LinkMode**, **LinkTopic**, **LinkExecute** and the others) and
+  **RightToLeft** are not implemented on the controls that have them.
+
+Each class page marks the members that are not implemented. The
+[twinBASIC roadmap](https://twinbasic.com/roadmap) plans the remaining ones.
+
+### ActiveX controls
+
+VB6 also ships controls as ActiveX libraries, which a project adds as components. The table
+lists each library with its controls and what replaces them. A replacement works in 32-bit
+and 64-bit builds and needs no file registered.
+
+| VB6 library | Controls | In twinBASIC |
+|---|---|---|
+| `MSCOMCTL.OCX` | ImageList, ListView, ProgressBar, Slider, TreeView | [WinNativeCommonCtls](Packages/WinNativeCommonCtls/) |
+| `MSCOMCTL.OCX` | ImageCombo, StatusBar, TabStrip, Toolbar | **VBCCR18** |
+| `MSCOMCT2.OCX` | DTPicker, MonthView, UpDown | [WinNativeCommonCtls](Packages/WinNativeCommonCtls/) |
+| `MSCOMCT2.OCX` | Animation | **VBCCR18** |
+| `MSCOMCT2.OCX` | FlatScrollBar | no replacement |
+| `COMCT332.OCX` | CoolBar | **VBCCR18** |
+| `COMDLG32.OCX` | CommonDialog | [VBComDlg](Packages/Contributed/VBComDlg/) |
+| `RICHTX32.OCX` | RichTextBox | **VBCCR18** |
+| `MSFLXGRD.OCX` | MSFlexGrid | [VBFLXGRD18](Packages/Contributed/VBFLXGRD18/) |
+| `MSHFLXGD.OCX` | MSHFlexGrid | no replacement |
+| `SYSINFO.OCX` | SysInfo | **VBCCR18** |
+| `TABCTL32.OCX` | SSTab | no replacement |
+| `MSWINSCK.OCX` | Winsock | planned |
+| `MSMAPI32.OCX` | MAPISession, MAPIMessages | planned |
+| `MSADODC.OCX` | Adodc | planned |
+| `MSDATGRD.OCX` | DataGrid | planned |
+| `MSCOMM32.OCX` | MSComm | planned |
+| `MSINET.OCX` | Inet | no replacement |
+| `MSMASK32.OCX` | MaskEdBox | no replacement |
+| `MCI32.OCX` | MMControl | no replacement |
+| `PICCLP32.OCX` | PictureClip | no replacement |
+| `MSCHRT20.OCX` | MSChart | no replacement |
+| `MSDATLST.OCX` | DataList, DataCombo | no replacement |
+| `MSDATREP.OCX` | DataRepeater | no replacement |
+| `DBGRID32.OCX` | DBGrid | no replacement |
+| `DBLIST32.OCX` | DBList, DBCombo | no replacement |
+| `MSRDC20.OCX` | RemoteData | no replacement |
+
+`COMCTL32.OCX` and `COMCT232.OCX` hold the earlier versions of the controls of `MSCOMCTL.OCX`
+and `MSCOMCT2.OCX`, and the same packages replace them.
+
+*Planned* means that the roadmap names the control among the VB6 controls that twinBASIC will
+implement itself. The roadmap states that all the remaining ones will follow.
+
+A control with no replacement, and any other control of the table, can be used as VB6 uses
+it: the VB6 library itself, added to the project. The VB6 libraries are 32-bit, so this works
+in a 32-bit build only. See
+[Can I use VB6's own ActiveX controls?](../FAQ#vb6-ocx) in the FAQ.
