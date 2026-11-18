@@ -1,0 +1,18 @@
+' A real form with one of each control of VBCCR18 on it, each named as the designer names
+' the first one (ProgressBar1, ListView1, TextBoxW1), for the samples of the VBCCR18
+' section: the reader's form, so that a sample that is run works on real controls. This is
+' the `form` template's Form1 with the controls added (see WIP.ExamplesBuild.md), as
+' `contributed-VBFLXGRD18`'s is with a VBFlexGrid. Both files are written by a generator,
+' from the classes of the package marked COMControl.
+'
+' Form1.tbform is its designer file, and the two name the same designer id.
+
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class Form1
+
+    Sub New()
+    End Sub
+
+End Class

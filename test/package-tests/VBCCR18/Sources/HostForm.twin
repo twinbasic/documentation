@@ -1,0 +1,10 @@
+' HostForm: a form that is loaded and never shown. It holds one of each control of VBCCR18, each
+' named as the designer names the first one (ProgressBar1, ListView1, TextBoxW1). A case that
+' looks at a control's events declares the control WithEvents in a class of its own.
+
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B24740CC218")]
+[PredeclaredId]
+Class HostForm
+
+End Class
