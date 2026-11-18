@@ -218,7 +218,7 @@ Worker handlers live in `cpu-worker.mjs`. Two edits:
 export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
-  buildInfo: 6, render: 7,
+  render: 7,
   writePdf: 9, checkBook: 10,
   indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
   myHandler: 15,                         // ← new

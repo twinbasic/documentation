@@ -176,8 +176,8 @@ What makes it worth doing, and what to keep when changing it:
   would take them and load the second stage, and the pieces would wait for a lane. The
   listing takes a few hundredths of a second, less than a lane takes to start. The
   pieces have the highest priority, so the first lanes that look take them.
-  `buildInfo` waits too, since nothing early needs it: see
-  [dispatch does not wait for buildInfo](#dispatch-does-not-wait-for-buildinfo).
+  `buildInfo` is no lane task since: see
+  [git is started by the main thread and awaited where it is needed](#git-is-started-by-the-main-thread-and-awaited-where-it-is-needed).
 - **Two pieces below eight CPUs, four from eight on** (`discoverPieces`; owner,
   2026-11-18). On four CPUs the other two lanes compile the stylesheets meanwhile; with
   four pieces there `dot` and `packTests` queued behind the reads and `dispatch`, which
@@ -258,9 +258,8 @@ late. In a serve rebuild it took 0.03 to 0.3 s, with the same effect. On CI's Li
 was done long before.
 
 `bookPayload` waits for it now, which reads `state.site.buildInfo` and runs after the
-render; the shared payload and the lanes' site object hold it no longer. `buildInfo`
-also waits for `discoverList`, as the other early lane tasks do, so that it does not
-take a lane the source tree's pieces want.
+render; the shared payload and the lanes' site object hold it no longer. (`buildInfo`
+was a lane task then; it is a main-thread task now, see the next section.)
 
 Measured on the dev box, with four pieces of the source tree as well (the two changes
 were measured together), the first render starting at:
@@ -280,6 +279,55 @@ children twice and built a map for each page's levels; it now sorts once and the
 carries the levels, which takes 6 ms alone on its first call where it took 19 to 24 ms.
 In a build the task still reads 29 to 69 ms (28 to 64 ms before): its time there is
 not its own work but the main thread's share of a machine whose lanes are all booting.
+
+### git is started by the main thread and awaited where it is needed
+
+On Windows a `git` process takes 0.15 to 1.0 s to start and answer, alone on a quiet
+machine, and up to 2.3 s while the lanes boot. The build asks `git` two things, and both
+waited for it in the wrong place:
+
+- **`buildInfo` was a lane task.** A lane that awaits a process does no other work, so
+  one lane was out of the build for 0.47 to 0.88 s on sixteen CPUs and 0.50 to 2.33 s on
+  four, where render starts at about 1.5 s. It was also two processes
+  (`rev-parse --short HEAD` and `log -1 --format=%cs`) where `log -1 --format="%h %cs"`
+  answers both.
+- **`addinProject` listed the add-in's files at the very end of the build**, two
+  `git ls-files` after `helpArchive`, with nothing else left to run: 0.21 to 1.55 s in
+  a one-off build, 0.22 to 0.55 s in a serve rebuild.
+
+Both are now main-thread tasks that start one process and return: `buildInfo` keeps
+the promise in `state.buildInfoPending` and `bookPayload` awaits it; `addinFiles`
+keeps `state.addinListing` (`listAddinFiles`: one `git ls-files -t --cached --others`,
+where `?` marks a file git does not track) and `addinProject` awaits it. By then each
+has long answered. What to keep:
+
+- **A main-thread task must not await the process itself**: the main thread finishes a
+  task before it claims the next, so the await belongs in the task that needs the
+  answer, which runs late.
+- **Both wait for `dispatch`**, only so that the processes start after the main
+  thread's work for the first render. Starting a process takes the main thread 3 to
+  31 ms.
+- **A build that writes no PDF starts no `buildInfo` process** (`--serve`, `--no-pdf`,
+  `--dry-run`): only the title page reads it.
+- **The chart shows the two tasks as slivers**, not how long `git` took. The add-in's
+  line in the build's report still gives `addinProject`'s time.
+- `compare_trees` replaces the title page's build line, so check the commit there by
+  reading `_site-pdf/book.html` after a change to `build-info.mjs`.
+
+Measured on the dev box, three runs of each, base against branch in the same session:
+
+| | before | since |
+|---|---|---|
+| `addinProject`, one-off, 16 CPUs | 0.48 to 0.64 s | 0.08 to 0.09 s |
+| `addinProject`, one-off, 4 CPUs | 0.21 to 1.55 s | 0.09 to 0.10 s |
+| `addinProject`, serve rebuild (builds 2 to 5) | 0.22 to 0.55 s | 0.01 to 0.02 s |
+| first render, one-off, 16 CPUs | 0.81 to 0.95 s | 0.70 to 0.88 s |
+| first render, one-off, 4 CPUs | 1.38 to 1.69 s | 1.07 to 1.34 s |
+| whole build, 16 CPUs | 9.2 to 10.8 s | 8.6 to 9.4 s |
+| whole build, serve rebuild (builds 2 to 5) | 3.96 to 4.66 s | 3.55 to 4.27 s |
+
+The whole build on four CPUs is within the runs' noise (15.2 to 18.2 s against 15.5 to
+17.3 s). Not measured: CI, where `git` is quick and little should show.
 
 ### What markdownInit is made of
 
