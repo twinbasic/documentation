@@ -147,7 +147,7 @@ and 64-bit builds and needs no file registered.
 | `MSFLXGRD.OCX` | MSFlexGrid | [VBFLXGRD18](Packages/Contributed/VBFLXGRD18/) |
 | `MSHFLXGD.OCX` | MSHFlexGrid | no replacement |
 | `SYSINFO.OCX` | SysInfo | **VBCCR18** |
-| `TABCTL32.OCX` | SSTab | no replacement |
+| `TABCTL32.OCX` | SSTab | no replacement; see [NewTabCtl](Packages/Contributed/NewTabCtl/), an experimental package |
 | `MSWINSCK.OCX` | Winsock | planned |
 | `MSMAPI32.OCX` | MAPISession, MAPIMessages | planned |
 | `MSADODC.OCX` | Adodc | planned |
