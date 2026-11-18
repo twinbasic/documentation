@@ -312,8 +312,8 @@ parts:
         pages:
           - /tB/IDE/AddIns/
           - /tB/IDE/AddIns/GlobalSearch
-          - /tB/IDE/AddIns/Community
-          - /tB/IDE/AddIns/Community-Tools
+          - /Community/Add-Ins
+          - /Community/Tools
         no_descent: true
         no_outline_entry: true
         no_heading_shift: true
@@ -670,6 +670,10 @@ left_out:
 
   - reason: Time-limited community contests
     page: /Challenges
+
+  - reason: The Community section's index, a page of links; its add-in and tool lists are in the IDE part's Add Ins chapter
+    page: /Community/
+    no_descent: true
 
   # A package moves here from its chapter when it is listed under
   # Experimental Packages, and gets its chapter back (after VBComDlg's) when

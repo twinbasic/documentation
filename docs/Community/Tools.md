@@ -1,15 +1,17 @@
 ---
 title: Community Tools
-parent: Add Ins
-nav_order: 4
-permalink: /tB/IDE/AddIns/Community-Tools
+parent: Community
+nav_order: 2
+permalink: /Community/Tools
+redirect_from:
+  - /tB/IDE/AddIns/Community-Tools
 index:
   - community utilities
 ---
 
 # Community tools
 
-Community tools are programs that twinBASIC users write and share, and that help with twinBASIC itself: installing a new version, moving code from VB6, editing twinBASIC code outside the IDE. A tool is a program of its own. It is not an add-in, which the IDE loads: those are on the [Community add-ins](Community) page.
+Community tools are programs that twinBASIC users write and share, and that help with twinBASIC itself: installing a new version, moving code from VB6, editing twinBASIC code outside the IDE. A tool is a program of its own. It is not an add-in, which the IDE loads: those are on the [Community add-ins](Add-Ins) page.
 
 > [!WARNING]
 > Each tool is a program that its author publishes. Treat it as you would any program that you have not written yourself.
@@ -41,4 +43,4 @@ A new version of twinBASIC is a zip file to download and unpack. These tools do 
 
 To add the highlighting, download one of the two files. In Notepad++, choose **Language → User Defined Language → Define your language...**, then **Import**, and select the file. **twinBASIC** is then in the **Language** menu.
 
-To share a tool, add it to this page: [Authoring](../../../Documentation/Development/Authoring) describes how to change a page of this documentation.
+To share a tool, add it to this page: [Authoring](../Documentation/Development/Authoring) describes how to change a page of this documentation.

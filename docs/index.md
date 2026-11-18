@@ -84,11 +84,8 @@ The [**IDE section**](tB/IDE) documents the [code editor and the panels beside i
 
 ## Community and external resources
 
-- The [**twinBASIC wiki**](https://github.com/twinbasic/documentation/wiki) on GitHub supplements these docs with community contributions and notes on bleeding-edge features.
+- The [**Community**](Community/) section lists what twinBASIC users write and share: [packages](tB/Packages/Contributed/), [add-ins](Community/Add-Ins) for the IDE, [tools](Community/Tools) and guides. It also says where the community meets.
 - [**Videos**](Videos/) --- the twinBASIC video series and the [**Access DevCon**](Videos/AccessDevCon) conference sessions.
-- Third-party guides by Mike Wolfe at [@nolongerset](https://nolongerset.com):
-  - [Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/)
-  - [Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/)
 
 ## Reading offline
 
