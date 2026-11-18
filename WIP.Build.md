@@ -1362,6 +1362,10 @@ those `counts.mjs` defines, and most of the prose is still hand-written.
 the page *is* the list. It reads the index alone, so an entry added only to the
 by-package section above it is still a half-edit that nothing reports.
 
+`samples` counts the rows of the table under `## The samples` in
+`IDE/Starting/Samples.md`, the same shape: a row starts with the sample's number in
+bold. A sample added to the IDE and not to that table is not counted.
+
 `defaultPackages` and `builtInPackages` exist because `packages` alone cannot
 express both sentences the site writes: all the packages, and the ones the IDE
 ships but a project references on demand, for which "built-in" is reserved. A
