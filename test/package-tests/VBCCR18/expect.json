@@ -1,6 +1,15 @@
 {
   "version": "1.8.136.0",
   "cases": {
+    "ImageListTests.Add_BitmapSmallerThanTheList_IsInTheWindowsList": {
+      "fails": "3 of 3 checks failed: the pictures in the Windows image list of 32 by 32 after a bitmap of 16 by 16 is added: expected 1, got 0; the color the first item draws, a red bitmap of 16 by 16, after a blue one of 32 by 32 is added: expected 255, got 16711680; the color the second item draws, a blue bitmap of 32 by 32: expected 16711680, got 16777215"
+    },
+    "ImageListTests.Add_BitmapWiderThanTheList_AddsOnePicture": {
+      "fails": "1 of 2 checks failed: the pictures in the Windows image list of 16 by 16 after a bitmap of 16 by 16 and one of 32 by 16 are added: expected 2, got 3"
+    },
+    "ImageListTests.Add_DuplicateKey_LeavesTheWindowsListAsItWas": {
+      "fails": "1 of 1 checks failed: the pictures in the Windows image list of a list with one picture, after an Add that raised error 457 for its key: expected 1, got 2"
+    },
     "ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
       "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectExtended on an empty list raises no error 380: expected True, got False"
     },

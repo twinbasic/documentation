@@ -1,0 +1,765 @@
+' ImageListTests: the ImageList control, its ImlListImages collection and its ImlListImage items.
+' The pictures are bitmaps of one color made here, and what an item draws is read back from a
+' memory device context, so that no case needs a file.
+[TestFixture]
+Module ImageListTests
+
+    Private Type PictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+
+    Private Type PictGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal X As Long, ByVal Y As Long, ByVal W As Long, ByVal H As Long, ByVal Rop As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal X As Long, ByVal Y As Long) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PictDesc, ByRef IID As PictGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+    Private Declare PtrSafe Function ImageList_GetImageCount Lib "comctl32" (ByVal hImageList As LongPtr) As Long
+
+    Private Const PATCOPY As Long = &HF00021
+    Private Const WHITENESS As Long = &HFF0062
+    Private Const SILVER As Long = &HC0C0C0
+
+    ' A bitmap of one color.
+    Private Function ColorSquare(ByVal Color As Long, Optional ByVal Width As Long = 16, Optional ByVal Height As Long = 16) As StdPicture
+        Dim screenDC As LongPtr, memDC As LongPtr, bmp As LongPtr, brush As LongPtr, oldBmp As LongPtr, oldBrush As LongPtr
+        screenDC = GetDC(0)
+        memDC = CreateCompatibleDC(screenDC)
+        bmp = CreateCompatibleBitmap(screenDC, Width, Height)
+        brush = CreateSolidBrush(Color)
+        oldBmp = SelectObject(memDC, bmp)
+        oldBrush = SelectObject(memDC, brush)
+        PatBlt memDC, 0, 0, Width, Height, PATCOPY
+        SelectObject memDC, oldBrush
+        SelectObject memDC, oldBmp
+        DeleteObject brush
+        DeleteDC memDC
+        ReleaseDC 0, screenDC
+        Dim desc As PictDesc, iid As PictGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = bmp
+        ' IID_IPictureDisp, {7BF80981-BF32-101A-8BBB-00AA00300CAB}
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set ColorSquare = pic
+    End Function
+
+    ' The color of a pixel of an item drawn on a white ground: white where the item draws nothing.
+    Private Function DrawnColor(ByVal Image As ImlListImage, Optional ByVal Style As ImlDrawConstants) As Long
+        Dim screenDC As LongPtr, memDC As LongPtr, bmp As LongPtr, oldBmp As LongPtr
+        screenDC = GetDC(0)
+        memDC = CreateCompatibleDC(screenDC)
+        bmp = CreateCompatibleBitmap(screenDC, 64, 64)
+        oldBmp = SelectObject(memDC, bmp)
+        PatBlt memDC, 0, 0, 64, 64, WHITENESS
+        Image.Draw memDC, 0, 0, Style
+        DrawnColor = GetPixel(memDC, 2, 2)
+        SelectObject memDC, oldBmp
+        DeleteObject bmp
+        DeleteDC memDC
+        ReleaseDC 0, screenDC
+    End Function
+
+    ' ---- the ImageList control ----
+
+    [TestCase]
+    Public Sub ImageWidth_NewList_IsZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 0, CLng(f.ImageList1.ImageWidth), "ImageWidth of a new list"
+        Expect.AreEqual 0, CLng(f.ImageList1.ImageHeight), "ImageHeight of a new list"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_FirstPicture_SetsImageWidthAndImageHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed, 24, 20)
+        Expect.AreEqual 24, CLng(f.ImageList1.ImageWidth), "ImageWidth after a bitmap 24 pixels wide is added to a new list"
+        Expect.AreEqual 20, CLng(f.ImageList1.ImageHeight), "ImageHeight after a bitmap 20 pixels high is added to a new list"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageWidth_ListWithPictures_Raises35611()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ImageWidth = 32
+        Expect.AreEqual 35611, Err.Number, "ImageWidth = 32 in a list with a picture"
+        On Error GoTo 0
+        Expect.AreEqual 16, CLng(f.ImageList1.ImageWidth), "ImageWidth after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageHeight_ListWithPictures_Raises35611()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ImageHeight = 32
+        Expect.AreEqual 35611, Err.Number, "ImageHeight = 32 in a list with a picture"
+        On Error GoTo 0
+        Expect.AreEqual 16, CLng(f.ImageList1.ImageHeight), "ImageHeight after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageWidth_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ImageWidth = -1
+        Expect.AreEqual 380, Err.Number, "ImageWidth = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ImageList1.ImageWidth), "ImageWidth after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageHeight_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ImageHeight = -1
+        Expect.AreEqual 380, Err.Number, "ImageHeight = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ImageList1.ImageHeight), "ImageHeight after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorDepth_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ColorDepth = 5
+        Expect.AreEqual 380, Err.Number, "ColorDepth = 5"
+        On Error GoTo 0
+        Expect.AreEqual 24, CLng(f.ImageList1.ColorDepth), "ColorDepth of a new list, after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColorDepth_ListWithPictures_Raises35611()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ColorDepth = ImlColorDepth32Bit
+        Expect.AreEqual 35611, Err.Number, "ColorDepth = ImlColorDepth32Bit in a list with a picture"
+        On Error GoTo 0
+        Expect.AreEqual 24, CLng(f.ImageList1.ColorDepth), "ColorDepth after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RightToLeftMirror_ListWithPictures_Raises35611()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.RightToLeftMirror = True
+        Expect.AreEqual 35611, Err.Number, "RightToLeftMirror = True in a list with a picture"
+        On Error GoTo 0
+        Expect.IsFalse f.ImageList1.RightToLeftMirror, "RightToLeftMirror after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BackColor_NotAColor_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.BackColor = -1
+        Expect.AreEqual 380, Err.Number, "BackColor = -1"
+        On Error GoTo 0
+        Expect.IsTrue f.ImageList1.BackColor = vbWindowBackground, "BackColor of a new list, after the refused assignment, is vbWindowBackground"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub hImageList_EmptyList_IsZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.ImageList1.hImageList = 0, "hImageList of a new list is 0"
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        Expect.IsTrue f.ImageList1.hImageList <> 0, "hImageList of a list with a picture is not 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub hImageList_ImageWidthAndImageHeightSet_IsNotZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ImageWidth = 32
+        Expect.IsTrue f.ImageList1.hImageList = 0, "hImageList of an empty list with ImageWidth alone set is 0"
+        f.ImageList1.ImageHeight = 32
+        Expect.IsTrue f.ImageList1.hImageList <> 0, "hImageList of an empty list with ImageWidth and ImageHeight set is not 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_ResetsTheSizeAndTheHandle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ImageWidth = 32: .ImageHeight = 32
+            .ListImages.Add , , ColorSquare(vbRed, 32, 32)
+            .ListImages.Add , , ColorSquare(vbBlue, 32, 32)
+            .ListImages.Clear
+            Expect.AreEqual 0, CLng(.ListImages.Count), "Count after Clear"
+            Expect.AreEqual 0, CLng(.ImageWidth), "ImageWidth after Clear, in a list whose ImageWidth the program had set to 32"
+            Expect.AreEqual 0, CLng(.ImageHeight), "ImageHeight after Clear"
+            Expect.IsTrue .hImageList = 0, "hImageList after Clear is 0"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_LastPicture_ResetsTheSizeAndTheHandle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ListImages.Add , , ColorSquare(vbRed)
+            .ListImages.Add , , ColorSquare(vbBlue)
+            .ListImages.Remove 1
+            Expect.AreEqual 16, CLng(.ImageWidth), "ImageWidth after one of two pictures is removed"
+            .ListImages.Remove 1
+            Expect.AreEqual 0, CLng(.ImageWidth), "ImageWidth after the only picture left is removed"
+            Expect.AreEqual 0, CLng(.ImageHeight), "ImageHeight after the only picture left is removed"
+            Expect.IsTrue .hImageList = 0, "hImageList after the only picture left is removed is 0"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_Icon_IsScaledToTheList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim icon As StdPicture
+        With f.ImageList1
+            ' An icon of 32 by 32 pixels, taken from a list of that size.
+            .ListImages.Add , , ColorSquare(vbRed, 32, 32)
+            Set icon = .ListImages(1).ExtractIcon
+            .ListImages.Clear
+            .ImageWidth = 16: .ImageHeight = 16
+            .ListImages.Add , , icon
+            Expect.AreEqual 1, ImageList_GetImageCount(.hImageList), "the pictures in the Windows image list of 16 by 16 after an icon of 32 by 32 is added"
+            Expect.AreEqual CLng(vbRed), DrawnColor(.ListImages(1)), "the color the item of the icon draws"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_BitmapSmallerThanTheList_IsInTheWindowsList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ImageWidth = 32: .ImageHeight = 32
+            .ListImages.Add , , ColorSquare(vbRed, 16, 16)
+            Expect.AreEqual 1, ImageList_GetImageCount(.hImageList), "the pictures in the Windows image list of 32 by 32 after a bitmap of 16 by 16 is added"
+            .ListImages.Add , , ColorSquare(vbBlue, 32, 32)
+            Expect.AreEqual CLng(vbRed), DrawnColor(.ListImages(1)), "the color the first item draws, a red bitmap of 16 by 16, after a blue one of 32 by 32 is added"
+            Expect.AreEqual CLng(vbBlue), DrawnColor(.ListImages(2)), "the color the second item draws, a blue bitmap of 32 by 32"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_BitmapWiderThanTheList_AddsOnePicture()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ListImages.Add , , ColorSquare(vbRed, 16, 16)
+            .ListImages.Add , , ColorSquare(vbGreen, 32, 16)
+            Expect.AreEqual 2, CLng(.ListImages.Count), "Count after a bitmap of 16 by 16 and one of 32 by 16 are added"
+            Expect.AreEqual 2, ImageList_GetImageCount(.hImageList), "the pictures in the Windows image list of 16 by 16 after a bitmap of 16 by 16 and one of 32 by 16 are added"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_BitmapOfTheMaskColor_IsTransparent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ListImages.Add , , ColorSquare(SILVER)
+            .ListImages.Add , , ColorSquare(vbRed)
+            Expect.AreEqual CLng(vbWhite), DrawnColor(.ListImages(1)), "the color drawn on white by a bitmap of the default MaskColor, &HC0C0C0"
+            Expect.AreEqual CLng(vbRed), DrawnColor(.ListImages(2)), "the color drawn on white by a red bitmap, with the default MaskColor"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaskColor_Changed_LeavesThePicturesInTheList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .MaskColor = vbRed
+            .ListImages.Add , , ColorSquare(vbRed)
+            .MaskColor = vbBlue
+            Expect.AreEqual CLng(vbWhite), DrawnColor(.ListImages(1)), "the color drawn on white by a red bitmap added with MaskColor red, after MaskColor = vbBlue"
+            .ListImages.Add , , ColorSquare(vbRed)
+            Expect.AreEqual CLng(vbRed), DrawnColor(.ListImages(2)), "the color drawn on white by a red bitmap added with MaskColor blue"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_UseMaskColorFalse_KeepsTheMaskColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .UseMaskColor = False
+            .ListImages.Add , , ColorSquare(SILVER)
+            Expect.AreEqual SILVER, DrawnColor(.ListImages(1)), "the color drawn on white by a bitmap of the MaskColor added with UseMaskColor False"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UseBackColor_True_DrawsTheTransparentPartsInBackColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ListImages.Add , , ColorSquare(SILVER)
+            .BackColor = vbBlue
+            Expect.AreEqual CLng(vbWhite), DrawnColor(.ListImages(1)), "the color drawn on white by a transparent picture, BackColor blue and UseBackColor False"
+            .UseBackColor = True
+            Expect.AreEqual CLng(vbBlue), DrawnColor(.ListImages(1)), "the color drawn on white by a transparent picture, BackColor blue and UseBackColor True"
+            .UseBackColor = False
+            Expect.AreEqual CLng(vbWhite), DrawnColor(.ListImages(1)), "the color drawn on white by a transparent picture after UseBackColor = False again"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OfAControl_EmptyList_IsNotTaken()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.CheckBoxW1.ImageList = f.ImageList1
+        Expect.AreEqual "Nothing", TypeName(f.CheckBoxW1.ImageList), "the type of CheckBoxW1.ImageList after an empty ImageList is assigned"
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        f.CheckBoxW1.ImageList = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(f.CheckBoxW1.ImageList), "the type of CheckBoxW1.ImageList after an ImageList with a picture is assigned"
+        f.CheckBoxW1.ImageList = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overlay_TwoPictures_ReturnsAnIcon()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim icon As StdPicture
+        With f.ImageList1
+            .ListImages.Add , "file", ColorSquare(vbWhite)
+            .ListImages.Add , "arrow", ColorSquare(vbBlue)
+            Set icon = .Overlay("file", "arrow")
+            Expect.IsFalse icon Is Nothing, "Overlay of two pictures returns a picture"
+            If Not icon Is Nothing Then Expect.AreEqual CLng(vbPicTypeIcon), CLng(icon.Type), "the Type of the picture Overlay returns"
+            Expect.AreEqual 2, CLng(.ListImages.Count), "Count after Overlay"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overlay_EmptyList_ReturnsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.ImageList1.Overlay(1, 2) Is Nothing, "Overlay(1, 2) of an empty list is Nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the ImlListImages collection ----
+
+    [TestCase]
+    Public Sub Add_AtAnIndex_MovesTheLaterPicturesUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1.ListImages
+            .Add , "open", ColorSquare(vbRed)
+            .Add , "save", ColorSquare(vbBlue)
+            .Add 1, "new", ColorSquare(vbGreen)
+            Expect.AreEqual "new open save", .Item(1).Key & " " & .Item(2).Key & " " & .Item(3).Key, "the keys in order after Add 1 before two pictures"
+            Expect.AreEqual 2, CLng(.Item("open").Index), "Index of the picture that was first, after Add 1"
+            Expect.AreEqual 3, CLng(.Item("save").Index), "Index of the picture that was second, after Add 1"
+            Expect.AreEqual CLng(vbGreen), DrawnColor(.Item(1)), "the color the item 1 draws after a green bitmap is added at 1"
+            Expect.AreEqual CLng(vbRed), DrawnColor(.Item(2)), "the color the item 2 draws, the red bitmap that was first"
+            Expect.AreEqual CLng(vbBlue), DrawnColor(.Item(3)), "the color the item 3 draws, the blue bitmap that was second"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_RenumbersTheLaterPictures()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1.ListImages
+            .Add , "open", ColorSquare(vbRed)
+            .Add , "save", ColorSquare(vbBlue)
+            .Add , "print", ColorSquare(vbGreen)
+            .Remove "open"
+            Expect.AreEqual 2, CLng(.Count), "Count after one of three pictures is removed"
+            Expect.AreEqual 1, CLng(.Item("save").Index), "Index of the second picture after the first is removed"
+            Expect.AreEqual 2, CLng(.Item("print").Index), "Index of the third picture after the first is removed"
+            Expect.AreEqual CLng(vbBlue), DrawnColor(.Item(1)), "the color the item 1 draws after the first picture is removed"
+            Expect.AreEqual CLng(vbGreen), DrawnColor(.Item(2)), "the color the item 2 draws after the first picture is removed"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByKey_IgnoresCase()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1.ListImages
+            .Add , "open", ColorSquare(vbRed)
+            .Add , "Save", ColorSquare(vbBlue)
+            Expect.AreEqual 2, CLng(.Item("SAVE").Index), "Index of Item(""SAVE"") where the key is ""Save"""
+            Expect.AreEqual "Save", .Item("save").Key, "Key of Item(""save"") where the key is ""Save"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumberOutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim image As ImlListImage
+        f.ImageList1.ListImages.Add , "open", ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        Set image = f.ImageList1.ListImages(2)
+        Expect.AreEqual 9, Err.Number, "Item(2) of a list with one picture"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_UnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim image As ImlListImage
+        f.ImageList1.ListImages.Add , "open", ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        Set image = f.ImageList1.ListImages("save")
+        Expect.AreEqual 5, Err.Number, "Item(""save"") of a list with no such key"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_NoPicture_Raises35607()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ListImages.Add
+        Expect.AreEqual 35607, Err.Number, "Add without a picture"
+        Err.Clear
+        f.ImageList1.ListImages.Add , , Nothing
+        Expect.AreEqual 35607, Err.Number, "Add with Nothing"
+        Err.Clear
+        f.ImageList1.ListImages.Add , , LoadPicture("")
+        Expect.AreEqual 35607, Err.Number, "Add with LoadPicture("""")"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ImageList1.ListImages.Count), "Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ListImages.Add 3, , ColorSquare(vbBlue)
+        Expect.AreEqual 35600, Err.Number, "Add 3 in a list with one picture"
+        Err.Clear
+        f.ImageList1.ListImages.Add -1, , ColorSquare(vbBlue)
+        Expect.AreEqual 35600, Err.Number, "Add -1"
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(f.ImageList1.ListImages.Count), "Count after the refused calls"
+        f.ImageList1.ListImages.Add 2, , ColorSquare(vbBlue)
+        Expect.AreEqual 2, CLng(f.ImageList1.ListImages.Count), "Count after Add 2 in a list with one picture"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "open", ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ListImages.Add , "OPEN", ColorSquare(vbBlue)
+        Expect.AreEqual 457, Err.Number, "Add with the key ""OPEN"" in a list that has the key ""open"""
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(f.ImageList1.ListImages.Count), "Count after the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_LeavesTheWindowsListAsItWas()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "open", ColorSquare(vbRed)
+        On Error Resume Next
+        f.ImageList1.ListImages.Add , "open", ColorSquare(vbBlue)
+        On Error GoTo 0
+        Expect.AreEqual 1, ImageList_GetImageCount(f.ImageList1.hImageList), "the pictures in the Windows image list of a list with one picture, after an Add that raised error 457 for its key"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Exists_SaysWhetherTheListHasTheNumberOrKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1.ListImages
+            .Add , "open", ColorSquare(vbRed)
+            .Add , , ColorSquare(vbBlue)
+            Expect.IsTrue .Exists("open"), "Exists(""open"") in a list with that key"
+            Expect.IsFalse .Exists("save"), "Exists(""save"") in a list without that key"
+            Expect.IsTrue .Exists(2), "Exists(2) in a list of two pictures"
+            Expect.IsFalse .Exists(3), "Exists(3) in a list of two pictures"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the ImlListImage item ----
+
+    [TestCase]
+    Public Sub Key_Assigned_RenamesThePicture()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1.ListImages
+            .Add , "open", ColorSquare(vbRed)
+            .Add , "save", ColorSquare(vbBlue)
+            .Item("open").Key = "load"
+            Expect.AreEqual "load", .Item(1).Key, "Key of the first picture after Key = ""load"""
+            Expect.IsFalse .Exists("open"), "Exists of the old key"
+            Expect.AreEqual 1, CLng(.Item("load").Index), "Index of the picture found by its new key"
+            Expect.AreEqual 2, CLng(.Item("save").Index), "Index of the other picture"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Empty_TakesTheKeyAway()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1.ListImages
+            .Add , "open", ColorSquare(vbRed)
+            .Item(1).Key = ""
+            Expect.AreEqual 0, Len(.Item(1).Key), "Len(Key) after Key = """""
+            Expect.IsFalse .Exists("open"), "Exists of the old key"
+            Expect.AreEqual 1, CLng(.Count), "Count after the key is taken away"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_OfAnotherPicture_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "open", ColorSquare(vbRed)
+        f.ImageList1.ListImages.Add , "save", ColorSquare(vbBlue)
+        On Error Resume Next
+        Err.Clear
+        f.ImageList1.ListImages(2).Key = "open"
+        Expect.AreEqual 457, Err.Number, "Key = ""open"" on the second picture, where the first has that key"
+        On Error GoTo 0
+        Expect.AreEqual "save", f.ImageList1.ListImages(2).Key, "Key after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Picture_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        On Error Resume Next
+        Err.Clear
+        Set f.ImageList1.ListImages(1).Picture = ColorSquare(vbBlue)
+        Expect.AreEqual 383, Err.Number, "Set Picture on an item"
+        On Error GoTo 0
+        Expect.AreEqual CLng(vbRed), DrawnColor(f.ImageList1.ListImages(1)), "the color the item draws after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tag_NewPicture_IsAnEmptyString()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        Expect.AreEqual CLng(vbString), CLng(VarType(f.ImageList1.ListImages(1).Tag)), "VarType(Tag) of a new picture"
+        Expect.AreEqual 0, Len(f.ImageList1.ListImages(1).Tag), "Len(Tag) of a new picture"
+        f.ImageList1.ListImages(1).Tag = 42
+        Expect.AreEqual 42, CLng(f.ImageList1.ListImages(1).Tag), "Tag after Tag = 42"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Draw_Transparent_IgnoresBackColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ListImages.Add , , ColorSquare(SILVER)
+            .BackColor = vbBlue
+            .UseBackColor = True
+            Expect.AreEqual CLng(vbBlue), DrawnColor(.ListImages(1), ImlDrawNormal), "the color drawn on white by a transparent picture with ImlDrawNormal, BackColor blue in use"
+            Expect.AreEqual CLng(vbWhite), DrawnColor(.ListImages(1), ImlDrawTransparent), "the color drawn on white by a transparent picture with ImlDrawTransparent, BackColor blue in use"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Draw_NoMask_DrawsTheMaskedPixelsBlack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageList1
+            .ListImages.Add , , ColorSquare(SILVER)
+            .ListImages.Add , , ColorSquare(vbRed)
+            Expect.AreEqual CLng(vbBlack), DrawnColor(.ListImages(1), ImlDrawNoMask), "the color drawn with ImlDrawNoMask by a bitmap of the mask color"
+            Expect.AreEqual CLng(vbRed), DrawnColor(.ListImages(2), ImlDrawNoMask), "the color drawn with ImlDrawNoMask by a red bitmap"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ExtractIcon_ReturnsAnIcon()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim icon As StdPicture
+        f.ImageList1.ListImages.Add , , ColorSquare(vbRed)
+        Set icon = f.ImageList1.ListImages(1).ExtractIcon
+        Expect.IsFalse icon Is Nothing, "ExtractIcon returns a picture"
+        If Not icon Is Nothing Then Expect.AreEqual CLng(vbPicTypeIcon), CLng(icon.Type), "the Type of the picture ExtractIcon returns"
+        Expect.AreEqual CLng(vbPicTypeBitmap), CLng(f.ImageList1.ListImages(1).Picture.Type), "the Type of Picture of an item added from a bitmap"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

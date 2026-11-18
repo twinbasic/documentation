@@ -47,14 +47,14 @@ Several controls have the name of a control of the [WinNativeCommonCtls](../../W
 
 Each of these is the VB6 control of the same name without the `W`, with text in Unicode and the features Windows has added to the control since.
 
-- **CheckBoxW** -- a check box
-- **ComboBoxW** -- a text box with a drop-down list
-- **CommandButtonW** -- a push button, also with a drop-down arrow
-- **FrameW** -- a captioned frame that holds other controls
-- **LabelW** -- text on the form, with no window of its own
-- **ListBoxW** -- a list of text items
-- **OptionButtonW** -- an option button
-- **TextBoxW** -- a text box of one or several lines
+- [**CheckBoxW**](CheckBoxW) -- a check box
+- [**ComboBoxW**](ComboBoxW) -- a text box with a drop-down list
+- [**CommandButtonW**](CommandButtonW) -- a push button, also with a drop-down arrow
+- [**FrameW**](FrameW) -- a captioned frame that holds other controls
+- [**LabelW**](LabelW) -- text on the form, with no window of its own
+- [**ListBoxW**](ListBoxW) -- a list of text items
+- [**OptionButtonW**](OptionButtonW) -- an option button
+- [**TextBoxW**](TextBoxW) -- a text box of one or several lines
 
 ## Controls in place of the Microsoft common controls
 
@@ -64,7 +64,7 @@ Each of these is the VB6 control of the same name without the `W`, with text in 
 | **CoolBar** | bands that hold other controls, which the user moves and resizes | `COMCT332.OCX` |
 | **DTPicker** | a date or a time, with a drop-down calendar | `MSCOMCT2.OCX` |
 | **ImageCombo** | a drop-down list whose items have pictures | `MSCOMCTL.OCX` |
-| **ImageList** | nothing: it holds the pictures other controls show | `MSCOMCTL.OCX` |
+| [**ImageList**](ImageList/) | nothing: it holds the pictures other controls show | `MSCOMCTL.OCX` |
 | **ListView** | items as icons, a list, tiles or a report with columns | `MSCOMCTL.OCX` |
 | **MonthView** | a calendar of one or more months | `MSCOMCT2.OCX` |
 | [**ProgressBar**](ProgressBar) | progress through a range | `MSCOMCTL.OCX` |
@@ -81,17 +81,17 @@ The **CommonDialog** class shows the Windows common dialogs, as the CommonDialog
 
 ## Controls that VB6 does not have
 
-- **CommandLink** -- a button with a title, a note under it and an arrow
+- [**CommandLink**](CommandLink) -- a button with a title, a note under it and an arrow
 - **FontCombo** -- a drop-down list of the fonts installed
 - **HotKey** -- a box that takes a key combination
 - **IPAddress** -- a box for an IPv4 address, in four fields
-- **LinkLabel** -- text with links in it
+- [**LinkLabel**](LinkLabel/) -- text with links in it
 - **MCIWnd** -- a player for sound and video files
 - **Pager** -- a control that scrolls another control too large for its place
 - **SpinBox** -- a text box for a number, with arrow buttons
-- **VirtualCombo** -- a drop-down list whose items the program supplies when they are shown
-- **VListBox** -- a list box whose items the program supplies when they are shown
-- **WindowedLabel** -- text on the form, in a window of its own
+- [**VirtualCombo**](VirtualCombo) -- a drop-down list whose items the program supplies when they are shown
+- [**VListBox**](VListBox) -- a list box whose items the program supplies when they are shown
+- [**WindowedLabel**](WindowedLabel) -- text on the form, in a window of its own
 
 ## Members that the controls share
 
@@ -102,7 +102,7 @@ The package also has modules, `ComCtlsBase`, `Common`, `RichTextBoxBase`, `Virtu
 ## See Also
 
 - [Contributed Packages](../)
-- [WinNativeCommonCtls](../../WinNativeCommonCtls/) -- the built-in package with eight of the common controls
+- [WinNativeCommonCtls](../../WinNativeCommonCtls/) -- the built-in package whose common controls have the same names
 - [VBFLXGRD18](../VBFLXGRD18/) -- Krool's **VBFlexGrid** control, also a package
 - [VBComDlg](../VBComDlg/) -- Krool's **CommonDialog** class as a package of its own
 - [Controls](../../../Controls#vb6-controls) -- where each VB6 control is in twinBASIC

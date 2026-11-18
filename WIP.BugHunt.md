@@ -79,6 +79,13 @@ narrowed to a UserControl of our own.
   (FontQuality, MousePointer, Max); `Value`, whose setter runs an `On Error Resume Next` block
   after that call, leaves 0. So the suspect is `PropertyChanged`, failing inside and leaving
   `Err` set.
+- **A form does not make option buttons that are UserControls exclusive.** OptionButtonW's
+  `Value` is `OLE_OPTEXCLUSIVE`, and the control calls `UserControl.PropertyChanged "Value"`
+  when it becomes True, on which a VB6 form clears the other such controls of the container.
+  Two OptionButtonW on one form stay True together, set by code or clicked (`BM_CLICK`), the
+  form loaded or shown, win32 and win64. The OptionButtonW page has a WARNING and a probe
+  sample (`optionbuttonw-group`). Probably one defect with the 438 above: `PropertyChanged`
+  failing inside.
 - **`Visible` reads False** for a control on a form that is loaded and not shown
   (`Extender.Visible`).
 - **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises

@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 234 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 276 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -319,6 +319,174 @@ Module RunAll
         Err.Clear
         FrameWTests.Appearance_SetsForeColor
         Expect.EndCase "FrameWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ImageWidth_NewList_IsZero
+        Expect.EndCase "ImageListTests.ImageWidth_NewList_IsZero", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_FirstPicture_SetsImageWidthAndImageHeight
+        Expect.EndCase "ImageListTests.Add_FirstPicture_SetsImageWidthAndImageHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ImageWidth_ListWithPictures_Raises35611
+        Expect.EndCase "ImageListTests.ImageWidth_ListWithPictures_Raises35611", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ImageHeight_ListWithPictures_Raises35611
+        Expect.EndCase "ImageListTests.ImageHeight_ListWithPictures_Raises35611", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ImageWidth_Negative_Raises380
+        Expect.EndCase "ImageListTests.ImageWidth_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ImageHeight_Negative_Raises380
+        Expect.EndCase "ImageListTests.ImageHeight_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ColorDepth_NotAMember_Raises380
+        Expect.EndCase "ImageListTests.ColorDepth_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ColorDepth_ListWithPictures_Raises35611
+        Expect.EndCase "ImageListTests.ColorDepth_ListWithPictures_Raises35611", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.RightToLeftMirror_ListWithPictures_Raises35611
+        Expect.EndCase "ImageListTests.RightToLeftMirror_ListWithPictures_Raises35611", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.BackColor_NotAColor_Raises380
+        Expect.EndCase "ImageListTests.BackColor_NotAColor_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.hImageList_EmptyList_IsZero
+        Expect.EndCase "ImageListTests.hImageList_EmptyList_IsZero", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.hImageList_ImageWidthAndImageHeightSet_IsNotZero
+        Expect.EndCase "ImageListTests.hImageList_ImageWidthAndImageHeightSet_IsNotZero", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Clear_ResetsTheSizeAndTheHandle
+        Expect.EndCase "ImageListTests.Clear_ResetsTheSizeAndTheHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Remove_LastPicture_ResetsTheSizeAndTheHandle
+        Expect.EndCase "ImageListTests.Remove_LastPicture_ResetsTheSizeAndTheHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_Icon_IsScaledToTheList
+        Expect.EndCase "ImageListTests.Add_Icon_IsScaledToTheList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_BitmapSmallerThanTheList_IsInTheWindowsList
+        Expect.EndCase "ImageListTests.Add_BitmapSmallerThanTheList_IsInTheWindowsList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_BitmapWiderThanTheList_AddsOnePicture
+        Expect.EndCase "ImageListTests.Add_BitmapWiderThanTheList_AddsOnePicture", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_BitmapOfTheMaskColor_IsTransparent
+        Expect.EndCase "ImageListTests.Add_BitmapOfTheMaskColor_IsTransparent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.MaskColor_Changed_LeavesThePicturesInTheList
+        Expect.EndCase "ImageListTests.MaskColor_Changed_LeavesThePicturesInTheList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_UseMaskColorFalse_KeepsTheMaskColor
+        Expect.EndCase "ImageListTests.Add_UseMaskColorFalse_KeepsTheMaskColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.UseBackColor_True_DrawsTheTransparentPartsInBackColor
+        Expect.EndCase "ImageListTests.UseBackColor_True_DrawsTheTransparentPartsInBackColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ImageList_OfAControl_EmptyList_IsNotTaken
+        Expect.EndCase "ImageListTests.ImageList_OfAControl_EmptyList_IsNotTaken", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Overlay_TwoPictures_ReturnsAnIcon
+        Expect.EndCase "ImageListTests.Overlay_TwoPictures_ReturnsAnIcon", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Overlay_EmptyList_ReturnsNothing
+        Expect.EndCase "ImageListTests.Overlay_EmptyList_ReturnsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_AtAnIndex_MovesTheLaterPicturesUp
+        Expect.EndCase "ImageListTests.Add_AtAnIndex_MovesTheLaterPicturesUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Remove_RenumbersTheLaterPictures
+        Expect.EndCase "ImageListTests.Remove_RenumbersTheLaterPictures", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Item_ByKey_IgnoresCase
+        Expect.EndCase "ImageListTests.Item_ByKey_IgnoresCase", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Item_NumberOutOfRange_Raises9
+        Expect.EndCase "ImageListTests.Item_NumberOutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Item_UnknownKey_Raises5
+        Expect.EndCase "ImageListTests.Item_UnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_NoPicture_Raises35607
+        Expect.EndCase "ImageListTests.Add_NoPicture_Raises35607", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "ImageListTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_DuplicateKey_Raises457
+        Expect.EndCase "ImageListTests.Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Add_DuplicateKey_LeavesTheWindowsListAsItWas
+        Expect.EndCase "ImageListTests.Add_DuplicateKey_LeavesTheWindowsListAsItWas", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Exists_SaysWhetherTheListHasTheNumberOrKey
+        Expect.EndCase "ImageListTests.Exists_SaysWhetherTheListHasTheNumberOrKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Key_Assigned_RenamesThePicture
+        Expect.EndCase "ImageListTests.Key_Assigned_RenamesThePicture", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Key_Empty_TakesTheKeyAway
+        Expect.EndCase "ImageListTests.Key_Empty_TakesTheKeyAway", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Key_OfAnotherPicture_Raises457
+        Expect.EndCase "ImageListTests.Key_OfAnotherPicture_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Picture_Assigned_Raises383
+        Expect.EndCase "ImageListTests.Picture_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Tag_NewPicture_IsAnEmptyString
+        Expect.EndCase "ImageListTests.Tag_NewPicture_IsAnEmptyString", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Draw_Transparent_IgnoresBackColor
+        Expect.EndCase "ImageListTests.Draw_Transparent_IgnoresBackColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.Draw_NoMask_DrawsTheMaskedPixelsBlack
+        Expect.EndCase "ImageListTests.Draw_NoMask_DrawsTheMaskedPixelsBlack", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageListTests.ExtractIcon_ReturnsAnIcon
+        Expect.EndCase "ImageListTests.ExtractIcon_ReturnsAnIcon", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         LabelWTests.Caption_Assigned_RaisesChangeOnlyWhenItDiffers

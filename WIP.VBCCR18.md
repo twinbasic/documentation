@@ -48,10 +48,19 @@ without a page in bold, with no link; link it when its page exists.
 
 ## Samples and test cases
 
-- The sample template `contributed-VBCCR18` has a real `Form1` with one of each control, named
-  as the designer names the first one (`ProgressBar1`, `TextBoxW1`), and
-  `tbxStageVBCCR18.twin`, a property per control that loads `Form1` and returns the control.
-  Both are written by `kit/vbccr/make-template.mjs <worktree>` from the snapshot.
+- The sample template `contributed-VBCCR18` has a real form for each control, `frm<Control>`,
+  with that one control on it, named as the designer names the first one (`ProgressBar1`,
+  `TextBoxW1`), and `tbxStageVBCCR18.twin`, a property per control that loads its form and
+  returns the control. `frmOptionButtonW` has a second one, `OptionButtonW2`. All are written by
+  `kit/vbccr/make-template.mjs <worktree>` from the snapshot. **One form with every control was
+  tried first and is too slow**: it loads in about a quarter of a second, each run sample
+  loads it again, and a batch of run samples met the harness's 10 s run limit now and then
+  ("did not return" at a varying sample). Nothing crashes: that form survives 60 loads and
+  unloads, and each control alone 40.
+- **Option buttons are not exclusive on BETA 1042** (WIP.BugHunt.md, *UserControl*): the
+  OptionButtonW page has a WARNING with a probe sample. What a VB6 form does with the same
+  control is not checked (it needs a UserControl with an `OLE_OPTEXCLUSIVE` property built in
+  VB6, which is also the reproducer the lead wants), so the page does not say.
 - The test project's `HostForm` has the same controls (`kit/vbccr/make-test-host.mjs`). A case
   gets a form from `Rig.NewForm()`, and looks at events through a class of its own that holds
   the control `WithEvents` and writes to `Rig.Ev` (`ProgressBarSink`). No case edits

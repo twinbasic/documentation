@@ -394,6 +394,15 @@
 				"Width": 120,
 				"_className": "WindowedLabel",
 				"_clsid": "{FB5743B1-0C1E-45AA-91B7-2E2E176E624E}"
+			},
+			{
+				"Height": 40,
+				"Left": 8,
+				"Name": "OptionButtonW2",
+				"Top": 344,
+				"Width": 120,
+				"_className": "OptionButtonW",
+				"_clsid": "{10932034-D42F-4EDA-B895-B9E9BC4FF86A}"
 			}
 		]
 	}

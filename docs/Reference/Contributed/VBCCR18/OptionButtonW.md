@@ -33,7 +33,29 @@ Of the [common members](Common), the control has those under [Name and place](Co
 
 ## Selecting an option
 
-[**Value**](#value) is **True** while the option is selected. The user selects it with a click on the control. The property is declared with the type that tells a form the option buttons of one container exclude each other, so the form clears the other option buttons of the same container when one becomes **True**. Option buttons in a frame or a picture box are a group of their own.
+[**Value**](#value) is **True** while the option is selected. The user selects it with a click on the control. The option buttons of one container are a group, of which one is selected at a time; those in a frame or a picture box are a group of their own. The control leaves it to the form to clear the other option buttons of the group when one becomes **True**.
+
+<!-- test: sample optionbuttonw-group -->
+> [!WARNING] BETA 1042
+> The form does not clear the other option buttons of the group, so two of them can be selected at once, by the user or by the program. A program clears them itself, in each button's [**Click**](#click) event:
+
+```tb probe check_run arch=win32,win64 id=optionbuttonw-group
+OptionButtonW1.Value = True
+OptionButtonW2.Value = True
+Debug.Print OptionButtonW1.Value; OptionButtonW2.Value
+' Output:
+' TrueTrue
+```
+
+```tb check_build
+Private Sub OptionButtonW1_Click()
+    OptionButtonW2.Value = False
+End Sub
+
+Private Sub OptionButtonW2_Click()
+    OptionButtonW1.Value = False
+End Sub
+```
 
 <!-- test: OptionButtonWTests.Click_RaisedWhenValueBecomesTrue, OptionButtonWTests.Click_ByTheUser_OnASelectedOption_RaisesNothing -->
 [**Click**](#click) is raised when **Value** becomes **True**, whether the user or the program made it so. Nothing is raised when it becomes **False**, and nothing when the user clicks an option that is selected already.
