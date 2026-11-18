@@ -38,7 +38,7 @@ These classes are *containers* rather than controls in the strict sense --- they
 
 These three controls are normally connected together to build a complete file picker.
 
-- DriveListBox --- drive picker. *Not yet documented.*
+- [DriveListBox](Packages/VB/DriveListBox/) -- drop-down list of the drives the operating system reports.
 - [DirListBox](Packages/VB/DirListBox/) -- directory-tree picker for a single path.
 - [FileListBox](Packages/VB/FileListBox/) -- file list for a single directory, filtered by wildcard and file-attribute toggles.
 
@@ -89,3 +89,21 @@ elsewhere:
 Both of the first two ship with the IDE but are referenced on demand --- add them from
 Project → References before the controls appear in the toolbox. See
 [Built-In Packages](Packages/Built-In/).
+
+## Controls in contributed packages
+
+[Contributed packages](Packages/Contributed/) on the package server replace VB6 controls
+that no package above has. These are by Krool:
+
+- [VBFLXGRD18](Packages/Contributed/VBFLXGRD18/) holds the
+  [VBFlexGrid](Packages/Contributed/VBFLXGRD18/VBFlexGrid/) control, a replacement for the
+  Microsoft FlexGrid control of VB6 (`MSFLXGRD.OCX`).
+- **VBCCR18** replaces the Microsoft common controls of VB6. It has controls that
+  WinNativeCommonCtls lacks, among them **CoolBar**, **ImageCombo**, **RichTextBox**,
+  **StatusBar**, **TabStrip** and **ToolBar**. This reference has no section for it yet; its
+  sources are [on GitHub](https://github.com/Kr00l/VBCCR). The **Standard EXE (+VBCCR)**
+  template of the [New Project](IDE/Starting/New-Project) dialog makes a project that
+  references it already.
+
+[Importing a package from TWINSERV](../Features/Packages/Importing-TWINSERV) describes how to
+add one to a project.
