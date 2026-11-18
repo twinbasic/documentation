@@ -143,8 +143,28 @@ export function judgeCompiles(compiles, rows) {
         ? codes.every((c) => here.includes(c))
         : !here.length;
     const wanted = anyError ? "an error" : codes.length ? codes.join(", ") : "none";
-    return { name, pass, detail: pass ? "" : `expected ${wanted} on ${file} line ${line}, got ${got}` };
+    const hint = pass || here.length || wanted === "none" ? "" : nearestRows(reported, under, file, line);
+    return { name, pass, detail: pass ? "" : `expected ${wanted} on ${file} line ${line}, got ${got}${hint}` };
   });
+}
+
+// What to say of a case that expects a row where the compiler reported none: a case that names
+// its file wrongly otherwise reads as a defect that is gone. A row on that line of a file with
+// the same name in another folder is named with the path the case has to give; else the rows
+// the compiler did report in the case's own half, the project's sources or a package's.
+function nearestRows(reported, under, file, line) {
+  const rows = reported.map((m) => ({ file: under(m[2]), line: Number(m[3]), code: m[4].toUpperCase() }));
+  const there = rows.filter((r) => r.file);
+  const base = (f) => f.slice(f.lastIndexOf("/") + 1);
+  const moved = there.find(
+    (r) => r.line === line && r.file !== file.toLowerCase() && base(r.file) === base(file.toLowerCase()),
+  );
+  if (moved) return `; ${moved.code} is on that line of ${moved.file}: name the file by its path under Sources`;
+  if (!there.length) return "";
+  const SHOWN = 4;
+  const list = there.slice(0, SHOWN).map((r) => `${r.code} ${r.file}:${r.line}`);
+  const more = there.length > SHOWN ? ` and ${there.length - SHOWN} more` : "";
+  return `; the compiler reported ${list.join(", ")}${more}`;
 }
 
 /**
