@@ -65,6 +65,7 @@ The roster, by wrapper ([Tools and Scripts](docs/Documentation/Tools.md) owns th
 | `test.bat` | `test/indexer.test.mjs` | the package indexer (`indexer/lib/`) changes a snapshot only when the API changes |
 | `test.bat` | `test/ide-js.test.mjs` | `scripts/ide_js.mjs` and `scripts/ide-js/lib.mjs` on a few lines of minified JavaScript, and that the tool writes only under `%TEMP%` |
 | `test.bat` | `test/discover.test.mjs` | the source tree's inventory (`builder/discover.mjs`, `discover-read.mjs`) is the same in any number of pieces, with a picture pair that has a `bundle_extra` file |
+| `test.bat` | `test/build-speed.test.mjs` | `scripts/build_speed.mjs` reads from a Gantt chart the times `builder/gantt.mjs` drew, and totals a CPU profile by function |
 | `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes, and patch only the members `PATCHES` lists |
 | `test.bat` | `check_impexp_parity` | the Node and Python editions of `impexp` (and, with `IMPEXP_EXE`, the twinBASIC one) behave alike |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
@@ -176,8 +177,8 @@ What makes it worth doing, and what to keep when changing it:
   would take them and load the second stage, and the pieces would wait for a lane. The
   listing takes a few hundredths of a second, less than a lane takes to start. The
   pieces have the highest priority, so the first lanes that look take them.
-  `buildInfo` waits too, since nothing early needs it: see
-  [dispatch does not wait for buildInfo](#dispatch-does-not-wait-for-buildinfo).
+  `buildInfo` is no lane task since: see
+  [git is started by the main thread and awaited where it is needed](#git-is-started-by-the-main-thread-and-awaited-where-it-is-needed).
 - **Two pieces below eight CPUs, four from eight on** (`discoverPieces`; owner,
   2026-11-18). On four CPUs the other two lanes compile the stylesheets meanwhile; with
   four pieces there `dot` and `packTests` queued behind the reads and `dispatch`, which
@@ -258,9 +259,8 @@ late. In a serve rebuild it took 0.03 to 0.3 s, with the same effect. On CI's Li
 was done long before.
 
 `bookPayload` waits for it now, which reads `state.site.buildInfo` and runs after the
-render; the shared payload and the lanes' site object hold it no longer. `buildInfo`
-also waits for `discoverList`, as the other early lane tasks do, so that it does not
-take a lane the source tree's pieces want.
+render; the shared payload and the lanes' site object hold it no longer. (`buildInfo`
+was a lane task then; it is a main-thread task now, see the next section.)
 
 Measured on the dev box, with four pieces of the source tree as well (the two changes
 were measured together), the first render starting at:
@@ -280,6 +280,59 @@ children twice and built a map for each page's levels; it now sorts once and the
 carries the levels, which takes 6 ms alone on its first call where it took 19 to 24 ms.
 In a build the task still reads 29 to 69 ms (28 to 64 ms before): its time there is
 not its own work but the main thread's share of a machine whose lanes are all booting.
+
+### git is started by the main thread and awaited where it is needed
+
+On Windows a `git` process takes 0.15 to 1.0 s to start and answer, alone on a quiet
+machine, and up to 2.3 s while the lanes boot. The build asks `git` two things, and both
+waited for it in the wrong place:
+
+- **`buildInfo` was a lane task.** A lane that awaits a process does no other work, so
+  one lane was out of the build for 0.47 to 0.88 s on sixteen CPUs and 0.50 to 2.33 s on
+  four, where render starts at about 1.5 s. It was also two processes
+  (`rev-parse --short HEAD` and `log -1 --format=%cs`) where `log -1 --format="%h %cs"`
+  answers both.
+- **`addinProject` listed the add-in's files at the very end of the build**, two
+  `git ls-files` after `helpArchive`, with nothing else left to run: 0.21 to 1.55 s in
+  a one-off build, 0.22 to 0.55 s in a serve rebuild.
+
+Both are now main-thread tasks that start one process and return: `buildInfo` keeps
+the promise in `state.buildInfoPending` and `bookPayload` awaits it; `addinFiles`
+keeps `state.addinListing` (`listAddinFiles`: one `git ls-files -t --cached --others`,
+where `?` marks a file git does not track) and `addinProject` awaits it. By then each
+has long answered. What to keep:
+
+- **A main-thread task must not await the process itself**: the main thread finishes a
+  task before it claims the next, so the await belongs in the task that needs the
+  answer, which runs late.
+- **Both wait for `dispatch`**, only so that the processes start after the main
+  thread's work for the first render. Starting a process takes the main thread 3 to
+  31 ms.
+- **A build that writes no PDF starts no `buildInfo` process** (`--serve`, `--no-pdf`,
+  `--dry-run`): only the title page reads it.
+- **The chart draws each process as a bar of its own**, `git log` and `git ls-files` in
+  the Seeds band, and the timing line has `git:log=` and `git:ls-files=` (owner,
+  2026-11-18): the two tasks are over at once and say nothing of how long `git` took.
+  `chartProcess` (`builder/tbdocs.mjs`) adds the timing when the promise settles, from the
+  task's `submit`. The bar ends when the main thread hears the answer, so it is longer
+  than the process by whatever task the main thread was in the middle of.
+- `compare_trees` replaces the title page's build line, so check the commit there by
+  reading `_site-pdf/book.html` after a change to `build-info.mjs`.
+
+Measured on the dev box, three runs of each, base against branch in the same session:
+
+| | before | since |
+|---|---|---|
+| `addinProject`, one-off, 16 CPUs | 0.48 to 0.64 s | 0.08 to 0.09 s |
+| `addinProject`, one-off, 4 CPUs | 0.21 to 1.55 s | 0.09 to 0.10 s |
+| `addinProject`, serve rebuild (builds 2 to 5) | 0.22 to 0.55 s | 0.01 to 0.02 s |
+| first render, one-off, 16 CPUs | 0.81 to 0.95 s | 0.70 to 0.88 s |
+| first render, one-off, 4 CPUs | 1.38 to 1.69 s | 1.07 to 1.34 s |
+| whole build, 16 CPUs | 9.2 to 10.8 s | 8.6 to 9.4 s |
+| whole build, serve rebuild (builds 2 to 5) | 3.96 to 4.66 s | 3.55 to 4.27 s |
+
+The whole build on four CPUs is within the runs' noise (15.2 to 18.2 s against 15.5 to
+17.3 s). Not measured: CI, where `git` is quick and little should show.
 
 ### What markdownInit is made of
 
@@ -1293,7 +1346,7 @@ and the reader builds it. `test/addin-project.test.mjs` is the gate.
 
 ### The help archive
 
-- **The help archive is made by tasks of the build's graph, its deflating on the lanes.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, **before** the Gantt injection. `archivePlan` runs once `flushJoin`, `scss` and `writeOffline` have finished, lists the tree less `LATE_FILES` (`search-index.js`) and deals the deflating into one group of units for each lane (`archiveDeflate:i`), so the tree is deflated while the search index is built. `archiveLate` does the same for `search-index.js` once `searchIndex` has written it (`archiveLateDeflate:i`), and `helpArchive` writes the zip from every group. A unit is a whole file or one 1 MB piece of a larger one; a large file's pieces are one deflate stream, each ending with a sync flush and primed with the 32 KB before it (pigz's method), so the bytes depend only on the piece size. Measured on the 55 MB `search-index.js` at level 9: 3.2 s as one stream, 0.8 s as pieces on four threads, at the same size to within 0.02%. Each unit inflates what it deflated and compares it with the bytes it read; the zip is read back and compared with what was assembled. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it, in size or CRC-32, only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
+- **The help archive is made by tasks of the build's graph, its deflating on the lanes.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, **before** the Gantt injection. `archivePlan` runs once `flushJoin`, `scss` and `writeOffline` have finished, lists the tree less `LATE_FILES` (`search-index.js`) and deals the deflating into one group of units for each lane (`archiveDeflate:i`), so the tree is deflated while the search index is built. `archiveLate` does the same for `search-index.js` once `searchIndex` has written it (`archiveLateDeflate:i`), and `helpArchive` writes the zip from every group. A unit is a whole file or one 1 MB piece of a larger one; a large file's pieces are one deflate stream, each ending with a sync flush and primed with the 32 KB before it (pigz's method), so the bytes depend only on the piece size. Measured on the 55 MB `search-index.js` at level 9: 3.2 s as one stream, 0.8 s as pieces on four threads, at the same size to within 0.02%. **A piece is deflated at level 6, a whole file at level 9** (owner, 2026-11-18): the pieces are `search-index.js`'s, the last file the build writes, so their deflating is on the way to the build's end. Measured on the dev box, three builds each, from the end of `searchIndex` to the start of `helpArchive`: 0.60 to 0.63 s at level 9 and 0.13 to 0.16 s at level 6 on sixteen CPUs, 1.17 to 1.29 s and 0.37 to 0.41 s on four; the whole build 8.6 to 9.4 s and 7.7 to 8.3 s, 15.5 to 17.3 s and 14.5 to 15.0 s. The archive is 206 KB larger (77.66 MB, 77.87 MB). Not measured: CI. Each unit inflates what it deflated and compares it with the bytes it read; the zip is read back and compared with what was assembled. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it, in size or CRC-32, only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
 
 ### Build-time counts as named values
 

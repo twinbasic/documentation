@@ -61,7 +61,7 @@ Each task's `execute()` or `submit()` stores its output on `state.site`; downstr
 |---|---|---|---|
 | `config` | `object` | `discover` | Parsed `_config.yml`, with CLI overrides (`--baseurl`, `--url`) already applied. |
 | `navTree` | `object` | `nav` | Top-level nav hierarchy. |
-| `buildInfo` | `object` | `buildInfo` | `{ commit: string, commitDate: string }` from git. Both fall back to `"unknown"` outside a git repository. |
+| `buildInfo` | `object` | `bookPayload` | `{ commit: string, commitDate: string }` from git, in a build that writes the PDF. Both fall back to `"unknown"` outside a git repository. |
 | `data` | `object` | `loadData` | `_book.yml` loaded as `{ book: … }`, or `{}` when absent. |
 | `bookData` | `object\|null` | `loadData` | Shortcut for `data.book`. After `resolveBookChapters`, each entry holds `_chapters` (`Page[]`) plus `_landing` / `_foreword` if declared. |
 | `markdown` | `MarkdownIt` | `markdownInit` | Main-thread markdown-it instance. Used only for site-level SEO; render workers build their own. |
@@ -125,7 +125,7 @@ Every task is an entry in the static `TASKS` object in [`tbdocs.mjs`](https://gi
 export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
-  buildInfo: 6, render: 7,
+  render: 7,
   writePdf: 9, checkBook: 10, packTests: 11,
   indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
   discoverRead: 15,
@@ -148,7 +148,7 @@ A task therefore never starts a worker thread or a process for its work, and nev
 
 ## Section 1 --- Seed tasks
 
-The tasks that start the build. `config` has no predecessor and is claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `buildInfo`, `scssLight` and `scssDark` wait for [`discoverList`](#discoverlist-main), as `dot`, `packTests` and `warmInit` do.
+The tasks that start the build. `config` has no predecessor and is claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `scssLight` and `scssDark` wait for [`discoverList`](#discoverlist-main), as `dot`, `packTests` and `warmInit` do. `buildInfo` and `addinFiles` wait for [`dispatch`](#dispatch-main), and each only starts a `git` process.
 
 ### `config` (main)
 
@@ -158,9 +158,17 @@ config.execute({}, ctx) → { config }
 
 Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url` overrides, and returns the parsed object to `discover`. `submit` broadcasts the config's `package_tests` entry to the lanes as the `"packageTests"` task data, for [`packTests`](#packtests-worker).
 
-### `buildInfo` (worker)
+### `buildInfo` (main)
 
-Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`, which runs two parallel `git` commands (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on failure. The result goes to `state.site.buildInfo`, which the book's title page alone states: [`bookPayload`](#bookpayload-main) waits for this task, and `dispatch` does not, so no render waits for `git`.
+Starts `captureBuildInfo()` from `build-info.mjs`, which runs one `git` command (`log -1 --format="%h %cs"`), and keeps the promise in `state.buildInfoPending` without waiting for it. [`bookPayload`](#bookpayload-main) awaits the promise and puts the result in `state.site.buildInfo`, which the book's title page alone states. Both values fall back to `"unknown"` on failure. The task waits for `dispatch`, so that the process starts after the main thread's work for the first render, and no render waits for `git`. A build that writes no PDF (`--serve`, `--no-pdf`, `--dry-run`) starts no process.
+
+The task is on the main thread because a lane that waits for `git` does no other work meanwhile, and on Windows a `git` process takes a few tenths of a second to start.
+
+### `addinFiles` (main)
+
+Starts `listAddinFiles()` from `addin-project.mjs` on the help add-in's folder, which runs one `git ls-files`, and keeps the promise in `state.addinListing` without waiting for it. [`addinProject`](#addinproject-main) awaits it at the end of the build. Waits for `dispatch`, as `buildInfo` does. Does nothing under `--dry-run` or for a config that declares no download.
+
+Neither task's own time says how long `git` took, so each task's `submit` passes its promise to `chartProcess` in `tbdocs.mjs`, which adds a timing to `scheduler.timings` when the promise settles: `git:log` for `buildInfo` and `git:ls-files` for `addinFiles`. The Gantt chart draws each as a bar in the Seeds band, and the build's timing line states each. The timing ends when the main thread receives the answer, which is later than the process's end when the main thread is in the middle of another task.
 
 ### `scssLight` (worker), `scssDark` (worker)
 
@@ -207,7 +215,7 @@ Calls `listSources(srcRoot, config.exclude ?? [])` and then `cutPieces(listing, 
 
 `submit()` calls `fanOut` with the pieces as payloads, handler `discoverRead`, join `discover` and the highest priority of any lane task.
 
-The lane tasks that would otherwise be claimable before the pieces exist list `discoverList` in their `expected`: `buildInfo`, `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit`. The first lanes to start therefore find the pieces and nothing else.
+The lane tasks that would otherwise be claimable before the pieces exist list `discoverList` in their `expected`: `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit`. The first lanes to start therefore find the pieces and nothing else.
 
 ### `discoverRead:i` (worker)
 
@@ -566,11 +574,11 @@ The result fields:
 ### `addinProject` (main)
 
 ```js
-addinProject.expected = ["symbolIndex", "prepDest"]
-addinProject.execute({ symbolIndex }) → { rel, bytes, files, untracked, roots, ms } | { failed, rel, error } | null
+addinProject.expected = ["symbolIndex", "prepDest", "helpArchive", "addinFiles"]
+addinProject.execute({ symbolIndex, helpArchive }) → { rel, bytes, files, untracked, roots, ms } | { failed, rel, error } | null
 ```
 
-Writes the help add-in's project file, the download [Help Add-In](../../tB/IDE/AddIns/Help) offers (see [Build and Generation Tools](Tools-Build#the-help-add-ins-project-file)). Reads `addin_project` from the config with `addinProjectOf`, and returns `null` when the config declares none or under `--dry-run`. Otherwise calls `writeAddinProject` from `addin-project.mjs` with the add-in's folder (`src`, resolved against the source root), `symbolIndex.json` and the trees to write: the online tree, and the offline tree unless the build has none or `offline_exclude` leaves the file out of it. `dispatch` has already put `dest` in both trees' indexes and in `sitePaths`, so links to the file resolve. `checkReport` waits for this task. A failure (`git` missing, an unreadable file) is returned, not thrown, so the trees are still written; `runBuild` prints the result and fails the build on `failed`. Takes ~100 ms.
+Writes the help add-in's project file, the download [Help Add-In](../../tB/IDE/AddIns/Help) offers (see [Build and Generation Tools](Tools-Build#the-help-add-ins-project-file)). Reads `addin_project` from the config with `addinProjectOf`, and returns `null` when the config declares none or under `--dry-run`. Otherwise calls `writeAddinProject` from `addin-project.mjs` with the add-in's folder (`src`, resolved against the source root), `symbolIndex.json` and the trees to write: the online tree, and the offline tree unless the build has none or `offline_exclude` leaves the file out of it. `dispatch` has already put `dest` in both trees' indexes and in `sitePaths`, so links to the file resolve. `checkReport` waits for this task. The list of files is the one [`addinFiles`](#addinfiles-main) asked `git` for (`state.addinListing`), so this task does not wait for `git` to start. A failure (`git` missing, an unreadable file) is returned, not thrown, so the trees are still written; `runBuild` prints the result and fails the build on `failed`. Takes ~100 ms.
 
 ### `writeAux` (main)
 
@@ -869,7 +877,7 @@ Both HTML escapers convert a value that is not a string with `String` first.
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `captureBuildInfo` | `() → Promise<{ commit, commitDate }>` | Runs two parallel `git` commands. Returns `"unknown"` on failure. |
+| `captureBuildInfo` | `() → Promise<{ commit, commitDate }>` | Runs one `git` command. Returns `"unknown"` for both on failure. |
 
 ### `data.mjs`
 
@@ -1132,8 +1140,9 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 | Symbol | Signature | Description |
 |---|---|---|
 | `addinProjectOf` | `(config) → { src, dest } \| null` | The download `_config.yml`'s `addin_project` declares, `dest` without a leading slash; `null` unless both ends are given. |
-| `packAddinProject` | `({ dir, symbols }) → Promise<{ bytes, files, untracked }>` | Packs the files `git ls-files` lists in `dir`, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Packs them in memory with `packFiles` from `scripts/impexp.mjs`, which gives the bytes `importProject` would give for the same files in a folder. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
-| `writeAddinProject` | `({ dir, symbols, roots, rel }) → Promise<{ rel, bytes, files, untracked, roots, ms }>` | Packs once and writes the file at `rel` in each of `roots`. |
+| `listAddinFiles` | `(dir) → Promise<{ tracked, untracked }>` | The files of `dir` that git tracks, and those it neither tracks nor ignores, from one `git ls-files`. |
+| `packAddinProject` | `({ dir, symbols, listing }) → Promise<{ bytes, files, untracked }>` | Packs the files `listing` names, or those `listAddinFiles(dir)` returns when it is given none, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Packs them in memory with `packFiles` from `scripts/impexp.mjs`, which gives the bytes `importProject` would give for the same files in a folder. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
+| `writeAddinProject` | `({ dir, symbols, roots, rel, listing }) → Promise<{ rel, bytes, files, untracked, roots, ms }>` | Packs once and writes the file at `rel` in each of `roots`. |
 | `formatAddinProject` | `(result, dirLabel, indent) → string` | The line `runBuild` prints, and a second naming any untracked file left out. |
 
 ### `page-baseline.mjs`
@@ -1211,7 +1220,6 @@ The handler table is built from the imported `HANDLERS` constant:
 | `flush` | inline | Drains the next `_pendingFlush` batch to disk. |
 | `scssLight` / `scssDark` | `scss.mjs` | Light/dark palette compile. |
 | `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |
-| `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
 | `packTests` | `package-tests.mjs` | `packAllPackageTests` over the `"packageTests"` task data; imports the module when it runs. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
 | `indexAdd` | `search-index.mjs` | `addSlice` over its slice's entries, which `sliceDocs` reads from the `"indexEntries"` task data as the plan in its `fanOutPayload` says; keeps the builder in `_indexSlices` for `indexVectors`. |

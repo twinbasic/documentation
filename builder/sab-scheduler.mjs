@@ -34,7 +34,6 @@ export const HANDLERS = {
   scssLight: 3,
   scssDark: 4,
   dot: 5,
-  buildInfo: 6,
   render: 7,
   writePdf: 9,
   checkBook: 10,

@@ -73,12 +73,30 @@ export function addinProjectOf(config) {
   return { src: String(e.src), dest: posix(String(e.dest)).replace(/^\/+/, "") };
 }
 
-// The files git lists under `dir`, relative to it, with forward slashes.
-async function gitFiles(dir, ...args) {
-  const { stdout } = await exec("git", ["-C", dir, "ls-files", "-z", ...args, "--", "."], {
-    maxBuffer: 16 * 1024 * 1024,
-  });
-  return stdout.split("\0").filter(Boolean).sort(byCodePoint);
+/**
+ * The files of the add-in's folder as git sees them, relative to it, with forward
+ * slashes: those it tracks, and those it does not track and does not ignore.
+ *
+ * One process lists both: `-t` puts a status letter and a space before each
+ * path, `?` for a file git does not track. On Windows a `git` takes a few tenths
+ * of a second to start, so the build starts this long before it packs the
+ * project (the addinFiles task) and passes the promise to packAddinProject.
+ *
+ * @returns {Promise<{tracked: string[], untracked: string[]}>}
+ */
+export async function listAddinFiles(dir) {
+  const { stdout } = await exec(
+    "git",
+    ["-C", dir, "ls-files", "-z", "-t", "--cached", "--others", "--exclude-standard", "--", "."],
+    { maxBuffer: 16 * 1024 * 1024 },
+  );
+  const tracked = new Set();
+  const untracked = new Set();
+  for (const entry of stdout.split("\0")) {
+    if (!entry) continue;
+    (entry[0] === "?" ? untracked : tracked).add(entry.slice(2));
+  }
+  return { tracked: [...tracked].sort(byCodePoint), untracked: [...untracked].sort(byCodePoint) };
 }
 
 const isHelp = (rel) => rel.toLowerCase().startsWith(HELP_DIR);
@@ -96,12 +114,14 @@ function lf(bytes) {
  * @param {string} [o.symbols]  the symbol index to pack in place of the folder's copy
  * @param {Buffer} [o.archive]  the offline tree's archive this build wrote, packed as
  *   Resources/HELP/site.zip; none when absent, whatever site.zip is on the disk
+ * @param {Promise<{tracked: string[], untracked: string[]}>} [o.listing]  what
+ *   listAddinFiles(dir) returned, when the caller started it earlier
  * @returns {Promise<{bytes: Buffer, files: string[], untracked: string[]}>} the
  *   project file, the files packed, and the files git does not track that were
  *   left out (Resources/HELP/ aside)
  */
-export async function packAddinProject({ dir, symbols, archive = null }) {
-  const [tracked, untracked] = await Promise.all([gitFiles(dir), gitFiles(dir, "--others", "--exclude-standard")]);
+export async function packAddinProject({ dir, symbols, archive = null, listing = null }) {
+  const { tracked, untracked } = await (listing ?? listAddinFiles(dir));
   const files = [];
   for (const rel of tracked) {
     if (isHelp(rel)) continue;
@@ -139,11 +159,12 @@ export async function packAddinProject({ dir, symbols, archive = null }) {
  * @param {Buffer} [o.archive]  the offline archive this build wrote, if it wrote one
  * @param {string[]} o.roots    the trees to write into
  * @param {string} o.rel        the file's path in each tree
+ * @param {Promise<object>} [o.listing]  listAddinFiles(dir), started earlier
  * @returns {Promise<{rel: string, bytes: number, files: number, archived: boolean, untracked: string[], roots: number, ms: number}>}
  */
-export async function writeAddinProject({ dir, symbols, archive = null, roots, rel }) {
+export async function writeAddinProject({ dir, symbols, archive = null, roots, rel, listing = null }) {
   const t0 = Date.now();
-  const packed = await packAddinProject({ dir, symbols, archive });
+  const packed = await packAddinProject({ dir, symbols, archive, listing });
   for (const root of roots) {
     const out = path.join(root, ...rel.split("/"));
     await fs.mkdir(path.dirname(out), { recursive: true });

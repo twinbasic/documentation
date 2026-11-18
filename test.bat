@@ -152,6 +152,14 @@ node --test test/ide-js.test.mjs
 @rem lanes, well under a second.
 node --test test/discover.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for the modules of scripts/build_speed.mjs that read the
+@rem build's Gantt chart and a CPU profile. The tool takes a build's times
+@rem from its chart, so a change to how the chart is drawn would make it
+@rem report other numbers without failing: these draw a chart with the
+@rem build's writer and read the same times back. No build, no lanes, well
+@rem under a second.
+node --test test/build-speed.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

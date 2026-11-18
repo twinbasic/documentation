@@ -81,7 +81,8 @@ digraph tools_groups {
         b3 [label="compare_trees"]  b4 [label="survey_tooling"]
         b5 [label="convert_em_dash_separators"] b6 [label="build_fonts.py"]
         b7 [label="build_dot_metrics"] b8 [label="twin-index"]
-        b1 -> b3 -> b5 -> b7
+        b9 [label="build_speed"]
+        b1 -> b3 -> b5 -> b7 -> b9
         b2 -> b4 -> b6 -> b8
         { rank=same; b3 b4 }
         { rank=same; b5 b6 }
@@ -137,11 +138,11 @@ digraph tools_groups {
         t25 [label="indexer.test"]          t26 [label="check_package_tests"]
         t27 [label="broker.test"]           t28 [label="ide-js.test"]
         t29 [label="shot-review.test"]      t30 [label="check_callout_evidence"]
-        t31 [label="discover.test"]
+        t31 [label="discover.test"]             t32 [label="build-speed.test"]
         t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25 -> t29
         t2 -> t6 -> t10 -> t14 -> t18 -> t22 -> t26 -> t30
         t3 -> t7 -> t11 -> t15 -> t19 -> t23 -> t27 -> t31
-        t4 -> t8 -> t12 -> t16 -> t20 -> t24 -> t28
+        t4 -> t8 -> t12 -> t16 -> t20 -> t24 -> t28 -> t32
         { rank=same; t5  t6  t7  t8  }
         { rank=same; t9  t10 t11 t12 }
         { rank=same; t13 t14 t15 t16 }
@@ -261,6 +262,8 @@ digraph tools_groups {
         tooltip="Renders the PDF book from the pre-built _site-pdf/book.html with puppeteer, paged.js and pdf-lib."]
     b3 [URL="Tools-Build#compare-trees"
         tooltip="Builds the site from a commit and from the working tree, and compares the online, offline and PDF trees byte for byte."]
+    b9 [URL="Tools-Build#build-speed"
+        tooltip="Measures the build: builds each checkout several times on every CPU and on four, reads the times from each Gantt chart, and times one part of the build alone."]
     b4 [URL="Tools-Build#survey-tooling"
         tooltip="Surveys the tooling for duplicated code, repeated functions, argument reading, undeclared packages and the import graph. It is not a gate."]
     b5 [URL="Tools-Build#convert-em-dash-separators"
@@ -368,6 +371,8 @@ digraph tools_groups {
          tooltip="Runs unit tests for the screenshot review tool: its session, its pages, its writes under docs, and its server with a stand-in run and a commit in a scratch repository."]
     t31 [URL="Tools-Toolchain-Tests#discover-test"
          tooltip="Runs unit tests for the source tree's inventory, which the build reads in pieces on its lanes: the same in any number of pieces, on a small tree of the tests' own."]
+    t32 [URL="Tools-Toolchain-Tests#build-speed-test"
+         tooltip="Runs unit tests for the build-speed tool's readers: a Gantt chart drawn with the build's writer is read back to the same times, and a CPU profile is totalled by function."]
     t30 [URL="Tools-Toolchain-Tests#check-callout-evidence"
          tooltip="Verifies that every callout labelled with a twinBASIC build names what checks it, and that every marker names a reproducer, lane, sample, error data file or LLVM probe mode that exists."]
 

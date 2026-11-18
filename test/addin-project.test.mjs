@@ -26,7 +26,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { crc32, inflateRawSync } from "node:zlib";
-import { addinProjectOf, formatAddinProject, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
+import {
+  addinProjectOf,
+  formatAddinProject,
+  listAddinFiles,
+  packAddinProject,
+  writeAddinProject,
+} from "../builder/addin-project.mjs";
 import { downloadsKept, helpArchiveSkips } from "../builder/help-archive-step.mjs";
 import {
   checkHelpArchive,
@@ -127,6 +133,16 @@ describe("the help add-in's project file", () => {
     const { bytes, untracked } = await packAddinProject({ dir });
     assert.deepEqual([...filesIn(bytes).keys()].sort(), Object.keys(TRACKED).sort());
     assert.deepEqual(untracked, ["Sources/Scratch.twin"]);
+  });
+
+  test("packs from a listing made earlier as it does from its own", async () => {
+    const dir = fixture("listed", TRACKED, { "Sources/Scratch.twin": "Module Scratch\nEnd Module\n" });
+    const listing = listAddinFiles(dir);
+    assert.deepEqual(await listing, { tracked: Object.keys(TRACKED).sort(), untracked: ["Sources/Scratch.twin"] });
+    const own = await packAddinProject({ dir });
+    const given = await packAddinProject({ dir, listing });
+    assert.ok(given.bytes.equals(own.bytes), "the two packs differ");
+    assert.deepEqual(given.untracked, own.untracked);
   });
 
   test("packs the index it is given in place of the folder's copy, and the copy without one", async () => {
