@@ -8,7 +8,7 @@ has_toc: false
 # HScrollBar class
 {: .no_toc }
 
-An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), an **HScrollBar** is independent of any other control --- its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a volume level, a paginator, a colour channel, the offset of a custom-drawn surface) by binding the **HScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
+![](../../../Images/Toolbox/HScrollBar.png){:width="24" height="24"} An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), an **HScrollBar** is independent of any other control --- its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a volume level, a paginator, a colour channel, the offset of a custom-drawn surface) by binding the **HScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
 
 [**VScrollBar**](../VScrollBar) is the vertical counterpart; the two classes are identical apart from orientation.
 

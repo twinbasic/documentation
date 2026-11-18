@@ -1,0 +1,14 @@
+' NewTabCtl: the rows the compiler reports in the package's own sources, in a project that uses
+' nothing of it. Each comment names one, ' CASE <Name>: package <code> <file>:<line>. Each row is
+' a VB_ProcData.VB_Invoke_Property attribute of the NewTab control that names a property page,
+' pagNewTabIcons, pagHighlightMode or pagNewTabThemes; the package has no property page of that
+' name, which BETA 1042 reports as TB5259. The package has no test project until a version of it
+' compiles, so these cases are all there is.
+Module PackageTests
+
+    ' CASE IconCharHex_PropertyPageNotFound: package TB5259 ctl/ctlNewTab.ctl.twin:1816
+    ' CASE HighlightMode_PropertyPageNotFound: package TB5259 ctl/ctlNewTab.ctl.twin:3165
+    ' CASE HighlightModeSelectedTab_PropertyPageNotFound: package TB5259 ctl/ctlNewTab.ctl.twin:3186
+    ' CASE Theme_PropertyPageNotFound: package TB5259 ctl/ctlNewTab.ctl.twin:13638
+
+End Module

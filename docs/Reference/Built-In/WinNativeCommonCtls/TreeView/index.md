@@ -8,7 +8,7 @@ has_toc: false
 # TreeView class
 {: .no_toc }
 
-A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is accessed through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
+![](../../../Images/Toolbox/TreeView.png){:width="24" height="24"} A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is accessed through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
 
 ```tb check_build
 Private Sub Form_Load()

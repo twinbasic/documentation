@@ -8,7 +8,7 @@ has_toc: false
 # VScrollBar class
 {: .no_toc }
 
-A **VScrollBar** is a Win32 native vertical scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), a **VScrollBar** is independent of any other control --- its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a scroll offset, a brightness or opacity level, a colour channel, the vertical position of a custom-drawn surface) by binding the **VScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
+![](../../../Images/Toolbox/VScrollBar.png){:width="24" height="24"} A **VScrollBar** is a Win32 native vertical scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), a **VScrollBar** is independent of any other control --- its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a scroll offset, a brightness or opacity level, a colour channel, the vertical position of a custom-drawn surface) by binding the **VScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
 
 [**HScrollBar**](../HScrollBar) is the horizontal counterpart; the two classes are identical apart from orientation.
 

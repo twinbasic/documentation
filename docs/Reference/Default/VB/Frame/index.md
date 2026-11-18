@@ -8,7 +8,7 @@ has_toc: false
 # Frame class
 {: .no_toc }
 
-A **Frame** is a Win32 native container control that groups a set of related controls inside a captioned border. It serves two distinct purposes --- a visual cue that the enclosed controls belong together, and a logical grouping for [**OptionButton**](../OptionButton) controls: option buttons inside the same frame are mutually exclusive of one another but independent of option buttons elsewhere on the form. Controls dropped onto a frame at design time become its children, and moving, hiding, disabling, or destroying the frame moves, hides, disables, or destroys the entire group with it.
+![](../../../Images/Toolbox/Frame.png){:width="24" height="24"} A **Frame** is a Win32 native container control that groups a set of related controls inside a captioned border. It serves two distinct purposes --- a visual cue that the enclosed controls belong together, and a logical grouping for [**OptionButton**](../OptionButton) controls: option buttons inside the same frame are mutually exclusive of one another but independent of option buttons elsewhere on the form. Controls dropped onto a frame at design time become its children, and moving, hiding, disabling, or destroying the frame moves, hides, disables, or destroys the entire group with it.
 
 A frame cannot itself receive the input focus. The mnemonic marker (`&`) in its [**Caption**](#caption) is honoured, but pressing **Alt+** that character moves the focus to the next control in tab order rather than to the frame itself --- exactly like a [**Label**](../Label).
 

@@ -8,7 +8,7 @@ has_toc: false
 # Timer class
 {: .no_toc }
 
-A **Timer** is a non-visual Win32 control that raises a [**Timer**](#timer) event at a programmable interval. Drop one onto a [**Form**](../Form/) (or **UserControl**) at design time, set [**Interval**](#interval) to the desired millisecond period, set [**Enabled**](#enabled) to **True**, and handle the [**Timer**](#timer) event. Timers are invisible at run time --- they appear only as icons in the designer.
+![](../../../Images/Toolbox/Timer.png){:width="24" height="24"} A **Timer** is a non-visual Win32 control that raises a [**Timer**](#timer) event at a programmable interval. Drop one onto a [**Form**](../Form/) (or **UserControl**) at design time, set [**Interval**](#interval) to the desired millisecond period, set [**Enabled**](#enabled) to **True**, and handle the [**Timer**](#timer) event. Timers are invisible at run time --- they appear only as icons in the designer.
 
 The default property is [**Enabled**](#enabled) and the default event is [**Timer**](#timer).
 

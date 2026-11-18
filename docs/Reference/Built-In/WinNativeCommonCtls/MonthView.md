@@ -8,7 +8,7 @@ has_toc: false
 # MonthView class
 {: .no_toc }
 
-A **MonthView** is a full-month calendar grid: a visible matrix of [**MonthColumns**](#monthcolumns) × [**MonthRows**](#monthrows) month panels, navigable forwards and backwards through the month headers, with optional today indicator, week numbers, and bold-day highlighting through the [**GetDayBold**](#getdaybold) callback event. Unlike [**DTPicker**](DTPicker) --- which shows only its inline value field and pops the calendar on demand --- a **MonthView** is always visible on the form.
+![](../../Images/Toolbox/MonthView.png){:width="24" height="24"} A **MonthView** is a full-month calendar grid: a visible matrix of [**MonthColumns**](#monthcolumns) × [**MonthRows**](#monthrows) month panels, navigable forwards and backwards through the month headers, with optional today indicator, week numbers, and bold-day highlighting through the [**GetDayBold**](#getdaybold) callback event. Unlike [**DTPicker**](DTPicker) --- which shows only its inline value field and pops the calendar on demand --- a **MonthView** is always visible on the form.
 
 ![A MonthView showing December 2024 and January 2025 side by side with week numbers, January 14 to 17 selected, December 25, January 1 and January 20 in bold, and the line Today: 1/14/2025](Images/MonthView.png){:width="473" height="220"}
 

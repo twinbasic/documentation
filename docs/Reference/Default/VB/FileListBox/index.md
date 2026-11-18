@@ -8,7 +8,7 @@ has_toc: false
 # FileListBox class
 {: .no_toc }
 
-A **FileListBox** is a Win32 native list control that displays the files in a single directory, filtered by a wildcard pattern and a set of file-attribute toggles. It is normally placed on a **Form** or **UserControl** at design time and paired with a [**DriveListBox**](../DriveListBox) and a [**DirListBox**](../DirListBox) to make a complete file picker --- their **Change** events feed into **FileListBox.Path**, and the user selects a name from the list. The default property is [**FileName**](#filename) and the default event is [**Click**](#click).
+![](../../../Images/Toolbox/FileListBox.png){:width="24" height="24"} A **FileListBox** is a Win32 native list control that displays the files in a single directory, filtered by a wildcard pattern and a set of file-attribute toggles. It is normally placed on a **Form** or **UserControl** at design time and paired with a [**DriveListBox**](../DriveListBox) and a [**DirListBox**](../DirListBox) to make a complete file picker --- their **Change** events feed into **FileListBox.Path**, and the user selects a name from the list. The default property is [**FileName**](#filename) and the default event is [**Click**](#click).
 
 ```tb hidden
 Public Sub OpenFile(ByVal Path As String)

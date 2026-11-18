@@ -688,6 +688,13 @@ div.highlight:focus-visible,
   }
 }
 
+// A control's Toolbox icon (docs/Reference/Images/Toolbox/), which a class page shows
+// before its opening sentence and the Controls page before each control's link. It is
+// taller than the text, so it is centred on the line; on the baseline it stands above it.
+img[src*="/Images/Toolbox/"] {
+  vertical-align: middle;
+}
+
 // Video thumbnails (Videos section). The YouTube <iframe> embeds these
 // replaced loaded Google's player on page view, which set third-party
 // cookies before the reader had done anything. A locally vendored

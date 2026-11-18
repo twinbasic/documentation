@@ -8,7 +8,7 @@ has_toc: false
 # DriveListBox class
 {: .no_toc }
 
-A **DriveListBox** is a Win32 native drop-down combo control that auto-populates with the drives reported by the operating system. The user picks one from the list; code reads the chosen drive through [**Drive**](#drive) and typically forwards it to a [**DirListBox**](../DirListBox) (whose [**Path**](../DirListBox/#path) it can be assigned to directly) to build a file picker alongside a [**FileListBox**](../FileListBox). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Drive**](#drive) and the default event is [**Change**](#change).
+![](../../../Images/Toolbox/DriveListBox.png){:width="24" height="24"} A **DriveListBox** is a Win32 native drop-down combo control that auto-populates with the drives reported by the operating system. The user picks one from the list; code reads the chosen drive through [**Drive**](#drive) and typically forwards it to a [**DirListBox**](../DirListBox) (whose [**Path**](../DirListBox/#path) it can be assigned to directly) to build a file picker alongside a [**FileListBox**](../FileListBox). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Drive**](#drive) and the default event is [**Change**](#change).
 
 ```tb check_build
 Private Sub Form_Load()

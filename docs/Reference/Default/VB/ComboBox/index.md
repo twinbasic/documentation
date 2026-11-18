@@ -8,7 +8,7 @@ has_toc: false
 # ComboBox class
 {: .no_toc }
 
-A **ComboBox** is a Win32 native control that combines an edit field with a drop-down list of items, letting the user either type a value or pick one from the list. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Change**](#change).
+![](../../../Images/Toolbox/ComboBox.png){:width="24" height="24"} A **ComboBox** is a Win32 native control that combines an edit field with a drop-down list of items, letting the user either type a value or pick one from the list. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Change**](#change).
 
 ```tb check_build
 Private Sub Form_Load()

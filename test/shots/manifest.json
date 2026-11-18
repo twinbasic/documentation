@@ -998,6 +998,192 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Images/Toolbox/CheckBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/CheckBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/CheckMark.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/CheckMark.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ComboBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ComboBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/CommandButton.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/CommandButton.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/DTPicker.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/DTPicker.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Data.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Data.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/DirListBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/DirListBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/DriveListBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/DriveListBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/FileListBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/FileListBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Frame.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Frame.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/HScrollBar.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/HScrollBar.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Image.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Image.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ImageList.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ImageList.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Label.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Label.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Line.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Line.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ListBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ListBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ListView.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ListView.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/MonthView.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/MonthView.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/MultiFrame.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/MultiFrame.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/OLE.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/OLE.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/OptionButton.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/OptionButton.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/PictureBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/PictureBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ProgressBar.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/ProgressBar.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/QRCode.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/QRCode.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Shape.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Shape.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Slider.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Slider.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/TextBox.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/TextBox.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Timer.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/Timer.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/TreeView.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/TreeView.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/UpDown.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/UpDown.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/VScrollBar.light.png": {
+      "build": 1042
+    },
+    "Reference/Images/Toolbox/VScrollBar.png": {
+      "build": 1042
+    },
     "Tutorials/CustomControls/Images/ccEvents.light.png": {
       "build": 1042
     },

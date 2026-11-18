@@ -53,6 +53,20 @@ VB6.
 - **A Report's preview** never returns from its first `DoEvents` on a private desktop. May be
   misuse, or the private desktop.
 
+Seen on BETA 1042 by a `tbrun` probe of the Data control (a form with `Data1` and `TextBox1`,
+a three-row table the probe makes with DAO; not kept). None checked in VB6. On win32 with Jet
+the control opens the database, moves through it, and the bound TextBox shows each record.
+
+- **`TextBox.DataField` set before the Data control has a recordset** raises 545, *Unable to
+  bind to field or DataMember*; set after `Data1.Refresh` it binds. **Page affected**: the
+  first sample of the Data page binds in `Form_Load` with no `Refresh`. May be the order VB6
+  needs too.
+- **A bound TextBox's `Text` assigned in code**, then `Data1.Recordset.MoveNext`: the record
+  keeps its old value. May be misuse (VB6 may save only on a move by the control's buttons).
+- **win64, `DefaultType = vbUseACE`**: `Data1.Recordset.MoveLast` after a `Refresh` that
+  opened an `.accdb` is a native exception, and the run ends. The same probe passes on win32
+  with Jet. Not narrowed: late-bound call, ACE or 64-bit.
+
 ### WinNativeCommonCtls
 
 Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).

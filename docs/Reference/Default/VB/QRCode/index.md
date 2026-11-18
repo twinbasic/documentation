@@ -8,7 +8,7 @@ has_toc: false
 # QRCode class
 {: .no_toc }
 
-A **QRCode** is a windowless lightweight control that renders a QR code generated from its [**Payload**](#payload) --- a URL, plain text, or a raw byte array. The encoding is performed in-process by the embedded `qrcodegen` library and the resulting matrix is painted directly on the parent at design time and at run time. The picture is regenerated automatically whenever any of the encoding properties changes, so a QR control can be wired up declaratively to data bindings or to other UI state with no plumbing.
+![](../../../Images/Toolbox/QRCode.png){:width="24" height="24"} A **QRCode** is a windowless lightweight control that renders a QR code generated from its [**Payload**](#payload) --- a URL, plain text, or a raw byte array. The encoding is performed in-process by the embedded `qrcodegen` library and the resulting matrix is painted directly on the parent at design time and at run time. The picture is regenerated automatically whenever any of the encoding properties changes, so a QR control can be wired up declaratively to data bindings or to other UI state with no plumbing.
 
 Like [**Image**](../Image), a QRCode has no `hWnd` and is not focusable. It is the right choice for embedding a scannable code in a form (login, payment, Wi-Fi credentials, contact card, app deep link, etc.) without paying for a heavy [**PictureBox**](../PictureBox).
 

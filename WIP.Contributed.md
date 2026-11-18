@@ -33,6 +33,7 @@ is known about the package beyond its pages, is in a file of its own:
 - [DetoursLib](WIP.DetoursLib.md)
 - [Fmt](WIP.Fmt.md)
 - [Generics](WIP.Generics.md)
+- [NewTabCtl](WIP.NewTabCtl.md)
 - [OLEGuids](WIP.OLEGuids.md)
 - [TBMANLIB](WIP.TBMANLIB.md)
 - [TBMANLIB_Aes](WIP.TBMANLIB_Aes.md)

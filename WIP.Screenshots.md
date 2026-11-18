@@ -301,7 +301,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `cef`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `projects`, `projects-refs`,
+  Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `toolbox-icons`, `projects`, `projects-refs`,
   `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
   before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
@@ -1153,6 +1153,15 @@ the project's, and the tutorial says so.
 - **History's times are fixed in the page**, as the recent lists are, and its project is a
   project-made fixture.
 - **The glyph crops** are element clips, 2x, shown at half size.
+- **A control's Toolbox icon is a picture of its own** (owner, 2026-11-18), taken like a glyph:
+  setup `toolbox-icons`, FormsDemo with `frmMain` in its designer and the Toolbox showing icons
+  only, each tile's 24-pixel icon box clipped (`toolboxIconShot`, the names in `TOOLBOX_ICONS`)
+  into `docs/Reference/Images/Toolbox/<Control>.png`. With `--svg` the SVG holds the IDE's own
+  icon file, so it stays sharp at any zoom. The control's class page shows it before its opening
+  sentence and Controls.md before the control's link, with an empty alt text, since the name
+  stands beside it ([WIP.Authoring.md](WIP.Authoring.md#page-template)). A control added to the
+  Toolbox gets a name in `TOOLBOX_ICONS`; one of a package FormsDemo does not reference
+  (CustomControls, WebView2, CEF) has no picture yet.
 - **A machine or account value becomes a neutral one** (Publisher blank or a project-made name;
   the COM list shows this machine's, under the username check), and prose that names the old
   value is changed to match.

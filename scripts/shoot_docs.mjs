@@ -61,6 +61,8 @@
 //               features named, in a layout and with editor options set in the page only
 //   tour        test/shots/forms, FormsDemo: the whole window as the IDE's landing page shows
 //               it, a form in its designer and each part of the window named
+//   toolbox-icons  the same project, a form in its designer: the icon of each control in
+//               the Toolbox, one picture each, for the reference's pages
 //   code-chapter  the same project with test/shots/codechapter staged onto it: the
 //               "Writing code" chapter's pictures of the editor (tabs, combo boxes, menus,
 //               IntelliSense, finding, bookmarks, Outline, DIAGNOSTICS) and the Edit and
@@ -1945,6 +1947,7 @@ const SETUPS = {
   designer: { start: startDesigner, prepare: prepareDesigner },
   forms: { start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
   "forms-chapter": { start: startFormsChapter, prepare: prepareFormsChapter },
+  "toolbox-icons": { start: startFormsChapter, prepare: prepareFormsChapter },
   tour: { start: startFormsChapter, prepare: prepareTour },
   projects: { start: startProjects(), prepare: prepareSample },
   "projects-refs": { start: startProjects({ refs: true }), prepare: prepareProjectsRefs },
@@ -6365,6 +6368,73 @@ function propertiesShot(
 
 // A Toolbox tile by its tool's name.
 const TOOLBOX_TILE = (name) => `.toolboxItemOuter[title="${name}"]`;
+
+// ---- the Toolbox's icons, one picture each: the reference shows a control's icon beside its name
+
+// The tools of a Windows form's Toolbox that are controls, by the titles of their tiles: the
+// first group, then COMMON CONTROLS, which FormsDemo references.
+const TOOLBOX_ICONS = [
+  "PictureBox",
+  "Label",
+  "TextBox",
+  "Frame",
+  "CommandButton",
+  "CheckBox",
+  "OptionButton",
+  "ComboBox",
+  "ListBox",
+  "HScrollBar",
+  "VScrollBar",
+  "Timer",
+  "DriveListBox",
+  "DirListBox",
+  "FileListBox",
+  "Shape",
+  "Line",
+  "Image",
+  "CheckMark",
+  "QRCode",
+  "Data",
+  "OLE",
+  "MultiFrame",
+  "DTPicker",
+  "ImageList",
+  "ListView",
+  "MonthView",
+  "ProgressBar",
+  "Slider",
+  "TreeView",
+  "UpDown",
+];
+
+// The icon of a tile, the 24-pixel box inside it, in the docked Toolbox as the IDE first shows
+// it for a form: icons only, every tile in view. Null when the Toolbox has no such tile,
+// `{hidden}` when the tile is outside the panel's box.
+const toolboxIcon = (c, name) =>
+  c.evaluate(`(() => {
+  const t = [...document.querySelectorAll(${JSON.stringify(TOOLBOX_TILE(name))})].find((e) => e.getBoundingClientRect().width);
+  if (!t) return null;
+  const p = t.closest(".toolWindowContainer").getBoundingClientRect();
+  const r = (t.querySelector(".toolBoxItem") ?? t).getBoundingClientRect();
+  if (r.top < p.top || r.bottom > p.bottom) return { hidden: true };
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+const toolboxIconShot = (name) => ({
+  out: `Reference/Images/Toolbox/${name}.png`,
+  setup: "toolbox-icons",
+  async take({ c }) {
+    // frmMain's designer, opened when a shot before this one has not left it open
+    if (!(await toolboxIcon(c, name))) await formsDesigner(c);
+    if (await c.evaluate("!liveIDEOptions.showToolboxIconsOnly")) await toolboxNames(c, false);
+    const r = await toolboxIcon(c, name);
+    if (!r) throw new Error(`the Toolbox has no ${name} tile`);
+    if (r.hidden) throw new Error(`the Toolbox's ${name} tile is not in view`);
+    return await capture(c, `Toolbox_${name}`, snapOut(r), { away: () => parkMouse(c) });
+  },
+});
+
+const toolboxIconShots = TOOLBOX_ICONS.map(toolboxIconShot);
 
 // The grid options panel, opened as the pointer opens it: moved onto the grid button.
 async function gridOptions(c) {
@@ -15858,6 +15928,7 @@ const SHOTS = [
   ...designerShots,
   ...formShots,
   ...formsChapterShots,
+  ...toolboxIconShots,
   ...projectsShots,
   ...buildingShots,
   ...startingShots,
@@ -15951,6 +16022,7 @@ const JOB_SECONDS = {
   designer: 61,
   forms: 40,
   "forms-chapter": 90,
+  "toolbox-icons": 30,
   projects: 120,
   "projects-refs": 20,
   "projects-start": 20,

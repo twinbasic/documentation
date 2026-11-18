@@ -100,7 +100,7 @@ if (
 // The contributed sections that have no test project, because the package does not compile on the
 // newest BETA (Generics since BETA 1042). A project of a version that compiles removes it from
 // here; the gate fails on a name here with a project, and on a section neither here nor with one.
-const PENDING = new Set(["ArrayListLib", "WinReg", "Generics"]);
+const PENDING = new Set(["ArrayListLib", "WinReg", "Generics", "NewTabCtl"]);
 
 const DOCS = path.join(REPO_ROOT, "docs");
 const SECTIONS = path.join(DOCS, "Reference", "Contributed");
@@ -146,6 +146,30 @@ const { check, report } = createProbes("check_package_tests", "see test/package-
     ["{ERROR} /Proj/Packages/Thing/Sources/cOther.twin [7,1]: TB5001 x"],
   );
   check("a case of the project's own source is not met by a package's row", !local.pass, JSON.stringify(local));
+  // A case that names its file without its folder fails, and says which path to give.
+  const [bare] = judgeCompiles(
+    [{ name: "B", file: "cThing.twin", line: 21, codes: ["TB5001"], anyError: false, inPackage: true }],
+    ["{ERROR} /Proj/Packages/Thing/Sources/Libs/cThing.twin [21,54]: TB5001 Validation of call"],
+  );
+  check(
+    "a package case that leaves out its file's folder is told the path to name",
+    !bare.pass &&
+      bare.detail.endsWith("; TB5001 is on that line of libs/cthing.twin: name the file by its path under Sources"),
+    JSON.stringify(bare),
+  );
+  // A case that finds no row is told the rows the compiler did report in its half.
+  const [elsewhere] = judgeCompiles(
+    [{ name: "E", file: "cGone.twin", line: 3, codes: ["TB5001"], anyError: false, inPackage: true }],
+    [
+      "{ERROR} /Proj/Packages/Thing/Sources/cOther.twin [7,1]: TB5001 Validation of call",
+      "{ERROR} /Proj/Sources/M.twin [2,1]: TB5079 Unrecognized symbol",
+    ],
+  );
+  check(
+    "a package case that finds no row is told the rows the compiler reported in the package",
+    !elsewhere.pass && elsewhere.detail.endsWith("got none; the compiler reported TB5001 cother.twin:7"),
+    JSON.stringify(elsewhere),
+  );
 }
 
 {

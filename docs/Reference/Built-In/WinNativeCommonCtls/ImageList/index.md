@@ -8,7 +8,7 @@ has_toc: false
 # ImageList class
 {: .no_toc }
 
-An **ImageList** is an off-screen container for pictures, all of which are scaled to the same [**ImageWidth**](#imagewidth) × [**ImageHeight**](#imageheight) bitmap size. The control has no visible representation at run time --- its purpose is to feed icons to other controls that consume them through their [**Icons**](../ListView/#icons), [**SmallIcons**](../ListView/#smallicons), [**ColumnHeaderIcons**](../ListView/#columnheadericons), or [**ImageList**](../TreeView/#imagelist) properties.
+![](../../../Images/Toolbox/ImageList.png){:width="24" height="24"} An **ImageList** is an off-screen container for pictures, all of which are scaled to the same [**ImageWidth**](#imagewidth) × [**ImageHeight**](#imageheight) bitmap size. The control has no visible representation at run time --- its purpose is to feed icons to other controls that consume them through their [**Icons**](../ListView/#icons), [**SmallIcons**](../ListView/#smallicons), [**ColumnHeaderIcons**](../ListView/#columnheadericons), or [**ImageList**](../TreeView/#imagelist) properties.
 
 ```tb check_build
 Private Sub Form_Load()

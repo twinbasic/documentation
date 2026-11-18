@@ -8,7 +8,7 @@ has_toc: false
 # UpDown class
 {: .no_toc }
 
-An **UpDown** is a small spin control --- a pair of up / down arrow buttons that adjust an internal [**Value**](#value) by [**Increment**](#increment) on each click. Often paired with an external textbox or label to display the current value.
+![](../../Images/Toolbox/UpDown.png){:width="24" height="24"} An **UpDown** is a small spin control --- a pair of up / down arrow buttons that adjust an internal [**Value**](#value) by [**Increment**](#increment) on each click. Often paired with an external textbox or label to display the current value.
 
 ```tb check_build
 Private Sub Form_Load()

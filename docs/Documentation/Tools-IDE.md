@@ -113,6 +113,7 @@ Takes the documentation's screenshots of the IDE, so that one run regenerates th
 - **sample**, **settings** and **glyphs** open `test/shots/sample`, a small Standard EXE made for the pictures. They take the panels and the editor with a project, Project Settings (with the settings files of `test/shots/settings`), and the icons the pages show inline.
 - Further setups each bring the IDE to one state the setups above do not need:
   - the Community Edition and LIMITED badges and the splash screen;
+  - the icon of each control in the Toolbox, one picture each under `docs/Reference/Images/Toolbox/`, which the control's reference page and the [Controls](../../tB/Controls) page show;
   - the programs under `test/shots/programs`, run so that their windows can be taken, and the CodeLens, TWINPACK build and Fusion pictures;
   - the package server's dialogs, which need the network and never publish anything;
   - the Import from twinproj dialog, for a VB6 project made for the picture (`test/shots/vbp`);

@@ -831,6 +831,12 @@ Give a picture its `{:width="..." height="..."}`. A figure at least as tall as t
 
 A picture of something the page mentions only in passing --- on an IDE page, what an add-in adds to the IDE --- can be shown smaller: put `secondary` in its attribute block, `{:width="1016" height="723" secondary}`. The page keeps the picture's own size, and the build shows it at three quarters of the size it would otherwise have in the column. **Zoom** shows it as large as it would show it without the word. The build takes the word out of the page.
 
+The reference page of a control that has a tile in the IDE's Toolbox starts its opening sentence with the tile's icon, and the [Controls](../../tB/Controls) page shows the same icon before the control's link. The pictures are in `docs/Reference/Images/Toolbox/`, one for each control, and `scripts/shoot_docs.mjs` takes them. The alt text is empty, because the control's name stands beside the icon:
+
+```markdown
+![](../../../Images/Toolbox/Label.png){:width="24" height="24"} A **Label** is a windowless lightweight control ...
+```
+
 ### A picture in both themes
 
 A screenshot of the IDE shows one of its themes, and the site has two. To give a picture a version for the light theme, save it beside the first one under the same name with `.light` before the extension:
