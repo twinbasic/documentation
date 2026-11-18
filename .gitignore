@@ -54,3 +54,7 @@ indexer/.packages/
 # scripts/shot_review.mjs: the screenshot review's session and its runs' stages
 # (scripts/lib/shot-session.mjs), which hold the Windows user name.
 /.shot-review/
+
+# scripts/build_speed.mjs: each measured build's log and Gantt chart, and the
+# tree its serve builds write (removed after each run).
+/.build-speed/

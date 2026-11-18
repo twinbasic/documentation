@@ -190,6 +190,12 @@ runs:
     - name: Unit-test the source tree's inventory (test/discover.test.mjs)
       shell: bash
       run: node --test test/discover.test.mjs
+    # Unit tests for the modules of scripts/build_speed.mjs that read the build's
+    # Gantt chart and a CPU profile: a chart drawn with the build's writer is
+    # read back to the same times. No build, no lanes.
+    - name: Unit-test the build-speed tool's readers (test/build-speed.test.mjs)
+      shell: bash
+      run: node --test test/build-speed.test.mjs
     # A regex that backtracks exponentially does not fail a build, it stops
     # one: the corpus passes until a page happens to contain the trigger, and
     # then a render worker sits inside String.replace forever. Nothing else

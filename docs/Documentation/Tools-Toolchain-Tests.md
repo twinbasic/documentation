@@ -403,6 +403,21 @@ No build, no lanes, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
+## build-speed.test.mjs
+{: #build-speed-test }
+
+    node --test test/build-speed.test.mjs
+
+Unit tests for the modules of [`build_speed.mjs`](Tools-Build#build-speed) that read what another part of the tooling writes. The tool takes a build's times from its Gantt chart, since the build writes no timings file. A change to how `builder/gantt.mjs` draws the chart would not fail the tool: it would report other numbers. The tests draw a chart from timings of their own with the build's writer and read the same times back:
+
+- the first render, the end of the render and the end of the chart, in a build of seconds and in one of minutes;
+- a main-thread task by its label, and nothing for a name the chart has not;
+- a chart with no render, and a file that is not a chart, which is refused.
+
+They also test the reading of a V8 CPU profile: a function's time includes what it calls, a function that calls itself is counted once, and a name with no sample is reported.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
 ## check_page_baseline.mjs
 {: #check-page-baseline }
 

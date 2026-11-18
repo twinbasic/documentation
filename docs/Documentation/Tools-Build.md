@@ -277,6 +277,53 @@ A run takes about ten seconds. It is not a gate, and nothing runs it. A failed r
 
 Exit codes: **0** the trees match; **1** the trees differ; **2** a refused command line, a git command or a build that failed to produce its tree, or a crash.
 
+## build_speed.mjs
+{: #build-speed }
+
+    node scripts/build_speed.mjs bench [--tree <dir>]... [--runs <n>] [--cpus all,4] [--task a,b] [--out <dir>]
+    node scripts/build_speed.mjs serve [--tree <dir>]... [--builds <n>] [--task a,b] [--out <dir>]
+    node scripts/build_speed.mjs times <gantt.svg>... [--task a,b]
+    node scripts/build_speed.mjs png <gantt.svg>...
+    node scripts/build_speed.mjs profile <file.cpuprofile> --fn <name,name> [--depth <n>]
+    node scripts/build_speed.mjs part <name> [--tree <dir>] [--file <file>]
+
+Measures the build, for work on its speed: how long it takes, where in it the time is, and what one part of it costs alone. The times come from each build's [Gantt chart](BuildInfo), since the build writes no timings file.
+
+| Command | What it does |
+|---|---|
+| `bench` | Builds each tree as `build.bat` does, `--runs` times (default 3), on every CPU and on the first four, which is the nearest thing a development machine has to a CI runner. `--cpus` gives other counts, as `all` or a number. |
+| `serve` | Builds each tree `--builds` times (default 5) on one pool of lanes, as `tbdocs --serve` rebuilds, without the offline and PDF trees. The first build is cold; the summary is of the rebuilds. |
+| `times` | Prints the times in charts kept from earlier runs. |
+| `png` | Renders charts to PNG files beside them, with puppeteer. |
+| `profile` | Prints the inclusive time of each function `--fn` names in a V8 CPU profile, with what it calls to `--depth` levels (default 3). A function that calls itself is counted once. |
+| `part` | Times one part of the build alone on one thread. |
+
+`bench` and `serve` print one line for each build and then the range of each figure over the runs: when the first page is rendered, when the render ends and when the build ends. `--task` names main-thread tasks whose times are reported as well. One build's total says little on a machine that is doing other work, so compare ranges, and look at the charts. Each build's chart, and each `bench` build's log, is kept under `--out` (default `.build-speed/` in the checkout, gitignored).
+
+A tree is a checkout: the one the tool is in, unless `--tree` names another. Repeat `--tree` to compare two, such as a branch's worktree and the main checkout. The trees are built in turn within each run, so that other work on the machine affects both. `bench` builds a tree in place, as `build.bat` does; `serve` builds into a folder of its own in the tree and removes it.
+
+Take a profile for `profile` with Node's own option; the main thread's file is the one whose name ends `.0.001.cpuprofile`:
+
+    node --cpu-prof --cpu-prof-interval 100 --cpu-prof-dir <dir> builder/tbdocs.mjs --src docs
+
+The parts `part` knows:
+
+| Part | What it times |
+|---|---|
+| `markdown-init` | The pieces of the `markdownInit` task: the link tables, the counts, the parser and the scan for placeholders. |
+| `nav` | `computeNav`, each call on a fresh copy of the pages. |
+| `index-slices` | The search index's add step against the slice count: its CPU in all and its longest slice. |
+| `index-add` | The add step split into making the entries, tokenizing and stemming, lunr's `Builder.add`, and the postings written as JSON. |
+| `index-terms` | What follows the adds: the merge, the inverted index's JSON, the vectors, the file's assembly and the offline copy. |
+| `deflate` | A file deflated as one stream and as pieces, by level, piece size and priming. `--file` names the file; the default is the offline search index. |
+| `archive` | The help archive's deflating on one thread, whole files and pieces apart, and the recheck of the archive. |
+
+A part runs the modules of the tree it is given, so one checkout's tool measures another's code. The index parts, `deflate` without `--file`, and `archive` read files a build wrote: build the tree first. A part's time alone is not its time in a build, where it shares the machine with every lane.
+
+It is not a gate, and nothing runs it. Its readers of the chart and of a profile are tested by [`build-speed.test.mjs`](Tools-Toolchain-Tests#build-speed-test).
+
+Exit codes: **0** done; **1** a build failed; **2** a refused command line, or a crash.
+
 ## render-book.mjs
 {: #bookrender-bookmjs }
 

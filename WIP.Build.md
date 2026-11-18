@@ -65,6 +65,7 @@ The roster, by wrapper ([Tools and Scripts](docs/Documentation/Tools.md) owns th
 | `test.bat` | `test/indexer.test.mjs` | the package indexer (`indexer/lib/`) changes a snapshot only when the API changes |
 | `test.bat` | `test/ide-js.test.mjs` | `scripts/ide_js.mjs` and `scripts/ide-js/lib.mjs` on a few lines of minified JavaScript, and that the tool writes only under `%TEMP%` |
 | `test.bat` | `test/discover.test.mjs` | the source tree's inventory (`builder/discover.mjs`, `discover-read.mjs`) is the same in any number of pieces, with a picture pair that has a `bundle_extra` file |
+| `test.bat` | `test/build-speed.test.mjs` | `scripts/build_speed.mjs` reads from a Gantt chart the times `builder/gantt.mjs` drew, and totals a CPU profile by function |
 | `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes, and patch only the members `PATCHES` lists |
 | `test.bat` | `check_impexp_parity` | the Node and Python editions of `impexp` (and, with `IMPEXP_EXE`, the twinBASIC one) behave alike |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
