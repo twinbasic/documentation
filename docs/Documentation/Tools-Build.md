@@ -126,7 +126,7 @@ The reader on the twinBASIC side does no inflating of its own, so the zip format
 - The DOS date and time are always 1980-01-01 00:00, and the version made by and needed is 20.
 - No extra fields, comments or data descriptors: the CRC-32 and both sizes are in the local header and in the central directory.
 - No zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused.
-- Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
+- Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated, and stored instead when the deflated data is not smaller than the file. The level is 9 for a file deflated whole and 6 for one deflated in pieces, which is a file larger than 1 MB: the offline search index.
 - A deflated file larger than 1 MB is deflated in pieces of 1 MB, which are joined into one deflate stream. Every piece but the last ends with a sync flush, and each piece is primed with the 32 KB of the file before it, so the stream is about the size of one made in a single pass. The bytes depend only on the piece size, not on how many pieces were deflated at a time.
 
 Each file, or piece, is inflated again after it is deflated and compared with the bytes read. The build then reads the zip back, compares it with what it assembled, and checks every entry's headers against the list of files; it names any that differ. The writer is `lib/help-archive.mjs`.
