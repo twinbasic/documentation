@@ -67,6 +67,23 @@ the control opens the database, moves through it, and the bound TextBox shows ea
   opened an `.accdb` is a native exception, and the run ends. The same probe passes on win32
   with Jet. Not narrowed: late-bound call, ACE or 64-bit.
 
+### UserControl (from the VBCCR18 work)
+
+Seen on BETA 1042 with VBCCR18 1.8.136.0's controls on a form. None checked in VB6, and none
+narrowed to a UserControl of our own.
+
+- **`Err.Number` is 438 after a property assignment that succeeded.** Under `On Error Resume
+  Next`, `ProgressBar1.MarqueeSpeed = 5` leaves `Err.Number` 438 (*Object doesn't support this
+  property or method*), though the value is set and nothing is raised: the same statement with
+  no handler runs on. Every setter that ends with `UserControl.PropertyChanged "<Name>"` does it
+  (FontQuality, MousePointer, Max); `Value`, whose setter runs an `On Error Resume Next` block
+  after that call, leaves 0. So the suspect is `PropertyChanged`, failing inside and leaving
+  `Err` set.
+- **`Visible` reads False** for a control on a form that is loaded and not shown
+  (`Extender.Visible`).
+- **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises
+  380, the direct assignment's error.
+
 ### WinNativeCommonCtls
 
 Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).

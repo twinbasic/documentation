@@ -614,6 +614,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: VBCCR18 Package
+        subtitle: Controls in place of the Microsoft common controls and the intrinsic controls of VB6
+        landing_page: /tB/Packages/Contributed/VBCCR18/
+        page: /tB/Packages/Contributed/VBCCR18/
+        landing_is_target: true
+        outline_closed: true
+
       - title: VBComDlg Package
         subtitle: The CommonDialog class, for the Windows common dialogs
         landing_page: /tB/Packages/Contributed/VBComDlg/

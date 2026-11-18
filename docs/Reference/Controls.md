@@ -98,10 +98,9 @@ that no package above has. These are by Krool:
 - [VBFLXGRD18](Packages/Contributed/VBFLXGRD18/) holds the
   [VBFlexGrid](Packages/Contributed/VBFLXGRD18/VBFlexGrid/) control, a replacement for the
   Microsoft FlexGrid control of VB6 (`MSFLXGRD.OCX`).
-- **VBCCR18** replaces the Microsoft common controls of VB6. It has controls that
+- [VBCCR18](Packages/Contributed/VBCCR18/) replaces the Microsoft common controls of VB6. It has controls that
   WinNativeCommonCtls lacks, among them **CoolBar**, **ImageCombo**, **RichTextBox**,
-  **StatusBar**, **TabStrip** and **ToolBar**. This reference has no section for it yet; its
-  sources are [on GitHub](https://github.com/Kr00l/VBCCR). The **Standard EXE (+VBCCR)**
+  **StatusBar**, **TabStrip** and **ToolBar**. The **Standard EXE (+VBCCR)**
   template of the [New Project](IDE/Starting/New-Project) dialog makes a project that
   references it already.
 - [VBComDlg](Packages/Contributed/VBComDlg/) holds the **CommonDialog** class, whose members
@@ -137,16 +136,16 @@ and 64-bit builds and needs no file registered.
 | VB6 library | Controls | In twinBASIC |
 |---|---|---|
 | `MSCOMCTL.OCX` | ImageList, ListView, ProgressBar, Slider, TreeView | [WinNativeCommonCtls](Packages/WinNativeCommonCtls/) |
-| `MSCOMCTL.OCX` | ImageCombo, StatusBar, TabStrip, Toolbar | **VBCCR18** |
+| `MSCOMCTL.OCX` | ImageCombo, StatusBar, TabStrip, Toolbar | [VBCCR18](Packages/Contributed/VBCCR18/) |
 | `MSCOMCT2.OCX` | DTPicker, MonthView, UpDown | [WinNativeCommonCtls](Packages/WinNativeCommonCtls/) |
-| `MSCOMCT2.OCX` | Animation | **VBCCR18** |
+| `MSCOMCT2.OCX` | Animation | [VBCCR18](Packages/Contributed/VBCCR18/) |
 | `MSCOMCT2.OCX` | FlatScrollBar | no replacement |
-| `COMCT332.OCX` | CoolBar | **VBCCR18** |
+| `COMCT332.OCX` | CoolBar | [VBCCR18](Packages/Contributed/VBCCR18/) |
 | `COMDLG32.OCX` | CommonDialog | [VBComDlg](Packages/Contributed/VBComDlg/) |
-| `RICHTX32.OCX` | RichTextBox | **VBCCR18** |
+| `RICHTX32.OCX` | RichTextBox | [VBCCR18](Packages/Contributed/VBCCR18/) |
 | `MSFLXGRD.OCX` | MSFlexGrid | [VBFLXGRD18](Packages/Contributed/VBFLXGRD18/) |
 | `MSHFLXGD.OCX` | MSHFlexGrid | no replacement |
-| `SYSINFO.OCX` | SysInfo | **VBCCR18** |
+| `SYSINFO.OCX` | SysInfo | [VBCCR18](Packages/Contributed/VBCCR18/) |
 | `TABCTL32.OCX` | SSTab | no replacement; see [NewTabCtl](Packages/Contributed/NewTabCtl/), an experimental package |
 | `MSWINSCK.OCX` | Winsock | planned |
 | `MSMAPI32.OCX` | MAPISession, MAPIMessages | planned |

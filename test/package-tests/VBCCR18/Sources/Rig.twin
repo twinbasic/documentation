@@ -30,12 +30,4 @@ Module Rig
         ClearLog
     End Function
 
-    ' The number of the error that assigning Value to the property Name of Target raises, or 0.
-    Public Function LetError(ByVal Target As Object, ByVal Name As String, ByVal Value As Variant) As Long
-        On Error Resume Next
-        CallByName Target, Name, VbLet, Value
-        LetError = Err.Number
-        On Error GoTo 0
-    End Function
-
 End Module

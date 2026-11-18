@@ -26,6 +26,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**tsPwGen**](tsPwGen/) -- passwords, PINs and passphrases, with their entropy known before they are generated
 - [**TwinTimerLib**](TwinTimerLib/) -- a Win32 timer class that reports the elapsed time
 - [**VBA_JSON**](VBA_JSON/) -- JSON parsing and serialization, with UTC and ISO 8601 date conversion
+- [**VBCCR18**](VBCCR18/) -- controls in place of the Microsoft common controls of VB6, Unicode versions of the VB6 intrinsic controls, and controls that VB6 does not have
 - [**VBComDlg**](VBComDlg/) -- the **CommonDialog** class, for the Windows common dialogs
 - [**VBFLXGRD18**](VBFLXGRD18/) -- **VBFlexGrid**, a grid control with editing in cells, in place of the FlexGrid control of `MSFLXGRD.OCX`
 - [**xCalendar**](xCalendar/) -- a calendar control, in place of the Calendar control of `MSCAL.OCX`
