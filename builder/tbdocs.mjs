@@ -244,6 +244,16 @@ function fanOutArchive(scheduler, from, prefix, root, groups, priority = 1) {
 const skipsOffline = (ctx, state) => ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
 const skipsPdf = (ctx, state) => ctx.opts.skipPdf ?? state.site.config.also_build_pdf === false;
 
+// A process the main thread started and does not wait for (the buildInfo and
+// addinFiles tasks), as a bar of its own in the chart and an entry in the timing
+// line: the task that started it is over at once, and says nothing of how long
+// git took. The bar ends when the main thread hears the answer, which is later
+// than the answer by whatever task it was in the middle of.
+function chartProcess(scheduler, id, pending, start) {
+  const done = () => scheduler.timings.set(id, { start, end: Date.now(), ganttSection: "Seeds" });
+  pending.then(done, done);
+}
+
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
 
@@ -283,10 +293,14 @@ const TASKS = {
     expected: ["dispatch"],
     runOnMain: true,
     execute(_, ctx, state) {
+      const started = Date.now();
       state.buildInfoPending = ctx.opts.dryRun || skipsPdf(ctx, state) ? null : captureBuildInfo();
-      return null;
+      return state.buildInfoPending ? { started } : null;
     },
-    submit() {},
+    // The chart's "git log" bar.
+    submit(out, state, scheduler) {
+      if (out) chartProcess(scheduler, "git:log", state.buildInfoPending, out.started);
+    },
   },
 
   // Starts the git process that lists the help add-in's files, and does not
@@ -301,11 +315,15 @@ const TASKS = {
       const addin = addinProjectOf(state.site.config);
       state.addinListing = null;
       if (!addin || ctx.opts.dryRun) return null;
+      const started = Date.now();
       state.addinListing = listAddinFiles(path.resolve(ctx.srcRoot, addin.src));
       state.addinListing.catch(() => {});
-      return null;
+      return { started };
     },
-    submit() {},
+    // The chart's "git ls-files" bar.
+    submit(out, state, scheduler) {
+      if (out) chartProcess(scheduler, "git:ls-files", state.addinListing, out.started);
+    },
   },
 
   // Sass compilation split across two workers so light + dark run in parallel.
