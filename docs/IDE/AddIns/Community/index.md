@@ -14,6 +14,10 @@ Community add-ins are the ones that twinBASIC users write and share, as distinct
 
 The add-ins below are listed as their authors describe them. Each author publishes the add-in as compiled DLLs, in a zip file on the **Releases** page of its repository. [Add Ins](./) says where the DLLs go. The **Builds** column says which of the two architecture folders the release has a DLL for: an add-in with a 32-bit build only does not load while the project's build target is win64.
 
+## Add-ins by sokinkeso
+
+These add-ins are written by [sokinkeso](https://github.com/sokinkeso), and each has a repository of its own on GitHub.
+
 | Add-in | What it does | Latest release | Builds |
 |---|---|---|---|
 | [AutoSave](https://github.com/sokinkeso/AutoSaveAddin) | Saves the project at an interval that you choose, in seconds or minutes, and only when the project has changed. It can ask before each save, and can save before the project runs. A toolbar button turns it on and off, and a double-click on the button opens its settings. | 3.1.5.0, July 2025 | 32-bit and 64-bit |
