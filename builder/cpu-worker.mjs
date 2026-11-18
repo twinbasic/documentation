@@ -20,7 +20,7 @@ import { unpackShared } from "./sab-broadcast.mjs";
 // second boot bar. The names are module-level bindings that loadRest fills, so
 // that the handlers read as they would with static imports.
 // biome-ignore format: one module per line
-let compileLightScss, compileDarkScss, regenerateDot, captureBuildInfo, deflateGroup, writePdf, unpackBookPayload,
+let compileLightScss, compileDarkScss, regenerateDot, deflateGroup, writePdf, unpackBookPayload,
   createMarkdownIt, renderPhase, markdownCopy, markdownCopyRel,
   navTreeVersion, renderFullNav, templatePhase, withOnlineNav, withPartialNav,
   deriveSearchEntries, entryKeys, labelKey, packSearchEntries, readSearchEntries,
@@ -33,7 +33,6 @@ const loadRest = () =>
     const start = Date.now();
     ({ compileLightScss, compileDarkScss } = await import("./scss.mjs"));
     ({ regenerateDot } = await import("./dot.mjs"));
-    ({ captureBuildInfo } = await import("./build-info.mjs"));
     ({ deflateGroup } = await import("./help-archive-step.mjs"));
     ({ writePdf } = await import("./pdf.mjs"));
     ({ unpackBookPayload } = await import("./book-payload.mjs"));
@@ -248,11 +247,6 @@ const handlers = {
   async dot() {
     const dotStats = await regenerateDot(ctx.srcRoot);
     return { dotStats };
-  },
-
-  async buildInfo() {
-    const buildInfo = await captureBuildInfo();
-    return { buildInfo };
   },
 
   // The contributed packages' test projects and published tools, packed in

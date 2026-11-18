@@ -106,7 +106,8 @@ import { normalizeBaseurl } from "./url.mjs";
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
-import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
+import { addinProjectOf, formatAddinProject, listAddinFiles, writeAddinProject } from "./addin-project.mjs";
+import { captureBuildInfo } from "./build-info.mjs";
 import { formatPackageTests, packageTestRels, packageTestsOf, writePackageTests } from "./package-tests.mjs";
 import {
   finishHelpArchive,
@@ -271,16 +272,40 @@ const TASKS = {
     },
   },
 
-  // Git rev-parse / log shell-outs, for the book's title page: bookPayload
-  // waits for them, and nothing on the way to the first render does. Like the
-  // other early lane tasks it waits for discoverList, so that the first lanes
-  // up read the source tree.
+  // Starts the git process whose answer the book's title page states, and does
+  // not wait for it: bookPayload does, long after it has answered. On Windows
+  // a git takes a few tenths of a second to start, and up to two seconds while
+  // the lanes boot; as a lane task it held a lane for that long, for no work of
+  // the lane's. After dispatch, so that the process starts once the main
+  // thread's way to the first render is behind it. A build that writes no PDF
+  // (--serve, --no-pdf, --dry-run) starts none.
   buildInfo: {
-    expected: ["discoverList"],
-    handler: "buildInfo",
-    submit(out, state) {
-      state.site.buildInfo = out.buildInfo;
+    expected: ["dispatch"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      state.buildInfoPending = ctx.opts.dryRun || skipsPdf(ctx, state) ? null : captureBuildInfo();
+      return null;
     },
+    submit() {},
+  },
+
+  // Starts the git process that lists the help add-in's files, and does not
+  // wait for it: addinProject does, at the end of the build, where the listing
+  // used to take a few tenths of a second on Windows with nothing else left to
+  // run. A rejection is addinProject's to report, so it is marked as handled
+  // here.
+  addinFiles: {
+    expected: ["dispatch"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      const addin = addinProjectOf(state.site.config);
+      state.addinListing = null;
+      if (!addin || ctx.opts.dryRun) return null;
+      state.addinListing = listAddinFiles(path.resolve(ctx.srcRoot, addin.src));
+      state.addinListing.catch(() => {});
+      return null;
+    },
+    submit() {},
   },
 
   // Sass compilation split across two workers so light + dark run in parallel.
@@ -804,8 +829,9 @@ const TASKS = {
   // two parallel halves: nav (sidebar) + buildInit (config-only chrome).
   dispatch: {
     // buildInfo is not here: the book's title page alone states the commit, so
-    // bookPayload waits for it. Its two git processes take up to 0.6 s in a
-    // one-off build on Windows, and every render waited for them.
+    // bookPayload waits for it. Its git process takes up to 0.6 s in a
+    // one-off build on Windows, and every render waited for it. The buildInfo
+    // task waits for this one, only to start the process after it.
     expected: ["nav", "buildInit", "dot", "deriveRedirects", "markdownInit"],
     runOnMain: true,
     async execute(
@@ -1450,7 +1476,7 @@ const TASKS = {
   // fixtures) packs nothing. A failure is reported and fails the build; the
   // trees are still written.
   addinProject: {
-    expected: ["symbolIndex", "prepDest", "helpArchive"],
+    expected: ["symbolIndex", "prepDest", "helpArchive", "addinFiles"],
     runOnMain: true,
     async execute({ symbolIndex, helpArchive }, ctx, state) {
       const addin = addinProjectOf(state.site.config);
@@ -1462,6 +1488,7 @@ const TASKS = {
           archive: helpArchive?.zip ?? null,
           roots: [ctx.destRoot],
           rel: addin.dest,
+          listing: state.addinListing,
         });
       } catch (err) {
         return { failed: true, rel: addin.dest, error: err.message };
@@ -1519,9 +1546,12 @@ const TASKS = {
     // states (state.site.buildInfo), which nothing before this reads.
     expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters", "buildInfo"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    async execute(_, ctx, state) {
       const skip = !!ctx.opts.dryRun || skipsPdf(ctx, state);
-      if (!skip) prerenderPartText(state.site.bookData, state.site.markdown);
+      if (!skip) {
+        state.site.buildInfo = await state.buildInfoPending;
+        prerenderPartText(state.site.bookData, state.site.markdown);
+      }
       return packBookPayload({
         pages: state.pages,
         staticFiles: state.staticFiles,

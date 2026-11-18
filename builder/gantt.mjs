@@ -45,7 +45,7 @@ const BAR_PAD = 4;
 // its own `ganttSection` is charted there instead.
 // biome-ignore format: a table, one entry per line
 export const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
+  config: "Seeds", buildInfo: "Seeds", addinFiles: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
   discoverList: "Spine", discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
