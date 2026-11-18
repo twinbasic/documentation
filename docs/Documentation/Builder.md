@@ -239,6 +239,8 @@ Every static task and dependency:
 - `config` (main) --- reads `_config.yml` and applies CLI overrides.
 - `buildInfo` (main) --- starts one `git` process and does not wait for it. Only the book's title page states the result, so `bookPayload` awaits it and the render does not. Falls back to `"unknown"` on failure. A build that writes no PDF starts no process.
 - `addinFiles` (main) --- starts the `git` process that lists the help add-in's files and does not wait for it; `addinProject` awaits the list at the end of the build.
+
+The [Gantt chart](BuildInfo) draws each of the two processes as a bar of its own in the Seeds band, `git log` and `git ls-files`, from the start of the process to the moment the main thread receives its answer. The bars of `buildInfo` and `addinFiles` themselves are a few milliseconds long.
 - `scssLight` (worker) --- compiles `just-the-docs-combined.scss` against the light palette.
 - `scssDark` (worker) --- the same against the dark palette.
 - `highlighterInit` (main) --- loads the `Light.theme` + `Dark.theme` palette and emits `tb-highlight.css`. Each worker initialises its own Shiki.

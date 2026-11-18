@@ -310,8 +310,12 @@ has long answered. What to keep:
   31 ms.
 - **A build that writes no PDF starts no `buildInfo` process** (`--serve`, `--no-pdf`,
   `--dry-run`): only the title page reads it.
-- **The chart shows the two tasks as slivers**, not how long `git` took. The add-in's
-  line in the build's report still gives `addinProject`'s time.
+- **The chart draws each process as a bar of its own**, `git log` and `git ls-files` in
+  the Seeds band, and the timing line has `git:log=` and `git:ls-files=` (owner,
+  2026-11-18): the two tasks are over at once and say nothing of how long `git` took.
+  `chartProcess` (`builder/tbdocs.mjs`) adds the timing when the promise settles, from the
+  task's `submit`. The bar ends when the main thread hears the answer, so it is longer
+  than the process by whatever task the main thread was in the middle of.
 - `compare_trees` replaces the title page's build line, so check the commit there by
   reading `_site-pdf/book.html` after a change to `build-info.mjs`.
 

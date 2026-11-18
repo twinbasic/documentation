@@ -168,6 +168,8 @@ The task is on the main thread because a lane that waits for `git` does no other
 
 Starts `listAddinFiles()` from `addin-project.mjs` on the help add-in's folder, which runs one `git ls-files`, and keeps the promise in `state.addinListing` without waiting for it. [`addinProject`](#addinproject-main) awaits it at the end of the build. Waits for `dispatch`, as `buildInfo` does. Does nothing under `--dry-run` or for a config that declares no download.
 
+Neither task's own time says how long `git` took, so each task's `submit` passes its promise to `chartProcess` in `tbdocs.mjs`, which adds a timing to `scheduler.timings` when the promise settles: `git:log` for `buildInfo` and `git:ls-files` for `addinFiles`. The Gantt chart draws each as a bar in the Seeds band, and the build's timing line states each. The timing ends when the main thread receives the answer, which is later than the process's end when the main thread is in the middle of another task.
+
 ### `scssLight` (worker), `scssDark` (worker)
 
 ```js

@@ -165,7 +165,6 @@ CPUs and in a serve build it does not arise: the main thread is done long before
 - Start the late deflate from memory while `searchIndex` writes its files (about 0.2 s; it
   would tie the archive to the index's task); deflate the part of `search-index.js` that is
   known early during the adds (about 0.2 s, much wiring).
-- The chart shows `buildInfo` and `addinFiles` as slivers, not how long `git` took.
 
 ## Considered and not done
 
