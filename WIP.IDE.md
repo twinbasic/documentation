@@ -38,7 +38,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
 | 8 | Customising the IDE | `/tB/IDE/Customising/` + children | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
-| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (no community add-in is listed yet) |
+| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (the community add-ins are listed from their authors' READMEs and release pages: they are published as DLLs with no source, and none is downloaded or run here) |
 | 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
 **Part B, Reference.** Written impersonally. One page per menu, plus the Toolbar, the Status Bar
