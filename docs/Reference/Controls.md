@@ -174,3 +174,42 @@ A control with no replacement, and any other control of the table, can be used a
 it: the VB6 library itself, added to the project. The VB6 libraries are 32-bit, so this works
 in a 32-bit build only. See
 [Can I use VB6's own ActiveX controls?](../FAQ#vb6-ocx) in the FAQ.
+
+## Windows Forms counterparts
+{: #windows-forms }
+
+For a reader who knows .NET, the table names the Windows Forms class nearest to each control.
+The classes are in the `System.Windows.Forms` namespace, and each link opens Microsoft's
+reference for the class. A counterpart is the nearest class and not an equivalent: its members
+and its behaviour differ.
+
+| twinBASIC | Windows Forms |
+|---|---|
+| [Form](Packages/VB/Form/) | [Form](https://learn.microsoft.com/dotnet/api/system.windows.forms.form) |
+| [MDIForm](Packages/VB/MDIForm/) | [Form](https://learn.microsoft.com/dotnet/api/system.windows.forms.form), with **IsMdiContainer** set |
+| [UserControl](Packages/VB/UserControl/) | [UserControl](https://learn.microsoft.com/dotnet/api/system.windows.forms.usercontrol) |
+| [CommandButton](Packages/VB/CommandButton/) | [Button](https://learn.microsoft.com/dotnet/api/system.windows.forms.button) |
+| [CheckBox](Packages/VB/CheckBox/) | [CheckBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.checkbox) |
+| [OptionButton](Packages/VB/OptionButton/) | [RadioButton](https://learn.microsoft.com/dotnet/api/system.windows.forms.radiobutton) |
+| [TextBox](Packages/VB/TextBox/) | [TextBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.textbox) |
+| [ComboBox](Packages/VB/ComboBox/) | [ComboBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.combobox) |
+| [ListBox](Packages/VB/ListBox/) | [ListBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.listbox) |
+| [HScrollBar](Packages/VB/HScrollBar/) | [HScrollBar](https://learn.microsoft.com/dotnet/api/system.windows.forms.hscrollbar) |
+| [VScrollBar](Packages/VB/VScrollBar/) | [VScrollBar](https://learn.microsoft.com/dotnet/api/system.windows.forms.vscrollbar) |
+| [Frame](Packages/VB/Frame/) | [GroupBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.groupbox) |
+| [PictureBox](Packages/VB/PictureBox/) | [PictureBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.picturebox) |
+| [Image](Packages/VB/Image/) | [PictureBox](https://learn.microsoft.com/dotnet/api/system.windows.forms.picturebox) |
+| [Label](Packages/VB/Label/) | [Label](https://learn.microsoft.com/dotnet/api/system.windows.forms.label) |
+| [Timer](Packages/VB/Timer/) | [Timer](https://learn.microsoft.com/dotnet/api/system.windows.forms.timer) |
+| [Menu](Packages/VB/Menu/) | [MenuStrip](https://learn.microsoft.com/dotnet/api/system.windows.forms.menustrip) |
+| [Data](Packages/VB/Data/) | [BindingNavigator](https://learn.microsoft.com/dotnet/api/system.windows.forms.bindingnavigator), with a [BindingSource](https://learn.microsoft.com/dotnet/api/system.windows.forms.bindingsource) |
+| [ListView](Packages/WinNativeCommonCtls/ListView/) | [ListView](https://learn.microsoft.com/dotnet/api/system.windows.forms.listview) |
+| [TreeView](Packages/WinNativeCommonCtls/TreeView/) | [TreeView](https://learn.microsoft.com/dotnet/api/system.windows.forms.treeview) |
+| [ImageList](Packages/WinNativeCommonCtls/ImageList/) | [ImageList](https://learn.microsoft.com/dotnet/api/system.windows.forms.imagelist) |
+| [DTPicker](Packages/WinNativeCommonCtls/DTPicker) | [DateTimePicker](https://learn.microsoft.com/dotnet/api/system.windows.forms.datetimepicker) |
+| [MonthView](Packages/WinNativeCommonCtls/MonthView) | [MonthCalendar](https://learn.microsoft.com/dotnet/api/system.windows.forms.monthcalendar) |
+| [ProgressBar](Packages/WinNativeCommonCtls/ProgressBar) | [ProgressBar](https://learn.microsoft.com/dotnet/api/system.windows.forms.progressbar) |
+| [Slider](Packages/WinNativeCommonCtls/Slider) | [TrackBar](https://learn.microsoft.com/dotnet/api/system.windows.forms.trackbar) |
+| [UpDown](Packages/WinNativeCommonCtls/UpDown) | [NumericUpDown](https://learn.microsoft.com/dotnet/api/system.windows.forms.numericupdown) |
+
+The other controls of this page have no close counterpart among the Windows Forms classes.
