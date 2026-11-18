@@ -12,11 +12,11 @@ Community add-ins are the ones that twinBASIC users write and share, as distinct
 > [!WARNING]
 > An add-in is a compiled DLL that runs inside the IDE, with your rights. Treat it as you would any program that you have not written yourself.
 
-The add-ins below are listed as their authors describe them. Each author publishes the add-in as compiled DLLs, in a zip file on the **Releases** page of its repository. [Add Ins](./) says where the DLLs go. The **Builds** column says which of the two architecture folders the release has a DLL for: an add-in with a 32-bit build only does not load while the project's build target is win64.
+The add-ins below are listed as their authors describe them. Each is published as compiled DLLs. [Add Ins](./) says where the DLLs go. The **Builds** column says which of the two architecture folders the add-in has a DLL for: an add-in with a 32-bit build only does not load while the project's build target is win64.
 
 ## Add-ins by sokinkeso
 
-These add-ins are written by [sokinkeso](https://github.com/sokinkeso), and each has a repository of its own on GitHub.
+These add-ins are written by [sokinkeso](https://github.com/sokinkeso), and each has a repository of its own on GitHub. The DLLs are in a zip file on the **Releases** page of the repository.
 
 | Add-in | What it does | Latest release | Builds |
 |---|---|---|---|
@@ -27,6 +27,17 @@ These add-ins are written by [sokinkeso](https://github.com/sokinkeso), and each
 | [String Converter](https://github.com/sokinkeso/String-Converter-Addin-for-twinBasic) | Finds the string literals in the code and replaces each with a concatenation of `ChrW$` calls, so that the text cannot be found in the built file with a hex editor. It also converts such an expression back to a literal. | 2.2.0.0, April 2024 | 32-bit and 64-bit |
 | [TabOrder](https://github.com/sokinkeso/TabOrder-Addin-for-twinBASIC) | Sets the tab order of the controls on a form or a user control. You move the controls up and down in a list, click them on the form in the order you want, or let the add-in order them by position. | 0.9.54, May 2025 | not stated |
 | [Usercontrol Builder](https://github.com/sokinkeso/Usercontrol-Builder-for-TwinBASIC) | A wizard that writes the properties, methods and events of a user control, after the ActiveX Control Interface Wizard of VB6. You choose the members, map them to members of the controls inside the user control, and the wizard inserts the code at the top of the user control's source. | 3.2.0.2, April 2024 | 32-bit and 64-bit |
+
+## Add-ins posted on Discord
+
+These add-ins are published only as attachments to a thread in the **show-and-tell** channel of the [twinBASIC Discord server](https://discord.gg/UaW9GgKKuE). Each link opens the thread, which needs a Discord account that has joined the server.
+
+| Add-in | Author | What it does | Posted | Builds |
+|---|---|---|---|---|
+| [BeautifiedCode](https://discord.com/channels/927638153546829845/1414250283852107856) | Frank-S. | Indents the code, and has a colour picker that writes a colour value into the code. The author calls it early work, after the VB6 add-in MZ-Tools. The thread also has the add-in's project. | September 2025 | 32-bit; the author says that the 64-bit DLL does not work |
+| [Comments](https://discord.com/channels/927638153546829845/1202747679361343679) | sokinkeso | Adds a **Comment** and an **Uncomment** button to the toolbar. **Comment** makes each selected line a comment, and with <kbd>Ctrl</kbd> held it makes one comment of the whole selection, which may be part of a line. **Uncomment** removes the comment that the caret is in. | February 2024 | 32-bit and 64-bit |
+| [tbSplitScreen](https://discord.com/channels/927638153546829845/1522162642700206146) | woeoio2 | Shows the active file a second time, read-only, in a tool window beside the editor. It can follow the editor as you change to another file. Its highlighting is that of VB6, so it does not colour a `/* */` comment. | 1.0.1, July 2026 | not stated |
+| [VB6 to twinBASIC clipboard](https://discord.com/channels/927638153546829845/1333920083914788946) | sokinkeso | Converts the controls that you copy from a form in the VB6 IDE, so that you can paste them on a twinBASIC form without importing the VB6 project. The author calls it experimental. | 0.2.17.0, January 2025 | 32-bit |
 
 To share an add-in, add it to this page: [Authoring](../../../Documentation/Development/Authoring) describes how to change a page of this documentation.
 
