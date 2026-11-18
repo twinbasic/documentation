@@ -183,6 +183,25 @@ function countEnumerations(pages) {
   return n;
 }
 
+// The sample projects the IDE ships, counted off the table under `## The samples`
+// in IDE/Starting/Samples.md, which has a row for each: the page is the list, as
+// for countEnumerations, and has the same exposure to a change of its formatting.
+// A row starts with the sample's number in bold: `| **1a.** WebView2 Examples |`.
+function countSamples(pages) {
+  const page = pages.find((p) => p.srcRel === "IDE/Starting/Samples.md");
+  if (!page) return 0;
+  const lines = proseLines(page.rawContent);
+  const start = lines.findIndex((l) => l !== null && /^## The samples\s*$/.test(l));
+  if (start === -1) return 0;
+  let n = 0;
+  for (const l of lines.slice(start + 1)) {
+    if (l === null) continue;
+    if (/^#{1,6} /.test(l)) break;
+    if (/^\| \*\*\d+[a-z]?\.\*\* /.test(l)) n++;
+  }
+  return n;
+}
+
 /**
  * Derive every named count from build state.
  *
@@ -220,6 +239,7 @@ export function deriveCounts(state, extra) {
     builtInPackages: countPackages(pages, "Reference/Built-In/"),
     attributeAnchors: countAttributeAnchors(pages),
     enumerations: countEnumerations(pages),
+    samples: countSamples(pages),
     // Whole-page stubs emitted for every `redirect_from:` entry. Passed in
     // because it comes from deriveRedirects rather than from discover.
     redirectStubs: extra.redirectStubs,

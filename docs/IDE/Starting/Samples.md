@@ -12,7 +12,7 @@ index:
 
 # Samples
 
-The IDE ships with 26 sample projects, in the **Samples** section of the [**New / Open Project**](New-Project) dialog. This page says how a sample opens, what each one shows, and what it needs before it runs.
+The IDE ships with {{tbdocs:samples}} sample projects, in the **Samples** section of the [**New / Open Project**](New-Project) dialog. This page says how a sample opens, what each one shows, and what it needs before it runs.
 
 ![The New / Open Project dialog on its Samples section: two columns of sample cards named without their numbers, the first, Reports (Experimental), selected, then HelloWorld, WebView2 Examples, Chromium Embedded Framework Examples, GetIPAddresses and MyCodeLibrary.](../Images/New_Project_Samples.png){:width="970" height="728"}
 
