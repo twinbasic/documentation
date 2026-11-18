@@ -212,7 +212,7 @@ Syntax: *object*\_**MouseDown**( *Button* **As Integer**, *Shift* **As Integer**
 : The sum of the [**ShiftConstants**](../../VBRUN/Constants/ShiftConstants) members for the Shift, Ctrl and Alt keys held down.
 
 *X*, *Y*
-: The position of the pointer, measured from the control's top left corner in the scale units of the control's container. **Animation**, **LabelW** and **WindowedLabel** give it in twips.
+: The position of the pointer, measured from the control's top left corner, in twips whatever the scale of the control's container.
 
 ### MouseEnter, MouseLeave
 {: .no_toc }

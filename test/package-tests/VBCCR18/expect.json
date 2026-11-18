@@ -1,4 +1,38 @@
 {
   "version": "1.8.136.0",
-  "cases": {}
+  "cases": {
+    "ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
+      "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectExtended on an empty list raises no error 380: expected True, got False"
+    },
+    "ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError": {
+      "fails": "1 of 2 checks failed: Sorted = True on an empty list that selects several items raises no error 380: expected True, got False"
+    },
+    "ListBoxWTests.HitTest_EmptyList_ReturnsMinus1": {
+      "fails": "1 of 2 checks failed: HitTest(0, 0) of an empty list: expected -1, got 0"
+    },
+    "TextBoxWTests.GetLine_PastTheLastLine_Raises380": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 1 checks failed: GetLine(9) in a text of two lines: expected 380, got 6"
+      }
+    },
+    "TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 1 checks failed: ScrollToLine 9 in a text of two lines: expected 380, got 0"
+      }
+    },
+    "TextBoxWTests.PasswordChar_NoneSet_IsAnEmptyString": {
+      "fails": "1 of 1 checks failed: Len(PasswordChar) of a box with no password character: expected 0, got 1"
+    },
+    "TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress": {
+      "fails": "1 of 3 checks failed: NetAddressString of 192.168.0.1:8080: expected \"192.168.0.1\", got \"0.0.1.0\""
+    },
+    "VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
+      "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectSimple on an empty list raises no error 380: expected True, got False"
+    },
+    "VListBoxTests.HitTest_EmptyList_ReturnsMinus1": {
+      "fails": "1 of 2 checks failed: HitTest(0, 0) of an empty list: expected -1, got 0"
+    }
+  }
 }

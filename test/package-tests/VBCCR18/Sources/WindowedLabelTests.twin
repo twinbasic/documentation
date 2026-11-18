@@ -1,0 +1,188 @@
+' WindowedLabelTests: the caption, the text of the window, the ellipsis and the appearance of the
+' WindowedLabel.
+[TestFixture]
+Module WindowedLabelTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+
+    [TestCase]
+    Public Sub Caption_Assigned_RaisesChangeOnlyWhenItDiffers()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New WindowedLabelSink
+        Set sink.Label = f.WindowedLabel1
+        f.WindowedLabel1.Caption = ""
+        Rig.ClearLog
+        f.WindowedLabel1.Caption = "One"
+        f.WindowedLabel1.Caption = "One"
+        f.WindowedLabel1.Caption = "Two"
+        Expect.AreEqual "Change One | Change Two", Rig.Events(), "the events of Caption = ""One"", Caption = ""One"", Caption = ""Two"""
+        Set sink.Label = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WindowText_IsTheCaption()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim buffer As String, copied As Long
+        f.WindowedLabel1.Caption = "Name"
+        Expect.IsTrue f.WindowedLabel1.hWnd <> 0, "hWnd of a WindowedLabel on a loaded form is a window"
+        Expect.AreEqual 4, CLng(SendMessageW(f.WindowedLabel1.hWnd, WM_GETTEXTLENGTH, 0, 0)), "the length of the window's text with the caption Name"
+        buffer = String$(32, vbNullChar)
+        copied = CLng(SendMessageW(f.WindowedLabel1.hWnd, WM_GETTEXT, 32, StrPtr(buffer)))
+        Expect.AreEqual "Name", Left$(buffer, copied), "the window's text with the caption Name"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WindowText_Set_ChangesTheCaption()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New WindowedLabelSink
+        Set sink.Label = f.WindowedLabel1
+        Dim text As String
+        f.WindowedLabel1.Caption = "Name"
+        Rig.ClearLog
+        text = "Other"
+        SendMessageW f.WindowedLabel1.hWnd, WM_SETTEXT, 0, StrPtr(text)
+        Expect.AreEqual "Other", f.WindowedLabel1.Caption, "Caption after the window's text is set to Other"
+        Expect.AreEqual "Change Other", Rig.Events(), "the events of setting the window's text to Other"
+        Set sink.Label = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordWrap_WhileSingleLine_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.WindowedLabel1.SingleLine = True
+        On Error Resume Next
+        Err.Clear
+        f.WindowedLabel1.WordWrap = True
+        Expect.AreEqual 383, Err.Number, "WordWrap = True with SingleLine True"
+        On Error GoTo 0
+        Expect.IsFalse f.WindowedLabel1.WordWrap, "WordWrap after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SingleLine_True_SetsWordWrapFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.WindowedLabel1.WordWrap = True
+        f.WindowedLabel1.SingleLine = True
+        Expect.IsFalse f.WindowedLabel1.WordWrap, "WordWrap after SingleLine = True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSize_LongerCaption_WidensTheLabel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single, h As Single
+        f.WindowedLabel1.Caption = "Short"
+        f.WindowedLabel1.AutoSize = True
+        w = f.WindowedLabel1.Width
+        h = f.WindowedLabel1.Height
+        f.WindowedLabel1.Caption = "A much longer caption than before"
+        Expect.IsTrue f.WindowedLabel1.Width > w, "the label is wider after a longer caption"
+        Expect.IsTrue f.WindowedLabel1.Height = h, "the label is as high as before after a longer caption of one line"
+        f.WindowedLabel1.Caption = "Short"
+        Expect.IsTrue f.WindowedLabel1.Width = w, "the label has its first width after its first caption"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisplayedCaption_EndEllipsis_EndsInThreeDots()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.WindowedLabel1
+            .AutoSize = False
+            .Width = 600
+            .SingleLine = True
+            .Caption = "A caption that is much too long for a label this narrow"
+            Expect.AreEqual .Caption, .DisplayedCaption, "DisplayedCaption without an EllipsisFormat is the caption"
+            .EllipsisFormat = WlbEllipsisFormatEnd
+            Expect.AreEqual "...", Right$(.DisplayedCaption, 3), "the end of DisplayedCaption with WlbEllipsisFormatEnd"
+            Expect.IsTrue Len(.DisplayedCaption) < Len(.Caption), "DisplayedCaption with WlbEllipsisFormatEnd is shorter than the caption"
+            Expect.AreEqual "A caption that is much too long for a label this narrow", .Caption, "Caption is not changed by the ellipsis"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisplayedCaption_PathEllipsis_KeepsTheFileName()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.WindowedLabel1
+            .AutoSize = False
+            .Width = 600
+            .SingleLine = True
+            .EllipsisFormat = WlbEllipsisFormatPath
+            .Caption = "C:\Program Files\Some Vendor\Some Product\bin\program.exe"
+            Expect.IsTrue InStr(.DisplayedCaption, "...") > 0, "DisplayedCaption of a long path with WlbEllipsisFormatPath has an ellipsis"
+            Expect.AreEqual "program.exe", Right$(.DisplayedCaption, 11), "the end of DisplayedCaption of a long path with WlbEllipsisFormatPath"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Appearance_Flat_MakesABorderASingleLine()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.WindowedLabel1.BorderStyle = CCBorderStyleRaised
+        f.WindowedLabel1.Appearance = CCAppearanceFlat
+        Expect.AreEqual CLng(CCBorderStyleSingle), CLng(f.WindowedLabel1.BorderStyle), "BorderStyle of a label with a raised border after Appearance = CCAppearanceFlat"
+        f.WindowedLabel1.Appearance = CCAppearance3D
+        Expect.AreEqual CLng(CCBorderStyleSunken), CLng(f.WindowedLabel1.BorderStyle), "BorderStyle after Appearance = CCAppearance3D"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Appearance_SetsForeColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.WindowedLabel1.ForeColor = vbRed
+        f.WindowedLabel1.Appearance = CCAppearanceFlat
+        Expect.IsTrue f.WindowedLabel1.ForeColor = vbWindowText, "ForeColor after Appearance = CCAppearanceFlat is vbWindowText"
+        f.WindowedLabel1.Appearance = CCAppearance3D
+        Expect.IsTrue f.WindowedLabel1.ForeColor = vbButtonText, "ForeColor after Appearance = CCAppearance3D is vbButtonText"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a WindowedLabel, written to Rig.Log.
+Class WindowedLabelSink
+
+    Public WithEvents Label As VBCCR18.WindowedLabel
+
+    Private Sub Label_Change() Handles Label.Change
+        Rig.Ev "Change " & Label.Caption
+    End Sub
+
+End Class

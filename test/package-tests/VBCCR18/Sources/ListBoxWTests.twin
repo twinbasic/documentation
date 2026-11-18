@@ -1,0 +1,636 @@
+' ListBoxWTests: the list, the selection of one item and of several, the insertion mark and the
+' events of the ListBoxW.
+[TestFixture]
+Module ListBoxWTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_MOUSEMOVE As Long = &H200
+
+    Private Sub AddColors(ByVal List As VBCCR18.ListBoxW)
+        List.AddItem "red"
+        List.AddItem "green"
+        List.AddItem "blue"
+        List.AddItem "white"
+    End Sub
+
+    [TestCase]
+    Public Sub AddItem_NewIndex_IsWhereTheItemWent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListBoxW1
+            Expect.AreEqual -1, .NewIndex, "NewIndex of a control with no item added"
+            .AddItem "pear"
+            Expect.AreEqual 0, .NewIndex, "NewIndex after the first AddItem"
+            .AddItem "apple"
+            Expect.AreEqual 1, .NewIndex, "NewIndex after the second AddItem"
+            .AddItem "fig", 0
+            Expect.AreEqual 0, .NewIndex, "NewIndex after AddItem ""fig"", 0"
+            Expect.AreEqual "fig", .List(0), "List(0) after AddItem ""fig"", 0"
+            .RemoveItem 0
+            Expect.AreEqual -1, .NewIndex, "NewIndex after RemoveItem"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddItem_IndexPastTheEnd_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.AddItem "x", 99
+        Expect.AreEqual 5, Err.Number, "AddItem ""x"", 99 on an empty list"
+        Err.Clear
+        f.ListBoxW1.AddItem "x", -1
+        Expect.AreEqual 5, Err.Number, "AddItem ""x"", -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListBoxW1.ListCount, "ListCount after the two refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_NewItemsGoInOrder()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListBoxW1
+            .Sorted = True
+            .AddItem "pear"
+            .AddItem "Apple"
+            .AddItem "fig"
+            .AddItem "apple"
+            Expect.AreEqual "apple Apple fig pear", .List(0) & " " & .List(1) & " " & .List(2) & " " & .List(3), "the items of a Sorted list after AddItem pear, Apple, fig, apple"
+            Expect.AreEqual 0, .NewIndex, "NewIndex after AddItem ""apple"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_SetAtRunTime_LeavesTheItemsInPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListBoxW1
+            .AddItem "pear"
+            .AddItem "apple"
+            .Sorted = True
+            Expect.AreEqual "pear apple", .List(0) & " " & .List(1), "the items added before Sorted = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_SetAtRunTime_RaisesClickForTheSelectedItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            .ItemData(2) = 9
+            .ListIndex = 1
+            Rig.ClearLog
+            .Sorted = True
+            Expect.AreEqual "Click 1", Rig.Events(), "the events of Sorted = True with item 1 selected"
+            Expect.AreEqual 1, .ListIndex, "ListIndex after Sorted = True"
+            Expect.AreEqual 9, CLng(.ItemData(2)), "ItemData(2) after Sorted = True"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_Assigned_SelectsAndRaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        Rig.ClearLog
+        With f.ListBoxW1
+            .ListIndex = 1
+            Expect.AreEqual "Click 1", Rig.Events(), "the events of ListIndex = 1"
+            Expect.AreEqual "green", .Text, "Text after ListIndex = 1"
+            Expect.IsTrue .Selected(1), "Selected(1) after ListIndex = 1"
+            Expect.AreEqual 1, .SelCount, "SelCount after ListIndex = 1"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_SameValue_RaisesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        f.ListBoxW1.ListIndex = 1
+        Rig.ClearLog
+        f.ListBoxW1.ListIndex = 1
+        Expect.AreEqual "", Rig.Events(), "the events of ListIndex = 1 with item 1 selected"
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_NoSuchItem_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.ListIndex = 99
+        Expect.AreEqual 380, Err.Number, "ListIndex = 99 in a list of four"
+        Err.Clear
+        f.ListBoxW1.ListIndex = -2
+        Expect.AreEqual 380, Err.Number, "ListIndex = -2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_SelectsTheItemWithThatText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        Rig.ClearLog
+        With f.ListBoxW1
+            .Text = "red"
+            Expect.AreEqual 0, .ListIndex, "ListIndex after Text = ""red"""
+            .Text = "BLUE"
+            Expect.AreEqual 2, .ListIndex, "ListIndex after Text = ""BLUE"""
+            .Text = "mauve"
+            Expect.AreEqual -1, .ListIndex, "ListIndex after Text = ""mauve"", which no item has"
+            Expect.AreEqual "Click 0 | Click 2 | Click -1", Rig.Events(), "the events of the three assignments"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_Assigned_RaisesClickWhenTheSelectionChanges()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        Rig.ClearLog
+        With f.ListBoxW1
+            .Selected(2) = True
+            Expect.AreEqual 2, .ListIndex, "ListIndex after Selected(2) = True"
+            .Selected(0) = False
+            Expect.AreEqual 2, .ListIndex, "ListIndex after Selected(0) = False"
+            .Selected(2) = False
+            Expect.AreEqual -1, .ListIndex, "ListIndex after Selected(2) = False"
+            Expect.AreEqual "Click 2 | Click -1", Rig.Events(), "the events of the three assignments"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_NoSuchItem_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As Boolean
+        On Error Resume Next
+        Err.Clear
+        b = f.ListBoxW1.Selected(99)
+        Expect.AreEqual 381, Err.Number, "reading Selected(99) of an empty list"
+        Err.Clear
+        f.ListBoxW1.Selected(99) = True
+        Expect.AreEqual 381, Err.Number, "Selected(99) = True on an empty list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiSelect_AtRunTime_KeepsTheItemsAndTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            .ItemData(2) = 5
+            .ListIndex = 1
+            .MultiSelect = vbMultiSelectExtended
+            Expect.AreEqual 2, CLng(.MultiSelect), "MultiSelect after MultiSelect = vbMultiSelectExtended"
+            Expect.AreEqual 4, .ListCount, "ListCount after MultiSelect = vbMultiSelectExtended"
+            Expect.AreEqual 1, .SelCount, "SelCount after MultiSelect = vbMultiSelectExtended with item 1 selected"
+            Expect.IsTrue .Selected(1), "Selected(1) after MultiSelect = vbMultiSelectExtended"
+            Expect.AreEqual 5, CLng(.ItemData(2)), "ItemData(2) after MultiSelect = vbMultiSelectExtended"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiSelect_AssignedToAnEmptyList_RaisesNoError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim raised As Long
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.MultiSelect = vbMultiSelectExtended
+        raised = Err.Number
+        On Error GoTo 0
+        Expect.IsTrue raised <> 380, "MultiSelect = vbMultiSelectExtended on an empty list raises no error 380"
+        Expect.AreEqual 2, CLng(f.ListBoxW1.MultiSelect), "MultiSelect after the assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim raised As Long
+        On Error Resume Next
+        f.ListBoxW1.MultiSelect = vbMultiSelectSimple
+        Err.Clear
+        f.ListBoxW1.Sorted = True
+        raised = Err.Number
+        On Error GoTo 0
+        Expect.IsTrue raised <> 380, "Sorted = True on an empty list that selects several items raises no error 380"
+        Expect.IsTrue f.ListBoxW1.Sorted, "Sorted after the assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_MultiSelect_MovesTheFocusOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            .ListIndex = 1
+            .MultiSelect = vbMultiSelectExtended
+            Rig.ClearLog
+            .ListIndex = 3
+            Expect.AreEqual "Click 3", Rig.Events(), "the events of ListIndex = 3"
+            Expect.IsFalse .Selected(3), "Selected(3) after ListIndex = 3 in a list that selects several items"
+            Expect.AreEqual "white", .Text, "Text after ListIndex = 3"
+            Expect.AreEqual 1, .SelCount, "SelCount after ListIndex = 3"
+            On Error Resume Next
+            Err.Clear
+            .ListIndex = -1
+            Expect.AreEqual 380, Err.Number, "ListIndex = -1 in a list that selects several items"
+            On Error GoTo 0
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedIndices_HoldsTheIndexesInOrder()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        Dim v As Variant, s As String
+        With f.ListBoxW1
+            .ListIndex = 1
+            .MultiSelect = vbMultiSelectSimple
+            .Selected(3) = True
+            .Selected(0) = True
+            For Each v In .SelectedIndices
+                s = s & v & " "
+            Next
+            Expect.AreEqual "0 1 3 ", s, "SelectedIndices with the items 1, 3 and 0 selected, in that order"
+            Expect.AreEqual 3, .SelCount, "SelCount with three items selected"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetSelRange_SelectsOrRemovesTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            .ListIndex = 0
+            .MultiSelect = vbMultiSelectSimple
+            .SetSelRange 1, 3
+            Expect.AreEqual 4, .SelCount, "SelCount after SetSelRange 1, 3 with item 0 selected"
+            .SetSelRange 3, 1
+            Expect.AreEqual 1, .SelCount, "SelCount after SetSelRange 3, 1"
+            .SetSelRange 0, 0
+            Expect.AreEqual 0, .SelCount, "SelCount after SetSelRange 0, 0 with item 0 selected"
+            .SetSelRange 2, 2
+            Expect.IsFalse .Selected(2), "Selected(2) after SetSelRange 2, 2"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_MultiSelect_NoSuchText_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        f.ListBoxW1.ListIndex = 1
+        f.ListBoxW1.MultiSelect = vbMultiSelectExtended
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.Text = "mauve"
+        Expect.AreEqual 380, Err.Number, "Text = ""mauve"", which no item has, in a list that selects several items"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.Style = LstStyleCheckbox
+        Expect.AreEqual 382, Err.Number, "Style = LstStyleCheckbox at run time"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ListBoxW1.Style), "Style after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawMode_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.DrawMode = LstDrawModeOwnerDrawFixed
+        Expect.AreEqual 382, Err.Number, "DrawMode = LstDrawModeOwnerDrawFixed at run time"
+        Err.Clear
+        f.ListBoxW1.DrawMode = 3
+        Expect.AreEqual 380, Err.Number, "DrawMode = 3"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ListBoxW1.DrawMode), "DrawMode after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntegralHeight_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.IntegralHeight = False
+        Expect.AreEqual 382, Err.Number, "IntegralHeight = False at run time"
+        On Error GoTo 0
+        Expect.IsTrue f.ListBoxW1.IntegralHeight, "IntegralHeight after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ItemChecked_StandardStyle_IsAlwaysFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            Expect.IsFalse .ItemChecked(0), "ItemChecked(0) in a LstStyleStandard list"
+            .ItemChecked(0) = True
+            Expect.IsFalse .ItemChecked(0), "ItemChecked(0) after ItemChecked(0) = True in a LstStyleStandard list"
+            Expect.AreEqual 0, .CheckedIndices.Count, "CheckedIndices.Count in a LstStyleStandard list"
+            .OptionIndex = 1
+            Expect.AreEqual -1, .OptionIndex, "OptionIndex after OptionIndex = 1 in a LstStyleStandard list"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ItemChecked_NoSuchItem_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As Boolean
+        On Error Resume Next
+        Err.Clear
+        b = f.ListBoxW1.ItemChecked(99)
+        Expect.AreEqual 381, Err.Number, "reading ItemChecked(99) of an empty list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ItemData_NoSuchItem_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As LongPtr
+        On Error Resume Next
+        Err.Clear
+        n = f.ListBoxW1.ItemData(99)
+        Expect.AreEqual 381, Err.Number, "reading ItemData(99) of an empty list"
+        Err.Clear
+        f.ListBoxW1.ItemData(99) = 1
+        Expect.AreEqual 381, Err.Number, "ItemData(99) = 1 on an empty list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_AssignedAndRead()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        Dim after As Boolean
+        With f.ListBoxW1
+            Expect.AreEqual -1, .InsertMark, "InsertMark of a new control"
+            .InsertMark = 2
+            Expect.AreEqual 2, .InsertMark(after), "InsertMark after InsertMark = 2"
+            Expect.IsFalse after, "After, read after InsertMark = 2"
+            after = True
+            .InsertMark(after) = 3
+            after = False
+            Expect.AreEqual 3, .InsertMark(after), "InsertMark after InsertMark(True) = 3"
+            Expect.IsTrue after, "After, read after InsertMark(True) = 3"
+            .RemoveItem 3
+            Expect.AreEqual -1, .InsertMark, "InsertMark after RemoveItem of the last item, which had the mark"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_NoSuchItem_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        On Error Resume Next
+        Err.Clear
+        f.ListBoxW1.InsertMark = 99
+        Expect.AreEqual 381, Err.Number, "InsertMark = 99 in a list of four"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_NoSuchItem_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.ListBoxW1.List(99)
+        Expect.AreEqual 5, Err.Number, "reading List(99) of an empty list"
+        Err.Clear
+        f.ListBoxW1.List(99) = "q"
+        Expect.AreEqual 5, Err.Number, "List(99) = ""q"" on an empty list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_AssignedToTheSelectedItem_RaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            .ItemData(1) = 77
+            .ListIndex = 1
+            Rig.ClearLog
+            .List(1) = "GREEN"
+            Expect.AreEqual "Click 1", Rig.Events(), "the events of List(1) = ""GREEN"" with item 1 selected"
+            Expect.AreEqual "GREEN", .List(1), "List(1) after the assignment"
+            Expect.AreEqual 1, .ListIndex, "ListIndex after the assignment"
+            Expect.AreEqual 77, CLng(.ItemData(1)), "ItemData(1) after the assignment"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_WholeTextOrBeginning()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ListBoxW1
+        With f.ListBoxW1
+            Expect.AreEqual 1, .FindItem("GREEN"), "FindItem(""GREEN"") among red, green, blue, white"
+            Expect.AreEqual -1, .FindItem("gr"), "FindItem(""gr"")"
+            Expect.AreEqual 1, .FindItem("gr", , True), "FindItem(""gr"", , True)"
+            Expect.AreEqual 0, .FindItem("r", 0, True), "FindItem(""r"", 0, True): the search comes round to item 0"
+            Expect.AreEqual -1, .FindItem("zz"), "FindItem(""zz"")"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_SelectsAndRaisesNoClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        AddColors f.ListBoxW1
+        Rig.ClearLog
+        With f.ListBoxW1
+            Expect.AreEqual 2, .SelectItem("bl"), "SelectItem(""bl"") among red, green, blue, white"
+            Expect.AreEqual 2, .ListIndex, "ListIndex after SelectItem(""bl"")"
+            Expect.AreEqual -1, .SelectItem("zz"), "SelectItem(""zz"")"
+            Expect.AreEqual 2, .ListIndex, "ListIndex after SelectItem(""zz"")"
+            Expect.AreEqual "", Rig.Events(), "the events of the two calls"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTest_EmptyList_ReturnsMinus1()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual -1, f.ListBoxW1.HitTest(0, 0), "HitTest(0, 0) of an empty list"
+        f.ListBoxW1.AddItem "red"
+        Expect.AreEqual 0, f.ListBoxW1.HitTest(0, 0), "HitTest(0, 0) of a list with an item"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListBoxWSink
+        Set sink.List = f.ListBoxW1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the list.
+        SendMessageW f.ListBoxW1.hWnd, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a ListBoxW, written to Rig.Log.
+Class ListBoxWSink
+
+    Public WithEvents List As VBCCR18.ListBoxW
+
+    Private Sub List_Click() Handles List.Click
+        Rig.Ev "Click " & List.ListIndex
+    End Sub
+
+    Private Sub List_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles List.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class

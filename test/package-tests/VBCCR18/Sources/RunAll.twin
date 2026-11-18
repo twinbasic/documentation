@@ -5,8 +5,272 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 13 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 234 test cases"
         On Error Resume Next
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Click_ByTheUser_ChecksAndUnchecks
+        Expect.EndCase "CheckBoxWTests.Click_ByTheUser_ChecksAndUnchecks", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Click_ByTheUser_OnGrayed_Unchecks
+        Expect.EndCase "CheckBoxWTests.Click_ByTheUser_OnGrayed_Unchecks", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Value_TrueAndFalse_AreCheckedAndUnchecked
+        Expect.EndCase "CheckBoxWTests.Value_TrueAndFalse_AreCheckedAndUnchecked", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Value_OutOfRange_Raises380
+        Expect.EndCase "CheckBoxWTests.Value_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Click_RaisedForEachChangeOfValue
+        Expect.EndCase "CheckBoxWTests.Click_RaisedForEachChangeOfValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Style_GraphicalInOwnerDrawMode_Raises383
+        Expect.EndCase "CheckBoxWTests.Style_GraphicalInOwnerDrawMode_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.DrawMode_OwnerDraw_MakesStyleStandard
+        Expect.EndCase "CheckBoxWTests.DrawMode_OwnerDraw_MakesStyleStandard", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Appearance_SetsForeColor
+        Expect.EndCase "CheckBoxWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.Hot_Assigned_Raises383
+        Expect.EndCase "CheckBoxWTests.Hot_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.ImageList_TakesAControlANameOrAHandle
+        Expect.EndCase "CheckBoxWTests.ImageList_TakesAControlANameOrAHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.ImageList_UnknownName_IsNothing
+        Expect.EndCase "CheckBoxWTests.ImageList_UnknownName_IsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.ImageList_OtherObject_Raises35610
+        Expect.EndCase "CheckBoxWTests.ImageList_OtherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.ImageList_OtherType_Raises13
+        Expect.EndCase "CheckBoxWTests.ImageList_OtherType_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CheckBoxWTests.ImageListMargin_Negative_Raises380
+        Expect.EndCase "CheckBoxWTests.ImageListMargin_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.AddItem_NewIndex_IsWhereTheItemWent
+        Expect.EndCase "ComboBoxWTests.AddItem_NewIndex_IsWhereTheItemWent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.AddItem_IndexPastTheEnd_Raises5
+        Expect.EndCase "ComboBoxWTests.AddItem_IndexPastTheEnd_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Sorted_NewItemsGoInOrder
+        Expect.EndCase "ComboBoxWTests.Sorted_NewItemsGoInOrder", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace
+        Expect.EndCase "ComboBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Sorted_SetAtRunTime_RaisesClickForTheSelectedItem
+        Expect.EndCase "ComboBoxWTests.Sorted_SetAtRunTime_RaisesClickForTheSelectedItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.List_Assigned_KeepsItemData
+        Expect.EndCase "ComboBoxWTests.List_Assigned_KeepsItemData", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.List_NoSuchItem_Raises5
+        Expect.EndCase "ComboBoxWTests.List_NoSuchItem_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.ItemData_NoSuchItem_Raises381
+        Expect.EndCase "ComboBoxWTests.ItemData_NoSuchItem_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.ListIndex_Assigned_SetsTextAndRaisesClick
+        Expect.EndCase "ComboBoxWTests.ListIndex_Assigned_SetsTextAndRaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.ListIndex_SameValue_RaisesNothing
+        Expect.EndCase "ComboBoxWTests.ListIndex_SameValue_RaisesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.ListIndex_NoSuchItem_Raises380
+        Expect.EndCase "ComboBoxWTests.ListIndex_NoSuchItem_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Text_Assigned_RaisesChangeAndKeepsListIndex
+        Expect.EndCase "ComboBoxWTests.Text_Assigned_RaisesChangeAndKeepsListIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Text_LongerThanMaxLength_IsCut
+        Expect.EndCase "ComboBoxWTests.Text_LongerThanMaxLength_IsCut", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.MaxLength_Zero_LimitsTypingTo255
+        Expect.EndCase "ComboBoxWTests.MaxLength_Zero_LimitsTypingTo255", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Style_AtRunTime_Raises382
+        Expect.EndCase "ComboBoxWTests.Style_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.DrawMode_AtRunTime_Raises382
+        Expect.EndCase "ComboBoxWTests.DrawMode_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.IntegralHeight_AtRunTime_Raises382
+        Expect.EndCase "ComboBoxWTests.IntegralHeight_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.MaxDropDownItems_OutOfRange_Raises380
+        Expect.EndCase "ComboBoxWTests.MaxDropDownItems_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.FindItem_WholeTextOrBeginning
+        Expect.EndCase "ComboBoxWTests.FindItem_WholeTextOrBeginning", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.SelectItem_SelectsTheItemThatBeginsWithTheText
+        Expect.EndCase "ComboBoxWTests.SelectItem_SelectsTheItemThatBeginsWithTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.AutoSelect_TypedTextOfAnItem_SelectsTheItem
+        Expect.EndCase "ComboBoxWTests.AutoSelect_TypedTextOfAnItem_SelectsTheItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.DroppedDown_Assigned_RaisesDropDownAndCloseUp
+        Expect.EndCase "ComboBoxWTests.DroppedDown_Assigned_RaisesDropDownAndCloseUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.CharacterCasing_Upper_ChangesTheTextAndTheItems
+        Expect.EndCase "ComboBoxWTests.CharacterCasing_Upper_ChangesTheTextAndTheItems", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.DropDownHeight_Assigned_ClearsIntegralHeight
+        Expect.EndCase "ComboBoxWTests.DropDownHeight_Assigned_ClearsIntegralHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.DropDownHeight_Zero_Raises380
+        Expect.EndCase "ComboBoxWTests.DropDownHeight_Zero_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Locked_TypingChangesNothing
+        Expect.EndCase "ComboBoxWTests.Locked_TypingChangesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.Clear_EmptiesTheListAndTheText
+        Expect.EndCase "ComboBoxWTests.Clear_EmptiesTheListAndTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.RemoveItem_TheSelectedItem_EmptiesTheText
+        Expect.EndCase "ComboBoxWTests.RemoveItem_TheSelectedItem_EmptiesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ComboBoxWTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "ComboBoxWTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.Value_True_RaisesClick
+        Expect.EndCase "CommandButtonWTests.Value_True_RaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.Value_True_OnADisabledButton_RaisesClick
+        Expect.EndCase "CommandButtonWTests.Value_True_OnADisabledButton_RaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.PerformClick_RaisesClick
+        Expect.EndCase "CommandButtonWTests.PerformClick_RaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.DroppedDown_True_RaisesDropDown
+        Expect.EndCase "CommandButtonWTests.DroppedDown_True_RaisesDropDown", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.DroppedDown_WithoutSplitButton_DoesNothing
+        Expect.EndCase "CommandButtonWTests.DroppedDown_WithoutSplitButton_DoesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.Style_GraphicalInOwnerDrawMode_Raises383
+        Expect.EndCase "CommandButtonWTests.Style_GraphicalInOwnerDrawMode_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.DrawMode_OwnerDraw_MakesStyleStandard
+        Expect.EndCase "CommandButtonWTests.DrawMode_OwnerDraw_MakesStyleStandard", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.Alignment_OutOfRange_Raises380
+        Expect.EndCase "CommandButtonWTests.Alignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.SplitButtonAlignment_OutOfRange_Raises380
+        Expect.EndCase "CommandButtonWTests.SplitButtonAlignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.Hot_Assigned_Raises383
+        Expect.EndCase "CommandButtonWTests.Hot_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.ImageList_TakesAControlANameOrAHandle
+        Expect.EndCase "CommandButtonWTests.ImageList_TakesAControlANameOrAHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.ImageList_UnknownName_IsNothing
+        Expect.EndCase "CommandButtonWTests.ImageList_UnknownName_IsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.ImageList_OtherObject_Raises35610
+        Expect.EndCase "CommandButtonWTests.ImageList_OtherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.ImageList_OtherType_Raises13
+        Expect.EndCase "CommandButtonWTests.ImageList_OtherType_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandButtonWTests.ImageListMargin_Negative_Raises380
+        Expect.EndCase "CommandButtonWTests.ImageListMargin_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.Value_True_RaisesClick
+        Expect.EndCase "CommandLinkTests.Value_True_RaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.PerformClick_RaisesClick
+        Expect.EndCase "CommandLinkTests.PerformClick_RaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.Hint_KeepsUnicodeText
+        Expect.EndCase "CommandLinkTests.Hint_KeepsUnicodeText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.Hot_Assigned_Raises383
+        Expect.EndCase "CommandLinkTests.Hot_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.ImageList_TakesAControlANameOrAHandle
+        Expect.EndCase "CommandLinkTests.ImageList_TakesAControlANameOrAHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.ImageList_UnknownName_IsNothing
+        Expect.EndCase "CommandLinkTests.ImageList_UnknownName_IsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.ImageList_OtherObject_Raises35610
+        Expect.EndCase "CommandLinkTests.ImageList_OtherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommandLinkTests.ImageList_OtherType_Raises13
+        Expect.EndCase "CommandLinkTests.ImageList_OtherType_Raises13", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         CommonTests.Name_IsTheNameOnTheForm
@@ -31,6 +295,290 @@ Module RunAll
         Err.Clear
         CommonTests.OLEDropMode_Automatic_Raises380
         Expect.EndCase "CommonTests.OLEDropMode_Automatic_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FrameWTests.Container_Set_PutsTheControlInTheFrame
+        Expect.EndCase "FrameWTests.Container_Set_PutsTheControlInTheFrame", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FrameWTests.Enabled_False_LeavesTheContainedControlsEnabledProperty
+        Expect.EndCase "FrameWTests.Enabled_False_LeavesTheContainedControlsEnabledProperty", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FrameWTests.Resize_RaisedWhenTheSizeChanges
+        Expect.EndCase "FrameWTests.Resize_RaisedWhenTheSizeChanges", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FrameWTests.BorderStyle_OutOfRange_Raises380
+        Expect.EndCase "FrameWTests.BorderStyle_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FrameWTests.PictureAlignment_OutOfRange_Raises380
+        Expect.EndCase "FrameWTests.PictureAlignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FrameWTests.Appearance_SetsForeColor
+        Expect.EndCase "FrameWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.Caption_Assigned_RaisesChangeOnlyWhenItDiffers
+        Expect.EndCase "LabelWTests.Caption_Assigned_RaisesChangeOnlyWhenItDiffers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.WordWrap_WhileSingleLine_Raises383
+        Expect.EndCase "LabelWTests.WordWrap_WhileSingleLine_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.SingleLine_True_SetsWordWrapFalse
+        Expect.EndCase "LabelWTests.SingleLine_True_SetsWordWrapFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.AutoSize_LongerCaption_WidensTheLabel
+        Expect.EndCase "LabelWTests.AutoSize_LongerCaption_WidensTheLabel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.AutoSize_WordWrap_KeepsTheWidthAndGrowsDown
+        Expect.EndCase "LabelWTests.AutoSize_WordWrap_KeepsTheWidthAndGrowsDown", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.AutoSize_RightAligned_KeepsTheRightEdge
+        Expect.EndCase "LabelWTests.AutoSize_RightAligned_KeepsTheRightEdge", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.Appearance_Flat_MakesABorderASingleLine
+        Expect.EndCase "LabelWTests.Appearance_Flat_MakesABorderASingleLine", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.Appearance_SetsForeColor
+        Expect.EndCase "LabelWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Caption_Markup_MakesTheLinks
+        Expect.EndCase "LinkLabelTests.Caption_Markup_MakesTheLinks", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Link_UrlAndIDName_ComeFromTheMarkup
+        Expect.EndCase "LinkLabelTests.Link_UrlAndIDName_ComeFromTheMarkup", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Link_CaptionAssigned_RewritesTheControlsCaption
+        Expect.EndCase "LinkLabelTests.Link_CaptionAssigned_RewritesTheControlsCaption", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Caption_Changed_ForgetsWhatCodeSetOnALink
+        Expect.EndCase "LinkLabelTests.Caption_Changed_ForgetsWhatCodeSetOnALink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Link_KeptAfterTheCaptionChanged_IsTheLinkOfItsNumber
+        Expect.EndCase "LinkLabelTests.Link_KeptAfterTheCaptionChanged_IsTheLinkOfItsNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Links_Item_OutOfRange_Raises35600
+        Expect.EndCase "LinkLabelTests.Links_Item_OutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Links_Exists_SaysWhetherTheNumberIsALink
+        Expect.EndCase "LinkLabelTests.Links_Exists_SaysWhetherTheNumberIsALink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Link_LeftAssigned_Raises383
+        Expect.EndCase "LinkLabelTests.Link_LeftAssigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.SelectedItem_Set_SelectsThatLinkAlone
+        Expect.EndCase "LinkLabelTests.SelectedItem_Set_SelectsThatLinkAlone", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.SelectedItem_Nothing_SelectsNoLink
+        Expect.EndCase "LinkLabelTests.SelectedItem_Nothing_SelectsNoLink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.LinkActivate_Enter_IsRaisedForTheSelectedLink
+        Expect.EndCase "LinkLabelTests.LinkActivate_Enter_IsRaisedForTheSelectedLink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.LinkActivate_Enter_NotRaisedForADisabledLink
+        Expect.EndCase "LinkLabelTests.LinkActivate_Enter_NotRaisedForADisabledLink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Alignment_OutOfRange_Raises380
+        Expect.EndCase "LinkLabelTests.Alignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LinkLabelTests.Alignment_Changed_MakesANewWindow
+        Expect.EndCase "LinkLabelTests.Alignment_Changed_MakesANewWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.AddItem_NewIndex_IsWhereTheItemWent
+        Expect.EndCase "ListBoxWTests.AddItem_NewIndex_IsWhereTheItemWent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.AddItem_IndexPastTheEnd_Raises5
+        Expect.EndCase "ListBoxWTests.AddItem_IndexPastTheEnd_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Sorted_NewItemsGoInOrder
+        Expect.EndCase "ListBoxWTests.Sorted_NewItemsGoInOrder", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace
+        Expect.EndCase "ListBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Sorted_SetAtRunTime_RaisesClickForTheSelectedItem
+        Expect.EndCase "ListBoxWTests.Sorted_SetAtRunTime_RaisesClickForTheSelectedItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ListIndex_Assigned_SelectsAndRaisesClick
+        Expect.EndCase "ListBoxWTests.ListIndex_Assigned_SelectsAndRaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ListIndex_SameValue_RaisesNothing
+        Expect.EndCase "ListBoxWTests.ListIndex_SameValue_RaisesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ListIndex_NoSuchItem_Raises380
+        Expect.EndCase "ListBoxWTests.ListIndex_NoSuchItem_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Text_Assigned_SelectsTheItemWithThatText
+        Expect.EndCase "ListBoxWTests.Text_Assigned_SelectsTheItemWithThatText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Selected_Assigned_RaisesClickWhenTheSelectionChanges
+        Expect.EndCase "ListBoxWTests.Selected_Assigned_RaisesClickWhenTheSelectionChanges", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Selected_NoSuchItem_Raises381
+        Expect.EndCase "ListBoxWTests.Selected_NoSuchItem_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.MultiSelect_AtRunTime_KeepsTheItemsAndTheSelection
+        Expect.EndCase "ListBoxWTests.MultiSelect_AtRunTime_KeepsTheItemsAndTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError
+        Expect.EndCase "ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError
+        Expect.EndCase "ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ListIndex_MultiSelect_MovesTheFocusOnly
+        Expect.EndCase "ListBoxWTests.ListIndex_MultiSelect_MovesTheFocusOnly", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.SelectedIndices_HoldsTheIndexesInOrder
+        Expect.EndCase "ListBoxWTests.SelectedIndices_HoldsTheIndexesInOrder", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.SetSelRange_SelectsOrRemovesTheSelection
+        Expect.EndCase "ListBoxWTests.SetSelRange_SelectsOrRemovesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Text_MultiSelect_NoSuchText_Raises380
+        Expect.EndCase "ListBoxWTests.Text_MultiSelect_NoSuchText_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.Style_AtRunTime_Raises382
+        Expect.EndCase "ListBoxWTests.Style_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.DrawMode_AtRunTime_Raises382
+        Expect.EndCase "ListBoxWTests.DrawMode_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.IntegralHeight_AtRunTime_Raises382
+        Expect.EndCase "ListBoxWTests.IntegralHeight_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ItemChecked_StandardStyle_IsAlwaysFalse
+        Expect.EndCase "ListBoxWTests.ItemChecked_StandardStyle_IsAlwaysFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ItemChecked_NoSuchItem_Raises381
+        Expect.EndCase "ListBoxWTests.ItemChecked_NoSuchItem_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.ItemData_NoSuchItem_Raises381
+        Expect.EndCase "ListBoxWTests.ItemData_NoSuchItem_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.InsertMark_AssignedAndRead
+        Expect.EndCase "ListBoxWTests.InsertMark_AssignedAndRead", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.InsertMark_NoSuchItem_Raises381
+        Expect.EndCase "ListBoxWTests.InsertMark_NoSuchItem_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.List_NoSuchItem_Raises5
+        Expect.EndCase "ListBoxWTests.List_NoSuchItem_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.List_AssignedToTheSelectedItem_RaisesClick
+        Expect.EndCase "ListBoxWTests.List_AssignedToTheSelectedItem_RaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.FindItem_WholeTextOrBeginning
+        Expect.EndCase "ListBoxWTests.FindItem_WholeTextOrBeginning", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.SelectItem_SelectsAndRaisesNoClick
+        Expect.EndCase "ListBoxWTests.SelectItem_SelectsAndRaisesNoClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.HitTest_EmptyList_ReturnsMinus1
+        Expect.EndCase "ListBoxWTests.HitTest_EmptyList_ReturnsMinus1", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListBoxWTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "ListBoxWTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.Click_RaisedWhenValueBecomesTrue
+        Expect.EndCase "OptionButtonWTests.Click_RaisedWhenValueBecomesTrue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.Click_ByTheUser_OnASelectedOption_RaisesNothing
+        Expect.EndCase "OptionButtonWTests.Click_ByTheUser_OnASelectedOption_RaisesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.Style_GraphicalInOwnerDrawMode_Raises383
+        Expect.EndCase "OptionButtonWTests.Style_GraphicalInOwnerDrawMode_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.DrawMode_OwnerDraw_MakesStyleStandard
+        Expect.EndCase "OptionButtonWTests.DrawMode_OwnerDraw_MakesStyleStandard", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.Appearance_SetsForeColor
+        Expect.EndCase "OptionButtonWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.Hot_Assigned_Raises383
+        Expect.EndCase "OptionButtonWTests.Hot_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.ImageList_TakesAControlANameOrAHandle
+        Expect.EndCase "OptionButtonWTests.ImageList_TakesAControlANameOrAHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.ImageList_UnknownName_IsNothing
+        Expect.EndCase "OptionButtonWTests.ImageList_UnknownName_IsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.ImageList_OtherObject_Raises35610
+        Expect.EndCase "OptionButtonWTests.ImageList_OtherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.ImageList_OtherType_Raises13
+        Expect.EndCase "OptionButtonWTests.ImageList_OtherType_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        OptionButtonWTests.ImageListMargin_Negative_Raises380
+        Expect.EndCase "OptionButtonWTests.ImageListMargin_Negative_Raises380", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         ProgressBarTests.Value_OutsideTheRange_IsTheNearestEnd
@@ -59,6 +607,342 @@ Module RunAll
         Err.Clear
         ProgressBarTests.Change_RaisedOnceForEachChangeOfValue
         Expect.EndCase "ProgressBarTests.Change_RaisedOnceForEachChangeOfValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Text_LongerThanMaxLength_IsCutToIt
+        Expect.EndCase "TextBoxWTests.Text_LongerThanMaxLength_IsCutToIt", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Typing_PastMaxLength_RaisesMaxText
+        Expect.EndCase "TextBoxWTests.Typing_PastMaxLength_RaisesMaxText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.MaxLength_Negative_Raises380
+        Expect.EndCase "TextBoxWTests.MaxLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Typing_Locked_ChangesNothing
+        Expect.EndCase "TextBoxWTests.Typing_Locked_ChangesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Typing_AllowOnlyNumbers_RefusesALetter
+        Expect.EndCase "TextBoxWTests.Typing_AllowOnlyNumbers_RefusesALetter", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Text_AllowOnlyNumbers_TakesLetters
+        Expect.EndCase "TextBoxWTests.Text_AllowOnlyNumbers_TakesLetters", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.CharacterCasing_Upper_ConvertsWhatIsAssignedAndTyped
+        Expect.EndCase "TextBoxWTests.CharacterCasing_Upper_ConvertsWhatIsAssignedAndTyped", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.CharacterCasing_Upper_LeavesTheTextAlreadyThere
+        Expect.EndCase "TextBoxWTests.CharacterCasing_Upper_LeavesTheTextAlreadyThere", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.OverTypeMode_WithoutAllowOverType_StaysFalse
+        Expect.EndCase "TextBoxWTests.OverTypeMode_WithoutAllowOverType_StaysFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Typing_OverTypeMode_ReplacesTheNextCharacter
+        Expect.EndCase "TextBoxWTests.Typing_OverTypeMode_ReplacesTheNextCharacter", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.InsertKey_AllowOverType_TogglesOverTypeMode
+        Expect.EndCase "TextBoxWTests.InsertKey_AllowOverType_TogglesOverTypeMode", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Text_Assigned_RaisesChangeOnlyWhenItDiffers
+        Expect.EndCase "TextBoxWTests.Text_Assigned_RaisesChangeOnlyWhenItDiffers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Text_Assigned_EmptiesUndoAndMovesTheInsertionPointToTheStart
+        Expect.EndCase "TextBoxWTests.Text_Assigned_EmptiesUndoAndMovesTheInsertionPointToTheStart", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Modified_TrueAfterTyping_FalseAfterText
+        Expect.EndCase "TextBoxWTests.Modified_TrueAfterTyping_FalseAfterText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Undo_TakesBackWhatWasTyped
+        Expect.EndCase "TextBoxWTests.Undo_TakesBackWhatWasTyped", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ResetUndoQueue_LeavesNothingToUndo
+        Expect.EndCase "TextBoxWTests.ResetUndoQueue_LeavesNothingToUndo", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.SelText_Assigned_ReplacesTheSelection
+        Expect.EndCase "TextBoxWTests.SelText_Assigned_ReplacesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.SelStart_PastTheEnd_IsTheEnd
+        Expect.EndCase "TextBoxWTests.SelStart_PastTheEnd_IsTheEnd", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.SelStart_Negative_Raises380
+        Expect.EndCase "TextBoxWTests.SelStart_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.SelLength_Negative_Raises380
+        Expect.EndCase "TextBoxWTests.SelLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.MultiLine_Changed_MakesANewWindowAndKeepsTheText
+        Expect.EndCase "TextBoxWTests.MultiLine_Changed_MakesANewWindowAndKeepsTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.GetLine_ReturnsTheLineOfThatNumber
+        Expect.EndCase "TextBoxWTests.GetLine_ReturnsTheLineOfThatNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.GetLine_Zero_IsTheLineOfTheInsertionPoint
+        Expect.EndCase "TextBoxWTests.GetLine_Zero_IsTheLineOfTheInsertionPoint", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.GetLineFromChar_ReturnsTheLineNumber
+        Expect.EndCase "TextBoxWTests.GetLineFromChar_ReturnsTheLineNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.GetLineFromChar_BelowMinusOne_Raises380
+        Expect.EndCase "TextBoxWTests.GetLineFromChar_BelowMinusOne_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.GetLine_Negative_Raises380
+        Expect.EndCase "TextBoxWTests.GetLine_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.GetLine_PastTheLastLine_Raises380
+        Expect.EndCase "TextBoxWTests.GetLine_PastTheLastLine_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380
+        Expect.EndCase "TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.Scroll_RaisedWhenTheTextScrolls
+        Expect.EndCase "TextBoxWTests.Scroll_RaisedWhenTheTextScrolls", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.LeftMargin_Negative_Raises380
+        Expect.EndCase "TextBoxWTests.LeftMargin_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.OLEDropMode_Automatic_IsAccepted
+        Expect.EndCase "TextBoxWTests.OLEDropMode_Automatic_IsAccepted", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.OLEDropMode_OutOfRange_Raises380
+        Expect.EndCase "TextBoxWTests.OLEDropMode_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.PasswordChar_TwoCharacters_Raises380
+        Expect.EndCase "TextBoxWTests.PasswordChar_TwoCharacters_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.PasswordChar_NoneSet_IsAnEmptyString
+        Expect.EndCase "TextBoxWTests.PasswordChar_NoneSet_IsAnEmptyString", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ShowBalloonTip_IconOutOfRange_Raises380
+        Expect.EndCase "TextBoxWTests.ShowBalloonTip_IconOutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ValidateNetAddress_ValidatorOff_Raises5
+        Expect.EndCase "TextBoxWTests.ValidateNetAddress_ValidatorOff_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ValidateNetAddress_DnsName_GivesTheName
+        Expect.EndCase "TextBoxWTests.ValidateNetAddress_DnsName_GivesTheName", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress
+        Expect.EndCase "TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ValidateNetAddress_NotAnAddress_Raises5
+        Expect.EndCase "TextBoxWTests.ValidateNetAddress_NotAnAddress_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TextBoxWTests.ValidateNetAddress_Empty_Raises380
+        Expect.EndCase "TextBoxWTests.ValidateNetAddress_Empty_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.List_RaisesGetVirtualItem
+        Expect.EndCase "VListBoxTests.List_RaisesGetVirtualItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.List_NoHandler_IsEmpty
+        Expect.EndCase "VListBoxTests.List_NoHandler_IsEmpty", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.List_NoSuchItem_Raises5
+        Expect.EndCase "VListBoxTests.List_NoSuchItem_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.ListCount_Negative_Raises380
+        Expect.EndCase "VListBoxTests.ListCount_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.ListCount_Assigned_RemovesTheSelection
+        Expect.EndCase "VListBoxTests.ListCount_Assigned_RemovesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.ListIndex_Assigned_SelectsAndRaisesClick
+        Expect.EndCase "VListBoxTests.ListIndex_Assigned_SelectsAndRaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.ListIndex_NoSuchItem_Raises380
+        Expect.EndCase "VListBoxTests.ListIndex_NoSuchItem_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.Selected_NoSuchItem_Raises381
+        Expect.EndCase "VListBoxTests.Selected_NoSuchItem_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.FindItem_RaisesFindVirtualItem
+        Expect.EndCase "VListBoxTests.FindItem_RaisesFindVirtualItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.Text_Assigned_RaisesFindVirtualItemAndSelects
+        Expect.EndCase "VListBoxTests.Text_Assigned_RaisesFindVirtualItemAndSelects", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.SelectItem_SelectsWhatTheHandlerFound
+        Expect.EndCase "VListBoxTests.SelectItem_SelectsWhatTheHandlerFound", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.TypedCharacter_RaisesIncrementalSearchAndSelects
+        Expect.EndCase "VListBoxTests.TypedCharacter_RaisesIncrementalSearchAndSelects", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.MultiSelect_AtRunTime_KeepsListCount
+        Expect.EndCase "VListBoxTests.MultiSelect_AtRunTime_KeepsListCount", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError
+        Expect.EndCase "VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.DrawMode_AtRunTime_Raises382
+        Expect.EndCase "VListBoxTests.DrawMode_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.IntegralHeight_AtRunTime_Raises382
+        Expect.EndCase "VListBoxTests.IntegralHeight_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.HitTest_EmptyList_ReturnsMinus1
+        Expect.EndCase "VListBoxTests.HitTest_EmptyList_ReturnsMinus1", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VListBoxTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "VListBoxTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.List_RaisesGetVirtualItem
+        Expect.EndCase "VirtualComboTests.List_RaisesGetVirtualItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.List_NoHandler_IsEmpty
+        Expect.EndCase "VirtualComboTests.List_NoHandler_IsEmpty", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.List_NoSuchItem_Raises5
+        Expect.EndCase "VirtualComboTests.List_NoSuchItem_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.ListCount_Negative_Raises380
+        Expect.EndCase "VirtualComboTests.ListCount_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.ListCount_Assigned_RemovesTheSelectionAndKeepsTheText
+        Expect.EndCase "VirtualComboTests.ListCount_Assigned_RemovesTheSelectionAndKeepsTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.ListIndex_Assigned_SetsTextAndRaisesClick
+        Expect.EndCase "VirtualComboTests.ListIndex_Assigned_SetsTextAndRaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.ListIndex_SameValue_RaisesNoClick
+        Expect.EndCase "VirtualComboTests.ListIndex_SameValue_RaisesNoClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.ListIndex_NoSuchItem_Raises380
+        Expect.EndCase "VirtualComboTests.ListIndex_NoSuchItem_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.Text_Assigned_RaisesChangeAndKeepsListIndex
+        Expect.EndCase "VirtualComboTests.Text_Assigned_RaisesChangeAndKeepsListIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.FindItem_RaisesFindVirtualItem
+        Expect.EndCase "VirtualComboTests.FindItem_RaisesFindVirtualItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.SelectItem_SelectsWhatTheHandlerFound
+        Expect.EndCase "VirtualComboTests.SelectItem_SelectsWhatTheHandlerFound", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.DrawMode_AssignedAtRunTime
+        Expect.EndCase "VirtualComboTests.DrawMode_AssignedAtRunTime", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.Style_AtRunTime_Raises382
+        Expect.EndCase "VirtualComboTests.Style_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.IntegralHeight_AtRunTime_Raises382
+        Expect.EndCase "VirtualComboTests.IntegralHeight_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.MaxDropDownItems_OutOfRange_Raises380
+        Expect.EndCase "VirtualComboTests.MaxDropDownItems_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        VirtualComboTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "VirtualComboTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.Caption_Assigned_RaisesChangeOnlyWhenItDiffers
+        Expect.EndCase "WindowedLabelTests.Caption_Assigned_RaisesChangeOnlyWhenItDiffers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.WindowText_IsTheCaption
+        Expect.EndCase "WindowedLabelTests.WindowText_IsTheCaption", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.WindowText_Set_ChangesTheCaption
+        Expect.EndCase "WindowedLabelTests.WindowText_Set_ChangesTheCaption", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.WordWrap_WhileSingleLine_Raises383
+        Expect.EndCase "WindowedLabelTests.WordWrap_WhileSingleLine_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.SingleLine_True_SetsWordWrapFalse
+        Expect.EndCase "WindowedLabelTests.SingleLine_True_SetsWordWrapFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.AutoSize_LongerCaption_WidensTheLabel
+        Expect.EndCase "WindowedLabelTests.AutoSize_LongerCaption_WidensTheLabel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.DisplayedCaption_EndEllipsis_EndsInThreeDots
+        Expect.EndCase "WindowedLabelTests.DisplayedCaption_EndEllipsis_EndsInThreeDots", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.DisplayedCaption_PathEllipsis_KeepsTheFileName
+        Expect.EndCase "WindowedLabelTests.DisplayedCaption_PathEllipsis_KeepsTheFileName", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.Appearance_Flat_MakesABorderASingleLine
+        Expect.EndCase "WindowedLabelTests.Appearance_Flat_MakesABorderASingleLine", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        WindowedLabelTests.Appearance_SetsForeColor
+        Expect.EndCase "WindowedLabelTests.Appearance_SetsForeColor", Err.Number, Err.Description
         On Error GoTo 0
         Expect.EndRun
     End Sub

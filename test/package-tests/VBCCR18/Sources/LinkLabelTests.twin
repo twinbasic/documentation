@@ -1,0 +1,293 @@
+' LinkLabelTests: the links a LinkLabel makes from its caption, the LlbLinks collection and the
+' LlbLink objects, the selection and the LinkActivate event. The Enter key is given to the control
+' as a WM_KEYDOWN message, which is what the keyboard sends it.
+[TestFixture]
+Module LinkLabelTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_KEYDOWN As Long = &H100
+
+    Private Const TwoLinks As String = "Read the <A HREF=""https://example.com/docs"" ID=""docs"">documentation</A> or <A>ask a question</A>."
+
+    [TestCase]
+    Public Sub Caption_Markup_MakesTheLinks()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.LinkLabel1.hWnd <> 0, "hWnd of a LinkLabel on a loaded form is a window"
+        Expect.AreEqual "<A>LinkLabel1</A>", f.LinkLabel1.Caption, "Caption of a new LinkLabel"
+        Expect.AreEqual 1, CLng(f.LinkLabel1.Links.Count), "Links.Count of a new LinkLabel"
+        f.LinkLabel1.Caption = TwoLinks
+        Expect.AreEqual TwoLinks, f.LinkLabel1.Caption, "Caption returns the text with its marks"
+        Expect.AreEqual 2, CLng(f.LinkLabel1.Links.Count), "Links.Count of a caption with two links"
+        Expect.AreEqual "documentation", f.LinkLabel1.Links(1).Caption, "Caption of the first link"
+        Expect.AreEqual "ask a question", f.LinkLabel1.Links(2).Caption, "Caption of the second link"
+        f.LinkLabel1.Caption = "<a href=""x"">lower</a>"
+        Expect.AreEqual 1, CLng(f.LinkLabel1.Links.Count), "Links.Count of a caption with one link in small letters"
+        Expect.AreEqual "x", f.LinkLabel1.Links(1).URL, "URL of a link whose mark is in small letters"
+        f.LinkLabel1.Caption = "no links"
+        Expect.AreEqual 0, CLng(f.LinkLabel1.Links.Count), "Links.Count of a caption without links"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Link_UrlAndIDName_ComeFromTheMarkup()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LinkLabel1.Caption = TwoLinks
+        With f.LinkLabel1.Links(1)
+            Expect.AreEqual 1, CLng(.Index), "Index of the first link"
+            Expect.AreEqual "https://example.com/docs", .URL, "URL of the first link"
+            Expect.AreEqual "docs", .IDName, "IDName of the first link"
+            Expect.IsTrue .Enabled, "Enabled of a new link"
+            Expect.IsFalse .Visited, "Visited of a new link"
+            Expect.IsFalse .Selected, "Selected of a new link"
+        End With
+        With f.LinkLabel1.Links(2)
+            Expect.AreEqual "", .URL, "URL of a link without HREF"
+            Expect.AreEqual "", .IDName, "IDName of a link without ID"
+            .URL = "https://example.com/ask"
+            .IDName = "ask"
+            .Visited = True
+            .Enabled = False
+            Expect.AreEqual "https://example.com/ask", .URL, "URL after an assignment"
+            Expect.AreEqual "ask", .IDName, "IDName after an assignment"
+            Expect.IsTrue .Visited, "Visited after Visited = True"
+            Expect.IsFalse .Enabled, "Enabled after Enabled = False"
+        End With
+        Expect.AreEqual TwoLinks, f.LinkLabel1.Caption, "Caption after a link's URL and IDName are set in code"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Link_CaptionAssigned_RewritesTheControlsCaption()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LinkLabel1.Caption = TwoLinks
+        f.LinkLabel1.Links(2).Caption = "send feedback"
+        Expect.AreEqual "send feedback", f.LinkLabel1.Links(2).Caption, "Caption of the second link after an assignment"
+        Expect.AreEqual "Read the <A HREF=""https://example.com/docs"" ID=""docs"">documentation</A> or <A>send feedback</A>.", f.LinkLabel1.Caption, "Caption of the control after the second link's Caption is assigned"
+        Expect.AreEqual "https://example.com/docs", f.LinkLabel1.Links(1).URL, "URL of the first link, from the marks, after the second link's Caption is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Caption_Changed_ForgetsWhatCodeSetOnALink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LinkLabel1.Caption = TwoLinks
+        With f.LinkLabel1.Links(2)
+            .URL = "https://example.com/ask"
+            .IDName = "ask"
+            .Visited = True
+            .Enabled = False
+        End With
+        f.LinkLabel1.Caption = "Read the <A>manual</A> or <A>ask a question</A>."
+        With f.LinkLabel1.Links(2)
+            Expect.AreEqual "", .URL, "URL set in code, after the control's caption changed"
+            Expect.AreEqual "", .IDName, "IDName set in code, after the control's caption changed"
+            Expect.IsFalse .Visited, "Visited after the control's caption changed"
+            Expect.IsTrue .Enabled, "Enabled after the control's caption changed"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Link_KeptAfterTheCaptionChanged_IsTheLinkOfItsNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim kept As LlbLink
+        f.LinkLabel1.Caption = "<A>first</A> and <A>second</A>"
+        Set kept = f.LinkLabel1.Links(2)
+        f.LinkLabel1.Caption = "<A>one</A>, <A>two</A>, <A>three</A>"
+        Expect.AreEqual "two", kept.Caption, "Caption of a link object of number 2 after the control's caption changed"
+        f.LinkLabel1.Caption = "<A>only</A>"
+        Expect.AreEqual 2, CLng(kept.Index), "Index of the link object when the caption has one link"
+        Expect.AreEqual "", kept.Caption, "Caption of the link object when the caption has no link of its number"
+        Expect.IsFalse kept.Enabled, "Enabled of the link object when the caption has no link of its number"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Links_Item_OutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim link As LlbLink
+        f.LinkLabel1.Caption = TwoLinks
+        On Error Resume Next
+        Err.Clear
+        Set link = f.LinkLabel1.Links(3)
+        Expect.AreEqual 35600, Err.Number, "Links(3) of two links"
+        Err.Clear
+        Set link = f.LinkLabel1.Links(0)
+        Expect.AreEqual 35600, Err.Number, "Links(0)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Links_Exists_SaysWhetherTheNumberIsALink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim link As LlbLink, seen As String
+        f.LinkLabel1.Caption = TwoLinks
+        Expect.IsTrue f.LinkLabel1.Links.Exists(1), "Exists(1) of two links"
+        Expect.IsTrue f.LinkLabel1.Links.Exists(2), "Exists(2) of two links"
+        Expect.IsFalse f.LinkLabel1.Links.Exists(3), "Exists(3) of two links"
+        Expect.IsFalse f.LinkLabel1.Links.Exists(0), "Exists(0)"
+        For Each link In f.LinkLabel1.Links
+            seen = seen & link.Index & " " & link.Caption & "; "
+        Next
+        Expect.AreEqual "1 documentation; 2 ask a question; ", seen, "the links of For Each, in order"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Link_LeftAssigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LinkLabel1.Caption = TwoLinks
+        On Error Resume Next
+        Err.Clear
+        f.LinkLabel1.Links(1).Left = 5
+        Expect.AreEqual 383, Err.Number, "Left = 5 on a link"
+        Err.Clear
+        f.LinkLabel1.Links(1).Top = 5
+        Expect.AreEqual 383, Err.Number, "Top = 5 on a link"
+        Err.Clear
+        f.LinkLabel1.Links(1).Width = 5
+        Expect.AreEqual 383, Err.Number, "Width = 5 on a link"
+        Err.Clear
+        f.LinkLabel1.Links(1).Height = 5
+        Expect.AreEqual 383, Err.Number, "Height = 5 on a link"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedItem_Set_SelectsThatLinkAlone()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LinkLabel1.Caption = TwoLinks
+        Expect.IsTrue f.LinkLabel1.SelectedItem Is Nothing, "SelectedItem of a control whose links were never selected"
+        f.LinkLabel1.Links(2).Selected = True
+        Expect.AreEqual 2, CLng(f.LinkLabel1.SelectedItem.Index), "SelectedItem.Index after Links(2).Selected = True"
+        Set f.LinkLabel1.SelectedItem = f.LinkLabel1.Links(1)
+        Expect.AreEqual 1, CLng(f.LinkLabel1.SelectedItem.Index), "SelectedItem.Index after Set SelectedItem = Links(1)"
+        Expect.IsTrue f.LinkLabel1.Links(1).Selected, "Selected of the first link after Set SelectedItem = Links(1)"
+        Expect.IsFalse f.LinkLabel1.Links(2).Selected, "Selected of the second link after Set SelectedItem = Links(1)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedItem_Nothing_SelectsNoLink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LinkLabel1.Caption = TwoLinks
+        f.LinkLabel1.Links(2).Selected = True
+        Set f.LinkLabel1.SelectedItem = Nothing
+        Expect.IsTrue f.LinkLabel1.SelectedItem Is Nothing, "SelectedItem after Set SelectedItem = Nothing"
+        Expect.IsFalse f.LinkLabel1.Links(2).Selected, "Selected of the link that was selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinkActivate_Enter_IsRaisedForTheSelectedLink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New LinkLabelSink
+        Set sink.Label = f.LinkLabel1
+        f.LinkLabel1.Caption = TwoLinks
+        f.LinkLabel1.Links(2).Selected = True
+        Rig.ClearLog
+        SendMessageW f.LinkLabel1.hWnd, WM_KEYDOWN, vbKeyReturn, 0
+        Expect.AreEqual "LinkActivate 2 ask a question, reason 1", Rig.Events(), "the events of the Enter key with the second link selected"
+        Set sink.Label = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinkActivate_Enter_NotRaisedForADisabledLink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New LinkLabelSink
+        Set sink.Label = f.LinkLabel1
+        f.LinkLabel1.Caption = TwoLinks
+        f.LinkLabel1.Links(1).Enabled = False
+        f.LinkLabel1.Links(1).Selected = True
+        Rig.ClearLog
+        SendMessageW f.LinkLabel1.hWnd, WM_KEYDOWN, vbKeyReturn, 0
+        Expect.AreEqual "", Rig.Events(), "the events of the Enter key with a disabled link selected"
+        Set sink.Label = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.LinkLabel1.Alignment = 2
+        Expect.AreEqual 380, Err.Number, "Alignment = 2"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.LinkLabel1.Alignment), "Alignment after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_Changed_MakesANewWindow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim before As LongPtr
+        f.LinkLabel1.Caption = TwoLinks
+        f.LinkLabel1.Links(1).Visited = True
+        before = f.LinkLabel1.hWnd
+        f.LinkLabel1.Alignment = CCLeftRightAlignmentRight
+        Expect.IsTrue f.LinkLabel1.hWnd <> 0, "hWnd after Alignment = CCLeftRightAlignmentRight is a window"
+        Expect.IsTrue f.LinkLabel1.hWnd <> before, "hWnd after Alignment = CCLeftRightAlignmentRight is another window"
+        Expect.AreEqual TwoLinks, f.LinkLabel1.Caption, "Caption after the change of Alignment"
+        Expect.AreEqual 2, CLng(f.LinkLabel1.Links.Count), "Links.Count after the change of Alignment"
+        Expect.IsFalse f.LinkLabel1.Links(1).Visited, "Visited of a link after the change of Alignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a LinkLabel, written to Rig.Log.
+Class LinkLabelSink
+
+    Public WithEvents Label As VBCCR18.LinkLabel
+
+    Private Sub Label_LinkActivate(ByVal Link As VBCCR18.LlbLink, ByVal Reason As VBCCR18.LlbLinkActivateReasonConstants) Handles Label.LinkActivate
+        Rig.Ev "LinkActivate " & Link.Index & " " & Link.Caption & ", reason " & Reason
+    End Sub
+
+End Class

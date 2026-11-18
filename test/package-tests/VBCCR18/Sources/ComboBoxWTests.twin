@@ -1,0 +1,577 @@
+' ComboBoxWTests: the list, the selection, the text and the events of the ComboBoxW.
+[TestFixture]
+Module ComboBoxWTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_CHAR As Long = &H102
+    Private Const WM_MOUSEMOVE As Long = &H200
+
+    ' Types a text into the text box of the control, a character at a time.
+    Private Sub TypeText(ByVal Combo As VBCCR18.ComboBoxW, ByVal Text As String)
+        Dim i As Long
+        For i = 1 To Len(Text)
+            SendMessageW Combo.hWndEdit, WM_CHAR, AscW(Mid$(Text, i, 1)), 0
+        Next
+    End Sub
+
+    Private Sub AddColors(ByVal Combo As VBCCR18.ComboBoxW)
+        Combo.AddItem "red"
+        Combo.AddItem "green"
+        Combo.AddItem "blue"
+    End Sub
+
+    [TestCase]
+    Public Sub AddItem_NewIndex_IsWhereTheItemWent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            Expect.AreEqual -1, .NewIndex, "NewIndex of a control with no item added"
+            .AddItem "pear"
+            Expect.AreEqual 0, .NewIndex, "NewIndex after the first AddItem"
+            .AddItem "apple"
+            Expect.AreEqual 1, .NewIndex, "NewIndex after the second AddItem"
+            .AddItem "fig", 0
+            Expect.AreEqual 0, .NewIndex, "NewIndex after AddItem ""fig"", 0"
+            Expect.AreEqual "fig", .List(0), "List(0) after AddItem ""fig"", 0"
+            .RemoveItem 0
+            Expect.AreEqual -1, .NewIndex, "NewIndex after RemoveItem"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddItem_IndexPastTheEnd_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.AddItem "x", 99
+        Expect.AreEqual 5, Err.Number, "AddItem ""x"", 99 on an empty list"
+        Err.Clear
+        f.ComboBoxW1.AddItem "x", -1
+        Expect.AreEqual 5, Err.Number, "AddItem ""x"", -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ComboBoxW1.ListCount, "ListCount after the two refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_NewItemsGoInOrder()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            .Sorted = True
+            .AddItem "pear"
+            .AddItem "Apple"
+            .AddItem "fig"
+            .AddItem "apple"
+            Expect.AreEqual "apple Apple fig pear", .List(0) & " " & .List(1) & " " & .List(2) & " " & .List(3), "the items of a Sorted list after AddItem pear, Apple, fig, apple"
+            Expect.AreEqual 0, .NewIndex, "NewIndex after AddItem ""apple"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_SetAtRunTime_LeavesTheItemsInPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            .AddItem "pear"
+            .AddItem "apple"
+            .Sorted = True
+            Expect.AreEqual "pear apple", .List(0) & " " & .List(1), "the items added before Sorted = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_SetAtRunTime_RaisesClickForTheSelectedItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        With f.ComboBoxW1
+            AddColors f.ComboBoxW1
+            .ItemData(2) = 9
+            .ListIndex = 1
+            Rig.ClearLog
+            .Sorted = True
+            Expect.AreEqual "Click 1", Rig.Events(), "the events of Sorted = True with item 1 selected"
+            Expect.AreEqual 1, .ListIndex, "ListIndex after Sorted = True"
+            Expect.AreEqual "green", .Text, "Text after Sorted = True"
+            Expect.AreEqual 9, CLng(.ItemData(2)), "ItemData(2) after Sorted = True"
+        End With
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_Assigned_KeepsItemData()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            .AddItem "abc"
+            .AddItem "def"
+            .ItemData(1) = 77
+            .ListIndex = 1
+            .List(1) = "xyz"
+            Expect.AreEqual "xyz", .List(1), "List(1) after List(1) = ""xyz"""
+            Expect.AreEqual 77, CLng(.ItemData(1)), "ItemData(1) after List(1) = ""xyz"""
+            Expect.AreEqual 1, .ListIndex, "ListIndex after List(1) = ""xyz"" with item 1 selected"
+            Expect.AreEqual "xyz", .Text, "Text after List(1) = ""xyz"" with item 1 selected"
+            Expect.AreEqual 2, .ListCount, "ListCount after List(1) = ""xyz"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_NoSuchItem_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.ComboBoxW1.List(99)
+        Expect.AreEqual 5, Err.Number, "reading List(99) of an empty list"
+        Err.Clear
+        f.ComboBoxW1.List(99) = "q"
+        Expect.AreEqual 5, Err.Number, "List(99) = ""q"" on an empty list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ItemData_NoSuchItem_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As LongPtr
+        On Error Resume Next
+        Err.Clear
+        n = f.ComboBoxW1.ItemData(99)
+        Expect.AreEqual 381, Err.Number, "reading ItemData(99) of an empty list"
+        Err.Clear
+        f.ComboBoxW1.ItemData(99) = 1
+        Expect.AreEqual 381, Err.Number, "ItemData(99) = 1 on an empty list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_Assigned_SetsTextAndRaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        Rig.ClearLog
+        f.ComboBoxW1.ListIndex = 1
+        Expect.AreEqual "Click 1", Rig.Events(), "the events of ListIndex = 1"
+        Expect.AreEqual "green", f.ComboBoxW1.Text, "Text after ListIndex = 1"
+        Rig.ClearLog
+        f.ComboBoxW1.ListIndex = -1
+        Expect.AreEqual "Click -1", Rig.Events(), "the events of ListIndex = -1"
+        Expect.AreEqual "", f.ComboBoxW1.Text, "Text after ListIndex = -1"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_SameValue_RaisesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        f.ComboBoxW1.ListIndex = 1
+        Rig.ClearLog
+        f.ComboBoxW1.ListIndex = 1
+        Expect.AreEqual "", Rig.Events(), "the events of ListIndex = 1 with item 1 selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_NoSuchItem_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ComboBoxW1
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.ListIndex = 99
+        Expect.AreEqual 380, Err.Number, "ListIndex = 99 in a list of three"
+        Err.Clear
+        f.ComboBoxW1.ListIndex = -2
+        Expect.AreEqual 380, Err.Number, "ListIndex = -2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_RaisesChangeAndKeepsListIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        f.ComboBoxW1.ListIndex = 1
+        Rig.ClearLog
+        f.ComboBoxW1.Text = "mauve"
+        f.ComboBoxW1.Text = "mauve"
+        Expect.AreEqual "Change mauve", Rig.Events(), "the events of Text = ""mauve"", twice"
+        Expect.AreEqual 1, f.ComboBoxW1.ListIndex, "ListIndex after Text = ""mauve"" with item 1 selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_LongerThanMaxLength_IsCut()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ComboBoxW1.MaxLength = 3
+        f.ComboBoxW1.Text = "abcdef"
+        Expect.AreEqual "abc", f.ComboBoxW1.Text, "Text after Text = ""abcdef"" with MaxLength 3"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Zero_LimitsTypingTo255()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            Expect.AreEqual 0, .MaxLength, "MaxLength of a new control"
+            .Text = ""
+            TypeText f.ComboBoxW1, String$(260, "x")
+            Expect.AreEqual 255, Len(.Text), "the length of Text after 260 characters typed"
+            .Text = String$(300, "x")
+            Expect.AreEqual 300, Len(.Text), "the length of Text after an assignment of 300 characters"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.Style = CboStyleDropDownList
+        Expect.AreEqual 382, Err.Number, "Style = CboStyleDropDownList at run time"
+        Err.Clear
+        f.ComboBoxW1.Style = 3
+        Expect.AreEqual 380, Err.Number, "Style = 3"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ComboBoxW1.Style), "Style after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawMode_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.DrawMode = CboDrawModeOwnerDrawFixed
+        Expect.AreEqual 382, Err.Number, "DrawMode = CboDrawModeOwnerDrawFixed at run time"
+        Err.Clear
+        f.ComboBoxW1.DrawMode = 3
+        Expect.AreEqual 380, Err.Number, "DrawMode = 3"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ComboBoxW1.DrawMode), "DrawMode after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntegralHeight_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.IntegralHeight = False
+        Expect.AreEqual 382, Err.Number, "IntegralHeight = False at run time"
+        On Error GoTo 0
+        Expect.IsTrue f.ComboBoxW1.IntegralHeight, "IntegralHeight after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDropDownItems_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.MaxDropDownItems = 0
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 0"
+        Err.Clear
+        f.ComboBoxW1.MaxDropDownItems = 31
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 31"
+        On Error GoTo 0
+        Expect.AreEqual 9, CLng(f.ComboBoxW1.MaxDropDownItems), "MaxDropDownItems after the refused assignments"
+        f.ComboBoxW1.MaxDropDownItems = 30
+        Expect.AreEqual 30, CLng(f.ComboBoxW1.MaxDropDownItems), "MaxDropDownItems after MaxDropDownItems = 30"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_WholeTextOrBeginning()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddColors f.ComboBoxW1
+        With f.ComboBoxW1
+            Expect.AreEqual 1, .FindItem("GREEN"), "FindItem(""GREEN"") among red, green, blue"
+            Expect.AreEqual -1, .FindItem("gr"), "FindItem(""gr"")"
+            Expect.AreEqual 1, .FindItem("gr", , True), "FindItem(""gr"", , True)"
+            Expect.AreEqual 0, .FindItem("r", 0, True), "FindItem(""r"", 0, True): the search comes round to item 0"
+            Expect.AreEqual -1, .FindItem("zz"), "FindItem(""zz"")"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_SelectsTheItemThatBeginsWithTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        Rig.ClearLog
+        With f.ComboBoxW1
+            Expect.AreEqual 2, .SelectItem("bl"), "SelectItem(""bl"") among red, green, blue"
+            Expect.AreEqual "Click 2", Rig.Events(), "the events of SelectItem(""bl"")"
+            Expect.AreEqual "blue", .Text, "Text after SelectItem(""bl"")"
+            Expect.AreEqual -1, .SelectItem("zz"), "SelectItem(""zz"")"
+            Expect.AreEqual 2, .ListIndex, "ListIndex after SelectItem(""zz"")"
+        End With
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSelect_TypedTextOfAnItem_SelectsTheItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        With f.ComboBoxW1
+            .AutoSelect = True
+            .Text = ""
+            Rig.ClearLog
+            TypeText f.ComboBoxW1, "red"
+            Expect.AreEqual "Change r | Change re | Click 0 | Change red", Rig.Events(), "the events of typing ""red"" with AutoSelect"
+            Expect.AreEqual 0, .ListIndex, "ListIndex after typing ""red"""
+        End With
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_Assigned_RaisesDropDownAndCloseUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        Rig.ClearLog
+        f.ComboBoxW1.DroppedDown = True
+        Expect.IsTrue f.ComboBoxW1.DroppedDown, "DroppedDown after DroppedDown = True"
+        f.ComboBoxW1.DroppedDown = False
+        Expect.IsFalse f.ComboBoxW1.DroppedDown, "DroppedDown after DroppedDown = False"
+        Expect.AreEqual "DropDown | CloseUp", Rig.Events(), "the events of opening and closing the list"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CharacterCasing_Upper_ChangesTheTextAndTheItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            .AddItem "abc"
+            .Text = "Mixed"
+            .CharacterCasing = CboCharacterCasingUpper
+            Expect.AreEqual "MIXED", .Text, "Text ""Mixed"" after CharacterCasing = CboCharacterCasingUpper"
+            Expect.AreEqual "ABC", .List(0), "the item ""abc"" after CharacterCasing = CboCharacterCasingUpper"
+            .AddItem "def"
+            Expect.AreEqual "DEF", .List(1), "an item ""def"" added with CboCharacterCasingUpper"
+            .Text = "xy"
+            Expect.AreEqual "XY", .Text, "Text after Text = ""xy"" with CboCharacterCasingUpper"
+            .CharacterCasing = CboCharacterCasingNormal
+            Expect.AreEqual "ABC", .List(0), "the item after CharacterCasing = CboCharacterCasingNormal"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DropDownHeight_Assigned_ClearsIntegralHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.ComboBoxW1.IntegralHeight, "IntegralHeight of a new control"
+        f.ComboBoxW1.DropDownHeight = 3000
+        Expect.IsFalse f.ComboBoxW1.IntegralHeight, "IntegralHeight after DropDownHeight = 3000"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DropDownHeight_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ComboBoxW1.DropDownHeight = 0
+        Expect.AreEqual 380, Err.Number, "DropDownHeight = 0"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Locked_TypingChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ComboBoxW1
+            .Text = "abc"
+            .Locked = True
+            TypeText f.ComboBoxW1, "q"
+            Expect.AreEqual "abc", .Text, "Text after a character typed with Locked"
+            .Text = "by code"
+            Expect.AreEqual "by code", .Text, "Text after an assignment with Locked"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_EmptiesTheListAndTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        f.ComboBoxW1.ListIndex = 0
+        Rig.ClearLog
+        f.ComboBoxW1.Clear
+        Expect.AreEqual "", Rig.Events(), "the events of Clear"
+        Expect.AreEqual "", f.ComboBoxW1.Text, "Text after Clear"
+        Expect.AreEqual -1, f.ComboBoxW1.ListIndex, "ListIndex after Clear"
+        Expect.AreEqual 0, f.ComboBoxW1.ListCount, "ListCount after Clear"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveItem_TheSelectedItem_EmptiesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        AddColors f.ComboBoxW1
+        f.ComboBoxW1.ListIndex = 2
+        Rig.ClearLog
+        f.ComboBoxW1.RemoveItem 2
+        Expect.AreEqual "", Rig.Events(), "the events of RemoveItem of the selected item"
+        Expect.AreEqual -1, f.ComboBoxW1.ListIndex, "ListIndex after RemoveItem of the selected item"
+        Expect.AreEqual "", f.ComboBoxW1.Text, "Text after RemoveItem of the selected item"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ComboBoxWSink
+        Set sink.Combo = f.ComboBoxW1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the control.
+        SendMessageW f.ComboBoxW1.hWnd, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a ComboBoxW, written to Rig.Log.
+Class ComboBoxWSink
+
+    Public WithEvents Combo As VBCCR18.ComboBoxW
+
+    Private Sub Combo_Click() Handles Combo.Click
+        Rig.Ev "Click " & Combo.ListIndex
+    End Sub
+
+    Private Sub Combo_Change() Handles Combo.Change
+        Rig.Ev "Change " & Combo.Text
+    End Sub
+
+    Private Sub Combo_DropDown() Handles Combo.DropDown
+        Rig.Ev "DropDown"
+    End Sub
+
+    Private Sub Combo_CloseUp() Handles Combo.CloseUp
+        Rig.Ev "CloseUp"
+    End Sub
+
+    Private Sub Combo_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Combo.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class

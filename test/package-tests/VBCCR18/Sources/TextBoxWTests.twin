@@ -1,0 +1,671 @@
+' TextBoxWTests: the text, the selection, the lines, the limits on typing and the network address
+' check of the TextBoxW. A key the user presses is given to the box as a WM_CHAR or WM_KEYDOWN
+' message, which is what the keyboard sends it.
+[TestFixture]
+Module TextBoxWTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_KEYDOWN As Long = &H100
+    Private Const WM_CHAR As Long = &H102
+
+    ' Gives the box a character, as a key the user presses does.
+    Private Sub TypeChar(ByVal Box As VBCCR18.TextBoxW, ByVal Character As String)
+        SendMessageW Box.hWnd, WM_CHAR, AscW(Character), 0
+    End Sub
+
+    ' Twenty lines, "1" to "20".
+    Private Function TwentyLines() As String
+        Dim i As Long
+        For i = 1 To 20
+            TwentyLines = TwentyLines & IIf(i > 1, vbCrLf, "") & CStr(i)
+        Next
+    End Function
+
+    [TestCase]
+    Public Sub Text_LongerThanMaxLength_IsCutToIt()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.MaxLength = 3
+        f.TextBoxW1.Text = "abcdef"
+        Expect.AreEqual "abc", f.TextBoxW1.Text, "Text after Text = ""abcdef"" with MaxLength 3"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_PastMaxLength_RaisesMaxText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TextBoxWSink
+        Set sink.Box = f.TextBoxW1
+        f.TextBoxW1.MaxLength = 2
+        f.TextBoxW1.Text = "12"
+        f.TextBoxW1.SelStart = 2
+        Rig.ClearLog
+        TypeChar f.TextBoxW1, "3"
+        Expect.AreEqual "MaxText", Rig.Events(), "the events of typing a third character with MaxLength 2"
+        Expect.AreEqual "12", f.TextBoxW1.Text, "Text after typing a third character with MaxLength 2"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.MaxLength = -1
+        Expect.AreEqual 380, Err.Number, "MaxLength = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.TextBoxW1.MaxLength), "MaxLength after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_Locked_ChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = "q"
+        f.TextBoxW1.Locked = True
+        TypeChar f.TextBoxW1, "b"
+        Expect.AreEqual "q", f.TextBoxW1.Text, "Text after typing b into a locked box that holds q"
+        f.TextBoxW1.Text = "set"
+        Expect.AreEqual "set", f.TextBoxW1.Text, "Text after Text = ""set"" on a locked box"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_AllowOnlyNumbers_RefusesALetter()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = ""
+        f.TextBoxW1.AllowOnlyNumbers = True
+        TypeChar f.TextBoxW1, "c"
+        TypeChar f.TextBoxW1, "7"
+        Expect.AreEqual "7", f.TextBoxW1.Text, "Text after typing c and 7 with AllowOnlyNumbers"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_AllowOnlyNumbers_TakesLetters()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.AllowOnlyNumbers = True
+        f.TextBoxW1.Text = "letters"
+        Expect.AreEqual "letters", f.TextBoxW1.Text, "Text after Text = ""letters"" with AllowOnlyNumbers"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CharacterCasing_Upper_ConvertsWhatIsAssignedAndTyped()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.CharacterCasing = TxtCharacterCasingUpper
+        f.TextBoxW1.Text = "def"
+        Expect.AreEqual "DEF", f.TextBoxW1.Text, "Text after Text = ""def"" with TxtCharacterCasingUpper"
+        f.TextBoxW1.SelStart = 3
+        TypeChar f.TextBoxW1, "g"
+        Expect.AreEqual "DEFG", f.TextBoxW1.Text, "Text after typing g at the end"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CharacterCasing_Upper_LeavesTheTextAlreadyThere()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = "abc"
+        f.TextBoxW1.CharacterCasing = TxtCharacterCasingUpper
+        Expect.AreEqual "abc", f.TextBoxW1.Text, "Text ""abc"" after CharacterCasing = TxtCharacterCasingUpper"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OverTypeMode_WithoutAllowOverType_StaysFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.OverTypeMode = True
+        Expect.IsFalse f.TextBoxW1.OverTypeMode, "OverTypeMode after OverTypeMode = True with AllowOverType False"
+        f.TextBoxW1.AllowOverType = True
+        f.TextBoxW1.OverTypeMode = True
+        Expect.IsTrue f.TextBoxW1.OverTypeMode, "OverTypeMode after OverTypeMode = True with AllowOverType True"
+        f.TextBoxW1.AllowOverType = False
+        Expect.IsFalse f.TextBoxW1.OverTypeMode, "OverTypeMode after AllowOverType = False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_OverTypeMode_ReplacesTheNextCharacter()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.AllowOverType = True
+        f.TextBoxW1.OverTypeMode = True
+        f.TextBoxW1.Text = "abc"
+        f.TextBoxW1.SelStart = 0
+        TypeChar f.TextBoxW1, "X"
+        Expect.AreEqual "Xbc", f.TextBoxW1.Text, "Text ""abc"" after typing X at the start in overtype mode"
+        f.TextBoxW1.SelStart = 3
+        TypeChar f.TextBoxW1, "Z"
+        Expect.AreEqual "XbcZ", f.TextBoxW1.Text, "Text after typing Z at the end in overtype mode"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertKey_AllowOverType_TogglesOverTypeMode()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.AllowOverType = True
+        SendMessageW f.TextBoxW1.hWnd, WM_KEYDOWN, vbKeyInsert, 0
+        Expect.IsTrue f.TextBoxW1.OverTypeMode, "OverTypeMode after the Insert key with AllowOverType True"
+        SendMessageW f.TextBoxW1.hWnd, WM_KEYDOWN, vbKeyInsert, 0
+        Expect.IsFalse f.TextBoxW1.OverTypeMode, "OverTypeMode after the Insert key again"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_RaisesChangeOnlyWhenItDiffers()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TextBoxWSink
+        Set sink.Box = f.TextBoxW1
+        f.TextBoxW1.Text = ""
+        Rig.ClearLog
+        f.TextBoxW1.Text = "x"
+        f.TextBoxW1.Text = "x"
+        f.TextBoxW1.Text = "y"
+        Expect.AreEqual "Change x | Change y", Rig.Events(), "the events of Text = ""x"", Text = ""x"", Text = ""y"""
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_EmptiesUndoAndMovesTheInsertionPointToTheStart()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = ""
+        TypeChar f.TextBoxW1, "a"
+        Expect.IsTrue f.TextBoxW1.CanUndo, "CanUndo after typing a"
+        f.TextBoxW1.Text = "xyz"
+        Expect.IsFalse f.TextBoxW1.CanUndo, "CanUndo after Text = ""xyz"""
+        Expect.AreEqual 0, CLng(f.TextBoxW1.SelStart), "SelStart after Text = ""xyz"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Modified_TrueAfterTyping_FalseAfterText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = ""
+        Expect.IsFalse f.TextBoxW1.Modified, "Modified after Text = """""
+        TypeChar f.TextBoxW1, "a"
+        Expect.IsTrue f.TextBoxW1.Modified, "Modified after typing a"
+        f.TextBoxW1.Text = "q"
+        Expect.IsFalse f.TextBoxW1.Modified, "Modified after Text = ""q"""
+        f.TextBoxW1.SelText = "r"
+        Expect.IsTrue f.TextBoxW1.Modified, "Modified after SelText = ""r"""
+        f.TextBoxW1.Modified = False
+        Expect.IsFalse f.TextBoxW1.Modified, "Modified after Modified = False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Undo_TakesBackWhatWasTyped()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = ""
+        TypeChar f.TextBoxW1, "a"
+        f.TextBoxW1.Undo
+        Expect.AreEqual "", f.TextBoxW1.Text, "Text after typing a and Undo"
+        f.TextBoxW1.Undo
+        Expect.AreEqual "a", f.TextBoxW1.Text, "Text after a second Undo"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ResetUndoQueue_LeavesNothingToUndo()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = ""
+        TypeChar f.TextBoxW1, "a"
+        f.TextBoxW1.ResetUndoQueue
+        Expect.IsFalse f.TextBoxW1.CanUndo, "CanUndo after typing a and ResetUndoQueue"
+        f.TextBoxW1.Undo
+        Expect.AreEqual "a", f.TextBoxW1.Text, "Text after Undo with nothing to take back"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelText_Assigned_ReplacesTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TextBoxWSink
+        Set sink.Box = f.TextBoxW1
+        f.TextBoxW1.Text = "Hello world"
+        f.TextBoxW1.SelStart = 6
+        f.TextBoxW1.SelLength = 5
+        Expect.AreEqual "world", f.TextBoxW1.SelText, "SelText with SelStart 6 and SelLength 5 in ""Hello world"""
+        Rig.ClearLog
+        f.TextBoxW1.SelText = "there"
+        Expect.AreEqual "Hello there", f.TextBoxW1.Text, "Text after SelText = ""there"""
+        Expect.AreEqual "Change Hello there", Rig.Events(), "the events of SelText = ""there"""
+        Expect.AreEqual 11, CLng(f.TextBoxW1.SelStart), "SelStart after SelText = ""there"""
+        Expect.AreEqual 0, CLng(f.TextBoxW1.SelLength), "SelLength after SelText = ""there"""
+        f.TextBoxW1.Undo
+        Expect.AreEqual "Hello world", f.TextBoxW1.Text, "Text after Undo"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelStart_PastTheEnd_IsTheEnd()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = "Hello there"
+        f.TextBoxW1.SelStart = 100
+        Expect.AreEqual 11, CLng(f.TextBoxW1.SelStart), "SelStart after SelStart = 100 in a text of 11 characters"
+        f.TextBoxW1.SelStart = 2
+        f.TextBoxW1.SelLength = 100
+        Expect.AreEqual 9, CLng(f.TextBoxW1.SelLength), "SelLength after SelLength = 100 from SelStart 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelStart_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.SelStart = -1
+        Expect.AreEqual 380, Err.Number, "SelStart = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.SelLength = -1
+        Expect.AreEqual 380, Err.Number, "SelLength = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiLine_Changed_MakesANewWindowAndKeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim before As LongPtr
+        f.TextBoxW1.Text = "kept"
+        f.TextBoxW1.SelStart = 1
+        f.TextBoxW1.SelLength = 2
+        before = f.TextBoxW1.hWnd
+        f.TextBoxW1.MultiLine = True
+        Expect.IsTrue f.TextBoxW1.hWnd <> 0, "hWnd after MultiLine = True is a window"
+        Expect.IsTrue f.TextBoxW1.hWnd <> before, "hWnd after MultiLine = True is another window"
+        Expect.AreEqual "kept", f.TextBoxW1.Text, "Text after MultiLine = True"
+        Expect.AreEqual "ep", f.TextBoxW1.SelText, "SelText after MultiLine = True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_ReturnsTheLineOfThatNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.MultiLine = True
+        f.TextBoxW1.Text = "one" & vbCrLf & "two" & vbCrLf & vbCrLf & "four"
+        Expect.AreEqual 4, CLng(f.TextBoxW1.GetLineCount), "GetLineCount of four lines"
+        Expect.AreEqual "one", f.TextBoxW1.GetLine(1), "GetLine(1)"
+        Expect.AreEqual "two", f.TextBoxW1.GetLine(2), "GetLine(2)"
+        Expect.AreEqual "", f.TextBoxW1.GetLine(3), "GetLine(3), an empty line"
+        Expect.AreEqual "four", f.TextBoxW1.GetLine(4), "GetLine(4)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_Zero_IsTheLineOfTheInsertionPoint()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.MultiLine = True
+        f.TextBoxW1.Text = "one" & vbCrLf & "two" & vbCrLf & "three"
+        f.TextBoxW1.SelStart = 6
+        Expect.AreEqual "two", f.TextBoxW1.GetLine(0), "GetLine(0) with the insertion point in the second line"
+        Expect.AreEqual 2, CLng(f.TextBoxW1.GetLineFromChar(-1)), "GetLineFromChar(-1) with the insertion point in the second line"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLineFromChar_ReturnsTheLineNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.MultiLine = True
+        f.TextBoxW1.Text = "one" & vbCrLf & "two" & vbCrLf & "three"
+        Expect.AreEqual 1, CLng(f.TextBoxW1.GetLineFromChar(0)), "GetLineFromChar(0)"
+        Expect.AreEqual 2, CLng(f.TextBoxW1.GetLineFromChar(5)), "GetLineFromChar(5), the t of two"
+        Expect.AreEqual 3, CLng(f.TextBoxW1.GetLineFromChar(999)), "GetLineFromChar(999), after the end of the text"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLineFromChar_BelowMinusOne_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As Long
+        On Error Resume Next
+        Err.Clear
+        n = f.TextBoxW1.GetLineFromChar(-2)
+        Expect.AreEqual 380, Err.Number, "GetLineFromChar(-2)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.TextBoxW1.GetLine(-1)
+        Expect.AreEqual 380, Err.Number, "GetLine(-1)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_PastTheLastLine_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        f.TextBoxW1.MultiLine = True
+        f.TextBoxW1.Text = "one" & vbCrLf & "two"
+        On Error Resume Next
+        Err.Clear
+        s = f.TextBoxW1.GetLine(9)
+        Expect.AreEqual 380, Err.Number, "GetLine(9) in a text of two lines"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollToLine_PastTheLastLine_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.MultiLine = True
+        f.TextBoxW1.Text = "one" & vbCrLf & "two"
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.ScrollToLine 9
+        Expect.AreEqual 380, Err.Number, "ScrollToLine 9 in a text of two lines"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scroll_RaisedWhenTheTextScrolls()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TextBoxWSink
+        Set sink.Box = f.TextBoxW1
+        f.TextBoxW1.MultiLine = True
+        f.TextBoxW1.Text = TwentyLines()
+        Rig.ClearLog
+        f.TextBoxW1.ScrollToLine 10
+        Expect.AreEqual "Scroll", Rig.Events(), "the events of ScrollToLine 10 in a text of twenty lines"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LeftMargin_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.LeftMargin = -2
+        Expect.AreEqual 380, Err.Number, "LeftMargin = -2"
+        Err.Clear
+        f.TextBoxW1.RightMargin = -2
+        Expect.AreEqual 380, Err.Number, "RightMargin = -2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDropMode_Automatic_IsAccepted()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.OLEDropMode = vbOLEDropAutomatic
+        Expect.AreEqual 2, CLng(f.TextBoxW1.OLEDropMode), "OLEDropMode after OLEDropMode = vbOLEDropAutomatic"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDropMode_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.OLEDropMode = 3
+        Expect.AreEqual 380, Err.Number, "OLEDropMode = 3"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.TextBoxW1.OLEDropMode), "OLEDropMode after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PasswordChar_TwoCharacters_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.PasswordChar = "ab"
+        Expect.AreEqual 380, Err.Number, "PasswordChar = ""ab"""
+        On Error GoTo 0
+        f.TextBoxW1.PasswordChar = "*"
+        Expect.AreEqual "*", f.TextBoxW1.PasswordChar, "PasswordChar after PasswordChar = ""*"""
+        f.TextBoxW1.UseSystemPasswordChar = True
+        f.TextBoxW1.PasswordChar = "#"
+        Expect.IsTrue f.TextBoxW1.PasswordChar <> "#", "PasswordChar after PasswordChar = ""#"" with UseSystemPasswordChar True is not #"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PasswordChar_NoneSet_IsAnEmptyString()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 0, Len(f.TextBoxW1.PasswordChar), "Len(PasswordChar) of a box with no password character"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowBalloonTip_IconOutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim shown As Boolean
+        On Error Resume Next
+        Err.Clear
+        shown = f.TextBoxW1.ShowBalloonTip("text", "title", 9)
+        Expect.AreEqual 380, Err.Number, "ShowBalloonTip with the icon 9"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateNetAddress_ValidatorOff_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.Text = "example.com"
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.ValidateNetAddress
+        Expect.AreEqual 5, Err.Number, "ValidateNetAddress with NetAddressValidator False"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateNetAddress_DnsName_GivesTheName()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.NetAddressValidator = True
+        f.TextBoxW1.NetAddressType = TxtNetAddressTypeAnyService
+        f.TextBoxW1.Text = "example.com:80"
+        f.TextBoxW1.ValidateNetAddress
+        Expect.AreEqual CLng(TxtNetAddressFormatDNSName), CLng(f.TextBoxW1.NetAddressFormat), "NetAddressFormat of example.com:80"
+        Expect.AreEqual "example.com", f.TextBoxW1.NetAddressString, "NetAddressString of example.com:80"
+        Expect.AreEqual 80, CLng(f.TextBoxW1.NetAddressPortNumber), "NetAddressPortNumber of example.com:80"
+        f.TextBoxW1.Text = "[2001:db8::1]:443"
+        f.TextBoxW1.ValidateNetAddress
+        Expect.AreEqual CLng(TxtNetAddressFormatIPv6), CLng(f.TextBoxW1.NetAddressFormat), "NetAddressFormat of [2001:db8::1]:443"
+        Expect.AreEqual "2001:DB8:0:0:0:0:0:1", f.TextBoxW1.NetAddressString, "NetAddressString of [2001:db8::1]:443"
+        Expect.AreEqual 443, CLng(f.TextBoxW1.NetAddressPortNumber), "NetAddressPortNumber of [2001:db8::1]:443"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateNetAddress_IPv4_GivesTheAddress()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.NetAddressValidator = True
+        f.TextBoxW1.NetAddressType = TxtNetAddressTypeIPv4Service
+        f.TextBoxW1.Text = "192.168.0.1:8080"
+        f.TextBoxW1.ValidateNetAddress
+        Expect.AreEqual CLng(TxtNetAddressFormatIPv4), CLng(f.TextBoxW1.NetAddressFormat), "NetAddressFormat of 192.168.0.1:8080"
+        Expect.AreEqual 8080, CLng(f.TextBoxW1.NetAddressPortNumber), "NetAddressPortNumber of 192.168.0.1:8080"
+        Expect.AreEqual "192.168.0.1", f.TextBoxW1.NetAddressString, "NetAddressString of 192.168.0.1:8080"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateNetAddress_NotAnAddress_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.NetAddressValidator = True
+        f.TextBoxW1.NetAddressType = TxtNetAddressTypeIPv4Address
+        f.TextBoxW1.Text = "not an address"
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.ValidateNetAddress
+        Expect.AreEqual 5, Err.Number, "ValidateNetAddress of ""not an address"""
+        On Error GoTo 0
+        Expect.AreEqual CLng(TxtNetAddressFormatNone), CLng(f.TextBoxW1.NetAddressFormat), "NetAddressFormat after the failed check"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateNetAddress_Empty_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TextBoxW1.NetAddressValidator = True
+        f.TextBoxW1.NetAddressType = TxtNetAddressTypeAnyAddress
+        f.TextBoxW1.Text = ""
+        On Error Resume Next
+        Err.Clear
+        f.TextBoxW1.ValidateNetAddress
+        Expect.AreEqual 380, Err.Number, "ValidateNetAddress of an empty box"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a TextBoxW, written to Rig.Log.
+Class TextBoxWSink
+
+    Public WithEvents Box As VBCCR18.TextBoxW
+
+    Private Sub Box_Change() Handles Box.Change
+        Rig.Ev "Change " & Box.Text
+    End Sub
+
+    Private Sub Box_MaxText() Handles Box.MaxText
+        Rig.Ev "MaxText"
+    End Sub
+
+    Private Sub Box_Scroll() Handles Box.Scroll
+        Rig.Ev "Scroll"
+    End Sub
+
+End Class

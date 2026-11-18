@@ -1,0 +1,191 @@
+' OptionButtonWTests: the value, the Click event, the styles and the image list of the OptionButtonW.
+[TestFixture]
+Module OptionButtonWTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const BM_CLICK As Long = &HF5
+
+    [TestCase]
+    Public Sub Click_RaisedWhenValueBecomesTrue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New OptionButtonWSink
+        Set sink.Opt = f.OptionButtonW1
+        Rig.ClearLog
+        With f.OptionButtonW1
+            .Value = True
+            .Value = True
+            .Value = False
+            .Value = False
+        End With
+        Expect.AreEqual "Click True", Rig.Events(), "the events of Value = True, Value = True, Value = False, Value = False"
+        Expect.IsFalse f.OptionButtonW1.Value, "Value after Value = False"
+        Rig.ClearLog
+        SendMessageW f.OptionButtonW1.hWnd, BM_CLICK, 0, 0
+        Expect.AreEqual "Click True", Rig.Events(), "the events of a click by the user on an option that is not selected"
+        Set sink.Opt = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_ByTheUser_OnASelectedOption_RaisesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New OptionButtonWSink
+        Set sink.Opt = f.OptionButtonW1
+        f.OptionButtonW1.Value = True
+        Rig.ClearLog
+        SendMessageW f.OptionButtonW1.hWnd, BM_CLICK, 0, 0
+        Expect.AreEqual "", Rig.Events(), "the events of a click by the user on a selected option"
+        Expect.IsTrue f.OptionButtonW1.Value, "Value after a click on a selected option"
+        Set sink.Opt = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_GraphicalInOwnerDrawMode_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.OptionButtonW1.DrawMode = OptDrawModeOwnerDraw
+        On Error Resume Next
+        Err.Clear
+        f.OptionButtonW1.Style = vbButtonGraphical
+        Expect.AreEqual 383, Err.Number, "Style = vbButtonGraphical with DrawMode OptDrawModeOwnerDraw"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.OptionButtonW1.Style), "Style after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawMode_OwnerDraw_MakesStyleStandard()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.OptionButtonW1.Style = vbButtonGraphical
+        Expect.AreEqual 1, CLng(f.OptionButtonW1.Style), "Style after Style = vbButtonGraphical"
+        f.OptionButtonW1.DrawMode = OptDrawModeOwnerDraw
+        Expect.AreEqual 0, CLng(f.OptionButtonW1.Style), "Style after DrawMode = OptDrawModeOwnerDraw"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Appearance_SetsForeColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.OptionButtonW1.Appearance = CCAppearanceFlat
+        Expect.AreEqual CLng(vbWindowText), CLng(f.OptionButtonW1.ForeColor), "ForeColor after Appearance = CCAppearanceFlat"
+        f.OptionButtonW1.Appearance = CCAppearance3D
+        Expect.AreEqual CLng(vbButtonText), CLng(f.OptionButtonW1.ForeColor), "ForeColor after Appearance = CCAppearance3D"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hot_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.OptionButtonW1.Hot = True
+        Expect.AreEqual 383, Err.Number, "Hot = True"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_TakesAControlANameOrAHandle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , f.Image
+        Dim h As LongPtr
+        h = f.ImageList1.hImageList
+        f.OptionButtonW1.ImageList = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(f.OptionButtonW1.ImageList), "the type of ImageList after ImageList = the control"
+        f.OptionButtonW1.ImageList = Nothing
+        f.OptionButtonW1.ImageList = "ImageList1"
+        Expect.AreEqual "ImageList", TypeName(f.OptionButtonW1.ImageList), "the type of ImageList after ImageList = the control's name"
+        f.OptionButtonW1.ImageList = h
+        Expect.IsTrue f.OptionButtonW1.ImageList = h, "ImageList after ImageList = a handle is that handle"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_UnknownName_IsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , f.Image
+        f.OptionButtonW1.ImageList = f.ImageList1
+        f.OptionButtonW1.ImageList = "NoSuchImageList"
+        Expect.AreEqual "Nothing", TypeName(f.OptionButtonW1.ImageList), "the type of ImageList after ImageList = a name no control has"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OtherObject_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.OptionButtonW1.ImageList = f.CheckBoxW1
+        Expect.AreEqual 35610, Err.Number, "Set ImageList = a CheckBoxW"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OtherType_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.OptionButtonW1.ImageList = 5
+        Expect.AreEqual 13, Err.Number, "ImageList = 5, an Integer"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageListMargin_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.OptionButtonW1.ImageListMargin = -1
+        Expect.AreEqual 380, Err.Number, "ImageListMargin = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.OptionButtonW1.ImageListMargin), "ImageListMargin after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of an OptionButtonW, written to Rig.Log.
+Class OptionButtonWSink
+
+    Public WithEvents Opt As VBCCR18.OptionButtonW
+
+    Private Sub Opt_Click() Handles Opt.Click
+        Rig.Ev "Click " & Opt.Value
+    End Sub
+
+End Class

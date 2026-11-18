@@ -42,8 +42,9 @@ without a page in bold, with no link; link it when its page exists.
   and again in `UserControl_ReadProperties` (a property the form's file does not hold), and the
   two can differ: ProgressBar's `Step` is 10 in the first and 1 in the second. A control of the
   sample template, whose `.tbform` holds its name and place only, has the first.
-- Mouse events give X and Y in the container's scale units, except on Animation, LabelW and
-  WindowedLabel, which give twips; the OLE drag events give the container's units.
+- Mouse events give X and Y in twips, whatever the container's scale (`ScaleX(..., vbPixels,
+  vbTwips)`; checked by a run on CheckBoxW with the form's ScaleMode in pixels); the OLE drag
+  events give the container's units (`vbContainerPosition`).
 
 ## Samples and test cases
 

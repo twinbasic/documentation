@@ -1,0 +1,250 @@
+' CommandButtonWTests: the Click event, the split button, the styles and the image list of the
+' CommandButtonW.
+[TestFixture]
+Module CommandButtonWTests
+
+    [TestCase]
+    Public Sub Value_True_RaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandButtonWSink
+        Set sink.Btn = f.CommandButtonW1
+        Rig.ClearLog
+        f.CommandButtonW1.Value = True
+        f.CommandButtonW1.Value = False
+        Expect.AreEqual "Click True", Rig.Events(), "the events of Value = True, Value = False, each with Value in the handler"
+        Expect.IsFalse f.CommandButtonW1.Value, "Value after Value = True"
+        Set sink.Btn = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_True_OnADisabledButton_RaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandButtonWSink
+        Set sink.Btn = f.CommandButtonW1
+        f.CommandButtonW1.Enabled = False
+        Rig.ClearLog
+        f.CommandButtonW1.Value = True
+        Expect.AreEqual "Click True", Rig.Events(), "the events of Value = True on a disabled button"
+        Set sink.Btn = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PerformClick_RaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandButtonWSink
+        Set sink.Btn = f.CommandButtonW1
+        Rig.ClearLog
+        f.CommandButtonW1.PerformClick
+        Expect.AreEqual "Click True", Rig.Events(), "the events of PerformClick"
+        Set sink.Btn = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_True_RaisesDropDown()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandButtonWSink
+        Set sink.Btn = f.CommandButtonW1
+        f.CommandButtonW1.SplitButton = True
+        Rig.ClearLog
+        f.CommandButtonW1.DroppedDown = True
+        Expect.AreEqual "DropDown True", Rig.Events(), "the events of DroppedDown = True on a split button, with DroppedDown in the handler"
+        Expect.IsFalse f.CommandButtonW1.DroppedDown, "DroppedDown after the DropDown event"
+        Set sink.Btn = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_WithoutSplitButton_DoesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandButtonWSink
+        Set sink.Btn = f.CommandButtonW1
+        Rig.ClearLog
+        f.CommandButtonW1.DroppedDown = True
+        Expect.AreEqual "", Rig.Events(), "the events of DroppedDown = True on a button that is not a split button"
+        Expect.IsFalse f.CommandButtonW1.DroppedDown, "DroppedDown on a button that is not a split button"
+        Set sink.Btn = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_GraphicalInOwnerDrawMode_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.CommandButtonW1.DrawMode = CmdDrawModeOwnerDraw
+        On Error Resume Next
+        Err.Clear
+        f.CommandButtonW1.Style = vbButtonGraphical
+        Expect.AreEqual 383, Err.Number, "Style = vbButtonGraphical with DrawMode CmdDrawModeOwnerDraw"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.CommandButtonW1.Style), "Style after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawMode_OwnerDraw_MakesStyleStandard()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.CommandButtonW1.Style = vbButtonGraphical
+        Expect.AreEqual 1, CLng(f.CommandButtonW1.Style), "Style after Style = vbButtonGraphical"
+        f.CommandButtonW1.DrawMode = CmdDrawModeOwnerDraw
+        Expect.AreEqual 0, CLng(f.CommandButtonW1.Style), "Style after DrawMode = CmdDrawModeOwnerDraw"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandButtonW1.Alignment = 9
+        Expect.AreEqual 380, Err.Number, "Alignment = 9"
+        On Error GoTo 0
+        Expect.AreEqual CLng(vbCenter), CLng(f.CommandButtonW1.Alignment), "Alignment after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitButtonAlignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandButtonW1.SplitButtonAlignment = 5
+        Expect.AreEqual 380, Err.Number, "SplitButtonAlignment = 5"
+        On Error GoTo 0
+        Expect.AreEqual CLng(CCLeftRightAlignmentRight), CLng(f.CommandButtonW1.SplitButtonAlignment), "SplitButtonAlignment after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hot_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandButtonW1.Hot = True
+        Expect.AreEqual 383, Err.Number, "Hot = True"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_TakesAControlANameOrAHandle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , f.Image
+        Dim h As LongPtr
+        h = f.ImageList1.hImageList
+        f.CommandButtonW1.ImageList = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(f.CommandButtonW1.ImageList), "the type of ImageList after ImageList = the control"
+        f.CommandButtonW1.ImageList = Nothing
+        f.CommandButtonW1.ImageList = "ImageList1"
+        Expect.AreEqual "ImageList", TypeName(f.CommandButtonW1.ImageList), "the type of ImageList after ImageList = the control's name"
+        f.CommandButtonW1.ImageList = h
+        Expect.IsTrue f.CommandButtonW1.ImageList = h, "ImageList after ImageList = a handle is that handle"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_UnknownName_IsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , f.Image
+        f.CommandButtonW1.ImageList = f.ImageList1
+        f.CommandButtonW1.ImageList = "NoSuchImageList"
+        Expect.AreEqual "Nothing", TypeName(f.CommandButtonW1.ImageList), "the type of ImageList after ImageList = a name no control has"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OtherObject_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.CommandButtonW1.ImageList = f.CheckBoxW1
+        Expect.AreEqual 35610, Err.Number, "Set ImageList = a CheckBoxW"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OtherType_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandButtonW1.ImageList = 5
+        Expect.AreEqual 13, Err.Number, "ImageList = 5, an Integer"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageListMargin_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandButtonW1.ImageListMargin = -1
+        Expect.AreEqual 380, Err.Number, "ImageListMargin = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.CommandButtonW1.ImageListMargin), "ImageListMargin after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a CommandButtonW, written to Rig.Log.
+Class CommandButtonWSink
+
+    Public WithEvents Btn As VBCCR18.CommandButtonW
+
+    Private Sub Btn_Click() Handles Btn.Click
+        Rig.Ev "Click " & Btn.Value
+    End Sub
+
+    Private Sub Btn_DropDown() Handles Btn.DropDown
+        Rig.Ev "DropDown " & Btn.DroppedDown
+    End Sub
+
+End Class
