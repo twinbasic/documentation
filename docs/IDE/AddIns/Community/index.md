@@ -7,7 +7,7 @@ permalink: /tB/IDE/AddIns/Community
 
 # Community add-ins
 
-Community add-ins are the ones that twinBASIC users write and share, as distinct from [Global Search](GlobalSearch), which ships with the IDE, and the [Help add-in](Help).
+Community add-ins are the ones that twinBASIC users write and share, as distinct from [Global Search](GlobalSearch), which ships with the IDE, and the [Help add-in](Help). Programs that are not add-ins, such as one that installs a new version of twinBASIC, are on the [Community tools](Community-Tools) page.
 
 > [!WARNING]
 > An add-in is a compiled DLL that runs inside the IDE, with your rights. Treat it as you would any program that you have not written yourself.
