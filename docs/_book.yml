@@ -313,6 +313,7 @@ parts:
           - /tB/IDE/AddIns/
           - /tB/IDE/AddIns/GlobalSearch
           - /tB/IDE/AddIns/Community
+          - /tB/IDE/AddIns/Community-Tools
         no_descent: true
         no_outline_entry: true
         no_heading_shift: true
