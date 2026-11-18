@@ -62,7 +62,8 @@ Modules grouped by role. [Pipeline Stages](Pipeline-Stages) covers each in depth
 | [`command-line.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/command-line.mjs) | `tbdocs`'s option table and defaults, and `parseCommandLine`, which reads the command line through `lib/cli.mjs` and applies the flags in order. |
 | [`scheduler.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scheduler.mjs) | Main-thread side of the pull scheduler: claim loop, results map, completion detection, summary printer. |
 | [`worker-pool.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/worker-pool.mjs) | Worker lifecycle wrapper: spawn, send the SAB, forward messages to the scheduler, terminate. No dispatch logic. |
-| [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs) | Worker harness. Runs the pull loop, holds the eight named handlers, handles speculative idle execution. |
+| [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs) | Worker harness. Runs the pull loop, holds the named handlers, handles speculative idle execution. |
+| [`fan-out.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/fan-out.mjs) | `fanOut`, which a main-thread task's `submit` calls to add the pieces of its work to the graph as lane tasks. It is how a task runs work in parallel: [no task starts a thread](Pipeline-Stages#no-task-starts-a-thread). |
 | [`sab-scheduler.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-scheduler.mjs) | SAB layout, allocation, task-metadata API. Constants and atomics primitives consumed by both the scheduler and the workers. |
 | [`sab-broadcast.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-broadcast.mjs) | JSON-over-SAB pack/unpack for the shared payload (config, link tables, sidebar HTML, the nav tree when the offline tree is built, etc.) broadcast to every render worker. |
 
@@ -70,7 +71,8 @@ Modules grouped by role. [Pipeline Stages](Pipeline-Stages) covers each in depth
 
 | File | Role |
 |---|---|
-| [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) | Source tree walk; parses frontmatter and classifies each file as a page or a static file. |
+| [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) | The source tree's inventory: lists the tree, cuts the listing into pieces for the lanes, and puts their results together as the sorted pages and static files. |
+| [`discover-read.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover-read.mjs) | What a lane does with a piece: reads each page and parses its frontmatter, sizes each static file, reads each picture pair's dimensions. |
 | [`nav.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/nav.mjs) | Sidebar tree, integrity check, breadcrumbs, per-page `navLevels`. |
 | [`seo.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/seo.mjs) | Site-level SEO on main (`computeSiteSeo`); per-page SEO on workers (`computeChunkSeo`). |
 | [`url.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/url.mjs) | The URL helpers every other module shares: `absoluteUrl` and `relativeUrl` (ports of Jekyll's two URL filters), `normalizeBaseurl`, `encodeSpaces`, `splitFragment`. |
@@ -111,8 +113,8 @@ Modules grouped by role. [Pipeline Stages](Pipeline-Stages) covers each in depth
 | [`sitemap.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sitemap.mjs) | `sitemap.xml` + `robots.txt`. |
 | [`markdown-copy.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/markdown-copy.mjs) | Each page's markdown copy, which the online tree holds beside the page's HTML (`/tB/Core/Dim.md` beside `/tB/Core/Dim`, `index.md` for a URL ending in `/`), and which the page's head names in `<link rel="alternate" type="text/markdown">`. The copy is the page's source without its front matter and HTML comments, with the `{{tbdocs:...}}` placeholders expanded, each link to a page replaced by the URL of that page's copy, and each link to a file the build resolves replaced by the URL the HTML has; all of it outside code. `render.mjs`'s `resolveTarget` and `pageAtSitePath` say which page a link reaches. See [Markdown for agents](Building#markdown-for-agents). |
 | [`llms-txt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/llms-txt.mjs) | `/llms.txt`, the index for language models: the site's summary, then a section of links to the markdown copies for each top-level part of the nav tree. Configured by `llms_txt` in `_config.yml`. |
-| [`search.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search.mjs) | `deriveSearchEntries` (per-chunk, on workers) + `writeSearchDataFromChunks` (consolidator, on main). |
-| [`search-index.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search-index.mjs) + [`search-index-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search-index-worker.mjs) | The search box's lunr index, built from `search-data.json` on threads of its own and merged into exactly the index `lunr()` makes, and written with the entries into one file, `search-index.json`; the one definition of the index's fields and boosts. |
+| [`search.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search.mjs) | `deriveSearchEntries`, `entryKeys` and `packSearchEntries` (per-chunk, on workers) + `consolidateSearchEntries` and `writeSearchData` (on main). |
+| [`search-index.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search-index.mjs) | The search box's lunr index, built from the search entries in slices on the lanes and merged into exactly the index `lunr()` makes, and written with the entries into one file, `search-index.json`; the one definition of the index's fields and boosts. |
 | [`symbols.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/symbols.mjs) | The symbol index, `tB/symbols.json`, for the IDE help add-in: every name the reference pages document, and the page or heading that documents it. The entries come from the pages; `builder/package-api.json` only annotates them. See [Building and Deployment](Building#the-symbol-index). |
 
 **Offline and PDF**
@@ -130,7 +132,7 @@ Modules grouped by role. [Pipeline Stages](Pipeline-Stages) covers each in depth
 | [`link-check.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/link-check.mjs) | The pure core: HTML in, findings out, with no filesystem traversal and no CLI. The build's check and the standalone [`scripts/check_links.mjs`](Tools-Site-Checks#check-links) share it. |
 | [`check.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/check.mjs) | The check over rendered pages, which `scripts/check_links.mjs` runs too: per-chunk `checkChunk`, the `joinChunks` merge and `findingsFor`. Also the build's `TREES` table, report formatting, and the `--check-audit-index` tree-index audit. |
 | [`check-tree.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/check-tree.mjs) | `deriveTreeRels` --- every relative path the build believes it emitted into a tree. The check's existence oracle comes from this, not from a `readdir`; the audit verifies it against the disk. |
-| [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) | The registry behind `{{tbdocs:<name>}}` in prose. `deriveCounts(state)` computes every name from build state; `countPlugin` substitutes them as a core rule over the inline token stream, so code is never touched. `checkPlaceholders` rejects an unknown name on main before any worker renders, and `findSurvivingPlaceholder` rejects a placeholder that reached the output. `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` are not numbers but text for the Downloads page: `deriveDownloads` settles the sizes of the static files and the packed package test projects, and `expandDownloadPlaceholders` expands them in the page source, where the inline rule cannot reach. See [Authoring Pages](Authoring#counts). |
+| [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) | The registry behind `{{tbdocs:<name>}}` in prose. `deriveCounts(state)` computes every name from build state; `countPlugin` substitutes them as a core rule over the inline token stream, so code is never touched. `checkPlaceholders` rejects an unknown name on main before any worker renders, and `findSurvivingPlaceholder` rejects a placeholder that reached the output. `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` are not numbers but text for the Downloads page: `deriveDownloads` settles the sizes of the static files, `packedDownloads` adds those of the package test projects and tools once a lane has packed them, and `expandDownloadPlaceholders` expands them in the page source, where the inline rule cannot reach. See [Authoring Pages](Authoring#counts). |
 | [`page-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/page-baseline.mjs) | The page-count drift guard, and the committed `page-baseline.json` it compares against. A rise rewrites the file, a fall fails the build, and neither CI nor `--serve` may write. See [Building and Deployment](Building#the-page-count-drift-guard). |
 | [`symbol-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/symbol-baseline.mjs) | The symbol index's drift guard, and the committed `symbol-baseline.json`, every URL `tB/symbols.json` has published. A new URL rewrites the file, a lost one fails the build. |
 | [`addin-index.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/addin-index.mjs) | The help add-in's committed copy of the index, `add-in/Resources/SYMBOLS/symbols.json`: a local build rewrites it when it differs from `tB/symbols.json`, and CI and `--serve` only say so. |
@@ -199,11 +201,11 @@ The SAB holds one `notify` Int32 used as a generation counter. A worker that fin
 
 ## SAB memory layout
 
-One `SharedArrayBuffer` holds every Int32 array the scheduler needs, at static sizes: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total 174,100 bytes (170 KB). The main arrays:
+One `SharedArrayBuffer` holds every Int32 array the scheduler needs, at static sizes: `MAX_TASKS = 1024`, `MAX_LANES = 64`, `MAX_EDGES = 4096`, total 348,180 bytes (340 KB). The main arrays:
 
 - `status[i]` --- the task lifecycle enum above.
 - `depCount[i]` --- remaining predecessor count. Decremented atomically on each predecessor's completion.
-- `succOffset[i]` / `succCount[i]` / `succList` --- flat successor edge list. `dispatch.submit()` extends it at runtime for the dynamic render and flush tasks.
+- `succOffset[i]` / `succCount[i]` / `succList` --- flat successor edge list. `dispatch.submit()` extends it at runtime for the dynamic render and flush tasks, and `fanOut` for the pieces of the search index and of the help archive.
 - `perWorkerDone[i*MAX_LANES + lane]` --- per-lane done flag for `unique_per_worker` tasks.
 - `flags[i]` --- bitmask of the flags above.
 - `notify` --- generation counter for `Atomics.wait` / `notify`.
@@ -213,15 +215,16 @@ The full layout, the allocation helper and the `readTaskMeta` / `writeTaskMeta` 
 
 ## Task DAG by section
 
-The pipeline has 37 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections, and so does the rest of this page:
+The pipeline has the named static tasks below, plus dynamic ones: a `render:i` and a `flush:i` for each render chunk, and the pieces of the search index and of the help archive. The Gantt chart groups them into these sections, and so does the rest of this page:
 
 - **Seeds**: `config`, `buildInfo`, `scssLight`, `scssDark`, `highlighterInit`, `loadData`
-- **Spine**: `discover`, `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packTests`
+- **Spine**: `discoverList`, `discoverRead:i`, `discover`, `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packTests`, `downloadSizes`, `packageApi`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `render:i`, `renderJoin`
-- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `helpArchive`, `addinProject`, `packageTests`, `writeAux`, `writeOffline`, `bookPayload`, `writePdf`
+- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `archivePlan`, `archiveDeflate:i`, `archiveLate`, `archiveLateDeflate:i`, `helpArchive`, `addinProject`, `packageTests`, `writeAux`, `writeOffline`, `bookPayload`, `writePdf`
+- **Index**: `symbolPlace`, `searchEntries`, `indexSlices`, `indexAdd:i`, `indexMerge`, `indexTerms`, `indexVectors:i`, `searchIndex`
 - **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
 
-`warmInit` and `renderEnvInit` belong to none of the five; the chart draws them as start-up bars in the worker rows, and they are described under Render. The chart does not draw the three `Join` barriers.
+`warmInit` and `renderEnvInit` belong to none of these sections; the chart draws them as start-up bars in the worker rows, and they are described under Render. The chart does not draw the `Join` barriers.
 
 Every static task and dependency:
 
@@ -231,10 +234,10 @@ Every static task and dependency:
 
 ### Seeds
 
-`config`, `buildInfo`, `scssLight` and `scssDark` have no predecessors and start at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. The three worker tasks run while the main thread traverses the source tree.
+`config` has no predecessor and starts at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `buildInfo`, `scssLight` and `scssDark` wait for `discoverList`, the listing of the source tree, so that the first workers up are free to read it (see [Spine](#spine)). The three worker tasks run while the source tree is read and the main thread prepares the render.
 
 - `config` (main) --- reads `_config.yml` and applies CLI overrides.
-- `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure.
+- `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure. Only the book's title page states the result, so `bookPayload` waits for it and the render does not.
 - `scssLight` (worker) --- compiles `just-the-docs-combined.scss` against the light palette.
 - `scssDark` (worker) --- the same against the dark palette.
 - `highlighterInit` (main) --- loads the `Light.theme` + `Dark.theme` palette and emits `tb-highlight.css`. Each worker initialises its own Shiki.
@@ -242,18 +245,21 @@ Every static task and dependency:
 
 ### Spine
 
-`discover` and the main-thread tasks it feeds, with `dot` running on a worker beside them. They are cheap; the aim is to fork into independent streams as soon as the source tree is known. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, described under Render.
+The source tree's inventory and the main-thread tasks it feeds, with `dot` running on a worker beside them. They are cheap; the aim is to fork into independent streams as soon as the source tree is known. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, described under Render.
 
 ```
 config ┬→ highlighterInit → loadData
-       └→ discover ┬→ nav ──────────────────────────────┐
+       └→ discoverList → discoverRead:i (workers) → discover
+          discover ┬→ nav ──────────────────────────────┐
                    ├→ buildInit ────────────────────────┤
                    ├→ vendorAssets ────┐                │
                    └→ deriveRedirects ─┴→ markdownInit ─┼→ dispatch → deriveSitemap → resolveBookChapters
-                              buildInfo, dot (workers) ─┘
+                                         dot (worker) ─┘
 ```
 
-- `discover` --- traverses `docs/`, classifies pages and static files, builds `state.pageByDest`.
+- `discoverList` --- lists `docs/` and cuts the listing into pieces: four on a machine with eight or more logical CPUs, two below that. Piece `i` of `n` holds every `n`-th page file, static file and picture pair, so each has its share of every folder.
+- `discoverRead:i` (worker) --- reads a piece: each page and its frontmatter, each static file's size, each picture pair's dimensions. Every file the inventory opens is opened here, on two lanes at once. A lane needs only the first stage of its boot for this task (see [Worker boot](#worker-boot)), so the pieces are the first work a lane takes. `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit` wait for `discoverList`, which leaves the first lanes free for the pieces.
+- `discover` --- puts the pieces' results together as the sorted pages and static files, refuses a file that is not a publishable type or a light picture with no dark one, and builds `state.pageByDest`.
 - `vendorAssets` --- finds the YouTube video markers and GitHub user-attachment URLs in the pages, downloads any file not already in `docs/assets/thumbnails/` or `docs/assets/attachments/`, and adds the new files to the static-file copy. `markdownInit` and `writeAssets` depend on it.
 - `nav` --- builds the sidebar tree, runs the integrity check (an orphan or ambiguous `parent:` aborts the build here) and pre-renders the sidebar HTML.
 - `dot` (worker) --- regenerates stale `.dot` → `.svg` with the WASM build of Graphviz. WASM init takes ~50 ms and overlaps the main spine; each diagram then renders synchronously.
@@ -275,17 +281,19 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
                      ↓          ↓
                 renderJoin  flushJoin
                      ↓
-               symbolIndex ─→ addinProject
+               symbolPlace ───→ symbolIndex ─→ addinProject
                      ↓
-                searchData
+              searchEntries ──→ searchData
+                     ↓
+                indexSlices
 ```
 
 - `prepDest` (main) --- cleans and recreates the destination trees the run writes: the online tree, and the offline and PDF trees when their passes run. A build removes a tree whose pass it skips; serve mode prepares `_serve/` alone. Deferred until after `dispatch` so the wipe does not contend with `discover`'s reads.
 - `prepPageDirs` (main) --- creates every page output directory, so `flush:i` needs no `mkdir`.
 - `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`) --- per-lane Shiki bootstrap. A worker with nothing else claimable runs it during the main-thread spine, every render worker needs it on its own lane, and in serve mode the per-lane done flag survives rebuilds, so later builds skip it.
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment: unpacks the shared SAB, rebuilds the link-table Maps and instantiates the worker's own markdown-it. Every `render:i` lists it in `perWorkerDeps`, so the first render claim on a lane pulls it in.
-- `render:i` (worker, dynamic) --- the per-chunk compute, in the five sub-stages listed under "Render fan-out in detail". Returns a delta with `renderedContent` per page and the chunk's search entries.
-- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`, `symbolIndex` and `bookPayload`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
+- `render:i` (worker, dynamic) --- the per-chunk compute, in the five sub-stages listed under "Render fan-out in detail". Returns a delta with `renderedContent` per page and the chunk's search entries. It also returns the part of `symbolPlace`'s and `searchEntries`' work that one page or one entry decides: the headings of each page the symbol index reads, each entry's settle keys, and the entries' text packed into a `SharedArrayBuffer`.
+- `renderJoin` (main, `on_demand`) --- barrier that unblocks `symbolPlace`, `searchEntries` and `bookPayload`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
 
 ### Write
 
@@ -295,11 +303,12 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
 - `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML on the worker that rendered it: the online tree always, the offline tree unless `skipOffline`. Each page's markdown copy, which `render:i` made after rendering the page, goes beside it in the online tree. The pinning matters because the worker keeps the batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` drains it. **With `--check`, the link and integrity check runs here too**, over the chunk's just-written HTML, which is already decoded and in worker memory, so the check never writes ~270 MB out to read it back.
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `bookPayload`.
 - `writeAssets` (main) --- writes generated CSS, copies vendored theme JS and the project's static files. It does not write page HTML; `flush:i` did. Depends on `prepPageDirs`.
-- `searchData` (main) --- concatenates `state.searchChunks` (filled by each `render:i`'s `submit()`), joins `symbolIndex`'s symbols onto the matching entries by URL (adding the `names` / `qualified` / `primary` fields; see [Site search](Pipeline-Stages#searchdata-main) and `WIP.Search.md`'s "Design" §2), renumbers the global `i` index and writes `search-data.json`. The workers already did the heavy work (heading split, content sanitisation, URL encoding). Depends on `renderJoin`, `prepDest` and `symbolIndex`.
-- `searchIndex` (worker) --- reads `search-data.json` and writes `search-index.json`, the entries and their lunr index in one file, which the search box loads instead of building the index, and the offline tree's `search-index.js`. It builds the index on threads of its own and merges them into exactly the index `lunr()` makes (see [Pipeline Stages](Pipeline-Stages#searchindex-worker)). On a worker because, as a main-thread task, it held back the tasks after it. Depends on `searchData`; `helpArchive` and `checkReport` wait for it.
-- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads, and passes its `symbols` array to `searchData`'s join. It reads the heading ids from every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs at the end. Depends on `renderJoin` and `prepDest`. `checkReport`, `searchData` and `addinProject` wait for it.
-- `helpArchive` (worker) --- writes `add-in/Resources/HELP/site.zip`, the archive of the offline tree that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). Depends on `flushJoin`, `scss`, `searchIndex` and `writeOffline`, which between them write the whole offline tree. It leaves out the sections `HELP_ARCHIVE_SKIP` lists, `BuildInfo.html` and its chart among them, and runs before the Gantt chart is injected. It runs only for a `docs` build into the default `--dest`, `docs/_site`, with an offline tree, and not under `--serve`, `--dry-run` or `--no-help-archive`. After the chart is injected, `runBuild` checks that the offline tree still lists the archive's files and differs from it in `BuildInfo.html` and `assets/images/gantt.svg` alone.
-- `addinProject` (main) --- packs the help add-in's source folder, `add-in/`, into `tbDocsHelp.twinproj` and writes it into the online tree at the path `_config.yml`'s `addin_project` names (see [Build and Generation Tools](Tools-Build#the-help-add-ins-project-file)). The files are those git tracks there, the symbol index is the one `symbolIndex` wrote, and `Resources/HELP/site.zip` is the archive `helpArchive` wrote, if any. The zip comes back from the worker as a plain byte array, which `helpArchive`'s `submit` wraps again as a `Buffer` without copying it. Depends on `symbolIndex`, `prepDest` and `helpArchive`; `checkReport` waits for it. Does nothing under `--dry-run` or for a config that declares no download.
+- `packageApi`, `symbolPlace`, `searchEntries` (main) --- what the search index waits for after the last render chunk, with every lane idle, so they do only the work that needs every page (see [Pipeline Stages](Pipeline-Stages#symbolplace-main)). `packageApi` reads the committed `builder/package-api.json` while the lanes render. `symbolPlace` makes the [symbol index](Building#the-symbol-index) in memory, from the headings each `render:i` returned and the package API. `searchEntries` concatenates `state.searchChunks` (filled by each `render:i`'s `submit()`), settles the labels, renumbers the global `i` index and joins `symbolPlace`'s symbols onto the matching entries by URL (adding the `names` / `qualified` / `primary` fields; see `WIP.Search.md`'s "Design" §2). The workers already did the heavy work (heading split, content sanitisation, URL encoding, the settle keys).
+- `searchData` (main) --- writes `search-data.json`, each entry's text copied from the buffer its render lane packed it into (see [Site search](Pipeline-Stages#searchdata-main)). Depends on `searchEntries` and `prepDest`, and runs while the lanes build the search index.
+- `indexSlices`, `indexMerge`, `indexTerms`, `searchIndex` (main) and `indexAdd:i`, `indexVectors:i` (worker) --- build the lunr index of the search entries and write `search-index.json`, the entries and their index in one file, which the search box loads instead of building the index, and the offline tree's `search-index.js`. The index is built in slices on the lanes and merged into exactly the index `lunr()` makes (see [Pipeline Stages](Pipeline-Stages#searchindex-worker)). A lane reads its slice's entries from the buffers the render lanes packed, so the main thread does not send them. `indexSlices` depends on `searchEntries`; `archiveLate` and `checkReport` wait for `searchIndex`.
+- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads, from what `symbolPlace` placed, and returns the index's URLs for the drift guard that `runBuild` runs at the end. Depends on `symbolPlace` and `prepDest`. `checkReport` and `addinProject` wait for it.
+- `archivePlan`, `archiveLate`, `helpArchive` (main) and `archiveDeflate:i`, `archiveLateDeflate:i` (worker) --- write `add-in/Resources/HELP/site.zip`, the archive of the offline tree that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive) and [Pipeline Stages](Pipeline-Stages#helparchive-worker)). `archivePlan` depends on `flushJoin`, `scss` and `writeOffline`, which between them write the whole offline tree but `search-index.js`, and the lanes deflate that tree while the search index is built. `archiveLate` depends on `searchIndex` and has the lanes deflate `search-index.js`, in pieces. `helpArchive` writes the zip from what the lanes deflated. The archive leaves out the sections `HELP_ARCHIVE_SKIP` lists, `BuildInfo.html` and its chart among them, and is made before the Gantt chart is injected. It is made only for a `docs` build into the default `--dest`, `docs/_site`, with an offline tree, and not under `--serve`, `--dry-run` or `--no-help-archive`. After the chart is injected, `runBuild` checks that the offline tree still lists the archive's files and differs from it in `BuildInfo.html` and `assets/images/gantt.svg` alone.
+- `addinProject` (main) --- packs the help add-in's source folder, `add-in/`, into `tbDocsHelp.twinproj` and writes it into the online tree at the path `_config.yml`'s `addin_project` names (see [Build and Generation Tools](Tools-Build#the-help-add-ins-project-file)). The files are those git tracks there, the symbol index is the one `symbolIndex` wrote, and `Resources/HELP/site.zip` is the archive `helpArchive` wrote, if any. Depends on `symbolIndex`, `prepDest` and `helpArchive`; `checkReport` waits for it. Does nothing under `--dry-run` or for a config that declares no download.
 - `writeAux` (main) --- writes redirect stubs, the sitemap, robots.txt, llms.txt and the online tree's `nav.html`, the whole nav tree, which `linkJoin` checks with the stubs. Depends on `writeAssets`, `searchData`, `flushJoin`, `renderJoin` (llms.txt takes each page's note from its `renderedContent`), `deriveRedirects`, `deriveSitemap`.
 - `writeOffline` (main) --- produces `_site-offline/`. `render:i` and `flush:i` already computed and wrote the per-page HTML, so this task does the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the offline `nav.js`, theme assets and redirect stubs. The offline search index, `search-index.js`, is `searchIndex`'s.
 - `bookPayload` (main) --- packs what the book needs into one shared buffer and broadcasts it to every worker. It renders each part's subtitle and intro first, because markdown-it cannot cross to a worker, and replaces every page reference in `bookData` with the page's index in the page list, so the worker resolves it back to the same object. Depends on `flushJoin` (`renderedContent` is filled), `renderJoin`, `resolveBookChapters` (`bookData._chapters` is set) and `dot` (diagram SVGs are in `staticFiles`). The broadcast is posted before the task is marked done, so it is queued on every lane before any lane can claim `writePdf`. Under `--dry-run`, or when the build writes no PDF tree, it packs a marker that tells `writePdf` there is nothing to write.
@@ -316,7 +325,8 @@ Every task and where it runs:
 | Seeds | `scssLight`, `scssDark` | workers | Light + dark palettes compile concurrently. |
 | Seeds | `highlighterInit` | main | Palette CSS only. |
 | Seeds | `loadData` | main | Reads `_book.yml`. |
-| Spine | `discover`, `vendorAssets`, `nav`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters` | main | Single-threaded. |
+| Spine | `discoverList`, `discover`, `vendorAssets`, `nav`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `packageApi` | main | Single-threaded. |
+| Spine | `discoverRead:i` | workers | The pieces of the source tree, read at once. |
 | Spine | `dot` | worker | WASM Graphviz; init hides behind the main spine. |
 | Render | `dispatch`, `prepDest`, `prepPageDirs` | main | `prepDest` and `prepPageDirs` are deferred to after `dispatch`. |
 | Render | `render:i` | worker | Body + SEO + template + offline + search per chunk. |
@@ -327,7 +337,11 @@ Every task and where it runs:
 | Write | `flush:i` | worker (pinned) | Page HTML write, online + offline. |
 | Write | `flushJoin` | main | Barrier. |
 | Write | `writeAssets`, `searchData`, `symbolIndex`, `addinProject`, `writeAux`, `writeOffline`, `bookPayload` | main | One at a time, in declaration order: the main thread finishes a task before it claims the next, and the tail is CPU-bound there. |
-| Write | `searchIndex`, `helpArchive`, `writePdf` | worker | Run beside the main-thread writers. `searchIndex` follows `searchData` and builds on threads of its own; `helpArchive` follows it and `writeOffline`; `writePdf` follows `bookPayload`. |
+| Write | `writePdf`, `archiveDeflate:i`, `archiveLateDeflate:i` | worker | Run beside the main-thread writers. `writePdf` follows `bookPayload`; the archive's pieces follow `archivePlan` and `archiveLate`. |
+| Write | `archivePlan`, `archiveLate`, `helpArchive` | main | Plan the archive's pieces for the lanes, and write the zip from them. |
+| Index | `symbolPlace`, `searchEntries` | main | Place the symbols and settle the search entries. Every lane waits for them after the last render chunk. |
+| Index | `indexSlices`, `indexMerge`, `indexTerms`, `searchIndex` | main | Cut the search entries into slices, merge what the lanes added, and write the index. |
+| Index | `indexAdd:i`, `indexVectors:i` | worker (`indexVectors:i` pinned) | One slice of the search index each. `indexVectors:i` runs on the lane that ran `indexAdd:i`, which holds the slice's builder. |
 | Check | `linkJoin`, `checkReport` | main | No-ops without `--check`. |
 | Check | `checkBook` | worker (pinned) | Runs on the lane that wrote the book, so the book never crosses back. Returns null without `--check`. |
 
@@ -358,7 +372,7 @@ Worker output flow: a worker posts `{ done: taskIdx, output, timing, lane }` to 
 
 `dispatch.execute()` runs on the main thread and assembles two SAB payloads:
 
-- **Per-task payload SAB** --- one JSON blob per `render:i`, each containing the chunk's `Page` objects. `chunkOffset[i]` / `chunkLength[i]` index into the buffer.
+- **Per-task payload SAB** --- one JSON blob per `render:i`, each containing the chunk's `Page` objects without their text, and where each page's text is. `payloadOffset[i]` / `payloadLength[i]` index into the buffer. The text is in the buffers the `discoverRead:i` lanes packed and `discover` broadcast, so the main thread does not turn the site's text into JSON.
 - **Shared payload SAB** --- one JSON blob broadcast to every worker, containing the site config, site-level SEO constants, the pre-rendered sidebar + chrome (`initData`), the nav tree when the offline tree is built, serialized link tables (`[key, permalink]` pair arrays), the static-file relative-path set, the baseurl, the site-paths set for offline rewriting, the `offline_exclude` patterns, and the `skipOffline` flag.
 
 `dispatch.submit()` allocates 2N dynamic slots from the generic pool in `sab-scheduler.mjs`, writes their handler IDs and per-worker dep lists, adds the successor edges, pins each `flush:i` to its `render:i`, calls `broadcastDynamicData(payloadSAB, sharedSAB)` (one `postMessage` per worker carrying the two SAB references, shared and not cloned), and sets the `render:i` slots to `READY`. Workers see the new tasks on their next scan.
@@ -390,7 +404,13 @@ Three details make the reuse work:
 
 - **Per-lane Shiki survives.** `warmInit` has `survives_reset`, so the per-lane done flags are pre-filled when later builds allocate the SAB. Workers keep the highlighter in module scope, so `warmInit` never re-runs; `render:i` goes straight to `renderEnvInit`, which must re-run because it reads config and link tables from the new shared SAB.
 - **`_buildCount`** tells the first build from later ones. `runBuild` tests `pool._buildCount > 0` to decide whether to skip injecting boot timings into the Gantt chart.
-- **Boot timings are emitted once.** Workers post a `coldBoot` message on their first init only.
+- **Boot timings are emitted once.** Workers post a `coldBoot` message for each stage of their boot, on the first build only.
+
+### Worker boot
+
+A worker boots in two stages. The first is the static imports of `cpu-worker.mjs`: the scheduler and `discover-read.mjs`, which needs only the YAML parser. The worker is in its pull loop after it and can run a `discoverRead:i`. The second stage loads everything else (the renderer and its plugins, the search index, the archive), and a worker runs it before its first task of any other kind. Two workers therefore read the source tree while the others load the second stage, and the main thread, which read the tree itself before, is idle meanwhile.
+
+A module that `discover-read.mjs` imports is loaded by every worker before the first piece can start. Keep that list short; the glob library is in `discover.mjs`, which only the main thread loads.
 
 ## Figures
 
@@ -462,11 +482,11 @@ The residual 0.5% is kerning, which a per-character table cannot express. The ta
 
 ## Gantt chart and build introspection
 
-Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `groupGanttTimings` sorts the scheduler's timings into a `Map<section, taskTiming[]>`, and `renderGantt(grouped)` draws one SVG row per main-thread task plus one row per worker lane. The main-thread rows form four bands --- Seeds, Spine, Write and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write. The `Join` barriers are not drawn. Each worker row has one rectangle per task it ran, in start order, coloured by the task's section. The start-up bars share that row, labelled `cold` (the worker's cold start, drawn on the first build only), `warm` (`warmInit`) and `env` (`renderEnvInit`).
+Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `groupGanttTimings` sorts the scheduler's timings into a `Map<section, taskTiming[]>`, and `renderGantt(grouped)` draws one SVG row per main-thread task plus one row per worker lane. The main-thread rows form bands --- Seeds, Spine, Write, Index and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write. Index holds the search index's tasks, which have a colour of their own, so that they stand apart from the tasks that write files. The `Join` barriers are not drawn. Each worker row has one rectangle per task it ran, in start order, coloured by the task's section. The start-up bars share that row, labelled `cold` and `load` (the two stages of the worker's [boot](#worker-boot), drawn on the first build only), `warm` (`warmInit`) and `env` (`renderEnvInit`).
 
 The chart goes through the same figure pipeline as other diagrams. The [Build Info](BuildInfo) page contains a markdown image reference to a placeholder `gantt.svg`, which the render pass turns into a figure with an inline SVG. After `writeOffline` completes, `tbdocs.mjs:injectGanttChart` finds the wrapper's `data-svg-src` marker in the rendered HTML and replaces the placeholder with the real chart. It patches the online and offline copies of the page, and updates the on-disk `gantt.svg` for the offline mirror's fallback. The help archive and the help add-in's project file are made before the injection and hold the placeholder, because the chart holds the build's own timings and would make every download differ.
 
-When adding a new task to `TASKS`, give it a section in `GANTT_SECTION` in `gantt.mjs`: `Seeds`, `Spine`, `Render`, `Write` or `Check`. The build fails, naming the task, if a task has no section or one the chart does not draw. Only a `unique_per_worker` task needs none: its timings are drawn in each worker's lane.
+When adding a new task to `TASKS`, give it a section in `GANTT_SECTION` in `gantt.mjs`: `Seeds`, `Spine`, `Render`, `Write`, `Index` or `Check`. A piece that `fanOut` adds names its section in the call. The build fails, naming the task, if a task has no section or one the chart does not draw. Only a `unique_per_worker` task needs none: its timings are drawn in each worker's lane.
 
 ## Dependencies
 

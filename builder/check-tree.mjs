@@ -3,8 +3,9 @@
 // Split out of builder/check.mjs so the main thread can compute it
 // during `dispatch` -- which is on the render fan-out's critical path --
 // without pulling in link-check.mjs and, through it, htmlparser2's
-// ~23 ms import. This module imports nothing but node:path, so a build
-// without --check pays nothing for its presence.
+// ~23 ms import. This module imports nothing but fnmatch.mjs, the offline
+// tree's exclusion rule, so a build without --check pays nothing for its
+// presence.
 //
 // This is the piece that replaces check_links.mjs's directory walk, and
 // the piece most able to fail silently. An entry missing here turns a
@@ -19,6 +20,8 @@
 // reading the site, and links to the markdown copies, which only it has.
 // nav.html is the whole nav tree, which only an online page fetches; an
 // offline page has it from nav.js.
+import { matchesAny } from "./fnmatch.mjs";
+
 const ONLINE_AUX = [
   "sitemap.xml",
   "robots.txt",
@@ -48,7 +51,7 @@ export function deriveTreeRels(
     which === "offline"
       ? (rel) => {
           const r = posix(rel);
-          if (!excluded(r, excludePatterns)) rels.add(r);
+          if (!matchesAny(r, excludePatterns)) rels.add(r);
         }
       : (rel) => rels.add(posix(rel));
 
@@ -67,34 +70,4 @@ export function deriveTreeRels(
 
 export function posix(p) {
   return String(p).replaceAll("\\", "/");
-}
-
-// offlineExcluded's rule, inlined rather than imported: offline-rewrite.mjs
-// is a much larger module and this is two functions.
-function excluded(rel, patterns) {
-  if (!patterns || !patterns.length) return false;
-  return patterns.some((pat) => (/[*?]/.test(pat) ? fnmatch(pat, rel) : pat === rel));
-}
-
-// File.fnmatch(..., FNM_PATHNAME): `*` does not cross `/`, `**` does.
-function fnmatch(pattern, str) {
-  let re = "^";
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i];
-    if (c === "*") {
-      if (pattern[i + 1] === "*") {
-        re += ".*";
-        i++;
-      } else {
-        re += "[^/]*";
-      }
-    } else if (c === "?") {
-      re += "[^/]";
-    } else if (".+^$()|[]{}\\".includes(c)) {
-      re += "\\" + c;
-    } else {
-      re += c;
-    }
-  }
-  return new RegExp(re + "$").test(str);
 }

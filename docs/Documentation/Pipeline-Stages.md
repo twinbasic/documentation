@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Pipeline-Stages
 # Pipeline Stages
 {: .no_toc }
 
-Interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the five Gantt sections (Seeds / Spine / Render / Write / Check). The second half covers every module and its exports.
+Interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the Gantt sections (Seeds / Spine / Render / Write / Check); the search index's tasks, which the chart draws as Index, are under Write. The second half covers every module and its exports.
 
 For design rationale and a tour, see [tbdocs Builder](Builder). To add a task or markdown-it plugin, see [Extending the Builder](Extending).
 
@@ -22,7 +22,7 @@ Every task shares three pieces of mutable state: the `pages[]` array, the `stati
 
 ### Page objects (`pages[]`)
 
-`discover` creates one page object per `.md` or `.html` source file with parseable YAML frontmatter. Later tasks add fields; none removes or renames a field set earlier. Render workers receive structured-clone copies of their chunk, mutate the copies, and return a delta that the render task's `submit()` merges into the master page via `state.pageByDest`.
+The inventory creates one page object per `.md` or `.html` source file with parseable YAML frontmatter: a `discoverRead:i` lane makes it, and `discover` puts it in `pages[]`. The fields below that name `discover` are set there. Later tasks add fields; none removes or renames a field set earlier. Render workers receive structured-clone copies of their chunk, mutate the copies, and return a delta that the render task's `submit()` merges into the master page via `state.pageByDest`.
 
 | Field | Added by | Type | Description |
 |---|---|---|---|
@@ -41,6 +41,7 @@ Every task shares three pieces of mutable state: the `pages[]` array, the `stati
 | `breadcrumbs` | `nav` | `Page[]` | Ancestor chain from the root to the current page, nearest-first. |
 | `children` | `nav` | `Page[]` | Immediate child pages in nav order. |
 | `renderedContent` | `render:i` | `string` | HTML body produced by markdown-it. Set on the worker, merged back into the master page via the render delta. |
+| `headings` | `render:i` (`headingsOf`) | `object[]\|undefined` | The page's headings, each `{ level, id, text }`, read from `renderedContent` on the worker. Set only on a page the symbol index reads (`isSymbolPage`); `symbolPlace` reads it. |
 | `searchIndexMarks` | `render:i` (`searchIndexMarksPlugin`) | `object[]\|undefined` | The [index entries](Authoring#index-entries-for-the-site-search) on the page's headings, each `{ id, index, index_also }` with the raw attribute values, removed from the heading before the HTML is written. Set only on a page that has any. Read by `deriveSearchEntries` on the same worker; never merged back to main. |
 | `seoTitle` | `render:i` (`computeChunkSeo`) | `string` | HTML-stripped, whitespace-collapsed page title for `<title>` and `og:title`. |
 | `seoFullTitle` | `render:i` (`computeChunkSeo`) | `string` | `"<seoTitle> \| <siteTitle>"` for non-home pages; equals `seoTitle` on the home page. |
@@ -74,7 +75,9 @@ Each task's `execute()` or `submit()` stores its output on `state.site`; downstr
 | Field | Type | Set by | Description |
 |---|---|---|---|
 | `sitePaths` | `Set<string>` | `dispatch` | All site-relative paths reachable in the online tree (pages + statics + redirects + theme assets). Used by the offline rewrite in every render worker, by `scss` and by `writeOffline`. |
-| `searchChunks` | `Array<Array<entry>>` | `dispatch` (allocated), `render:i.submit` (filled) | Per-chunk search entries collected from the render workers. Read by `searchData`. |
+| `searchChunks` | `Array<Array<entry>>` | `dispatch` (allocated), `render:i.submit` (filled) | Per-chunk search entries collected from the render workers. Read by `searchEntries`. |
+| `searchKeys` | `Array<Array<object>>` | `dispatch` (allocated), `render:i.submit` (filled) | For each entry of `searchChunks`, the keys `settleLabels` compares it by, and its labels (`entryKeys`). Read by `searchEntries`. |
+| `searchPacked` | `Array<SharedArrayBuffer>` | `dispatch` (allocated), `render:i.submit` (filled) | Each chunk's entries as its lane packed their text (`packSearchEntries`). Read by `searchData`, and by every lane's `indexAdd:i`, which `indexSlices` sends them to. |
 | `checkTrees` | `object\|null` | `dispatch` | Per-tree `{ rels, baseurl }` for each tree being checked, or `null` when `--check` is off. Broadcast to the workers so each lane can build its own tree index. When non-null, the check runs everywhere downstream. |
 | `checkChunks` | `Array<object>` | `dispatch` (created empty), `flush:i.submit` (appended) | Per-chunk findings, keyed by tree, in arrival order. Read by `linkJoin`. |
 | `checkChunkCount` | `number` | `dispatch` | How many chunks `linkJoin` must see. A short list is an error: the check examined less than the whole site. |
@@ -110,9 +113,9 @@ Every task is an entry in the static `TASKS` object in [`tbdocs.mjs`](https://gi
 | `survives_reset` | `boolean` | no | The per-lane done flags survive an SAB reset between builds in serve mode. |
 | `perWorkerDeps` | `string[]` | no | Names of `unique_per_worker` tasks that must have run on the claiming lane. |
 | `pinnedTo` / `F_PIN_TO_PRED` | (dynamic) | no | Must run on the same lane that ran the named predecessor. Set via the `pinnedTo` array, not in the task def directly. |
-| `priority` | `number` | no | When several tasks are READY, the **highest** value claims first. Default `0`; `dispatch.submit` gives each `flush:i` `priority: 1`, so a pending flush outranks a fresh render. |
+| `priority` | `number` | no | When several tasks are READY, the **highest** value claims first. Default `0`; `dispatch.submit` gives each `flush:i` `priority: 1`, so a pending flush outranks a fresh render. The search index's pieces, `archiveLateDeflate:i`, `writePdf` and `checkBook` have `2`, and `archiveDeflate:i` has `1`: the first group is the path the end of the build waits for. |
 | `consolidate` | `boolean` | no | Combine timings across lanes into one Gantt swimlane (`render:i` / `flush:i`). |
-| `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write` / `Check`). |
+| `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write` / `Index` / `Check`). |
 
 ### Handler IDs
 
@@ -123,8 +126,9 @@ export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
-  helpArchive: 8, writePdf: 9, checkBook: 10,
-  searchIndex: 11,
+  writePdf: 9, checkBook: 10, packTests: 11,
+  indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
+  discoverRead: 15,
 };
 ```
 
@@ -132,13 +136,19 @@ The reverse table (`handlerById`) is built when the worker module loads.
 
 ### Static vs dynamic tasks
 
-`TASKS` lists the **static** tasks, whose presence and edges are known before the build starts. **Dynamic** tasks (`render:i`, `flush:i`) are allocated at runtime by `dispatch.submit()` once the page count is known. Both kinds share the SAB: `sab-scheduler.mjs:allocDynamicSlots` reserves slots from the same pool, and `wireDynamicEdges` plus `appendDynamicSuccessors` extend the successor edges.
+`TASKS` lists the **static** tasks, whose presence and edges are known before the build starts. **Dynamic** tasks are allocated at runtime, once a count is known: `render:i` and `flush:i` by `dispatch.submit()`, from the page count, and the pieces of the search index and of the help archive by the `submit()` of the task that plans them, through [`fanOut`](#fan-outmjs). Both kinds share the SAB: `sab-scheduler.mjs:allocDynamicSlots` reserves slots from the same pool, and `wireDynamicEdges` plus `appendDynamicSuccessors` extend the successor edges.
+
+### No task starts a thread
+
+The lanes are the build's only threads. A task whose work can run in parallel splits it into pieces and adds each piece to the graph as a lane task with [`fanOut`](#fan-outmjs). The scheduler then places the pieces on the lanes that are free, and the Gantt chart on [Build Info](BuildInfo) shows each piece on the lane that ran it.
+
+A task therefore never starts a worker thread or a process for its work, and never puts CPU work on Node's thread pool, which is what the functions of `node:zlib` do unless their name ends in `Sync`. File reads and writes may use the pool. The two exceptions are named in `biome.jsonc`: `worker-pool.mjs` and `cpu-worker.mjs` are the lanes, and `build-info.mjs` and `addin-project.mjs` run `git`. [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint) refuses any other import of `worker_threads`, `cluster` or `child_process` in `builder/`, and any import from `node:zlib` in `builder/` or `lib/` other than a `Sync` function, `crc32` or `constants`.
 
 ---
 
 ## Section 1 --- Seed tasks
 
-The tasks that start the build. `config`, `buildInfo`, `scssLight` and `scssDark` have no predecessors and are claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`.
+The tasks that start the build. `config` has no predecessor and is claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. `buildInfo`, `scssLight` and `scssDark` wait for [`discoverList`](#discoverlist-main), as `dot`, `packTests` and `warmInit` do.
 
 ### `config` (main)
 
@@ -146,13 +156,18 @@ The tasks that start the build. `config`, `buildInfo`, `scssLight` and `scssDark
 config.execute({}, ctx) → { config }
 ```
 
-Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url` overrides, and returns the parsed object to `discover`.
+Reads `<srcRoot>/_config.yml`, applies the `ctx.opts.baseurl` and `ctx.opts.url` overrides, and returns the parsed object to `discover`. `submit` broadcasts the config's `package_tests` entry to the lanes as the `"packageTests"` task data, for [`packTests`](#packtests-worker).
 
 ### `buildInfo` (worker)
 
-Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`, which runs two parallel `git` commands (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on failure. The result goes to `state.site.buildInfo`.
+Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`, which runs two parallel `git` commands (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on failure. The result goes to `state.site.buildInfo`, which the book's title page alone states: [`bookPayload`](#bookpayload-main) waits for this task, and `dispatch` does not, so no render waits for `git`.
 
 ### `scssLight` (worker), `scssDark` (worker)
+
+```js
+scssLight.expected = ["discoverList"]
+scssDark.expected  = ["discoverList"]
+```
 
 Handlers call `compileLightScss(srcRoot)` and `compileDarkScss(srcRoot)`. Each compiles the vendored just-the-docs SCSS plus customisations against one palette. The CSS strings go to the `scss` task.
 
@@ -176,17 +191,48 @@ Calls `loadData(srcRoot)` from `data.mjs`. Writes `state.site.data` and `state.s
 
 ## Section 2 --- Spine tasks
 
-`discover` and the main-thread tasks fed by it, with `dot` (no predecessors) running on a worker beside them. They build the `site` object, derive auxiliary data and prepare the fan-out. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, in Section 3.
+The source tree's inventory and the main-thread tasks fed by it, with `dot` running on a worker beside them. They build the `site` object, derive auxiliary data and prepare the fan-out. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, in Section 3.
+
+The inventory is three tasks. The main thread lists the tree, two lanes open every file, and the main thread puts the results together.
+
+### `discoverList` (main)
+
+```js
+discoverList.expected = ["config"]
+discoverList.execute({ config: { config } }, ctx) →
+  { pieces, statics, pairs }
+```
+
+Calls `listSources(srcRoot, config.exclude ?? [])` and then `cutPieces(listing, count, config.bundle_extra ?? [])`, both from `discover.mjs`. `count` is `discoverPieces(workerCount)`: four on a machine with eight or more logical CPUs, two below that, one on a machine with one lane. Each piece is `{ pageRels, statSrcs, pairs }`: every `count`-th `.md` or `.html` file, static file and picture pair, so that each piece has its share of every folder. The `bundle_extra` files are among the static files, and a light picture is paired with its dark one wherever the two are. `statics` and `pairs` are what `discover` needs to put the results in order.
+
+`submit()` calls `fanOut` with the pieces as payloads, handler `discoverRead`, join `discover` and the highest priority of any lane task.
+
+The lane tasks that would otherwise be claimable before the pieces exist list `discoverList` in their `expected`: `buildInfo`, `scssLight`, `scssDark`, `dot`, `packTests` and `warmInit`. The first lanes to start therefore find the pieces and nothing else.
+
+### `discoverRead:i` (worker)
+
+```js
+discoverRead:i.expected = ["discoverList"]
+discoverRead:i → { pages, plain, warnings, sizes, pairSizes, text }
+```
+
+Handler in `cpu-worker.mjs`: calls `readPiece(srcRoot, piece)` from `discover-read.mjs` with its `fanOutPayload`. It reads each page file and parses its frontmatter into a [page object](#page-objects-pages), sizes each static file, and reads each picture pair's width and height from the two PNG headers. A `.md` or `.html` file with no frontmatter goes to `plain`, with its size: it is a static file. The warnings about unquoted frontmatter values that end in `#` go to `warnings`, which the main thread prints. Frontmatter that does not parse throws, naming the file, and fails the build.
+
+The handler then packs the text of its pages with `packPageText`, and returns it as `text`: one `SharedArrayBuffer` of UTF-8, and each page's offset and length in it. The render lanes read a page's text from there, so the render chunks' payloads hold none.
+
+Every call is synchronous. A lane has nothing else to do while it reads, and two lanes reading at once is what makes the inventory parallel.
+
+This is the one handler a lane runs after the first stage of its boot alone; see [`cpu-worker.mjs`](#cpu-workermjs).
 
 ### `discover` (main)
 
 ```js
-discover.expected = ["config"]
-discover.execute({ config: { config } }, ctx) →
-  { pages, staticFiles, config }
+discover.expected = ["config", "discoverList", "discoverRead:0", ...]   // the pieces, added by fanOut
+discover.execute(inputs, ctx) →
+  { pages, staticFiles, config, pictureSizes, pageText }
 ```
 
-Calls `discover(srcRoot, config.exclude ?? [])` from `discover.mjs`, appends each `bundle_extra` entry to `staticFiles`, then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the result and **throws** if anything is not a publishable type, before any write. `submit()` writes the three fields to `SharedState` and populates `state.pageByDest`.
+Calls `assemble(srcRoot, plan, results)` from `discover.mjs` with `discoverList`'s plan and each piece's result; a piece that is missing throws. `assemble` sorts the pages by file name and then by path, the static files by path, and puts the `bundle_extra` files after them. The task then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the static files and **throws** if anything is not a publishable type, before any write, and throws for a light picture with no dark one. `pageText` holds each piece's text buffer and, for each page's `srcRel`, the piece, offset and length of its text. `submit()` broadcasts each buffer to the lanes as the task data `"pageText:<piece>"`, keeps the places as `state.pageTextAt` for `dispatch`, writes the other four fields to `SharedState` and populates `state.pageByDest`.
 
 ### `vendorAssets` (main)
 
@@ -213,6 +259,10 @@ Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderS
 
 ### `dot` (worker)
 
+```js
+dot.expected = ["discoverList"]
+```
+
 Handler calls `regenerateDot(srcRoot)`. It finds `*.dot` files at any depth under `<srcRoot>` (skipping underscore-prefixed directories, which hold build output), compares mtimes against the `.svg` siblings, calls `Graphviz.load()` once, installs Inter's width table via `applyInterMetrics()`, then runs `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends the new SVG descriptors to `state.staticFiles`. Rendering takes under a millisecond per diagram after a one-time `Graphviz.load()` of about 50 ms.
 
 ### `buildInit` (main)
@@ -227,12 +277,12 @@ Calls `buildInitConfig(state.site)` from `template.mjs` to pre-render the config
 ### `markdownInit` (main)
 
 ```js
-markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects", "packTests"]
+markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects"]
 ```
 
 Builds the link tables (`buildLinkTables(state.pages)`) and derives the `{{tbdocs:<name>}}` counts registry (`deriveCounts(state, { redirectStubs: stubs.length })` from `counts.mjs`), throwing if a page names a count that does not exist. The redirect-stub count is why `deriveRedirects` is a predecessor.
 
-It also settles the downloads that `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` state (`deriveDownloads`, then `checkPlaceholders`, which throws on a path the build does not publish or cannot size). `packTests`, a task of its own that follows `config`, packs the contributed packages' test projects in memory so that their sizes are known; `packageTests` writes those same bytes. Only the sizes the pages ask for travel to the workers, as `state.site.downloads`.
+It also checks the downloads that `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` state (`deriveDownloads`, then `checkPlaceholders`, which throws on a path the build does not publish or cannot size). A static file's size is known here. The contributed packages' test projects and published tools are not packed yet: [`packTests`](#packtests-worker) packs them on a lane, and this task does not wait for it. It takes their paths from a listing of their folders (`packageTestRels`), accepts a placeholder that names one, and records each page that states such a size or lists the test projects as a **late page**, in `state.site.latePages`. Only the sizes the pages ask for travel to the workers, as `state.site.downloads`; [`downloadSizes`](#downloadsizes-main) adds the packed files' sizes for the late pages.
 
 It then instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles, vendoredVideos, vendoredImages, counts })`), serializes the link tables (`serializeLinkTables(linkTables)`) for the workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). It writes `counts`, `markdown`, `linkTablesSerialized`, `seoSiteTitle` and `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here; each render worker does it via `computeChunkSeo`.
 
@@ -268,14 +318,33 @@ Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`, w
 
 `dispatch`, the fan-out point, and the N render tasks it starts, with their barrier, the per-worker init they need, and the two tasks that prepare the destination trees. The chart draws `warmInit` and `renderEnvInit` in the worker rows as start-up bars, not in a section; they are described here. The N flush tasks and their barrier are in Section 4.
 
+### `packTests` (worker)
+
+```js
+packTests.expected = ["config", "discoverList"]
+packTests → { packed, ms } | { failed, error } | {}
+```
+
+Packs each contributed package's test project, and zips each published tool, in memory (`packAllPackageTests` in `package-tests.mjs`), from the `"packageTests"` task data that `config` broadcast. The lane imports `package-tests.mjs` when it runs the task, so the other lanes do not load it. The bytes return to the main thread, where `downloadSizes` reads their sizes and `packageTests` writes them into the online tree. A config without `package_tests` packs nothing, and a failure returns as `{ failed, error }`.
+
+No page waits for this task except the late pages. It therefore runs at any time from the start of the build to the render of those pages, on whichever lane is free.
+
+### `downloadSizes` (main)
+
+```js
+downloadSizes.expected = ["markdownInit", "packTests"]
+```
+
+Adds the packed files' sizes to `state.site.downloads` (`packedDownloads` in `counts.mjs`): the size of each packed file a page names, and the rows of the test projects' table. It throws when `packTests` failed. `submit` broadcasts the result to the lanes as the `"downloads"` task data, before the task is marked done. The render chunks that hold a late page wait for this task; see [`dispatch`](#dispatch-main).
+
 ### `dispatch` (main)
 
 ```js
 dispatch.expected = [
-  "nav", "buildInit", "buildInfo", "dot",
+  "nav", "buildInit", "dot",
   "deriveRedirects", "markdownInit",
 ]
-dispatch.execute() → { chunks, sharedSAB }
+dispatch.execute() → { chunks, sharedSAB, lateChunks }
 ```
 
 `execute`:
@@ -283,9 +352,11 @@ dispatch.execute() → { chunks, sharedSAB }
 1. Slices `state.pages` into `workerCount × SLICES_PER_WORKER` chunks (one chunk per worker at most, for small page counts).
 2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than reading `_site/assets/`. The list also holds the path of the help add-in's project file when `_config.yml` declares one (`addinProjectOf`), since [`addinProject`](#addinproject-main) writes it only after the render.
 3. Derives each output tree's inventory with `deriveTreeRels` and runs `unpublishableTreePaths` from `publish-policy.mjs` over it, **throwing** on anything that is not a publishable type. This sweep sees what `discover`'s cannot: redirect stubs, vendored theme assets, and the generated `sitemap.xml` and `search-data.json`. The inventory is shared with `checkTrees` below.
-4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
+4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
 
-`submit` allocates 2N dynamic SAB slots and writes their handler IDs. It wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dependency `render:i → renderEnvInit`, and pins each `flush:i` to its `render:i`. It packs the per-chunk page data into a payload SAB, registers the `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and activates the `render:i` slots.
+`lateChunks` holds the index of each chunk that contains a late page (see [`markdownInit`](#markdowninit-main)). The chunks are cut as for any other page, so a late page stays in the chunk its position gives it.
+
+`submit` allocates 2N dynamic SAB slots and writes their handler IDs. It wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dependency `render:i → renderEnvInit`, and pins each `flush:i` to its `render:i`. Unless `downloadSizes` is done already, it also makes each `render:i` of `lateChunks` a successor of `downloadSizes`, with a dependency count of one, so that the chunk becomes claimable when the packed files' sizes are known. Both tasks run on the main thread, so `downloadSizes` cannot finish between the check of its status and the new edge. It packs the per-chunk page data into a payload SAB: for each chunk `{ pages, texts }`, the pages without their `rawContent` and, for each, the piece, offset and length of its text in the buffers `discover` broadcast (`state.pageTextAt`). A page with no place there keeps its `rawContent` in the payload. It registers the `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and activates the `render:i` slots.
 
 ### `prepDest` (main, deferred)
 
@@ -305,7 +376,11 @@ Pre-creates every page output directory (online + offline), so `flush:i` can cal
 
 ### `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`)
 
-Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flags:
+```js
+warmInit.expected = ["discoverList"]
+```
+
+Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). A lane does not start it before the source tree is listed, so that an idle lane takes a `discoverRead:i` first. The flags:
 
 - `unique_per_worker`: every lane that runs a render task needs its own warmup.
 - `on_demand`: keeps it off the auto-start list.
@@ -334,15 +409,19 @@ Per-lane render environment setup. Handler:
 
 Handler (`render` in `cpu-worker.mjs`):
 
-1. Reads the chunk JSON from `_payloadSAB` using `payloadOffset[taskIdx]` / `payloadLength[taskIdx]`.
+1. Reads the chunk JSON from `_payloadSAB` using `payloadOffset[taskIdx]` / `payloadLength[taskIdx]`, and gives each page its `rawContent` with `pageText`, from the `"pageText:<piece>"` task data its place names. When the chunk holds a late page, it waits for the `"downloads"` task data from `downloadSizes` and gives it to the lane's markdown-it, which then has the packed files' sizes.
 2. `await renderPhase(chunk, env.site)` --- markdown-it body render.
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
 5. When `env.offlineBase` is set: for each writable page, call `withPartialNav` to cut the page's nav down to its part of the tree, then `deriveOfflinePage`. Then, for each writable page, `withOnlineNav` cuts the online page's nav down to its part, with the "Contents" link and `nav-tree.js` after it.
 6. Store `{ destPath, html, offlineHtml, offlineMisses, markdown }` on the worker's `_pendingFlush` FIFO for the matching `flush:i`, `markdown` being the page's markdown copy and its path.
 7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries, with any [index entries](Authoring#index-entries-for-the-site-search) the page's frontmatter or headings name. Remove `sourcePage` and the chunk-local `i` before returning (main assigns global indices).
+8. For the tasks that follow the last chunk, which every lane waits for, the part of their work that one page or one entry decides:
+   - `headingsOf(p.renderedContent)` for each page the symbol index reads (`isSymbolPage` in `symbols.mjs`), for `symbolPlace`.
+   - `entryKeys(e)` for each entry --- the keys `settleLabels` compares it by, and its labels --- for `searchEntries`. The entries themselves hold no `labels`.
+   - `packSearchEntries(searchEntries)` --- the chunk's entries in one `SharedArrayBuffer`, each as the head and the tail of its text in `search-data.json`. `searchData` copies them into the file, and the lanes that build the search index read their entries from them.
 
-Returns `{ pages, searchEntries }`. The `submit()` callback (registered by `dispatch.submit`) merges `renderedContent` / `offlineMisses` into the master `Page` objects via `state.pageByDest`, and writes `searchEntries` into `state.searchChunks[i]`.
+Returns `{ pages, searchEntries, searchKeys, searchPacked }`. The `submit()` callback (registered by `dispatch.submit`) merges `renderedContent` / `offlineMisses` / `headings` into the master `Page` objects via `state.pageByDest`, and writes the other three into `state.searchChunks[i]`, `state.searchKeys[i]` and `state.searchPacked[i]`.
 
 ### `renderJoin` (main, `on_demand`)
 
@@ -353,7 +432,7 @@ renderJoin.expected = ["render:0", …, "render:N-1"]   // and depCount set to N
 renderJoin.execute() → {}
 ```
 
-Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `bookPayload`.
+Barrier over every `render:i`. Unblocks `symbolPlace`, `searchEntries` and `bookPayload`.
 
 > [!IMPORTANT]
 > **A dependency count of zero does not mean the submits have run**, so the `expected`
@@ -375,7 +454,7 @@ Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `bookPay
 
 ## Section 4 --- Write and post-write
 
-The tasks that write the output. `scss` joins the two stylesheets after `prepDest`; each `flush:i` writes its chunk's pages after its `render:i` and `prepPageDirs`; the rest are produced by the main-thread writers, which run one at a time in the order `TASKS` declares them, and by two worker tasks, `helpArchive` and `writePdf`. All but `writeAssets` wait behind `renderJoin` or `flushJoin`.
+The tasks that write the output. `scss` joins the two stylesheets after `prepDest`; each `flush:i` writes its chunk's pages after its `render:i` and `prepPageDirs`; the rest are produced by the main-thread writers, which run one at a time in the order `TASKS` declares them, and by worker tasks: `writePdf`, and the pieces of the search index and of the help archive, which their main-thread tasks add to the graph. All but `writeAssets` wait behind `renderJoin` or `flushJoin`.
 
 ### `scss` (main)
 
@@ -407,7 +486,7 @@ flushJoin.expected = []    // populated by dispatch.submit with ["flush:0", ...,
 flushJoin.execute(inputs) → { written, offlineWritten, offlineMisses }
 ```
 
-Aggregates per-chunk write stats. Unblocks `writeAux`, `helpArchive`, `bookPayload` and `linkJoin`.
+Aggregates per-chunk write stats. Unblocks `writeAux`, `archivePlan`, `bookPayload` and `linkJoin`.
 
 ### `writeAssets` (main)
 
@@ -417,39 +496,69 @@ writeAssets.expected = ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"
 
 Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS and project static files, and writes generated CSS (`tb-highlight.css` from `state.site.highlightCss`). **Does not** write page HTML; the `flush:i` tasks do. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to copied files and generated assets.
 
+### From the last chunk to the search index: `packageApi`, `symbolPlace`, `searchEntries`
+{: #symbolplace-main }
+
+```js
+packageApi.expected    = ["dispatch"]                      // main
+symbolPlace.expected   = ["renderJoin", "packageApi"]      // main
+searchEntries.expected = ["renderJoin", "symbolPlace"]     // main
+```
+
+When the last render chunk ends, every lane waits until `indexSlices` gives it a slice of the search index, and `indexSlices` waits for `symbolPlace` and `searchEntries`. The three run one after another on the main thread, so they do only the work that needs every page. The render lanes do the part that one page or one entry decides, as [`render:i`](#renderi-worker-dynamic) lists. A task that only writes a file comes after them: `symbolIndex` and `searchData`. `TASKS` declares the three before every other task that can be ready at that moment, because the main thread takes the first ready task in declaration order.
+
+- **`packageApi`** reads and parses `builder/package-api.json`, the package half of the symbol index, while the lanes render. The build fails, naming `node indexer/twin-index.mjs derive`, if the file is missing.
+- **`symbolPlace`** makes the symbol index in memory: `symbolPages(state.pages)`, then `deriveSymbolIndex({ pages, api })` from `symbols.mjs`. It depends on `renderJoin` because an entry's anchor is the id the render gave its heading; each page's headings came back with its render chunk. Returns `{ pages, api, result }`.
+- **`searchEntries`** makes the final search entries: `consolidateSearchEntries(state.searchChunks, symbolPlace.result.symbols, state.searchKeys)` from `search.mjs`. It flattens the per-chunk entry arrays, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), drops the term entries a main term answers and gives each remaining label to its entry (`settleLabels`), renumbers the global `i` index, and joins the symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields --- see `WIP.Search.md`'s "Design" §2). Returns `{ entries, places }`: `places[n]` is entry n's chunk and its place in that chunk, by which `searchData` and `indexSlices` find the entry's packed text.
+
 ### `searchData` (main)
 
 ```js
-searchData.expected = ["renderJoin", "prepDest", "symbolIndex"]
+searchData.expected = ["searchEntries", "prepDest"]
 ```
 
-Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. It flattens the per-chunk entry arrays and joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields -- see `WIP.Search.md`'s "Design" §2). It then renumbers the global `i` index, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The workers did the heavy work (heading split, content sanitisation, URL encoding); this task only joins and concatenates. It depends on `symbolIndex` for the `symbols` array.
+Writes `assets/js/search-data.json` with `writeSearchData` from `search.mjs`. The file's bytes are assembled, not serialised again (`searchDataBytes`): each entry's head and tail are copied from the buffer its render lane packed (`state.searchPacked`), and the main thread writes only the entry's number and the fields it got since. Returns `{ entries, json, docs }`: `json` is the file's bytes, which the link check reads, and `docs` is the entries as the file holds them (`searchDocs`), which `searchIndex` writes into `search-index.json`. The task runs while the lanes add their slices.
 
-### `searchIndex` (worker)
+### The search index: `indexSlices` to `searchIndex`
+{: #searchindex-worker }
 
 ```js
-searchIndex.expected = ["searchData"]
-searchIndex.handler  = "searchIndex"
+indexSlices.expected    = ["searchEntries"]                                // main
+indexAdd:i.expected     = ["indexSlices"]                                  // worker, dynamic
+indexMerge.expected     = ["indexSlices", "indexAdd:0", ...]               // main
+indexTerms.expected     = ["indexMerge"]                                   // main
+indexVectors:i.expected = ["indexSlices", "indexMerge", "indexAdd:i"]      // worker, dynamic, pinned to indexAdd:i
+searchIndex.expected    = ["indexSlices", "indexMerge", "indexTerms", "searchData", "indexVectors:0", ...]   // main
 ```
 
-Calls `writeSearchIndex(destRoot, { offline })` from `search-index.mjs`, which reads the `search-data.json` that `searchData` wrote and writes `assets/js/search-index.json` beside it: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. Returns `{ entries, workers, bytes }`.
+These tasks build the lunr index of the search entries, and write it. The functions are in `search-index.mjs`. lunr cannot merge two indexes, but most of a build is independent for each entry, so the index is built in slices, each a run of consecutive entries:
 
-The index is built on threads of the task's own (`search-index-worker.mjs`), up to eight, one for every 500 entries, so a small tree starts none. Each thread adds a run of the entries to a `lunr.Builder` of its own; the task merges the postings, numbering each term as one build would, works out the totals the field vectors need, and has each thread make its entries' vectors. The result is byte for byte what `lunr()` makes on one thread, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks. The task runs on a worker rather than on the main thread because the main thread runs one task at a time, and as one of them it held back `bookPayload`, `writeAux` and `writeOffline` for the second or two the index takes. `helpArchive` and `checkReport` wait for it.
+1. **`indexSlices`** cuts the entries into slices of about equal text (`planIndexSegments`): two for each lane, and at most one for every 500 entries, so a small tree is one slice. The entries do not travel with the slices. Each render lane packed its chunk's entries into a `SharedArrayBuffer`, and `submit` broadcasts all of them, with the stem twins (`stemTwins`), as the task data `"indexEntries"`. A slice's payload then says where its entries are among the chunks, the number of its first entry, which entries of those runs were dropped, and the fields an entry got after its page was rendered. `submit` adds an `indexAdd:i` and an `indexVectors:i` for each slice with [`fanOut`](#fan-outmjs).
+2. **`indexAdd:i`** reads its slice's entries from the chunks' buffers (`sliceDocs`, `readSearchEntries`), adds them to a `lunr.Builder` that stays on its lane (`addSlice`), and returns the slice's terms, postings and field lengths.
+3. **`indexMerge`** merges the postings (`mergeSlices`). It numbers each term as one build would, and works out each term's document count and each field's average length over all the entries. It broadcasts those totals to the lanes as the task data `"indexTotals"` (`packTotals`).
+4. **`indexTerms`** writes the JSON of the inverted index (`invertedIndexJson`) on the main thread, while the lanes make the vectors.
+5. **`indexVectors:i`** makes its slice's field vectors with the totals (`sliceVectors`). It is pinned to the lane that ran `indexAdd:i`, which holds the slice's builder.
+6. **`searchIndex`** joins the JSON (`assembleIndexJson`) and writes the files (`writeSearchIndex`), with the entries `searchData` returned as `docs`. Returns `{ entries, slices, bytes }`.
+
+The result is byte for byte what `lunr()` makes on one thread, for any number of slices, which [`test/search-index.test.mjs`](Tools-Toolchain-Tests#search-index-test) checks.
+
+`searchIndex` writes `assets/js/search-index.json`: `{"docs": ..., "index": ...}`, the search entries and their lunr index, as lunr's own JSON, in one file, which the site's search box loads (`lunr.Index.load`) instead of building the index in the browser. One file, so that the page can never hold the entries of one deploy beside the index of another; `search-data.json` stays for the link check and the eval tools. Unless the build writes no offline tree, the task also writes the offline tree's `assets/js/search-index.js`, the same file as a script that sets `window.SEARCH_INDEX`, since a page under `file://` can load a script but not fetch a file. `archiveLate` and `checkReport` wait for it.
+
+The index tasks are drawn in their own colour in the Gantt chart, and their main-thread tasks in the band `Index`, with `symbolPlace` and `searchEntries` before them.
 
 ### `symbolIndex` (main)
 
 ```js
-symbolIndex.expected = ["renderJoin", "prepDest"]
-symbolIndex.execute() → { entries, urls, gaps, unplaced, symbols }
+symbolIndex.expected = ["symbolPlace", "prepDest"]
+symbolIndex.execute() → { entries, urls, gaps, unplaced, json }
 ```
 
-Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` (the build fails, naming `node indexer/twin-index.mjs derive`, if it is missing), then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. It depends on `renderJoin` because an entry's anchor is the id the render gave its heading, read from `renderedContent`. Takes ~50 ms. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
+Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index), from what [`symbolPlace`](#symbolplace-main) placed: `serializeSymbolIndex(...)` from `symbols.mjs`. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
 
 The result fields:
 
 - `urls`: every distinct URL in the index. `runBuild` passes it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard.
 - `unplaced`: the package pages that gave no entry; the summary prints them.
-- `symbols`: the array `deriveSymbolIndex` returned, each `{ name, container, url, ... }`. Only `searchData` uses it.
 - `json`: the text of `tB/symbols.json`. `runBuild` passes it to `syncAddinIndex` from `addin-index.mjs` for the help add-in's copy, and `addinProject` packs it into the add-in's project file.
 
 `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early.
@@ -486,21 +595,32 @@ writeOffline.expected = ["writeAux", "writeAssets"]
 
 Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
 
-### `helpArchive` (worker)
+### The help archive: `archivePlan` to `helpArchive`
+{: #helparchive-worker }
 
 ```js
-helpArchive.expected = ["flushJoin", "scss", "searchIndex", "writeOffline"]
-helpArchive.handler  = "helpArchive"
+archivePlan.expected          = ["flushJoin", "scss", "writeOffline"]       // main
+archiveDeflate:i.expected     = ["archivePlan"]                             // worker, dynamic
+archiveLate.expected          = ["archivePlan", "searchIndex"]              // main
+archiveLateDeflate:i.expected = ["archiveLate"]                             // worker, dynamic
+helpArchive.expected          = ["archivePlan", "archiveLate", "archiveDeflate:0", ..., "archiveLateDeflate:0", ...]   // main
 ```
 
-Writes `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The four predecessors between them write the whole offline tree. The handler calls `helpArchiveStep` from `help-archive-step.mjs`, with the `skipOffline` flag it reads from `dispatch`'s shared broadcast (`sharedData()` in `cpu-worker.mjs`), and reads the offline tree from disk. It runs on a worker because it needs nothing that `dispatch` has not broadcast, and the main thread meanwhile does the work that follows `writeOffline`.
+Write `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The functions are in `help-archive-step.mjs`, over `lib/help-archive.mjs`.
 
-The zip comes back as a plain byte array. `submit` wraps it again as a `Buffer` over the same memory, which `addinProject` packs into the add-in's project file and `runBuild` checks the offline tree against once the Gantt chart is injected (`recheckHelpArchive`). The step writes nothing for a source root other than `docs`, a `--dest` other than `docs/_site`, and under `--serve`, `--dry-run` or `--no-help-archive`.
+The deflating is split into **units**: a whole file, or one piece of 1 MB of a larger file. A large file's pieces are joined into one deflate stream. Every piece but the last ends with a sync flush, which ends it on a byte boundary without ending the stream, and each piece is primed with the 32 KB of the file before it. The bytes depend only on the piece size, never on how many lanes ran the units.
+
+1. **`archivePlan`** runs once `flushJoin`, `scss` and `writeOffline` have written everything in the offline tree but `search-index.js`. `planHelpArchive` decides whether this build writes the archive, refuses one that would hold a file the Downloads page offers, lists the tree less `LATE_FILES`, and deals the units into one group for each lane. Its `submit` adds an `archiveDeflate:i` for each group with [`fanOut`](#fan-outmjs). The tree is therefore deflated while the search index is still being built.
+2. **`archiveLate`** runs once `searchIndex` has written `search-index.js`, the one file in `LATE_FILES`. `planLateFiles` deals its pieces in the same way, as `archiveLateDeflate:i`.
+3. **`archiveDeflate:i`** and **`archiveLateDeflate:i`** run `deflateGroup` on a lane. Each unit is read, deflated and inflated again, and the result is compared with the bytes read. A failure comes back as `{ error }`, so that it fails the build without stopping it.
+4. **`helpArchive`** joins the units into entries (`finishHelpArchive`), writes the zip, reads it back and checks it against what it assembled and against the list of files.
+
+`helpArchive` returns the zip's bytes, which `addinProject` packs into the add-in's project file, and its path, which `runBuild` checks the offline tree against once the Gantt chart is injected (`recheckHelpArchive`). The tasks write nothing for a source root other than `docs`, a `--dest` other than `docs/_site`, and under `--serve`, `--dry-run` or `--no-help-archive`: `archivePlan` then returns a plan with no groups.
 
 ### `bookPayload` (main)
 
 ```js
-bookPayload.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters"]
+bookPayload.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters", "buildInfo"]
 bookPayload.execute() → SharedArrayBuffer
 ```
 
@@ -602,6 +722,15 @@ The link and integrity check over rendered pages, which the standalone [`scripts
 | `deriveTreeRels` | `(which, …) → string[]` | Every relative path the build believes it emitted into a given tree: pages, redirect stubs, auxiliaries, static files, theme assets, generated DOT SVGs, minus offline exclusions. The check's oracle uses it instead of the filesystem; `auditIndex` verifies it. |
 | `posix` | `(p) → string` | Backslash-to-slash path normalisation. |
 
+### `fnmatch.mjs`
+
+The path patterns of `offline_exclude` and of the help archive's skip list: `*` stays within a folder, `**` crosses folders, `?` is one character that is not `/`. The module imports nothing, so `check-tree.mjs` can use it on the way to the first render.
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `matchesAny` | `(rel, patterns) → boolean` | Returns `true` when a path matches one of the patterns. The list is compiled the first time it is seen, and again when its length has changed: a pattern with no wildcard goes into a `Set`, the others become regular expressions. `dispatch` tests every path of both trees against a list that holds each picture's SVG when the offline tree shows PNGs. |
+| `fnmatchPathname` | `(pattern, path) → boolean` | The match of one pattern against one path. |
+
 ### `link-check.mjs`
 
 The pure core shared by the build's check and the standalone [`scripts/check_links.mjs`](Tools-Site-Checks#check-links). It does no filesystem traversal and has no CLI: it takes HTML and an oracle and returns findings. **The two front ends read the tree differently, and a checker that silently checks less reports a clean pass, so run [`check_links_diff.mjs`](Tools-Site-Checks#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
@@ -640,7 +769,20 @@ The pure core shared by the build's check and the standalone [`scripts/check_lin
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Traverses the source tree, classifies pages vs static files, returns the two sorted arrays. |
+| `listSources` | `(srcRoot, ignore) → Promise<{ pageRels, otherRels }>` | The files under the source root that `ignore` does not leave out, sorted: the `.md` and `.html` files, and the others. |
+| `cutPieces` | `(listing, count, extra?) → { pieces, statics, pairs }` | The listing in `count` pieces for `readPiece`, with the `bundle_extra` files (`extra`) among the static files, and what `assemble` needs. |
+| `assemble` | `(srcRoot, plan, results) → { pages, staticFiles, pictureSizes }` | The inventory, from `cutPieces`' plan and each piece's result: the two sorted arrays and the picture pairs' sizes. |
+| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | The same steps in one call and one piece, without `bundle_extra`, for the tools that have no lanes. |
+
+### `discover-read.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `readPiece` | `(srcRoot, { pageRels, statSrcs, pairs }) → { pages, plain, warnings, sizes, pairSizes }` | Reads one piece, synchronously: the pages, the files with no frontmatter, the warnings to print, each static file's size and each pair's `[lightW, lightH, darkW, darkH]` or `null`. |
+| `packPageText` | `(pages) → { sab, spans }` | The pages' `rawContent` as UTF-8 in one `SharedArrayBuffer`; `spans` holds each page's offset and length in bytes, two numbers a page. Runs on the lane that read the pages. |
+| `pageText` | `(sab, offset, length) → string` | One page's text, read back. Runs on the lane that renders the page. |
+| `PAGE_EXT` | `RegExp` | The extensions of a file that may be a page: `.md` and `.html`. |
+| `toPosix` | `(path) → string` | A path with forward slashes. |
 
 ### `publish-policy.mjs`
 
@@ -825,9 +967,10 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` or `{{tbdocs:<name>:<argument>}}` placeholder and captures the name and the argument. Used by the `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
 | `deriveCounts` | `(state, extra) → Record<string, number>` | Derives every named count from build state: page, static-file, reference-page and documentation-page totals, folder-style reference indexes and how many of them have a permalink ending in a slash, packages (total, default, built-in), attribute anchors, enumerations, and `extra.redirectStubs`. Called by `markdownInit` to build `state.site.counts`, whose keys are the names a page may use. |
 | `countPlugin` | `(md, ctx) → void` | A markdown-it plugin, the last one `createMarkdownIt` applies. Substitutes each `{{tbdocs:<name>}}` placeholder in prose and image alt text with the value `ctx.counts` holds under that name, and leaves an unknown name as written; code spans and fences are untouched. Its core rule is pushed last, so it runs after `replacements`. Does nothing when `ctx.counts` is absent. |
-| `findCountRefs` | `(rawContent, md) → { name, arg, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source, masking code with `maskCode` from `lib/markdown.mjs` and the site's markdown-it instance `md`, as the pre-render rewrites do. `line` is 1-based in `rawContent`, counted with the code put back (a masked fence is one line). Called by `validateCountNames` for each page. |
-| `checkPlaceholders` | `(pages, counts, downloads, md) → { problems, sizes }` | `validateCountNames` for all placeholders: also refuses a `size` whose path the build does not publish or cannot size before render (`downloads.refused`, which names the help add-in's project, stylesheets and SVGs), a `size` without a path, an argument on a name that takes none, and either download placeholder when `downloads` is `null`. `sizes` holds the bytes of each file named, which is all the workers are sent. |
-| `deriveDownloads` | `(state, { tests, addinDest }) → { files, refused, tests }` | The sizes known before render: the static files discover found (the `bundle_extra` files among them) and the packed package test projects (`tests`, from `packTests`), and the paths that are published but cannot be sized, each with its reason. |
+| `findCountRefs` | `(rawContent, md) → { name, arg, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source. Code is what `maskCode` from `lib/markdown.mjs` hides with the site's markdown-it instance `md`, as the pre-render rewrites do: every line of a fence (`blockRegions`), and the code spans of any other line (`splitCodeSpans`). Only the lines that hold a placeholder are cut into spans, since a placeholder cannot span lines. `line` is 1-based in `rawContent`. Called by `checkPlaceholders` for each page. |
+| `checkPlaceholders` | `(pages, counts, downloads, md) → { problems, sizes, packedArgs, late }` | `validateCountNames` for all placeholders: also refuses a `size` whose path the build does not publish or cannot size before the page renders (`downloads.refused`, which names the help add-in's project, stylesheets and SVGs), a `size` without a path, an argument on a name that takes none, and either download placeholder when `downloads` is `null`. `sizes` holds the bytes of each file named, which is all the workers are sent. A `size` that names a file in `downloads.packed` is accepted without a size: `packedArgs` maps its argument to the file's path, and `late` names each page that states such a size or lists the test projects. |
+| `deriveDownloads` | `(state, { packed, addinDest }) → { files, refused, packed }` | What is known before render: the sizes of the static files discover found (the `bundle_extra` files among them), the paths that are published but cannot be sized, each with its reason, and the paths of the files `packTests` packs (`packed`), which have no size yet. |
+| `packedDownloads` | `({ sizes, packedArgs, dest, packed }) → { sizes, tests }` | The downloads as the late pages need them, once `packTests` has packed: `sizes` with each packed file a page names added, and `tests`, one row for each package test project. Throws when a file a page names was not packed. Called by `downloadSizes`. |
 | `expandDownloadPlaceholders` | `(src, downloads, permalink) → string` | Expands `{{tbdocs:size:<site path>}}` as `43 KB` or `1.2 MB`, and `{{tbdocs:packageTestRows}}` as one table row for each package test project, with links relative to `permalink`. `applyPreRenderRewrites` calls it on the source with code masked, using the `downloads` the page's `md` carries. |
 | `formatSize` | `(bytes) → string` | Whole KB (1024-based, at least 1) below a mebibyte, MB with one decimal from there. |
 | `validateCountNames` | `(pages, counts, md) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`. Returns one message per unknown reference, giving the file and line (the reference's line in `rawContent`, moved down by the page's `contentLine`), the nearest known name when one is within an edit distance of three, and every known name. Empty when every reference is known. `markdownInit` throws when the result is non-empty. |
@@ -911,7 +1054,13 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSearchDataFromChunks` | `(searchChunks, destRoot, symbols) → Promise<{ entries, json }>` | Per-chunk consolidator. Flattens, joins `symbols` onto the matching entries by URL (`joinSymbolsToEntries`), renumbers global `i`, writes `assets/js/search-data.json`. Used by the `searchData` task. |
+| `consolidateSearchEntries` | `(searchChunks, symbols, keyChunks?) → { entries, places }` | Per-chunk consolidator. Flattens, checks the index terms, settles the labels (`settleLabels`), renumbers global `i` and joins `symbols` onto the matching entries by URL (`joinSymbolsToEntries`). `places[n]` is entry n's `[chunk, place in the chunk]`. Used by the `searchEntries` task. |
+| `settleLabels` | `(entries, keys?) → entries` | Drops a term entry that a main index term answers, and makes each label no heading, title, term entry or mark answers a secondary index term of its entry. `keys` are the entries' `entryKeys`; without them it works them out. |
+| `entryKeys` / `labelKey` | `(entry, key?) → object` / `(name) → string` | What `settleLabels` compares of one entry, and a name as it compares names. The render workers call `entryKeys`. |
+| `packSearchEntries` / `readSearchEntries` | `(entries) → SharedArrayBuffer` / `(sab, from?, to?) → object[]` | A chunk's entries, each as the head and the tail of its text in `search-data.json`, in one buffer; and a run of them read back, each `{ doc, title, content, url, relUrl }`. |
+| `searchDataBytes` | `(entries, places, packed) → Buffer` | `search-data.json`'s bytes: each entry's number and late fields, around the head and tail copied from its chunk's buffer. |
+| `searchDocs` | `(entries) → object` | The entries as `search-data.json` holds them, parsed, without a parse of the file. |
+| `writeSearchData` | `({ entries, places }, packed, destRoot) → Promise<{ entries, json, docs }>` | Writes `assets/js/search-data.json`. Used by the `searchData` task. |
 | `joinSymbolsToEntries` | `(entries, symbols) → entries` | Attaches `names` / `qualified` / `primary` (the names that are types or language elements) to each entry whose `relUrl` matches a symbol's `url`, after normalising both (strip a trailing `/index` or `/index.html`, then a trailing slash; the `#fragment`, if any, is compared as-is). Mutates and returns `entries`. |
 | `deriveSearchEntries` | `(pages, site) → object[]` | Pure compute. One entry per heading-bounded section of each titled page. Each entry: `{ i, doc, title, content, url, relUrl, sourcePage }`. Called by render workers, which drop `sourcePage` and the chunk-local `i` before posting back. |
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte for byte. |
@@ -923,19 +1072,31 @@ The one definition of the site search's lunr index: its fields and boosts (`FIEL
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSearchIndex` | `(destRoot, { offline }) → Promise<{ entries, workers, bytes }>` | Reads `search-data.json`, writes `search-index.json` and, when `offline`, the offline tree's `search-index.js`. Used by the `searchIndex` task. |
-| `buildIndexJson` | `(docs, { workers, lunrPath }) → Promise<string>` | The index of the parsed search data as lunr's JSON, built on `workers` threads (`search-index-worker.mjs`); one builds it on the calling thread with `lunr()` itself. Every worker count gives the same bytes. |
+| `writeSearchIndex` | `(destRoot, indexJson, docs, { offline }) → Promise<{ entries, bytes }>` | Writes `search-index.json` and, when `offline`, the offline tree's `search-index.js`, from the index's JSON and the entries. Used by the `searchIndex` task. |
+| `indexSliceCount` | `(entries, lanes) → number` | The slices the build cuts an index into: two for each lane, at most one for every 500 entries. |
+| `planIndexSlices` | `(lunr, docs, count) → { slice, docs, twins }[]` | The entries cut into `count` runs of about equal text, each with the stem twins of every entry: what one `addSlice` takes. `buildIndexJson` uses it. |
+| `cutIndexSlices` | `(docs[], count) → [from, to][]` | Where those runs start and end. |
+| `planIndexSegments` | `(entries, places, count) → { slice, first, segments, dropped, late }[]` | The build's slices, cut as `planIndexSlices` cuts them. Each says where its entries are among the render chunks' packed entries, and what was decided about them after the render. Used by the `indexSlices` task. |
+| `sliceDocs` | `(plan, read) → docs` | One slice's entries by number, as `addSlice` takes them, from its plan and the chunks' packed entries. |
+| `stemTwins` | `(lunr, docs) → Set<string>` | The qualified names that the stemmer merges with another name's. |
+| `addSlice` | `(lunr, docs, twins) → { state, added }` | One slice added to a `lunr.Builder` of its own. `state` holds the builder for `sliceVectors`; `added` is the slice's terms, postings and field lengths, for `mergeSlices`. |
+| `mergeSlices` | `(added[]) → { merged, totals }` | The slices' postings merged, each term numbered as one build numbers it, and the totals the vectors need: each slice's term numbers, each term's idf, the document count and each field's average length. |
+| `sliceVectors` | `(lunr, state, totals) → string` | lunr's `createFieldVectors` over one slice's builder, as `toJSON` writes the vectors. |
+| `invertedIndexJson` | `(merged) → string` | lunr's `toJSON` of the inverted index, from the merged postings. |
+| `assembleIndexJson` | `(lunr, vectors[], invertedIndex) → string` | The index's JSON, from every slice's vectors and the inverted index. |
+| `packTotals` / `unpackTotals` | `(totals) → SharedArrayBuffer` / `(sab, slice) → totals` | `mergeSlices`' totals for the lanes, which read them in place. |
+| `buildIndexJson` | `(docs, { slices, lunrPath }) → string` | The index of the parsed search data as lunr's JSON, every step on the calling thread. Every slice count gives the same bytes. The tests use it. |
 | `buildIndex` | `(lunr, docs) → lunr.Index` | The index built by `lunr()` on the calling thread: what the split build must equal. `eval/site_search.mjs` uses it for a site with no `search-index.json`. |
 | `loadSearchLunr` | `(lunrPath?) → lunr` | The vendored lunr with the site's patches installed, once per copy. |
 | `searchIndexFile` | `(indexJson, docs) → string` | `search-index.json`'s text: `{"docs": ..., "index": ...}`, the entries minified and the index as given. |
 | `offlineSearchIndexJs` | `(fileText) → string` | Wraps `search-index.json` as `window.SEARCH_INDEX = JSON.parse('…')` for the offline tree. |
-| `defaultIndexWorkers` | `(entries) → number` | The threads the build gives an index: half the machine, at most eight, one per 500 entries. |
 
 ### `symbols.mjs`
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `symbolPages` | `(pages) → object[]` | The pages under `/tB/`, each as `{ src, url, title, parent, symbols, excludeFromDocs, headings }`, `headings` read from `renderedContent`. |
+| `symbolPages` | `(pages) → object[]` | The pages under `/tB/`, each as `{ src, url, title, parent, symbols, excludeFromDocs, headings }`. `headings` is the page's own when its render worker set it, and is read from `renderedContent` otherwise. |
+| `isSymbolPage` | `(page) → boolean` | Whether `symbolPages` reads a page: one under `/tB/`, or a summary page. |
 | `headingsOf` | `(html) → { level, id, text }[]` | Every heading of a rendered page, in order, with the id the render gave it. A scan for `<hN`, not a regex over the page. |
 | `deriveSymbolIndex` | `({ pages, api }) → { symbols, interfaces, packages, gaps, unplaced }` | Pure compute. The entries, the interface-to-class and package-name maps, the public symbols no page documents, and the package pages that gave no entry. |
 | `serializeSymbolIndex` | `(result, api) → string` | The published file: a header, then one entry to a line. |
@@ -1001,11 +1162,10 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 | `deriveOfflinePage` | `(page, state) → { html, misses }` | Rewrites one page's HTML for offline use: strips SEO metadata, rewrites every absolute URL to a page-relative path, injects the offline search setup script. |
 | `deriveOfflineCss` | `(cssIn, themeRel, state) → { css, misses }` | Rewrites `url()` references in a CSS file to page-relative paths. |
 | `deriveOfflineRedirect` | `(stub, state) → string` | Rewrites a redirect stub's HTML for offline use. |
-| `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. |
+| `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. It is `matchesAny` of `fnmatch.mjs`. |
 | `stripFontPreloads` | `(html) → string` | Removes the `<link rel="preload" as="font">` tags from the offline tree only. A font preload is a CORS-mode fetch; under `file://` there is no origin to match, so Chrome fails it with `ERR_FAILED` while the `@font-face` fetch succeeds. The preload gains nothing offline and adds two red lines to the console. |
 | `posixDirname` | `(rel) → string` | POSIX directory component of a relative path. |
 | `fileDirSegsFromRel` | `(rel) → string[]` | Splits a destination path into directory segments. |
-| `fnmatchPathname` | `(pattern, path) → boolean` | Glob-style pathname match. |
 | `computeRelative`, `resolveRaw`, `computeRelUrl`, `buildSegs`, `decode`, `getPageCache`, `stripSeo`, `rewriteHtml`, `rewriteCss`, `injectSearchSetup` | various | Internal helpers; see [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) for the per-symbol descriptions. |
 
 ### `pdf.mjs`
@@ -1021,6 +1181,14 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 | `SharedState` | class | `pages[]`, `staticFiles[]`, `site`, `pageByDest`, `searchChunks`. Created by the `Scheduler` constructor. |
 | `Scheduler` | class | Main-thread side of the pull scheduler. Constructor: `{ pool, tasks, views, idMapping, ganttSections }`. Methods: `start(ctx)` (returns the results promise), `addDynamicTasks(count)`, `summary()`. The orchestrator sets the event hooks (`_onWorkerDone`, `_onWorkerError`, `_onPerWorkerTiming`, `_onMainTaskReady`). |
 
+### `fan-out.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `fanOut` | `(scheduler, { from, prefix, handler, payloads, after?, pinTo?, joins?, ganttSection?, priority?, describe? }) → string[]` | Adds one lane task `<prefix>:<i>` for each payload, from the `submit` of the main-thread task `from`. Every piece waits for `from`, and for each task in `after` that is not done yet. `pinTo` names an earlier fan-out of the same `submit`: piece `i` then runs on the lane that ran its piece `i`. Each static task in `joins` waits for every piece, and receives each one's output under its name; it must list `from` in its `expected`. The payloads are packed into one `SharedArrayBuffer`, broadcast as the task data `fan:<base>:<count>`, which a handler reads with `fanOutPayload(taskIdx)` in `cpu-worker.mjs`. Returns the pieces' names. |
+
+A piece cannot become READY while its edges are being written, because `from` is still CLAIMED until its `submit` returns. For the same reason a task in `after` must be a main-thread task or a piece made in the same `submit`: a lane task could finish between the check of its status and the writing of its edge.
+
 ### `worker-pool.mjs`
 
 | Symbol | Signature | Description |
@@ -1031,18 +1199,24 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 
 Worker harness; no exports. Runs the pull loop in module scope.
 
+The module's static imports are the first stage of a lane's boot: the scheduler, `sab-broadcast.mjs` and `discover-read.mjs`. Every other module a handler needs is loaded by `loadRest`, the second stage, which the pull loop awaits before a lane's first task that is not a `discoverRead`. Each stage posts a `coldBoot` message with its times, for the Gantt chart.
+
 The handler table is built from the imported `HANDLERS` constant:
 
 | Handler | Source | Description |
 |---|---|---|
+| `discoverRead` | `discover-read.mjs` | `readPiece` over the piece in its `fanOutPayload`, then `packPageText` over its pages. Runs after the first boot stage alone. |
 | `warmInit` | inline | Awaits `initHighlighter()`. |
 | `renderEnvInit` | inline | Unpacks shared SAB, awaits highlighter, reconstructs link tables, builds markdown-it, stores `_renderEnv`. |
 | `flush` | inline | Drains the next `_pendingFlush` batch to disk. |
 | `scssLight` / `scssDark` | `scss.mjs` | Light/dark palette compile. |
 | `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |
 | `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
+| `packTests` | `package-tests.mjs` | `packAllPackageTests` over the `"packageTests"` task data; imports the module when it runs. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
-| `helpArchive` | `help-archive-step.mjs` | `helpArchiveStep` over the offline tree; reads `skipOffline` from the shared payload through `sharedData()`. |
+| `indexAdd` | `search-index.mjs` | `addSlice` over its slice's entries, which `sliceDocs` reads from the `"indexEntries"` task data as the plan in its `fanOutPayload` says; keeps the builder in `_indexSlices` for `indexVectors`. |
+| `indexVectors` | `search-index.mjs` | `sliceVectors` over the builder `indexAdd` kept on this lane, with the `"indexTotals"` task data. |
+| `archiveDeflate` | `help-archive-step.mjs` | `deflateGroup` over the units in its `fanOutPayload`. Runs `archiveDeflate:i` and `archiveLateDeflate:i`. |
 | `writePdf` | `pdf.mjs` | Waits for the `"book"` task data, unpacks it with `unpackBookPayload`, writes the PDF tree and keeps the book for `checkBook`. |
 | `checkBook` | inline | `checkChunk` over the book `writePdf` kept on this lane; `null` without `--check`. |
 

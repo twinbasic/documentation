@@ -1,16 +1,16 @@
 // The gate on builder/search-index.mjs's split build: the search index the
-// build writes on several threads must be, byte for byte, the index lunr
-// itself makes on one (lunr(config) and JSON.stringify), for any number of
-// threads. lunr has no way to merge two indexes, so the build merges what
-// each thread's lunr.Builder holds and makes the vectors from totals of its
+// build writes in slices on its lanes must be, byte for byte, the index lunr
+// itself makes in one (lunr(config) and JSON.stringify), for any number of
+// slices. lunr has no way to merge two indexes, so the build merges what
+// each slice's lunr.Builder holds and makes the vectors from totals of its
 // own (WIP.Search.md, "The pre-built index"); a change to how it does that,
 // or a lunr whose builder keeps its state otherwise, gives a slightly
 // different ranking that nothing else would notice.
 //
 // The fixture is made to reach the merge's corners: terms that look like
-// numbers (which JavaScript orders before other keys), terms a later thread
-// meets first, terms only one thread has, empty fields, HTML entities, stem
-// twins, hand-marked index terms and a thread with a single entry.
+// numbers (which JavaScript orders before other keys), terms a later slice
+// meets first, terms only one slice has, empty fields, HTML entities, stem
+// twins, hand-marked index terms and a slice with a single entry.
 //
 // Runs with a bare `node --test test/search-index.test.mjs`; no build needed.
 
@@ -19,13 +19,25 @@ import vm from "node:vm";
 import { describe, test } from "node:test";
 
 import {
+  addSlice,
+  assembleIndexJson,
   buildIndex,
   buildIndexJson,
-  defaultIndexWorkers,
+  indexSliceCount,
+  invertedIndexJson,
   loadSearchLunr,
+  mergeSlices,
   offlineSearchIndexJs,
+  packTotals,
+  planIndexSegments,
+  planIndexSlices,
   searchIndexFile,
+  sliceDocs,
+  sliceVectors,
+  stemTwins,
+  unpackTotals,
 } from "../builder/search-index.mjs";
+import { packSearchEntries, readSearchEntries } from "../builder/search.mjs";
 
 // A deterministic fixture of `count` entries.
 function fixture(count) {
@@ -85,23 +97,109 @@ describe("the split build is lunr()'s", () => {
   const docs = fixture(120);
   const reference = JSON.stringify(buildIndex(lunr, docs));
 
-  test("on one thread it is lunr()'s own", async () => {
-    assert.equal(await buildIndexJson(docs, { workers: 1 }), reference);
+  test("in one slice it is lunr()'s own", () => {
+    assert.equal(buildIndexJson(docs, { slices: 1 }), reference);
   });
 
-  for (const workers of [2, 3, 7, 119]) {
-    test(`on ${workers} threads it is lunr()'s, byte for byte`, async () => {
-      assert.equal(await buildIndexJson(docs, { workers }), reference);
+  for (const slices of [2, 3, 7, 119]) {
+    test(`in ${slices} slices it is lunr()'s, byte for byte`, () => {
+      assert.equal(buildIndexJson(docs, { slices }), reference);
     });
   }
 
-  test("more threads than entries gives one entry each", async () => {
+  test("more slices than entries gives one entry each", () => {
     const few = fixture(4);
-    assert.equal(await buildIndexJson(few, { workers: 16 }), JSON.stringify(buildIndex(lunr, few)));
+    assert.equal(buildIndexJson(few, { slices: 16 }), JSON.stringify(buildIndex(lunr, few)));
   });
 
-  test("an index loaded from it answers as lunr()'s does", async () => {
-    const loaded = lunr.Index.load(JSON.parse(await buildIndexJson(docs, { workers: 3 })));
+  // As the build runs it: each slice's builder kept for its vectors, and the
+  // totals read back from the SharedArrayBuffer the lanes are sent.
+  test("through the totals the lanes are sent it is lunr()'s, byte for byte", () => {
+    const plan = planIndexSlices(lunr, JSON.parse(JSON.stringify(docs)), 5);
+    // Each slice's payload as JSON, as fanOut packs it.
+    const lanes = plan.map((p) => JSON.parse(JSON.stringify(p))).map((p) => addSlice(lunr, p.docs, p.twins));
+    const { merged, totals } = mergeSlices(lanes.map((l) => l.added));
+    const sab = packTotals(totals);
+    const vectors = lanes.map((l, s) => sliceVectors(lunr, l.state, unpackTotals(sab, s)));
+    assert.equal(assembleIndexJson(lunr, vectors, invertedIndexJson(merged)), reference);
+  });
+
+  // As the build plans it: the entries stay where the render lanes packed
+  // them, chunk by chunk, and a slice says where its entries are and what the
+  // main thread decided about them since (planIndexSegments, sliceDocs). Some
+  // entries the lanes sent were dropped, so a run of a chunk skips them.
+  test("from the chunks the render lanes packed it is lunr()'s, byte for byte", () => {
+    const entries = Object.entries(docs).map(([id, doc]) => ({ ...doc, i: Number(id), url: `/base${doc.relUrl}` }));
+    // Chunks of uneven sizes, one of them empty, with an entry that was
+    // dropped after every third kept one and at both ends of a chunk.
+    const dropped = { doc: "Dropped", title: "gone", content: "never indexed", url: "/base/gone", relUrl: "/gone" };
+    const sizes = [1, 0, 17, 40, 2, 60];
+    const sent = [];
+    const places = [];
+    let n = 0;
+    for (const size of sizes) {
+      const chunk = [dropped];
+      for (let k = 0; k < size; k++, n++) {
+        places.push([sent.length, chunk.length]);
+        chunk.push(entries[n]);
+        if (n % 3 === 2) chunk.push(dropped);
+      }
+      chunk.push(dropped);
+      sent.push(chunk);
+    }
+    assert.equal(n, entries.length);
+    const packed = sent.map(packSearchEntries);
+    const read = (chunk, from, to) => readSearchEntries(packed[chunk], from, to);
+    const twins = [...stemTwins(lunr, entries)];
+    assert.deepEqual(twins, [...stemTwins(lunr, docs)]);
+
+    for (const count of [1, 4, 9, 119]) {
+      const plan = planIndexSegments(entries, places, count).map((p) => JSON.parse(JSON.stringify(p)));
+      assert.equal(plan.length, count);
+      // Every entry once, in order, under its own number, as the file holds it.
+      const readBack = Object.assign({}, ...plan.map((p) => sliceDocs(p, read)));
+      assert.deepEqual(Object.keys(readBack), Object.keys(docs));
+      for (const id of Object.keys(docs)) assert.deepEqual(readBack[id], { ...docs[id], url: entries[id].url });
+      const lanes = plan.map((p) => addSlice(lunr, sliceDocs(p, read), twins));
+      const { merged, totals } = mergeSlices(lanes.map((l) => l.added));
+      const sab = packTotals(totals);
+      const vectors = lanes.map((l, s) => sliceVectors(lunr, l.state, unpackTotals(sab, s)));
+      assert.equal(assembleIndexJson(lunr, vectors, invertedIndexJson(merged)), reference, `${count} slices`);
+    }
+  });
+
+  test("the build's slices are cut where planIndexSlices cuts them", () => {
+    const entries = Object.values(docs);
+    const places = entries.map((_, k) => [0, k]);
+    for (const count of [1, 2, 5, 37, 119, 120, 500]) {
+      const whole = planIndexSlices(lunr, docs, count);
+      const segments = planIndexSegments(entries, places, count);
+      assert.deepEqual(
+        segments.map((p) => [p.first, p.segments]),
+        whole.map((p) => {
+          const ids = Object.keys(p.docs).map(Number);
+          return [ids[0], [[0, ids[0], ids.at(-1) + 1]]];
+        }),
+      );
+    }
+    assert.deepEqual(planIndexSegments([], [], 4), [{ slice: 0, first: 0, segments: [], dropped: [], late: {} }]);
+  });
+
+  test("the slices hold every entry once, in order, none of them empty", () => {
+    const ids = Object.keys(docs);
+    for (const count of [1, 2, 5, 37, 119, 120, 500]) {
+      const plan = planIndexSlices(lunr, docs, count);
+      assert.equal(plan.length, Math.min(count, ids.length));
+      assert.deepEqual(
+        plan.flatMap((p) => Object.keys(p.docs)),
+        ids,
+      );
+      assert.ok(plan.every((p) => Object.keys(p.docs).length > 0));
+    }
+  });
+
+  test("an index loaded from it answers as lunr()'s does", () => {
+    const loaded = lunr.Index.load(JSON.parse(buildIndexJson(docs, { slices: 3 })));
     const built = buildIndex(lunr, docs);
     for (const q of ["form", "f*", "window print", "1", "h80004005", "loop", "printer.font", "onlylast119"]) {
       assert.deepEqual(
@@ -110,12 +208,6 @@ describe("the split build is lunr()'s", () => {
         `${JSON.stringify(q)} finds other results`,
       );
     }
-  });
-
-  test("a thread that fails fails the build", async () => {
-    // Only a thread reads `index` (indexField()), and a string has no map().
-    const broken = { ...docs, 119: { ...docs[119], index: "not a list" } };
-    await assert.rejects(buildIndexJson(broken, { workers: 2 }), /search index worker: TypeError/);
   });
 });
 
@@ -139,9 +231,11 @@ describe("the files the build writes", () => {
     assert.deepEqual(window.SEARCH_INDEX, JSON.parse(text));
   });
 
-  test("a site of a few hundred entries starts no thread", () => {
-    assert.equal(defaultIndexWorkers(10), 1);
-    assert.equal(defaultIndexWorkers(499), 1);
-    assert.ok(defaultIndexWorkers(12000) >= 1 && defaultIndexWorkers(12000) <= 8);
+  test("a site of a few hundred entries is one slice, a larger one a few for each lane", () => {
+    assert.equal(indexSliceCount(10, 16), 1);
+    assert.equal(indexSliceCount(499, 4), 1);
+    assert.equal(indexSliceCount(1500, 4), 3);
+    assert.equal(indexSliceCount(13000, 4), 8);
+    assert.equal(indexSliceCount(13000, 64), 26);
   });
 });

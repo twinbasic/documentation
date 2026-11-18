@@ -5,8 +5,7 @@
 //
 // Sections:
 //
-//   §B  Site-paths set  (buildSitePathsSync, offlineExcluded,
-//                        fnmatchPathname)
+//   §B  Site-paths set  (buildSitePathsSync, offlineExcluded)
 //   §C  URL resolution   (computeRelative, resolveRaw, computeRelUrl,
 //                         computeWebsiteUrl, isWebsiteOnlyLink, websiteOf,
 //                         buildSegs, decode, fileDirSegsFromRel,
@@ -21,6 +20,7 @@
 import { escapeRegExp } from "./escape.mjs";
 import { CODE_OR_PRE } from "./code-guard.mjs";
 import { posix } from "./paths.mjs";
+import { matchesAny } from "./fnmatch.mjs";
 
 // ---------------------------------------------------------------------------
 // §B  Site-paths set
@@ -57,34 +57,9 @@ export function buildSitePathsSync(pages, staticFiles, excludePatterns, stubs, t
 
 // §6.5  offlineExcluded -- File.fnmatch(..., FNM_PATHNAME) semantics:
 // `*` does NOT cross `/`, `**` does.
+// The patterns are compiled once for each list (fnmatch.mjs).
 export function offlineExcluded(rel, patterns) {
-  if (!patterns.length) return false;
-  // A pattern with no wildcard matches only itself; the build adds a few hundred such
-  // (the pictures' SVGs, when picture_svg.offline is false), so they skip the regex.
-  return patterns.some((pat) => (/[*?]/.test(pat) ? fnmatchPathname(pat, rel) : pat === rel));
-}
-
-export function fnmatchPathname(pattern, str) {
-  let re = "^";
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i];
-    if (c === "*") {
-      if (pattern[i + 1] === "*") {
-        re += ".*";
-        i++;
-      } else {
-        re += "[^/]*";
-      }
-    } else if (c === "?") {
-      re += "[^/]";
-    } else if (".+^$()|[]{}\\".includes(c)) {
-      re += "\\" + c;
-    } else {
-      re += c;
-    }
-  }
-  re += "$";
-  return new RegExp(re).test(str);
+  return matchesAny(rel, patterns);
 }
 
 // ---------------------------------------------------------------------------

@@ -219,8 +219,9 @@ export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
-  helpArchive: 8, writePdf: 9, checkBook: 10,
-  myHandler: 11,                         // ← new
+  writePdf: 9, checkBook: 10,
+  indexAdd: 12, indexVectors: 13, archiveDeflate: 14,
+  myHandler: 15,                         // ← new
 };
 ```
 
@@ -248,7 +249,36 @@ const handlers = {
 
 The handler's return value comes back to main as `{ done: taskIdx, output, timing, lane }`. The scheduler stores `output` in `results` and passes it to your task's `submit()`.
 
-A worker cannot read `state`, so it cannot see what a main-thread task produced. Work that follows one takes one of two forms. A worker that needs only what `dispatch` broadcast reads it with `sharedData()`, as `helpArchive` does. A worker that needs a main-thread task's output gets a main task in front of it that packs the output into a `SharedArrayBuffer` and broadcasts it from its `submit`, with `scheduler.pool.broadcastTaskData("<key>", sab)`; the handler reads it with `await taskData("<key>")`. The `bookPayload` task and the `writePdf` handler are the model. Broadcast in `submit`, which runs before the task is marked done, so that the message is queued on every lane before any lane can claim the worker task. Whatever the output holds must survive structured cloning: a markdown-it instance does not, so `bookPayload` renders the parts' subtitles and intros before it packs, and replaces each page reference with the page's index in the list.
+A worker cannot read `state`, so it cannot see what a main-thread task produced. Work that follows one takes one of two forms. A worker that needs only what `dispatch` broadcast reads it with `sharedData()`, as `renderEnvInit` does. A worker that needs a main-thread task's output gets a main task in front of it that packs the output into a `SharedArrayBuffer` and broadcasts it from its `submit`, with `scheduler.pool.broadcastTaskData("<key>", sab)`; the handler reads it with `await taskData("<key>")`. The `bookPayload` task and the `writePdf` handler are the model. Broadcast in `submit`, which runs before the task is marked done, so that the message is queued on every lane before any lane can claim the worker task. Whatever the output holds must survive structured cloning: a markdown-it instance does not, so `bookPayload` renders the parts' subtitles and intros before it packs, and replaces each page reference with the page's index in the list.
+
+**Work that can run in parallel is split into lane tasks; a handler never starts a thread.** The lanes are the build's only threads ([No task starts a thread](Pipeline-Stages#no-task-starts-a-thread)). A main-thread task plans the pieces and calls `fanOut` from `fan-out.mjs` in its `submit`, with one JSON payload for each piece:
+
+```js
+// builder/tbdocs.mjs
+myPlan: {
+  expected: ["someTask"],
+  runOnMain: true,
+  execute() { return { payloads: planPieces() }; },
+  submit(out, _state, scheduler) {
+    fanOut(scheduler, {
+      from: "myPlan",            // the task whose submit this is
+      prefix: "myPiece",         // the pieces are myPiece:0, myPiece:1, ...
+      handler: "myHandler",      // reads its payload with fanOutPayload(taskIdx)
+      payloads: out.payloads,
+      joins: ["myJoin"],         // a static main-thread task that lists "myPlan"
+      ganttSection: "Write",
+    });
+  },
+},
+myJoin: {
+  expected: ["myPlan"],          // fanOut adds every myPiece:i
+  runOnMain: true,
+  execute(inputs) { /* inputs["myPiece:0"], ... */ },
+  submit() {},
+},
+```
+
+The join receives each piece's output under its name. `pinTo` runs piece `i` on the lane that ran piece `i` of an earlier fan-out from the same `submit`, for work that keeps state on its lane; `after` names other main-thread tasks every piece waits for. The search index's tasks use all of these.
 
 ### 4. Define the task in `TASKS`
 
@@ -722,7 +752,7 @@ Two shapes qualify. Most names count things `discover` already found: pages unde
 
 Then read the built page and check the number against the thing it counts. Nothing compares a derivation against reality: a name that returns the wrong number is as green as one that returns the right one.
 
-A value that is text, or that has to appear in a raw HTML block or on a table line, is not a count: `countPlugin` cannot reach it. `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` are the model for one. `expandDownloadPlaceholders` expands them in the page source, between the code mask and its restore in `applyPreRenderRewrites`; `checkPlaceholders` refuses what cannot be expanded, naming the file and the line; and the values reach the render workers in the shared payload, as `counts` does. A value that depends on a file written after the pages render cannot be known in time, and is refused.
+A value that is text, or that has to appear in a raw HTML block or on a table line, is not a count: `countPlugin` cannot reach it. `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` are the model for one. `expandDownloadPlaceholders` expands them in the page source, between the code mask and its restore in `applyPreRenderRewrites`; `checkPlaceholders` refuses what cannot be expanded, naming the file and the line; and the values reach the render workers in the shared payload, as `counts` does. A value that depends on a file written after the pages render cannot be known in time, and is refused. A value that a lane task computes while the pages render is the middle case, and the packed files' sizes are the model for it: `checkPlaceholders` names the pages that need the value, `dispatch` makes the render chunks that hold one wait for the task that has it ([`downloadSizes`](Pipeline-Stages#downloadsizes-main)), and that task broadcasts the value to the lanes. Every other page renders without waiting.
 
 ---
 
@@ -746,8 +776,7 @@ Three surfaces, and the second is the one that gets missed.
 
 Four surfaces, none derived from `TASKS`:
 
-- The **static-task count** in [Task DAG by section](Builder#task-dag-by-section) --- the literal number in *"The pipeline has N named static tasks plus 2N dynamic ones"*.
-- The **section-membership lists** immediately below it, one line per Gantt section.
+- The **section-membership lists** in [Task DAG by section](Builder#task-dag-by-section), one line per Gantt section.
 - The **per-task bullet** under the matching `### Seeds` / `### Spine` / `### Render` / `### Write` subsection, plus the task's row in [What runs where](Builder#what-runs-where).
 - The **two ASCII DAG sketches**, one under Spine and one under Render.
 

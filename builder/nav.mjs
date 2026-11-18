@@ -147,23 +147,36 @@ function buildSharedNavState(pages, config) {
     caseInsensitive,
   );
 
+  // Each page's children, worked out once for both lists: `childrenOf` is
+  // what the children substep lists, and `orderedChildren` the same without
+  // the nav_exclude pages, which is what nav-tree and nav-levels go through.
+  // Most pages have no child: they share one empty list and are not sorted.
+  const childrenOf = new Map();
   const orderedChildren = new Map();
   for (const parent of titled) {
-    orderedChildren.set(parent.permalink, orderedChildrenFor(parent, byParentTitle, caseInsensitive));
+    const all = childrenFor(parent, byParentTitle, caseInsensitive);
+    childrenOf.set(parent, all);
+    orderedChildren.set(
+      parent.permalink,
+      all.some((c) => c.frontmatter.nav_exclude) ? all.filter((c) => !c.frontmatter.nav_exclude) : all,
+    );
   }
 
-  return { titled, byTitle, byParentTitle, caseInsensitive, topLevel, orderedChildren };
+  return { titled, byTitle, byParentTitle, caseInsensitive, topLevel, childrenOf, orderedChildren };
 }
 
-// Mirrors the upstream nav/children.html filter: drop nav_exclude pages,
-// drop pages whose grand_parent contradicts the candidate parent's own
-// parent, then apply child_nav_order reversal so positions match render
-// order. Shared by nav-tree and nav-levels.
-function orderedChildrenFor(parent, byParentTitle, caseInsensitive) {
-  const parentTitle = String(parent.frontmatter.title);
-  const candidates = byParentTitle.get(parentTitle) || [];
+const NO_CHILDREN = Object.freeze([]);
+
+// Mirrors the upstream nav/children.html filter: drop pages whose
+// grand_parent contradicts the candidate parent's own parent, then apply
+// child_nav_order reversal so positions match render order. The nav_exclude
+// pages are dropped from the result for nav-tree and nav-levels
+// (buildSharedNavState): the sort is stable within each of its buckets, so
+// leaving them out afterwards gives the order that sorting without them does.
+function childrenFor(parent, byParentTitle, caseInsensitive) {
+  const candidates = byParentTitle.get(String(parent.frontmatter.title));
+  if (!candidates) return NO_CHILDREN;
   const filtered = candidates.filter((c) => {
-    if (c.frontmatter.nav_exclude) return false;
     const gp = c.frontmatter.grand_parent;
     return gp == null || gp === parent.frontmatter.parent;
   });
@@ -177,6 +190,7 @@ function orderedChildrenFor(parent, byParentTitle, caseInsensitive) {
 // ---------- §6.2 four-bucket sort ------------------------------------------
 
 function sortPages(pages, caseInsensitive) {
+  if (pages.length < 2) return pages.slice();
   const navNum = [],
     navStr = [],
     titleNum = [],
@@ -228,56 +242,30 @@ function buildNavNode(page, chain, orderedChildren, depth) {
 
 // ---------- §5.4 nav-levels ------------------------------------------------
 
+// A page's levels are 1, its top-level ancestor's position among the top
+// level, then each page's position among its parent's ordered children, down
+// to the page: all from 1, along the first path the tree reaches the page by.
+// The walk carries them, since it goes through each list in order.
 function computeNavLevels(_pages, state) {
-  const topIndex = new Map();
-  state.topLevel.forEach((p, i) => {
-    topIndex.set(p.permalink, i + 1);
-  });
-
-  const childIndex = new Map();
-  for (const [parentUrl, list] of state.orderedChildren) {
-    const m = new Map();
-    list.forEach((c, i) => {
-      m.set(c.permalink, i + 1);
-    });
-    childIndex.set(parentUrl, m);
-  }
-
-  const paths = new Map();
-  for (const top of state.topLevel) {
-    walkNavSubtree(top, [top], paths, state.orderedChildren, 0);
+  const levels = new Map();
+  for (const [i, top] of state.topLevel.entries()) {
+    walkNavSubtree(top, [top], [1, i + 1], levels, state.orderedChildren, 0);
   }
 
   for (const page of state.titled) {
-    page.navLevels = levelsFromPath(paths.get(page.permalink), topIndex, childIndex);
+    page.navLevels = levels.get(page.permalink);
   }
 }
 
-function walkNavSubtree(node, chain, paths, orderedChildren, depth) {
+function walkNavSubtree(node, chain, path, levels, orderedChildren, depth) {
   if (depth > NAV_TREE_MAX_DEPTH) return;
-  if (!paths.has(node.permalink)) paths.set(node.permalink, chain);
+  if (!levels.has(node.permalink)) levels.set(node.permalink, path);
 
-  const children = orderedChildren.get(node.permalink) || [];
-  for (const child of children) {
+  const children = orderedChildren.get(node.permalink) || NO_CHILDREN;
+  for (const [i, child] of children.entries()) {
     if (chain.some((p) => p.permalink === child.permalink)) continue;
-    walkNavSubtree(child, [...chain, child], paths, orderedChildren, depth + 1);
+    walkNavSubtree(child, [...chain, child], [...path, i + 1], levels, orderedChildren, depth + 1);
   }
-}
-
-function levelsFromPath(chain, topIndex, childIndex) {
-  if (!chain) return undefined;
-
-  const topIdx = topIndex.get(chain[0].permalink);
-  if (topIdx == null) return undefined;
-
-  const levels = [1, topIdx];
-  for (let i = 1; i < chain.length; i++) {
-    const map = childIndex.get(chain[i - 1].permalink);
-    const idx = map?.get(chain[i].permalink);
-    if (idx == null) return undefined;
-    levels.push(idx);
-  }
-  return levels;
 }
 
 // ---------- §5.5 breadcrumbs -----------------------------------------------
@@ -320,16 +308,7 @@ function resolveParent(parentTitle, grandParentTitle, byTitle) {
 
 function computeChildren(_pages, state) {
   for (const page of state.titled) {
-    const candidates = state.byParentTitle.get(String(page.frontmatter.title)) || [];
-    const filtered = candidates.filter((c) => {
-      const gp = c.frontmatter.grand_parent;
-      return gp == null || gp === page.frontmatter.parent;
-    });
-    const sorted = sortPages(filtered, state.caseInsensitive);
-    if (REVERSE_FLAGS.has(String(page.frontmatter.child_nav_order || ""))) {
-      sorted.reverse();
-    }
-    page.children = sorted.map((c) => ({
+    page.children = state.childrenOf.get(page).map((c) => ({
       title: c.frontmatter.title,
       url: c.permalink,
       summary: c.frontmatter.summary,

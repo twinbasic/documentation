@@ -339,7 +339,8 @@ export function joinChunks(chunks, { root, tree, basePath = "", relFiles = [], s
   } else {
     let data = null;
     try {
-      data = JSON.parse(aux.searchJson);
+      // The file's text, or its bytes as the build wrote them.
+      data = JSON.parse(String(aux.searchJson));
     } catch {
       data = null;
     }

@@ -8,6 +8,7 @@ const COLORS = {
   Spine: { light: "#6eb5d9", dark: "#3c7db0" },
   Render: { light: "#b09cd8", dark: "#8066a8" },
   Write: { light: "#e8a756", dark: "#c08030" },
+  Index: { light: "#5cbcb0", dark: "#2b8a80" },
   Check: { light: "#e59ac6", dark: "#b35c8c" },
   Boot: { light: "#e57373", dark: "#c62828" },
   Cold: { light: "#5b7fb5", dark: "#2c4a7c" },
@@ -16,14 +17,19 @@ const COLORS = {
 
 // The bands a main-thread task can be drawn in, top to bottom; the
 // worker lanes go between Spine and Write. Render's main-thread tasks
-// (dispatch, prepDest, prepPageDirs) are drawn in Spine.
-const BANDS = ["Seeds", "Spine", "Write", "Check"];
+// (dispatch, prepDest, prepPageDirs) are drawn in Spine. Index is the
+// search index's tasks (tbdocs.mjs: indexSlices ... searchIndex), on the
+// lanes and on the main thread, with the two the lanes wait for before
+// them (symbolPlace, searchEntries).
+const BANDS = ["Seeds", "Spine", "Write", "Index", "Check"];
 const BAND_OF = { Render: "Spine" };
 
 const SECTION_W = 24;
 
 const BOOT_STYLE = {
   cold: { label: "cold", cls: "cold" },
+  // The second stage of a lane's boot (cpu-worker.mjs, loadRest).
+  cold2: { label: "load", cls: "cold" },
   warmInit: { label: "warm", cls: "boot" },
   renderEnvInit: { label: "env", cls: "env" },
 };
@@ -41,16 +47,19 @@ const BAR_PAD = 4;
 export const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
-  discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
+  discoverList: "Spine", discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
-  deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine",
+  deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine", downloadSizes: "Spine", packageApi: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
-  writeAssets: "Write", searchData: "Write", searchIndex: "Write", symbolIndex: "Write", helpArchive: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",
+  writeAssets: "Write", searchData: "Write", symbolIndex: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",
+  symbolPlace: "Index", searchEntries: "Index",
+  indexSlices: "Index", indexMerge: "Index", indexTerms: "Index", searchIndex: "Index",
+  archivePlan: "Write", archiveLate: "Write", helpArchive: "Write",
   writeOffline: "Write", bookPayload: "Write", writePdf: "Write",
   linkJoin: "Check", checkBook: "Check", checkReport: "Check",
 };
-const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write", "Check"];
+const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write", "Index", "Check"];
 const CHECK_TASKS = new Set(["linkJoin", "checkBook", "checkReport"]);
 
 // The scheduler's timings, relative to the first start and grouped by

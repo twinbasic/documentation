@@ -371,10 +371,11 @@ single boost:
   have a container -- a bare statement or operator does not), space-separated
   and deduplicated. Boost 500 (see "Qualified names and stem twins").
 
-- In the build, `searchData` also waits for `symbolIndex`. Both run on the
-  main thread after `renderJoin`. `symbolIndex` returns its symbols, and
-  `searchData` joins them by URL before it writes (`joinSymbolsToEntries` in
-  `search.mjs`). Workers derive sections; the join is a map lookup per entry.
+- In the build, `searchEntries` waits for `symbolPlace`. Both run on the
+  main thread after `renderJoin`. `symbolPlace` returns its symbols, and
+  `searchEntries` joins them by URL (`joinSymbolsToEntries` in `search.mjs`).
+  Workers derive sections; the join is a map lookup per entry. `searchData`
+  writes the file afterwards.
 - `renderEntryString` adds `names` / `qualified` only when non-empty, so a
   page with no symbols produces the same bytes as without the join.
 
@@ -564,35 +565,86 @@ gzipped). With the one file, the page shows results 0.86 to 0.99 s after
 the keystroke, the typing and the drawing included, as with two; offline,
 2.1 to 2.2 s (1.6 s with two scripts, the entries then an object literal).
 
-**The build makes it on threads** (`builder/search-index.mjs`,
-`search-index-worker.mjs`). On one thread lunr takes 3.6 to 4.8 s: `add()`
-76% of it, the field vectors 13%, the token set 6% (never needed here: it is
-not in the JSON, and `Index.load` makes it), the average lengths and the
-fields' preparation the rest. lunr cannot merge two indexes, but `add()` is
-independent per entry, so each thread adds a contiguous run of the entries;
-the build merges their postings, numbers every term in the order a single
-build first meets it (a thread's terms in its own order, the threads in
+**The build makes it in slices, on its lanes** (`builder/search-index.mjs`;
+the tasks `indexSlices`, `indexAdd:i`, `indexMerge`, `indexTerms`,
+`indexVectors:i` and `searchIndex` in `tbdocs.mjs`). On one thread lunr takes
+3.6 to 4.8 s: `add()` 76% of it, the field vectors 13%, the token set 6%
+(never needed here: it is not in the JSON, and `Index.load` makes it), the
+average lengths and the fields' preparation the rest. lunr cannot merge two
+indexes, but `add()` is independent per entry, so each slice, a contiguous
+run of the entries, is added to a builder of its own on a lane;
+`indexMerge` merges their postings, numbers every term in the order a single
+build first meets it (a slice's terms in its own order, the slices in
 entry order; never in key order, which puts number-like terms first), sums
 each term's document count and each field's length, computes `lunr.idf` and
-the averages (the `index` field's pinned at 1), and has each thread make its
+the averages (the `index` field's pinned at 1), and each slice's lane makes its
 entries' vectors with lunr's own `createFieldVectors`, `lunr.idf` answering
 from those totals. The JSON is written as `toJSON` writes it. The result is
-byte for byte `JSON.stringify(lunr(config))` for any number of threads, on
-the site (checked at 1, 3 and 8 threads) and on `test/search-index.test.mjs`'s
-fixture, which fails when the pinned average or the term order is broken.
-On 16 threads: 4.8 s on one, 2.8 on two, 1.9 on four, 1.6 on six, 1.4 on
-eight; the build uses half the machine, at most eight, and one for every 500
-entries.
+byte for byte `JSON.stringify(lunr(config))` for any number of slices, on
+the site (`compare_trees` against the build that made it on threads of its
+own) and on `test/search-index.test.mjs`'s fixture, which fails when the
+pinned average or the term order is broken.
 
-**What it costs the build.** The `searchIndex` task runs on a lane, reading
-`search-data.json` from disk: as a main-thread task it would hold back
-`bookPayload`, `writeAux` and `writeOffline` (the main thread runs one task
-at a time), at a cost of 1.9 s. On a lane it takes about 2.3 s after
-`searchData`, and it is the last task of a build without the help
-archive (about 1.7 s more in `compare_trees`, 7.9 s); with the archive,
-`helpArchive` waits for it. The index adds about 8.4 MB to the help archive
-and to the add-in's project download (owner: fine, for now). The build time
-is the price of the index (owner).
+**It was once made on threads the task started itself**, half the machine's
+and at most eight, which the Gantt chart did not show and which left the lanes
+idle beside them; no task starts a thread now (WIP.Build.md, "No task starts a
+thread"). The slices are of about equal text, not of equal entries, since
+adding an entry costs about what its text is long: of eight slices the
+longest then takes 0.71 s and the shortest 0.54 s. There are two for each
+lane, so that a lane which finishes early takes another while a lane busy
+with the PDF tree catches up, and one for every 500 entries at most. The
+total does not grow with the slices: 6.1 s of CPU as one slice, 4.5 to 5.2 s
+as 2 to 32, on the dev box.
+
+**Adding the entries during render was considered and not done** (owner asked,
+2026-11-17). An entry has its final form only once every page is rendered:
+its number depends on every entry before it and on the term entries
+`settleLabels` drops, its `names`, `qualified` and `primary` come from the
+symbol index, `qualified` needs the stem twins of all entries, and its index
+terms and the words appended to its content come from `settleLabels` too. The
+fields known at render time (title, content, page, URL) could be indexed then
+under provisional numbers, in a builder of their own, and patched afterwards.
+It would not shorten a build on a 4-core runner: every lane is busy for the
+whole of render, so the index's CPU would lengthen render by what it took off
+the tail. The only idle time it could use is the ragged end of render, up to
+0.3 s on some of 16 lanes, and one slice for each of the render chunks would be
+about five times the builders.
+
+**What the lanes wait for after the last render chunk** is three main-thread
+tasks, `symbolPlace`, `searchEntries` and `indexSlices`, with every lane idle,
+so they do only what needs every page (`tbdocs.mjs`, "From the last render
+chunk to the search index's slices"). The rule for anything added there: what
+one page or one entry decides is done by the lane that renders it, what is
+known from the start is read during render, and what only writes a file comes
+after `indexSlices`. So the render lanes read the headings of the pages the
+symbol index reads, work out each entry's settle keys (`entryKeys`: the
+normalising was most of `settleLabels`), and pack each chunk's entries as the
+head and tail of their text in `search-data.json` into a SharedArrayBuffer
+(`packSearchEntries`). The index's lanes read their entries from those
+buffers, and a slice's payload holds only where its entries are and the fields
+decided since (`planIndexSegments`); `searchData` copies the same bytes into
+the file around each entry's number and late fields. Before, the entries went
+to the lanes a second time, as JSON the main thread wrote from a parse of the
+file it had just written.
+
+Measured on the dev box (16 threads), from the end of the last render chunk
+to the end of `indexSlices`: 0.25 to 0.32 s before and 0.09 to 0.15 s after
+in a full build, 0.37 to 0.38 s and 0.15 to 0.25 s on 4 CPUs, 0.26 to 0.31 s
+and 0.08 to 0.12 s in a serve rebuild. What is left, by a CPU profile of the
+main thread: `deriveSymbolIndex` about 45 ms, `settleLabels` and the join about
+35 ms, the stem twins about 20 ms, the plan and its payload about 20 ms. Not
+done: making `deriveSymbolIndex` faster (`placeOwnPages` goes through every
+page of a folder for every type), and the stem twins on a lane while the main
+thread settles the entries (they need only the symbols and which URLs an entry
+matched). An entry's settle keys go beside the entries, not on them:
+`delete` of a property on each of 13,500 entries took 11 ms.
+
+**What it costs the build.** About 5 s of CPU, spread over the lanes after
+`indexSlices`, and about 0.6 s on the main thread for `indexMerge`,
+`indexTerms` and the writing. `archiveLate` waits for it, and deflates
+`search-index.js` for the help archive in pieces on the lanes. The index adds
+about 8.4 MB to the help archive and to the add-in's project download (owner:
+fine, for now). The build time is the price of the index (owner).
 
 ## Step numbers in code comments
 

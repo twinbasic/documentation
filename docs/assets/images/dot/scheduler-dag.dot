@@ -38,6 +38,8 @@ digraph scheduler {
     LD  [label=<loadData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
     WI  [label=<warmInit<BR/><FONT POINT-SIZE="10">[W] per-lane<BR/>on_demand, idle</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
 
+    DL  [label=<discoverList<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    DRi [label=<discoverRead:i<BR/><FONT POINT-SIZE="10">[W]</FONT>>,     fillcolor="#e8f0fe", color="#4285f4"]
     DI  [label=<discover<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
     VA  [label=<vendorAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     NV  [label=<nav<BR/><FONT POINT-SIZE="10">[M]</FONT>>,                fillcolor="#fef7e0", color="#f9ab00"]
@@ -59,12 +61,25 @@ digraph scheduler {
     Fi   [label=<flush:i<BR/><FONT POINT-SIZE="10">[W] pinned</FONT>>,    fillcolor="#e8f0fe", color="#4285f4"]
     FJ   [label=<flushJoin<BR/><FONT POINT-SIZE="10">[M]</FONT>>,         fillcolor="#fef7e0", color="#f9ab00"]
     WA   [label=<writeAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    PA   [label=<packageApi<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
+    SP   [label=<symbolPlace<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    SE   [label=<searchEntries<BR/><FONT POINT-SIZE="10">[M]</FONT>>,     fillcolor="#fef7e0", color="#f9ab00"]
     SDt  [label=<searchData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
     SYM  [label=<symbolIndex<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     AP   [label=<addinProject<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
     WX  [label=<writeAux<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
     WO   [label=<writeOffline<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
-    HA   [label=<helpArchive<BR/><FONT POINT-SIZE="10">[W]</FONT>>,       fillcolor="#e8f0fe", color="#4285f4"]
+    IS   [label=<indexSlices<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    IAi  [label=<indexAdd:i<BR/><FONT POINT-SIZE="10">[W]</FONT>>,        fillcolor="#e8f0fe", color="#4285f4"]
+    IM   [label=<indexMerge<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
+    IT   [label=<indexTerms<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
+    IVi  [label=<indexVectors:i<BR/><FONT POINT-SIZE="10">[W] pinned</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
+    SI   [label=<searchIndex<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    APl  [label=<archivePlan<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    ADi  [label=<archiveDeflate:i<BR/><FONT POINT-SIZE="10">[W]</FONT>>,  fillcolor="#e8f0fe", color="#4285f4"]
+    AL   [label=<archiveLate<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    ALi  [label=<archiveLateDeflate:i<BR/><FONT POINT-SIZE="10">[W]</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
+    HA   [label=<helpArchive<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     BP   [label=<bookPayload<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     WP   [label=<writePdf<BR/><FONT POINT-SIZE="10">[W]</FONT>>,          fillcolor="#e8f0fe", color="#4285f4"]
 
@@ -74,7 +89,15 @@ digraph scheduler {
 
     // ── Edges ───────────────────────────────────────────────────────────
 
-    CF -> DI
+    CF -> DL
+    DL -> DRi
+    DRi -> DI
+    // The lane tasks that wait for the listing, so that the first lanes up
+    // are free for the pieces.
+    DL -> SL
+    DL -> SD
+    DL -> DT
+    DL -> WI
     CF -> HI
     HI -> LD
     DI -> NV
@@ -117,12 +140,18 @@ digraph scheduler {
     HI  -> WA
     VA  -> WA
 
-    RJ -> SDt
+    DP -> PA
+    PA -> SP
+    RJ -> SP
+
+    RJ -> SE
+    SP -> SE
+
+    SE -> SDt
     PD -> SDt
 
-    RJ -> SYM
+    SP -> SYM
     PD -> SYM
-    SYM -> SDt
 
     SYM -> AP
     PD  -> AP
@@ -137,9 +166,25 @@ digraph scheduler {
     WX -> WO
     WA -> WO
 
-    FJ  -> HA
-    SCSS -> HA
-    WO  -> HA
+    SE  -> IS
+    IS  -> IAi
+    IAi -> IM
+    IAi -> IVi
+    IM  -> IT
+    IM  -> IVi
+    IT  -> SI
+    IVi -> SI
+    SDt -> SI
+
+    FJ   -> APl
+    SCSS -> APl
+    WO   -> APl
+    APl  -> ADi
+    APl  -> AL
+    SI   -> AL
+    AL   -> ALi
+    ADi  -> HA
+    ALi  -> HA
 
     FJ  -> BP
     RJ  -> BP
@@ -158,5 +203,6 @@ digraph scheduler {
     CB   -> CR
     SCSS -> CR
     SYM  -> CR
+    SI   -> CR
     AP   -> CR
 }

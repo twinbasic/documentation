@@ -144,6 +144,14 @@ node --test test/indexer.test.mjs
 @rem No tree, no install, about 1 s.
 node --test test/ide-js.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for builder/discover.mjs and discover-read.mjs: the source
+@rem tree's inventory, which the build reads in pieces on its lanes. The
+@rem build compares its output on the site's own tree and piece count, so
+@rem these read a small tree of their own in any number of pieces, with
+@rem a picture pair that has a file from outside the tree. No build, no
+@rem lanes, well under a second.
+node --test test/discover.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

@@ -83,7 +83,7 @@ The gate also covers `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules t
 
 - the rewrite chain leaves alone a fence that only the site's parser finds, and an admonition written inside one;
 - the build's check of `{{tbdocs:<name>}}` count names skips names in code and gives an unknown one's line in its file;
-- the `{{tbdocs:size:<path>}}` and `{{tbdocs:packageTestRows}}` placeholders are expanded outside code, in a raw HTML block and on a table line, and refused, at their line, for a path the build does not publish or cannot size;
+- the `{{tbdocs:size:<path>}}` and `{{tbdocs:packageTestRows}}` placeholders are expanded outside code, in a raw HTML block and on a table line, and refused, at their line, for a path the build does not publish or cannot size; a file the build packs while the pages render is accepted without a size, and its page is named as one that renders once the size is known;
 - `discover` names the page and line of `title: Input #`, and says nothing about a quoted value;
 - [`convert_em_dash_separators.mjs`](Tools-Build#convert-em-dash-separators), which rewrites page source by hand, converts prose and nothing else.
 
@@ -170,7 +170,7 @@ Exit codes: **0** Biome found nothing (with `--staged`, also when no script is s
 
     node --test test/search.test.mjs
 
-Unit tests for the site search, run by Node's own test runner. The first group builds search entries from small synthetic pages through `builder/search.mjs` and checks what each entry holds: the split at headings, the folding of generic sections such as See Also into the member they belong to, index marks, the join with the symbol index, and identical output from one build to the next. The build's own check sees only which URLs the index covers.
+Unit tests for the site search, run by Node's own test runner. The first group builds search entries from small synthetic pages through `builder/search.mjs` and checks what each entry holds: the split at headings, the folding of generic sections such as See Also into the member they belong to, index marks, the join with the symbol index, and identical output from one build to the next. The build's own check sees only which URLs the index covers. A render worker packs its entries' text once, for `search-data.json` and for the workers that build the search index, so the group also checks that the file assembled from the packed text is each entry as `renderEntryString` writes it, that a worker reads back the fields it packed, and that the labels settle the same with the keys a worker worked out.
 
 The rest guard that the search page agrees with the build. The build writes the index (`builder/search-index.mjs`), and the page under `builder/vendor/just-the-docs/` and its offline copy in `builder/offline.mjs` only load and query it. So the tests check:
 
@@ -187,7 +187,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node --test test/search-index.test.mjs
 
-Verifies the search index the build writes. The build makes the index on several threads, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture on one thread with lunr itself and on two, three, seven and more threads than entries, and requires the same bytes each time. The fixture holds what the merge has to get right: words that look like numbers, words only a later thread meets, empty fields, HTML entities and hand-marked index terms. It also checks that an index loaded from the file answers as lunr's does, that a thread that fails fails the build, that `search-index.json` holds the search entries and their index and nothing else, and that the offline tree's `search-index.js` holds the same.
+Verifies the search index the build writes. The build makes the index in slices on its lanes, merges what they make and writes it as lunr's own JSON (`builder/search-index.mjs`). lunr has no way to merge two indexes, so this test builds a fixture with lunr itself and in one, two, three, seven and more slices than entries, and requires the same bytes each time. It also runs the steps as the build runs them: each slice's entries read from the chunks the render workers packed, some of whose entries were dropped since, and the totals read from the `SharedArrayBuffer` the lanes are sent. The fixture holds what the merge has to get right: words that look like numbers, words only a later slice meets, empty fields, HTML entities and hand-marked index terms. It also checks that the slices hold every entry once and in order, that an index loaded from the file answers as lunr's does, that `search-index.json` holds the search entries and their index and nothing else, and that the offline tree's `search-index.js` holds the same.
 
 No browser, no built tree, about a second.
 
@@ -362,7 +362,7 @@ The others pack fixture folders, each a git repository of its own:
 - a CRLF checkout packs to the same bytes as an LF one, and two packs are identical;
 - the file is written into exactly the trees it is given.
 
-A second group writes small archives with `lib/help-archive.mjs` and checks them against their tree, as the build does at its end. A tree as it was archived has no differences, only the files named may differ in content, and any other changed, added or removed file is named.
+A second group writes small archives with `lib/help-archive.mjs` and checks them against their tree, as the build does at its end. A tree as it was archived has no differences, only the files named may differ in content, and any other changed, added or removed file is named. A file larger than the archive's piece size is deflated in pieces: its entry inflates in one pass to the file, with the file's CRC-32, and the archive's bytes are the same however the pieces are grouped and ordered.
 
 Needs git; no browser, no built tree, no twinBASIC, about 1 s.
 
@@ -383,6 +383,23 @@ Exit codes: **0** every test passed, **1** a test failed.
     node --test test/ide-js.test.mjs
 
 Unit tests for [`ide_js.mjs`](Tools-Defects#ide-js) and its library, `scripts/ide-js/lib.mjs`, which read, name and patch the twinBASIC IDE's minified `ide/main.js`. The "builds" are a few lines of minified JavaScript written in the test: one program under two sets of local names, and three changes a later build can make to one of its functions. No copy of an IDE's `main.js` is in the repository. The round trip is tested on a text with comments, a template literal and a regular expression: the tokens, the comments and the whitespace between them are every byte of it. The keys are tested for what they promise: a local's key says where it is declared, so it is the same under other names, and the same code under other names has the same shape. The name map is tested on each verdict: a name is *exact* in an unchanged function, *carried* when the function changed but the variable is used as often, *review* when it is used more or less often, and *lost* when its key finds a binding of another kind, none, or no function at all. The names the map refuses are tested too: one that is not an identifier, a reserved word, one given to two variables, and one that would hide another name the function uses. A fix is tested as it is written from the view, in our names and with the printer's quotes and semicolons: it becomes the smallest token edit of the minified text, every other byte kept, and a function the fix leaves as it was gives no edit. A fix of a function the build does not have, and a new variable named like one of the build's minified names, are refused. The line diff of a fix shape is tested for its context and its hunk headers. The command line is tested by running the tool on a small install in the temp folder: `check`'s exit codes, `patch` writing a `main.js` under the temp folder and a copy of the install there, and refusing the repository and a folder outside the temp folder. No twinBASIC install, no built tree, about 1 s.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+## discover.test.mjs
+{: #discover-test }
+
+    node --test test/discover.test.mjs
+
+Unit tests for `builder/discover.mjs` and `builder/discover-read.mjs`, which make the source tree's inventory: the pages, the static files and the sizes of the pictures that come in two themes. The build reads the tree in pieces on its lanes and compares its output with the last commit's, on the site's own tree and its own piece count. A fault that those do not reach passes it. These tests read a small tree of their own, under the temp folder:
+
+- the inventory is the same in any number of pieces, and from `discover()`, which the other tools call;
+- the pages are sorted by file name and then by path, the static files by path, with the `bundle_extra` files after them;
+- a `.md` file with no frontmatter is a static file, and an excluded file is in neither list;
+- a picture pair's sizes are read, including a pair whose dark picture is a `bundle_extra` file, and a file that is not a PNG gives no entry;
+- an unquoted frontmatter value that ends in `#` is reported by the piece that read it, and frontmatter that does not parse names its file.
+
+No build, no lanes, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 

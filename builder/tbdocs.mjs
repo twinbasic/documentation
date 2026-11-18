@@ -63,8 +63,8 @@ import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler } from "./scheduler.mjs";
 import { GANTT_SECTION, groupGanttTimings, renderGantt } from "./gantt.mjs";
 
-import { discover } from "./discover.mjs";
-import { checkPlaceholders, deriveCounts, deriveDownloads } from "./counts.mjs";
+import { assemble, cutPieces, listSources } from "./discover.mjs";
+import { checkPlaceholders, deriveCounts, deriveDownloads, packedDownloads } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
@@ -73,7 +73,7 @@ import { packBookPayload } from "./book-payload.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
 import { assignPackageVersions } from "../lib/callout-labels.mjs";
-import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
+import { isPictureSvg, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import {
   NAV_SCRIPT_REL,
@@ -95,7 +95,7 @@ import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeLlmsTxt } from "./llms-txt.mjs";
 import { markdownCopyRel } from "./markdown-copy.mjs";
-import { writeSearchDataFromChunks } from "./search.mjs";
+import { consolidateSearchEntries, writeSearchData } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
 import { buildSitePathsSync, deriveOfflineCss, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
@@ -107,14 +107,26 @@ import { normalizeBaseurl } from "./url.mjs";
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
 import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
+import { formatPackageTests, packageTestRels, packageTestsOf, writePackageTests } from "./package-tests.mjs";
 import {
-  formatPackageTests,
-  packageTestRels,
-  packageTestsOf,
-  packAllPackageTests,
-  writePackageTests,
-} from "./package-tests.mjs";
-import { recheckHelpArchive } from "./help-archive-step.mjs";
+  finishHelpArchive,
+  helpArchiveOut,
+  planHelpArchive,
+  planLateFiles,
+  recheckHelpArchive,
+} from "./help-archive-step.mjs";
+import { fanOut } from "./fan-out.mjs";
+import {
+  assembleIndexJson,
+  indexSliceCount,
+  invertedIndexJson,
+  loadSearchLunr,
+  mergeSlices,
+  packTotals,
+  planIndexSegments,
+  stemTwins,
+  writeSearchIndex,
+} from "./search-index.mjs";
 import { baselineWrites } from "./baseline.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
@@ -131,6 +143,7 @@ import {
   verifySchedulerSAB,
   SLICES_PER_WORKER,
   HANDLERS,
+  DONE,
   F_PIN_TO_PRED,
   writeTaskMeta,
   allocDynamicSlots,
@@ -167,6 +180,13 @@ function failBuild() {
 // summary, and returns.
 
 const workerCount = os.availableParallelism();
+// How many pieces the source tree is read in, each on a lane (discoverList).
+// Two on a machine with fewer than eight logical CPUs: on a four-CPU CI
+// runner the other two lanes compile the stylesheets meanwhile, and more
+// pieces would put those, dot and packTests behind the reads. On Linux two
+// pieces took discover from about 1.0 s to under 0.3 s. Four from eight CPUs
+// on (owner), where four lanes reading still leave lanes for the rest.
+const discoverPieces = (cpus) => Math.max(1, Math.min(cpus >= 8 ? 4 : 2, cpus));
 
 // Register a dynamic fan-in barrier: BOTH halves of its invariant, in
 // one call, because writing one without the other is a data-loss bug
@@ -200,6 +220,21 @@ function registerBarrier(scheduler, views, join, joinIdx, prefix, n) {
   setDepCount(views, joinIdx, n);
 }
 
+// The help archive's groups of units (help-archive-step.mjs) as lane tasks
+// `${prefix}:i`, which helpArchive joins.
+function fanOutArchive(scheduler, from, prefix, root, groups, priority = 1) {
+  fanOut(scheduler, {
+    from,
+    prefix,
+    handler: "archiveDeflate",
+    payloads: groups.map((units) => ({ root, units })),
+    joins: ["helpArchive"],
+    ganttSection: "Write",
+    priority,
+    describe: (p) => p.units.map((u) => (u.piece ? `${u.name}, piece ${u.piece[0] + 1} of ${u.piece[1]}` : u.name)),
+  });
+}
+
 // Does this run skip the offline or the PDF pass? --no-offline and --no-pdf
 // (serve mode passes both), else _config.yml's also_build_offline and
 // also_build_pdf. Every task that writes or prepares a tree asks here, so that
@@ -228,12 +263,20 @@ const TASKS = {
       config.url = String(config.url ?? "").replace(/\/+$/, "");
       return { config };
     },
-    submit() {},
+    // What packTests packs, for the lane that runs it: broadcast before this
+    // task is marked done, so it is queued on every lane before one can claim
+    // packTests.
+    submit({ config }, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("packageTests", packShared(config.package_tests ?? null));
+    },
   },
 
-  // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
+  // Git rev-parse / log shell-outs, for the book's title page: bookPayload
+  // waits for them, and nothing on the way to the first render does. Like the
+  // other early lane tasks it waits for discoverList, so that the first lanes
+  // up read the source tree.
   buildInfo: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "buildInfo",
     submit(out, state) {
       state.site.buildInfo = out.buildInfo;
@@ -243,13 +286,13 @@ const TASKS = {
   // Sass compilation split across two workers so light + dark run in parallel.
   // Each half is ~700 ms total serially; running concurrently saves ~200 ms.
   scssLight: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "scssLight",
     submit() {},
   },
 
   scssDark: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "scssDark",
     submit() {},
   },
@@ -301,7 +344,7 @@ const TASKS = {
   // no in-tree patches. Runs on a worker as a seed so the Graphviz.load()
   // WASM init (~50 ms) hides behind the main spine.
   dot: {
-    expected: [],
+    expected: ["discoverList"],
     handler: "dot",
     submit(out, state) {
       const known = new Set(state.staticFiles.map((f) => f.srcRel));
@@ -369,7 +412,7 @@ const TASKS = {
   // worker has run it, the highlighter persists in module scope across
   // init messages, so survives_reset lets rebuilds skip it.
   warmInit: {
-    expected: [],
+    expected: ["discoverList"],
     on_demand: true,
     unique_per_worker: true,
     run_when_idle: true,
@@ -460,16 +503,53 @@ const TASKS = {
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
 
-  discover: {
+  // The source tree's inventory, in three steps (discover.mjs), of which the
+  // lanes do the middle one, where every file is opened. discoverList lists
+  // the tree and cuts the listing into pieces; each discoverRead:i reads its
+  // piece's pages and parses their frontmatter, sizes its static files and
+  // reads its picture pairs' headers (discover-read.mjs); discover puts the
+  // results together and checks them.
+  //
+  // The pieces are the first thing a lane takes: a lane runs one after the
+  // first stage of its boot alone (cpu-worker.mjs), and the lane tasks that
+  // would otherwise be READY before the pieces exist wait for this task, so
+  // that the first lanes up are free for the pieces. The listing takes a few
+  // hundredths of a second, less than a lane takes to start.
+  discoverList: {
     expected: ["config"],
     runOnMain: true,
     async execute({ config: { config } }, ctx) {
-      const { pages, staticFiles } = await discover(ctx.srcRoot, config.exclude ?? []);
-      for (const entry of config.bundle_extra ?? []) {
-        const srcPath = path.resolve(ctx.srcRoot, entry.src);
-        const stat = await fs.stat(srcPath);
-        staticFiles.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
-      }
+      const listing = await listSources(ctx.srcRoot, config.exclude ?? []);
+      return cutPieces(listing, discoverPieces(ctx.workerCount), config.bundle_extra ?? []);
+    },
+    submit(out, _state, scheduler) {
+      fanOut(scheduler, {
+        from: "discoverList",
+        prefix: "discoverRead",
+        handler: "discoverRead",
+        payloads: out.pieces,
+        joins: ["discover"],
+        ganttSection: "Spine",
+        priority: 3,
+        describe: (p) => [`${p.pageRels.length} pages from ${p.pageRels[0]}, ${p.statSrcs.length} static files`],
+      });
+    },
+  },
+
+  discover: {
+    expected: ["config", "discoverList"],
+    runOnMain: true,
+    execute(inputs, ctx) {
+      const { config } = inputs.config;
+      const plan = inputs.discoverList;
+      const results = plan.pieces.map((_, i) => {
+        const result = inputs[`discoverRead:${i}`];
+        // Asserted: a piece missing here would quietly drop its pages from the site.
+        if (!result) throw new Error(`discover: piece ${i} of the source tree never arrived`);
+        for (const w of result.warnings) console.warn(w);
+        return result;
+      });
+      const { pages, staticFiles, pictureSizes } = assemble(ctx.srcRoot, plan, results);
       // Everything discover() could not parse frontmatter from is about to
       // be copied verbatim into a public tree. `exclude:` is a denylist and
       // only refuses what someone named in advance, so the allowlist runs
@@ -488,10 +568,21 @@ const TASKS = {
             `X.light.png needs X.png in the same folder:\n${unpaired.map((r) => `  ${r}`).join("\n")}`,
         );
       }
-      const pictureSizes = await pairSizes(staticFiles);
-      return { pages, staticFiles, config, pictureSizes };
+      // Where each page's text is in the buffers the pieces' lanes packed
+      // (packPageText), for the render chunks' payloads (dispatch.submit).
+      const pageText = { sabs: results.map((r) => r.text.sab), at: new Map() };
+      for (const [piece, r] of results.entries()) {
+        for (const [i, page] of r.pages.entries()) {
+          pageText.at.set(page.srcRel, [piece, r.text.spans[2 * i], r.text.spans[2 * i + 1]]);
+        }
+      }
+      return { pages, staticFiles, config, pictureSizes, pageText };
     },
-    submit(out, state) {
+    submit(out, state, scheduler) {
+      // The render lanes read the pages' text from these; a chunk is claimed
+      // long after, and its handler waits for the message as for any task data.
+      for (const [i, sab] of out.pageText.sabs.entries()) scheduler.pool.broadcastTaskData(`pageText:${i}`, sab);
+      state.pageTextAt = out.pageText.at;
       state.pages = out.pages;
       state.staticFiles = out.staticFiles;
       state.site.config = out.config;
@@ -561,11 +652,11 @@ const TASKS = {
   markdownInit: {
     // deriveRedirects is here for the counts registry alone: {{tbdocs:redirectStubs}}
     // is derived from the stub set, and nothing else on this task needs it.
-    // packTests is here for {{tbdocs:size:...}} and {{tbdocs:packageTestRows}}, which state the
-    // test projects' sizes before any page renders.
-    expected: ["discover", "vendorAssets", "deriveRedirects", "packTests"],
+    // packTests is not here: the files it packs are named now and sized later, by
+    // downloadSizes, for the few pages that state one.
+    expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
-    execute({ deriveRedirects: { stubs }, packTests }, ctx, state) {
+    execute({ deriveRedirects: { stubs } }, ctx, state) {
       const linkTables = buildLinkTables(state.pages);
       const baseurl = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map((s) => s.srcRel));
@@ -591,24 +682,30 @@ const TASKS = {
       // The downloads' sizes, for the placeholders the pre-render rewrites expand
       // ({{tbdocs:size:...}}, {{tbdocs:packageTestRows}}). The help add-in's project is named
       // only to refuse it: it embeds the offline tree, which holds the pages that state sizes.
-      if (packTests?.failed) throw new Error(`package tests: not packed: ${packTests.error}`);
-      const testsCfg = packageTestsOf(state.site.config, ctx.srcRoot);
+      // The files packTests packs are named, by a listing of their folders, and not yet sized:
+      // a lane may still be packing them. The pages that state one of their sizes are the
+      // late pages, whose render chunks wait for downloadSizes (dispatch). The listing is
+      // kept for dispatch, which puts the same files in the online tree: it is a few dozen
+      // synchronous file calls, on the way to the first render.
+      state.site.packageTestRels = packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot));
       const downloads = deriveDownloads(state, {
-        tests: testsCfg && packTests?.packed ? { dest: testsCfg.dest, packed: packTests.packed } : null,
+        packed: state.site.packageTestRels,
         addinDest: addinProjectOf(state.site.config)?.dest ?? null,
       });
-      const { problems: badNames, sizes } = checkPlaceholders(
-        state.pages,
-        state.site.counts,
-        downloads,
-        state.site.markdown,
-      );
+      const {
+        problems: badNames,
+        sizes,
+        packedArgs,
+        late,
+      } = checkPlaceholders(state.pages, state.site.counts, downloads, state.site.markdown);
       if (badNames.length) {
         throw new Error(`bad {{tbdocs:...}} placeholder in ${badNames.length} place(s):\n\n` + badNames.join("\n\n"));
       }
       // Only what the pages ask for goes to the workers.
-      state.site.downloads = { sizes, tests: downloads.tests };
+      state.site.downloads = { sizes, tests: null };
       state.site.markdown.downloads = state.site.downloads;
+      state.site.packedArgs = packedArgs;
+      state.site.latePages = late;
 
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
@@ -617,6 +714,32 @@ const TASKS = {
       return {};
     },
     submit() {},
+  },
+
+  // The sizes of the files packTests packed, for the late pages: those that state one
+  // ({{tbdocs:size:...}}) or list the test projects ({{tbdocs:packageTestRows}}), which
+  // markdownInit named. The render chunks that hold one wait for this task (dispatch), and
+  // read what it broadcasts; every other chunk renders without it. So the pack is on no
+  // page's path but theirs, and a lane does it at any time before they render.
+  downloadSizes: {
+    expected: ["markdownInit", "packTests"],
+    runOnMain: true,
+    execute({ packTests }, ctx, state) {
+      if (packTests?.failed) throw new Error(`package tests: not packed: ${packTests.error}`);
+      state.site.downloads = packedDownloads({
+        sizes: state.site.downloads.sizes,
+        packedArgs: state.site.packedArgs,
+        dest: packageTestsOf(state.site.config, ctx.srcRoot)?.dest ?? "",
+        packed: packTests?.packed ?? [],
+      });
+      state.site.markdown.downloads = state.site.downloads;
+      return packShared(state.site.downloads);
+    },
+    // Before the task is marked done, so the data is queued on every lane
+    // before one can claim a chunk that waits for it.
+    submit(sab, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("downloads", sab);
+    },
   },
 
   loadData: {
@@ -680,13 +803,15 @@ const TASKS = {
   // worker tasks plus a renderJoin barrier. Assembles initData from the
   // two parallel halves: nav (sidebar) + buildInit (config-only chrome).
   dispatch: {
-    expected: ["nav", "buildInit", "buildInfo", "dot", "deriveRedirects", "markdownInit"],
+    // buildInfo is not here: the book's title page alone states the commit, so
+    // bookPayload waits for it. Its two git processes take up to 0.6 s in a
+    // one-off build on Windows, and every render waited for them.
+    expected: ["nav", "buildInit", "dot", "deriveRedirects", "markdownInit"],
     runOnMain: true,
     async execute(
       {
         nav: { sidebar },
         buildInit: { initData },
-        buildInfo: { buildInfo },
         dot: _dotSignal,
         markdownInit: _markdownInitSignal,
         deriveRedirects: { stubs },
@@ -722,7 +847,8 @@ const TASKS = {
       // so a link to the file there goes to the website (computeWebsiteUrl).
       const addin = addinProjectOf(state.site.config);
       // The package test projects, which the packageTests task writes, likewise.
-      const packageTestFiles = packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot));
+      // markdownInit listed them.
+      const packageTestFiles = state.site.packageTestRels;
       // And each page's markdown copy, which the render lanes write beside the page
       // (markdown-copy.mjs). The publish allowlist refuses a .md file anywhere else.
       const markdownCopies = state.pages.map(markdownCopyRel).filter((rel) => rel !== null);
@@ -816,7 +942,6 @@ const TASKS = {
           navTree: state.site.navTree,
         },
         initData: { ...initData, sidebar },
-        buildInfo,
         linkTablesData: state.site.linkTablesSerialized,
         staticFilesArr: state.staticFiles.map((f) => f.srcRel),
         baseurl: String(state.site.config.baseurl || ""),
@@ -831,12 +956,17 @@ const TASKS = {
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
         pictureSizes: state.site.pictureSizes ?? {},
         counts: state.site.counts,
+        // As they are now: the static files' sizes, or everything if downloadSizes has run.
         downloads: state.site.downloads,
+        latePages: state.site.latePages,
       };
       const sharedSAB = packShared(shared);
-      return { chunks, sharedSAB };
+      // The chunks that hold a late page (markdownInit), which wait for downloadSizes.
+      const latePages = new Set(state.site.latePages);
+      const lateChunks = chunks.flatMap((chunk, i) => (chunk.some((p) => latePages.has(p.srcRel)) ? [i] : []));
+      return { chunks, sharedSAB, lateChunks };
     },
-    submit(out, _state, scheduler) {
+    submit(out, state, scheduler) {
       const N = out.chunks.length;
       const views = scheduler._views;
       const idMap = scheduler._idMapping;
@@ -850,6 +980,11 @@ const TASKS = {
       // renderJoin fires, scheduler.state.searchChunks[0..N-1] holds every
       // worker's per-chunk entries in pages-order.
       scheduler.state.searchChunks = new Array(N);
+      // By chunk likewise: the entries' settle keys (search.mjs, entryKeys),
+      // and the same entries as each lane packed them for search-data.json
+      // and the index's lanes (packSearchEntries).
+      scheduler.state.searchKeys = new Array(N);
+      scheduler.state.searchPacked = new Array(N);
       scheduler.state.checkChunks = [];
       // linkJoin compares against this: a chunk that never arrived would
       // otherwise mean the link check quietly examined fewer pages and
@@ -897,6 +1032,17 @@ const TASKS = {
         views.flags[flushBase + i] |= F_PIN_TO_PRED;
       }
 
+      // A chunk that holds a late page waits for downloadSizes, unless that has
+      // run. It is a main-thread task and so is this submit, so it cannot finish
+      // between the look at its status and the edge.
+      const sizesIdx = idMap.nameToIdx.get("downloadSizes");
+      const waiting = Atomics.load(views.status, sizesIdx) === DONE ? [] : out.lateChunks;
+      if (waiting.length) {
+        for (const i of waiting) setDepCount(views, renderBase + i, 1);
+        appendDynamicSuccessors(views, [{ from: sizesIdx, to: waiting.map((i) => renderBase + i) }]);
+      }
+      const waits = new Set(waiting);
+
       // 5. Register names + task defs on the main-thread scheduler so
       //    _onWorkerDone can look up consolidate/ganttSection/submit and
       //    _assembleInputs can resolve flushJoin's expected list.
@@ -905,7 +1051,7 @@ const TASKS = {
         idMap.nameToIdx.set(rName, renderBase + i);
         idMap.idxToName[renderBase + i] = rName;
         scheduler.tasks.set(rName, {
-          expected: [],
+          expected: waits.has(i) ? ["downloadSizes"] : [],
           consolidate: true,
           ganttSection: "Render",
           // Only consulted by the stall watchdog. "render:33 never
@@ -926,8 +1072,12 @@ const TASKS = {
               }
               p.renderedContent = r.renderedContent;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
+              // A page of the symbol index, with the headings its lane read.
+              if (r.headings !== undefined) p.headings = r.headings;
             }
             state.searchChunks[i] = renderOut.searchEntries;
+            state.searchKeys[i] = renderOut.searchKeys;
+            state.searchPacked[i] = renderOut.searchPacked;
           },
         });
 
@@ -952,7 +1102,15 @@ const TASKS = {
       registerBarrier(scheduler, views, "flushJoin", flushJoinIdx, "flush", N);
 
       // 6. Pack payload, broadcast, account, activate.
-      const payloadSAB = packPayloads(views, renderBase, out.chunks);
+      //    A chunk's payload is its pages without their text, and where each
+      //    one's text is in the buffers discover broadcast: the text is most of
+      //    a page, and as JSON of every page it was a third of this task. A
+      //    page with no place there keeps its text in the payload.
+      const payloads = out.chunks.map((chunk) => {
+        const texts = chunk.map((p) => state.pageTextAt.get(p.srcRel) ?? null);
+        return { pages: chunk.map((p, i) => (texts[i] ? { ...p, rawContent: undefined } : p)), texts };
+      });
+      const payloadSAB = packPayloads(views, renderBase, payloads);
       scheduler.addDynamicTasks(2 * N + 2); // N render + N flush + renderJoin + flushJoin
       scheduler.pool.broadcastDynamicData(payloadSAB, out.sharedSAB);
       activateDynamicTasks(views, renderBase, 2 * N); // render:i activate (depCount 0);
@@ -991,55 +1149,28 @@ const TASKS = {
     submit() {},
   },
 
-  // Write search-data.json. Depends on renderJoin (every render:i.submit
-  // has stored its searchEntries in state.searchChunks[i]), prepDest
-  // (_site/ exists), and symbolIndex -- whose `symbols` (each `{ name,
-  // container, url, ... }`) this task joins onto the matching entries by
-  // URL before writing, adding the `names` / `qualified` fields (see
-  // WIP.Search.md's "Design" §2 and `joinSymbolsToEntries` in
-  // search.mjs). Result passes through to writeAux so its search.json
-  // field reaches writeOffline.  Heavy lifting (extractSections, stripHtml,
-  // sanitiseContent) ran on the workers; this task only joins, concatenates
-  // and renumbers.
-  searchData: {
-    expected: ["renderJoin", "prepDest", "symbolIndex"],
-    runOnMain: true,
-    async execute({ symbolIndex }, ctx, state) {
-      if (ctx.opts.dryRun) return { entries: 0, json: "" };
-      return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot, symbolIndex.symbols);
-    },
-    submit() {},
-  },
+  // ── From the last render chunk to the search index's slices ────────────────
+  //
+  // Once the last chunk is rendered, every lane waits for the main thread to
+  // run symbolPlace, searchEntries and indexSlices, which then gives the lanes
+  // the search index to build. So those three do only what needs every page:
+  // what one page or one entry decides was done by the lane that rendered it
+  // (cpu-worker.mjs, render: the headings, the settle keys, the entries packed
+  // for the index's lanes), what is known from the start is read during render
+  // (packageApi), and what only writes a file comes after them (symbolIndex,
+  // searchData). They are declared here, before every other task that can be
+  // ready at that moment, because the main thread takes the first READY task
+  // in declaration order.
 
-  // Write search-index.json, the search entries searchData wrote to
-  // search-data.json and their lunr index in one file, which the page loads
-  // instead of building the index -- see builder/search-index.mjs and
-  // WIP.Search.md, "The pre-built index" -- and the offline tree's
-  // search-index.js, which wraps it as a script. It
-  // runs on a lane (cpu-worker.mjs), reading search-data.json from disk: the
-  // main thread runs one task at a time, and as one of them the index held
-  // back the book and the offline tree. The index is built on threads of
-  // its own. The offline file is written here rather than by writeOffline so
-  // that the rest of the offline tree need not wait for the index;
-  // helpArchive, which zips that tree, waits for both.
-  searchIndex: {
-    expected: ["searchData"],
-    handler: "searchIndex",
-    submit() {},
-  },
-
-  // Write tB/symbols.json, the symbol index the IDE help add-in reads -- see
-  // builder/symbols.mjs. renderJoin because an entry's anchor is the id the
-  // render gave its heading, read from the HTML; prepDest for the tree. The
-  // package half comes from builder/package-api.json, a committed snapshot the
-  // build never regenerates, because regenerating it needs a twinBASIC install.
-  symbolIndex: {
-    expected: ["renderJoin", "prepDest"],
+  // builder/package-api.json, the package half of the symbol index: a
+  // committed snapshot the build never regenerates, because regenerating it
+  // needs a twinBASIC install. Read while the lanes render.
+  packageApi: {
+    expected: ["dispatch"],
     runOnMain: true,
-    async execute(_, ctx, state) {
-      let api;
+    async execute() {
       try {
-        api = JSON.parse(await fs.readFile(PACKAGE_API_PATH, "utf8"));
+        return JSON.parse(await fs.readFile(PACKAGE_API_PATH, "utf8"));
       } catch (err) {
         if (err.code !== "ENOENT") throw err;
         throw new Error(
@@ -1047,8 +1178,189 @@ const TASKS = {
             "Restore it from git, or regenerate it with node indexer/twin-index.mjs derive",
         );
       }
+    },
+    submit() {},
+  },
+
+  // The symbol index, in memory: every name the reference documents, placed on
+  // the page or heading that documents it -- see builder/symbols.mjs.
+  // renderJoin because an entry's anchor is the id the render gave its
+  // heading; each page's headings came back with its render chunk.
+  // symbolIndex writes the file; searchEntries joins the symbols onto the
+  // search entries.
+  symbolPlace: {
+    expected: ["renderJoin", "packageApi"],
+    runOnMain: true,
+    execute({ packageApi: api }, _ctx, state) {
       const pages = symbolPages(state.pages);
-      const result = deriveSymbolIndex({ pages, api });
+      return { pages, api, result: deriveSymbolIndex({ pages, api }) };
+    },
+    submit() {},
+  },
+
+  // The search entries, final (search.mjs, consolidateSearchEntries). Depends
+  // on renderJoin (every render:i.submit has stored its entries in
+  // state.searchChunks[i]) and on symbolPlace, whose symbols (each `{ name,
+  // container, url, ... }`) are joined onto the matching entries by URL,
+  // adding the `names` / `qualified` fields (WIP.Search.md's "Design" §2).
+  // Heavy lifting (extractSections, stripHtml, sanitiseContent, the settle
+  // keys) ran on the workers; this task only settles, renumbers and joins.
+  // searchData writes them to search-data.json; indexSlices plans their index.
+  searchEntries: {
+    expected: ["renderJoin", "symbolPlace"],
+    runOnMain: true,
+    execute({ symbolPlace }, ctx, state) {
+      if (ctx.opts.dryRun) return { entries: [], places: [] };
+      return consolidateSearchEntries(state.searchChunks, symbolPlace.result.symbols, state.searchKeys);
+    },
+    submit() {},
+  },
+
+  // The search index: the search entries and their lunr index, in
+  // search-index.json, which the page loads instead of building the index
+  // (builder/search-index.mjs; WIP.Search.md, "The pre-built index"), and the
+  // offline tree's search-index.js, which wraps it as a script. Six tasks, so
+  // that the work runs on the lanes:
+  //
+  //   indexSlices      main  cuts the entries into slices, two for each lane
+  //   indexAdd:i       lane  adds slice i to a builder that stays on the lane
+  //   indexMerge       main  merges the slices' postings; broadcasts the totals
+  //   indexTerms       main  writes the inverted index's JSON, meanwhile
+  //   indexVectors:i   lane  slice i's field vectors, on indexAdd:i's lane
+  //   searchIndex      main  joins the JSON and writes both files
+  //
+  // The entries themselves never leave the lanes for this: each render lane
+  // packed its chunk's into a SharedArrayBuffer (state.searchPacked), all of
+  // which every lane is sent here, and a slice's payload says only where its
+  // entries are and what searchEntries decided about them since
+  // (planIndexSegments).
+  //
+  // The offline file is written here rather than by writeOffline so that the
+  // rest of the offline tree need not wait for the index; archiveLate
+  // deflates it for the help archive.
+  indexSlices: {
+    expected: ["searchEntries"],
+    runOnMain: true,
+    execute({ searchEntries: { entries, places } }, ctx) {
+      if (ctx.opts.dryRun) return { entries: 0, slices: 0, payloads: [], twins: [] };
+      const payloads = planIndexSegments(entries, places, indexSliceCount(entries.length, ctx.workerCount));
+      const twins = [...stemTwins(loadSearchLunr(), entries)];
+      return { entries: entries.length, slices: payloads.length, payloads, twins };
+    },
+    submit(out, state, scheduler) {
+      const { payloads, twins } = out;
+      // In the lanes' payload now; the results map need not keep them.
+      delete out.payloads;
+      delete out.twins;
+      // Before the task is marked done, so that it is queued on every lane
+      // before one can claim an indexAdd:i.
+      if (payloads.length) scheduler.pool.broadcastTaskData("indexEntries", { chunks: state.searchPacked, twins });
+      fanOut(scheduler, {
+        from: "indexSlices",
+        prefix: "indexAdd",
+        handler: "indexAdd",
+        payloads,
+        joins: ["indexMerge"],
+        ganttSection: "Index",
+        priority: 2,
+        describe: (p) => [`slice ${p.slice}: entries from ${p.first}`],
+      });
+      fanOut(scheduler, {
+        from: "indexSlices",
+        prefix: "indexVectors",
+        handler: "indexVectors",
+        payloads: payloads.map((p) => ({ slice: p.slice })),
+        after: ["indexMerge"],
+        pinTo: "indexAdd",
+        joins: ["searchIndex"],
+        ganttSection: "Index",
+        priority: 2,
+        describe: (p) => [`slice ${p.slice}`],
+      });
+    },
+  },
+
+  // Merges what each indexAdd:i added (search-index.mjs, mergeSlices) and
+  // broadcasts the totals the vectors need, before the task is marked done,
+  // so they are queued on every lane before one can claim an indexVectors:i.
+  // indexAdd:i are added to `expected` by indexSlices.submit.
+  indexMerge: {
+    expected: ["indexSlices"],
+    runOnMain: true,
+    execute(inputs) {
+      const added = [];
+      for (let s = 0; s < inputs.indexSlices.slices; s++) {
+        const a = inputs[`indexAdd:${s}`];
+        // Asserted: a slice missing here would quietly drop its entries' words.
+        if (!a) throw new Error(`search index: slice ${s} never reached the merge`);
+        added.push(a);
+      }
+      const { merged, totals } = mergeSlices(added);
+      return { merged, totals: packTotals(totals) };
+    },
+    submit(out, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("indexTotals", out.totals);
+    },
+  },
+
+  // The inverted index's JSON (search-index.mjs, invertedIndexJson), on the
+  // main thread while the lanes make the vectors.
+  indexTerms: {
+    expected: ["indexMerge"],
+    runOnMain: true,
+    execute({ indexMerge }) {
+      return { json: invertedIndexJson(indexMerge.merged) };
+    },
+    submit() {},
+  },
+
+  // Joins the index's JSON and writes search-index.json and the offline
+  // tree's search-index.js, with the entries as searchData wrote them.
+  // indexVectors:i are added to `expected` by indexSlices.submit.
+  searchIndex: {
+    expected: ["indexSlices", "indexMerge", "indexTerms", "searchData"],
+    runOnMain: true,
+    async execute(inputs, ctx, state) {
+      const { indexSlices: plan, indexTerms, searchData } = inputs;
+      if (ctx.opts.dryRun) return { entries: 0, slices: 0, bytes: 0 };
+      const vectors = [];
+      for (let s = 0; s < plan.slices; s++) {
+        const v = inputs[`indexVectors:${s}`];
+        if (typeof v !== "string") throw new Error(`search index: slice ${s}'s vectors never arrived`);
+        vectors.push(v);
+      }
+      const json = assembleIndexJson(loadSearchLunr(), vectors, indexTerms.json);
+      const written = await writeSearchIndex(ctx.destRoot, json, searchData.docs, {
+        offline: !skipsOffline(ctx, state),
+      });
+      return { ...written, slices: plan.slices };
+    },
+    submit() {},
+  },
+
+  // Write search-data.json, from the entries searchEntries settled, each
+  // one's text copied from the buffer its render lane packed it into
+  // (search.mjs, searchDataBytes); prepDest for the tree. The result passes
+  // through writeAux, so that its `json`, the file's bytes, reaches the link
+  // check; `docs`, the entries as the file holds them, are searchIndex's.
+  // After the index's tasks in this list: the lanes are adding their slices
+  // while this writes.
+  searchData: {
+    expected: ["searchEntries", "prepDest"],
+    runOnMain: true,
+    async execute({ searchEntries }, ctx, state) {
+      if (ctx.opts.dryRun) return { entries: 0, json: "", docs: {} };
+      return writeSearchData(searchEntries, state.searchPacked, ctx.destRoot);
+    },
+    submit() {},
+  },
+
+  // Write tB/symbols.json, the symbol index the IDE help add-in reads, from
+  // what symbolPlace placed -- see builder/symbols.mjs; prepDest for the tree.
+  symbolIndex: {
+    expected: ["symbolPlace", "prepDest"],
+    runOnMain: true,
+    async execute({ symbolPlace: { pages, api, result } }, ctx) {
       const gaps = reportableGaps(result, pages, api);
       const json = ctx.opts.dryRun ? "" : serializeSymbolIndex(result, api);
       if (json) await writeFileMkdirp(path.join(ctx.destRoot, SYMBOL_INDEX_REL), json);
@@ -1060,10 +1372,6 @@ const TASKS = {
         urls: [...new Set(result.symbols.map((s) => s.url))],
         gaps: gaps.length,
         unplaced: result.unplaced,
-        // Consumed by searchData's join (see joinSymbolsToEntries in
-        // search.mjs), not written anywhere itself -- symbolIndex's own
-        // file output is tB/symbols.json, above.
-        symbols: result.symbols,
         // The file's text, for the add-in's copy (addin-index.mjs) and its
         // project file (addinProject).
         json,
@@ -1072,26 +1380,64 @@ const TASKS = {
     submit() {},
   },
 
-  // Write the IDE help add-in's archive of the offline tree -- see
-  // builder/help-archive-step.mjs. The offline tree must be complete, so it
-  // waits for every task that writes into it: flushJoin (the pages, written by
-  // the render lanes' flushes), scss (the offline stylesheet), searchIndex
-  // (search-index.js) and writeOffline (the rest: statics, theme assets,
-  // redirect stubs, nav.js).
+  // The IDE help add-in's archive of the offline tree -- see
+  // builder/help-archive-step.mjs, whose header lays out the four tasks. The
+  // offline tree must be complete, so the archive waits for every task that
+  // writes into it: archivePlan for flushJoin (the pages, written by the render
+  // lanes' flushes), scss (the offline stylesheet) and writeOffline (the rest:
+  // statics, theme assets, redirect stubs, nav.js), and archiveLate for
+  // searchIndex (search-index.js, LATE_FILES), so that the rest is deflated
+  // while the index is built.
   // Nothing else writes there before the Gantt injection, which runBuild does
   // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
-  // is injected after this task; the archive leaves out both files it writes
+  // is injected after these tasks; the archive leaves out both files it writes
   // (HELP_ARCHIVE_SKIP), and would otherwise hold BuildInfo.html without it.
-  // It runs on a worker (cpu-worker.mjs), so the main thread writes the book
-  // meanwhile; it reads skipOffline from dispatch's broadcast.
-  helpArchive: {
-    expected: ["flushJoin", "scss", "searchIndex", "writeOffline"],
-    handler: "helpArchive",
-    // The zip crosses the thread boundary as a plain Uint8Array; make it a
-    // Buffer again, without copying, for addinProject.
-    submit(out) {
-      if (out.zip) out.zip = Buffer.from(out.zip.buffer, out.zip.byteOffset, out.zip.byteLength);
+  archivePlan: {
+    expected: ["flushJoin", "scss", "writeOffline"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const offlineRoot = skipsOffline(ctx, state) ? null : `${ctx.destRoot}-offline`;
+      const out = helpArchiveOut({
+        src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
+        offlineRoot,
+        serve: !!ctx.opts.serve,
+        dryRun: !!ctx.opts.dryRun,
+        disabled: !!ctx.opts.skipHelpArchive,
+      });
+      return planHelpArchive({ out, offlineRoot, groups: ctx.workerCount });
     },
+    submit(plan, _state, scheduler) {
+      fanOutArchive(scheduler, "archivePlan", "archiveDeflate", plan.root, plan.groups);
+    },
+  },
+
+  // search-index.js, deflated for the archive once searchIndex has written it.
+  archiveLate: {
+    expected: ["archivePlan", "searchIndex"],
+    runOnMain: true,
+    execute({ archivePlan: plan }, ctx) {
+      return planLateFiles({ plan, groups: ctx.workerCount });
+    },
+    // Before archivePlan's groups: the index's file is the last the archive waits for.
+    submit(late, _state, scheduler) {
+      const { root } = scheduler.results.get("archivePlan");
+      fanOutArchive(scheduler, "archiveLate", "archiveLateDeflate", root, late.groups, 2);
+    },
+  },
+
+  // Writes the archive from what every group deflated, and reads it back.
+  // archiveDeflate:i and archiveLateDeflate:i are added to `expected` by the
+  // two plans' submits.
+  helpArchive: {
+    expected: ["archivePlan", "archiveLate"],
+    runOnMain: true,
+    execute(inputs) {
+      const groups = Object.entries(inputs)
+        .filter(([name]) => name.startsWith("archiveDeflate:") || name.startsWith("archiveLateDeflate:"))
+        .map(([, g]) => g);
+      return finishHelpArchive({ plan: inputs.archivePlan, late: inputs.archiveLate, groups });
+    },
+    submit() {},
   },
 
   // Write the help add-in's project file, packed from add-in/, into the online
@@ -1144,22 +1490,16 @@ const TASKS = {
     submit() {},
   },
 
-  // Pack the contributed packages' test projects in memory, before any page renders: a page can
+  // Pack the contributed packages' test projects and published tools in memory: a page can
   // state a download's size ({{tbdocs:size:...}}), and the packageTests task writes these bytes.
   // A tree whose config declares no package_tests (the test fixtures) packs nothing; a failure
   // is reported by packageTests, which fails the build.
+  //
+  // On a lane (cpu-worker.mjs), and on no page's path but the late pages': downloadSizes takes
+  // the sizes from here, and only the render chunks that hold a late page wait for it.
   packTests: {
-    expected: ["config"],
-    runOnMain: true,
-    async execute({ config: { config } }, ctx) {
-      const cfg = packageTestsOf(config, ctx.srcRoot);
-      if (!cfg) return {};
-      try {
-        return await packAllPackageTests(cfg);
-      } catch (err) {
-        return { failed: true, error: err.message };
-      }
-    },
+    expected: ["config", "discoverList"],
+    handler: "packTests",
     submit() {},
   },
 
@@ -1175,8 +1515,9 @@ const TASKS = {
     // It holds transitively today via flush:i being lane-pinned to
     // render:i, which is not something to rely on in a list whose whole
     // job is to say what must have merged. renderJoin is DONE by this
-    // point, so it costs nothing.
-    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
+    // point, so it costs nothing. buildInfo is the commit the title page
+    // states (state.site.buildInfo), which nothing before this reads.
+    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters", "buildInfo"],
     runOnMain: true,
     execute(_, ctx, state) {
       const skip = !!ctx.opts.dryRun || skipsPdf(ctx, state);
@@ -1248,9 +1589,13 @@ const TASKS = {
   // Produce _site-pdf/ on a worker (cpu-worker.mjs), while the main thread
   // writes the offline tree and checks the links. Sources CSS directly:
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
+  // Priority 2, as the index's slices have: with checkBook it is as long as the
+  // index's chain after it, and at 0 it waited for every slice and then ended
+  // the build.
   writePdf: {
     expected: ["bookPayload"],
     handler: "writePdf",
+    priority: 2,
     submit() {},
   },
 
@@ -1377,6 +1722,7 @@ const TASKS = {
     expected: ["writePdf"],
     handler: "checkBook",
     pin_to_predecessor: "writePdf",
+    priority: 2,
     submit() {},
   },
 
@@ -1695,8 +2041,8 @@ export async function runBuild(opts) {
   const searchIndexStats = results.get("searchIndex");
   if (searchIndexStats?.bytes) {
     console.log(
-      `  ${pc.bold("search:")} index of ${searchIndexStats.entries} entries built on ` +
-        `${searchIndexStats.workers} thread(s), ${(searchIndexStats.bytes / 1048576).toFixed(1)} MB`,
+      `  ${pc.bold("search:")} index of ${searchIndexStats.entries} entries built in ` +
+        `${searchIndexStats.slices} slice(s), ${(searchIndexStats.bytes / 1048576).toFixed(1)} MB`,
     );
   }
   const symbolStats = results.get("symbolIndex");

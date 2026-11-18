@@ -102,6 +102,17 @@
       // exception is scripts/impexp.mjs, which builder/addin-project.mjs packs
       // the help add-in's project file with: it imports nothing, the build
       // already publishes it, and check_tree_fresh.mjs watches it by name.
+      //
+      // `paths` is the other rule here: no task of the build starts a thread
+      // (WIP.Build.md, "No task starts a thread"). The lanes are the build's
+      // threads, and work that should run in parallel is split into lane
+      // tasks (builder/fan-out.mjs), so that the scheduler places it and the
+      // Gantt chart shows it. So nothing in builder/ may import
+      // worker_threads or cluster, start a process, or put CPU work on
+      // Node's thread pool, which is what zlib's functions do unless their
+      // name ends in Sync. The overrides after this one name the files that
+      // may: each repeats `patterns`, since an override replaces the rule's
+      // options whole.
       "includes": ["builder/**/*.mjs"],
       "linter": {
         "rules": {
@@ -114,7 +125,86 @@
                     "group": ["**/scripts/**", "!**/scripts/impexp.mjs"],
                     "message": "builder/ must not depend on scripts/."
                   }
-                ]
+                ],
+                "paths": {
+                  "node:worker_threads": "No task starts a thread: split the work into lane tasks (builder/fan-out.mjs). Only worker-pool.mjs and cpu-worker.mjs import worker_threads.",
+                  "worker_threads": "No task starts a thread: split the work into lane tasks (builder/fan-out.mjs). Only worker-pool.mjs and cpu-worker.mjs import worker_threads.",
+                  "node:cluster": "No task starts a process: split the work into lane tasks (builder/fan-out.mjs).",
+                  "cluster": "No task starts a process: split the work into lane tasks (builder/fan-out.mjs).",
+                  "node:child_process": "No task starts a process for its work: split it into lane tasks (builder/fan-out.mjs). Only build-info.mjs and addin-project.mjs run a program, git.",
+                  "child_process": "No task starts a process for its work: split it into lane tasks (builder/fan-out.mjs). Only build-info.mjs and addin-project.mjs run a program, git.",
+                  "node:zlib": {
+                    "allowImportNames": [
+                      "constants",
+                      "crc32",
+                      "deflateSync",
+                      "deflateRawSync",
+                      "inflateSync",
+                      "inflateRawSync",
+                      "gzipSync",
+                      "gunzipSync",
+                      "unzipSync",
+                      "brotliCompressSync",
+                      "brotliDecompressSync"
+                    ],
+                    "message": "Import zlib's Sync functions by name: the others run on Node's thread pool, outside the lanes. Split CPU work into lane tasks (builder/fan-out.mjs)."
+                  },
+                  "zlib": "Import from node:zlib, by name."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // The two modules that are the lanes: the pool that starts them, and
+      // the harness each one runs.
+      "includes": ["builder/worker-pool.mjs", "builder/cpu-worker.mjs"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/scripts/**", "!**/scripts/impexp.mjs"],
+                    "message": "builder/ must not depend on scripts/."
+                  }
+                ],
+                "paths": {
+                  "node:cluster": "No task starts a process: split the work into lane tasks (builder/fan-out.mjs).",
+                  "node:child_process": "No task starts a process for its work: split it into lane tasks (builder/fan-out.mjs).",
+                  "node:zlib": "The lanes' own modules deflate nothing: import the module that does."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // The two modules that run a program: git, for the build's commit and
+      // for the files the add-in's project file packs.
+      "includes": ["builder/build-info.mjs", "builder/addin-project.mjs"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/scripts/**", "!**/scripts/impexp.mjs"],
+                    "message": "builder/ must not depend on scripts/."
+                  }
+                ],
+                "paths": {
+                  "node:worker_threads": "No task starts a thread: split the work into lane tasks (builder/fan-out.mjs).",
+                  "node:cluster": "No task starts a process: split the work into lane tasks (builder/fan-out.mjs).",
+                  "node:zlib": "These modules deflate nothing: import the module that does."
+                }
               }
             }
           }
@@ -125,6 +215,11 @@
       // lib/ holds modules every other part of the tooling may import
       // (lib/README.md), so it imports none of them; a lib/ module that reached
       // into scripts/ would take builder/ there with it.
+      //
+      // The build imports lib/, so the thread rule above holds here for what
+      // lib/ uses today: no thread of its own, and zlib's Sync functions by
+      // name. A tool outside the build that needs a thread starts it in its
+      // own module, not in lib/.
       "includes": ["lib/**/*.mjs"],
       "linter": {
         "rules": {
@@ -145,7 +240,28 @@
                     ],
                     "message": "lib/ must not import builder/, scripts/, book/, eval/, wisdom/, indexer/ or test/."
                   }
-                ]
+                ],
+                "paths": {
+                  "node:worker_threads": "lib/ starts no thread: the build imports it, and no task of the build starts a thread (WIP.Build.md).",
+                  "worker_threads": "lib/ starts no thread: the build imports it, and no task of the build starts a thread (WIP.Build.md).",
+                  "node:zlib": {
+                    "allowImportNames": [
+                      "constants",
+                      "crc32",
+                      "deflateSync",
+                      "deflateRawSync",
+                      "inflateSync",
+                      "inflateRawSync",
+                      "gzipSync",
+                      "gunzipSync",
+                      "unzipSync",
+                      "brotliCompressSync",
+                      "brotliDecompressSync"
+                    ],
+                    "message": "Import zlib's Sync functions by name: the others run on Node's thread pool, outside the build's lanes (WIP.Build.md, \"No task starts a thread\")."
+                  },
+                  "zlib": "Import from node:zlib, by name."
+                }
               }
             }
           }

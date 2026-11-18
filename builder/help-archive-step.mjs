@@ -10,14 +10,27 @@
 // search and from prose; the add-in's server answers a request for a file the
 // archive lacks with a redirect to the website.
 //
-// `helpArchiveStep` is the build's `helpArchive` task. It waits for every task
-// that writes into the offline tree, and runs before the Gantt injection, which
-// rewrites BuildInfo.html in both trees after the task graph is done and
-// writes assets/images/gantt.svg. Both are left out of the archive; were they
-// not, the archive would hold BuildInfo.html without the chart, and gantt.svg
-// as the placeholder the offline tree copied from the sources. Two builds of
-// one tree write the same archive, and the same project file with it, which
-// the chart (it holds the build's timings) would prevent.
+// The build makes the archive in four tasks (tbdocs.mjs), so that its deflating
+// runs on the lanes and starts before the search index is done:
+//
+//   - archivePlan, once every task that writes into the offline tree but
+//     searchIndex is done (planHelpArchive): it decides whether this build
+//     writes the archive, refuses one that would hold a download, lists the
+//     tree less LATE_FILES and deals the deflating into one group of units per
+//     lane, which its submit fans out as archiveDeflate:i;
+//   - archiveLate, once searchIndex has written search-index.js (planLateFiles):
+//     the same for LATE_FILES, fanned out as archiveLateDeflate:i;
+//   - archiveDeflate:i and archiveLateDeflate:i, on the lanes (deflateGroup);
+//   - helpArchive, once every group is done (finishHelpArchive): it joins the
+//     units into entries, writes the zip and reads it back.
+//
+// It all runs before the Gantt injection, which rewrites BuildInfo.html in both
+// trees after the task graph is done and writes assets/images/gantt.svg. Both
+// are left out of the archive; were they not, the archive would hold
+// BuildInfo.html without the chart, and gantt.svg as the placeholder the
+// offline tree copied from the sources. Two builds of one tree write the same
+// archive, and the same project file with it, which the chart (it holds the
+// build's timings) would prevent.
 //
 // `recheckHelpArchive` runs at the end of runBuild, after the Gantt injection,
 // and checks that the offline tree on disk still lists the archive's files and
@@ -33,12 +46,23 @@
 // download published from CI's build holds the archive. The step does not look
 // at $CI.
 
+import { statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
+import {
+  checkHelpArchive,
+  checkZipLimits,
+  collectEntries,
+  deflateUnit,
+  groupUnits,
+  listFiles,
+  planUnits,
+  writeArchive,
+} from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { GUARDED_SRC } from "./baseline.mjs";
 import { offlineExcluded } from "./offline-rewrite.mjs";
+import { OFFLINE_SEARCH_INDEX_REL } from "./search-index.mjs";
 
 export const HELP_ARCHIVE_REL = "add-in/Resources/HELP/site.zip";
 
@@ -109,10 +133,18 @@ const mb = (n) => (n / 1048576).toFixed(1);
 const OFFLINE_TREE = path.join(REPO_ROOT, GUARDED_SRC, "_site-offline");
 const sameDir = (a, b) => path.relative(a, b) === "";
 
+// The files of the offline tree that a task archivePlan does not wait for
+// writes: searchIndex writes search-index.js, and archivePlan does not wait
+// for it, so that the rest of the tree is deflated while the index is built.
+// archiveLate deflates these once their task is done. A file here that is in
+// the tree when archivePlan runs is a previous build's, and is left alone.
+export const LATE_FILES = [OFFLINE_SEARCH_INDEX_REL];
+const isLate = (name) => LATE_FILES.includes(name);
+
 const NOT_WRITTEN = { text: "", failed: false, zip: null, out: null };
 
 /**
- * Write the add-in's archive of the offline tree this build wrote.
+ * Where this build writes the add-in's archive, or null when it writes none.
  *
  * @param {object} o
  * @param {string} o.src          the source tree built, repo-relative with forward slashes
@@ -120,25 +152,35 @@ const NOT_WRITTEN = { text: "", failed: false, zip: null, out: null };
  * @param {boolean} o.serve       the build is a `--serve` session
  * @param {boolean} o.dryRun      the build wrote no trees
  * @param {boolean} o.disabled    `--no-help-archive` was given
- * @param {string} [o.out]        the zip; the add-in's by default
- * @returns {Promise<{text: string, failed: boolean, zip: Buffer | null, out: string | null}>} what to
- *   print, "" when the step did not run; the archive's bytes and path, null when this build wrote none
+ * @returns {string | null}
  */
-export async function helpArchiveStep({
-  src,
-  offlineRoot,
-  serve,
-  dryRun,
-  disabled,
-  out = path.join(REPO_ROOT, HELP_ARCHIVE_REL),
-}) {
-  if (src !== GUARDED_SRC || serve || dryRun || disabled || !offlineRoot) return NOT_WRITTEN;
-  if (!sameDir(path.resolve(offlineRoot), OFFLINE_TREE)) return NOT_WRITTEN;
+export function helpArchiveOut({ src, offlineRoot, serve, dryRun, disabled }) {
+  if (src !== GUARDED_SRC || serve || dryRun || disabled || !offlineRoot) return null;
+  if (!sameDir(path.resolve(offlineRoot), OFFLINE_TREE)) return null;
+  return path.join(REPO_ROOT, HELP_ARCHIVE_REL);
+}
+
+/**
+ * The archivePlan task: the tree's files less LATE_FILES, and their deflating
+ * dealt into at most `groups` groups, one archiveDeflate:i each. A plan with no
+ * `out` writes nothing; its `text` and `failed` say why, when that is a fault.
+ *
+ * @param {object} o
+ * @param {string | null} o.out   helpArchiveOut's answer
+ * @param {string} o.offlineRoot  the offline tree
+ * @param {number} o.groups       how many groups at most: the lanes
+ * @param {(name: string) => boolean} [o.skip]  the files the archive leaves out
+ */
+export async function planHelpArchive({ out, offlineRoot, groups, skip = helpArchiveSkips }) {
+  const started = Date.now();
+  if (!out) return { ...NOT_WRITTEN, groups: [] };
+  const root = path.resolve(offlineRoot);
   try {
-    const kept = await downloadsKept(path.resolve(offlineRoot), helpArchiveSkips);
+    const kept = await downloadsKept(root, skip);
     if (kept.length > 0) {
       return {
         ...NOT_WRITTEN,
+        groups: [],
         text:
           `help archive: not written: it would hold ${kept.length} file(s) the Downloads page offers, ` +
           `which stay on the website; put each in a downloads folder, or add it to HELP_ARCHIVE_SKIP:\n` +
@@ -146,12 +188,81 @@ export async function helpArchiveStep({
         failed: true,
       };
     }
-    const s = await writeHelpArchive({ src: path.resolve(offlineRoot), out, skip: helpArchiveSkips });
+    const files = listFiles(root, (name) => skip(name) || isLate(name));
+    checkZipLimits(files);
+    return { ...NOT_WRITTEN, out, root, files, groups: groupUnits(planUnits(files), groups), started };
+  } catch (err) {
+    return { ...NOT_WRITTEN, groups: [], text: `help archive: not written: ${err.message}\n`, failed: true };
+  }
+}
+
+/**
+ * The archiveLate task: LATE_FILES, once their tasks have written them, dealt
+ * as planHelpArchive deals the rest; none when the plan writes nothing.
+ */
+export function planLateFiles({ plan, groups, skip = helpArchiveSkips }) {
+  if (!plan.out) return { files: [], groups: [] };
+  try {
+    const files = LATE_FILES.filter((name) => !skip(name))
+      .map((name) => ({ name, file: path.join(plan.root, ...name.split("/")) }))
+      .filter((f) => {
+        try {
+          f.size = statSync(f.file).size;
+          return true;
+        } catch (err) {
+          if (err.code === "ENOENT") return false;
+          throw err;
+        }
+      });
+    return { files, groups: groupUnits(planUnits(files), groups) };
+  } catch (err) {
+    return { files: [], groups: [], error: err.message };
+  }
+}
+
+/**
+ * One archiveDeflate:i or archiveLateDeflate:i, on a lane: each unit of the
+ * group deflated (lib/help-archive.mjs, deflateUnit). A failure comes back as
+ * `{ error }` for finishHelpArchive to report, so that it fails the build
+ * without stopping it: the trees are still written.
+ */
+export function deflateGroup({ root, units }) {
+  try {
+    return { results: units.map((unit) => deflateUnit(root, unit)) };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+/**
+ * The helpArchive task: every group's units joined into the archive's
+ * entries, written to the plan's `out`, read back and checked.
+ *
+ * @param {object} o
+ * @param {object} o.plan    archivePlan's result
+ * @param {object} o.late    archiveLate's result
+ * @param {object[]} o.groups  every archiveDeflate:i's and archiveLateDeflate:i's result
+ * @returns {Promise<{text: string, failed: boolean, zip: Buffer | null, out: string | null}>} what to
+ *   print, "" when the step did not run; the archive's bytes and path, null when this build wrote none
+ */
+export async function finishHelpArchive({ plan, late, groups }) {
+  if (!plan.out) return { text: plan.text, failed: plan.failed, zip: null, out: null };
+  try {
+    if (late.error) throw new Error(late.error);
+    const failed = groups.find((g) => g.error);
+    if (failed) throw new Error(failed.error);
+    const files = [...plan.files, ...late.files].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    const entries = collectEntries(
+      files,
+      groups.flatMap((g) => g.results),
+    );
+    const s = await writeArchive({ out: plan.out, files, entries });
+    const secs = ((Date.now() - plan.started) / 1000).toFixed(1);
     return {
-      text: `help archive: ${HELP_ARCHIVE_REL}, ${s.entries} entries, ${mb(s.zipBytes)} MB (${(s.ms / 1000).toFixed(1)} s)\n`,
+      text: `help archive: ${HELP_ARCHIVE_REL}, ${s.entries} entries, ${mb(s.zipBytes)} MB (${secs} s)\n`,
       failed: false,
       zip: s.zip,
-      out,
+      out: plan.out,
     };
   } catch (err) {
     if (err.verifyFailed) {

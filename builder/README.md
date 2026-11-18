@@ -102,7 +102,7 @@ render-worker sub-stage.
 
 | Phase | Module(s) | Job |
 |---|---|---|
-| 1 | [discover.mjs](discover.mjs) + [publish-policy.mjs](publish-policy.mjs) | Read .md/.html + frontmatter, enumerate static files, refuse any that is not a publishable type |
+| 1 | [discover.mjs](discover.mjs) + [discover-read.mjs](discover-read.mjs) + [publish-policy.mjs](publish-policy.mjs) | List the source tree; on two lanes, read .md/.html + frontmatter and size the static files; refuse any that is not a publishable type |
 | 2 | [nav.mjs](nav.mjs) / [seo.mjs](seo.mjs) / [book.mjs](book.mjs) / [build-info.mjs](build-info.mjs) / [data.mjs](data.mjs) | Compute nav tree, SEO, book chapters, git commit info, `_data/*.yml` |
 | 3 | [render.mjs](render.mjs) + [highlight.mjs](highlight.mjs) + [highlight-theme.mjs](highlight-theme.mjs) | Markdown -> HTML body |
 | 4 | [template.mjs](template.mjs) + [compress.mjs](compress.mjs) | Wrap in layout, anchor-heading injection, whitespace compress |

@@ -87,6 +87,7 @@ Do not drop `--check-audit-index` when typing the underlying build command: with
       && node --test test/addin-project.test.mjs \
       && node --test test/indexer.test.mjs \
       && node --test test/ide-js.test.mjs \
+      && node --test test/discover.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -188,7 +189,7 @@ A watchdog catches this. When no task has completed for two minutes, it abandons
     Blocked on a predecessor (consequence, not cause):
       renderJoin  <- render:19
       flushJoin  <- flush:19
-      searchData  <- renderJoin
+      symbolPlace  <- renderJoin
       flush:19  <- render:19
       ... and 8 more
 

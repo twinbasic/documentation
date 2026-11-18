@@ -64,6 +64,7 @@ The roster, by wrapper ([Tools and Scripts](docs/Documentation/Tools.md) owns th
 | `test.bat` | `test/addin-project.test.mjs` | `builder/addin-project.mjs` packs exactly the files git tracks in `add-in/`, the same bytes from a CRLF and an LF checkout. Needs git |
 | `test.bat` | `test/indexer.test.mjs` | the package indexer (`indexer/lib/`) changes a snapshot only when the API changes |
 | `test.bat` | `test/ide-js.test.mjs` | `scripts/ide_js.mjs` and `scripts/ide-js/lib.mjs` on a few lines of minified JavaScript, and that the tool writes only under `%TEMP%` |
+| `test.bat` | `test/discover.test.mjs` | the source tree's inventory (`builder/discover.mjs`, `discover-read.mjs`) is the same in any number of pieces, with a picture pair that has a `bundle_extra` file |
 | `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes, and patch only the members `PATCHES` lists |
 | `test.bat` | `check_impexp_parity` | the Node and Python editions of `impexp` (and, with `IMPEXP_EXE`, the twinBASIC one) behave alike |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
@@ -85,10 +86,10 @@ A dynamic barrier must list every chunk task in its `expected`, even when its ow
 
 So every skip on the chunk-merge path refuses to continue when a piece is missing --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). On this path, "the piece is missing" is a bug, not a case to handle.
 
-**A sort key on this path must be total.** `discover()` fills `pages` from inside
-a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
-`allFiles` order. `pages.sort(byName)` is stable and Jekyll's key is the
-*basename*, so a tie would keep that I/O completion order --- and over a hundred
+**A sort key on this path must be total.** The pages arrive piece by piece (see
+[The source tree is read on the lanes](#the-source-tree-is-read-on-the-lanes)),
+not in the listing's order. `pages.sort(byName)` is stable and Jekyll's key is the
+*basename*, so a tie would keep the order of arrival --- and over a hundred
 folder-style classes are all named `index.md`. Tied pages would reorder the
 chunking and make `search-data.json` differ between two builds of one commit.
 `byName` breaks ties on `srcRel`. Two builds of a commit are byte-identical
@@ -108,6 +109,209 @@ would differ.
 
 Measured on the dev box: the online build takes about 2 s; the offline pass adds about 700 ms,
 the PDF pass about 150 ms, and `--check` about 1.7 s.
+
+### No task starts a thread
+
+**The lanes are the build's only threads** (owner, 2026-11-17: "That's what the lanes
+are for, and we lose important diagnostics that way too"). A task whose work can run in
+parallel splits it into pieces and adds each to the graph as a lane task, with `fanOut`
+(`builder/fan-out.mjs`) from the `submit()` of the main-thread task that plans them. The
+search index (`indexAdd:i`, `indexVectors:i`) and the help archive (`archiveDeflate:i`,
+`archiveLateDeflate:i`) are the models; `render:i` and `flush:i` are the same idea, wired
+by `dispatch.submit`.
+
+So a task never:
+
+- starts a worker thread (`node:worker_threads`), a cluster or a process for its work;
+- puts CPU work on Node's thread pool: the functions of `node:zlib` whose name does not
+  end in `Sync` run there, as do the asynchronous key-derivation functions of
+  `node:crypto`. File reads and writes may use the pool: that is I/O.
+
+**Why.** A thread a task starts is one the scheduler cannot place and the Gantt chart
+does not show. The search index once built on threads of its own: two on a 4-core CI
+runner (half the machine), beside lanes that had nothing to do, and the chart showed one
+bar on one lane for the whole of it. The help archive deflated on the thread pool, so its
+one bar hid a 55 MB file deflating on a single thread for most of its length. As lane
+tasks, the index runs on every lane, the archive is deflated while the index is built,
+and each piece is a bar on the lane that ran it.
+
+**The gate is `check_lint.mjs`**, through `noRestrictedImports` in `biome.jsonc`:
+`builder/` may not import `worker_threads`, `cluster` or `child_process`, and `builder/`
+and `lib/` may import from `node:zlib` only the `Sync` functions, `crc32` and
+`constants`, by name (a default import would hide which function is called). The files
+that may are named there, each with its reason: `worker-pool.mjs` and `cpu-worker.mjs`
+are the lanes, and `build-info.mjs` and `addin-project.mjs` run `git`. The rule reads
+imports, so it cannot see a function of another module that does the same; a new
+dependency that starts threads is a review matter.
+
+**`fanOut`'s own rules** are in its header: every piece waits for the task whose
+`submit` adds it, so none can run while its edges are written; a join lists that task in
+its `expected`, and `fanOut` adds the pieces to that list, which is what holds the join
+until every piece's `submit` has run. `book/` is not the build: `book.bat`'s renderer
+deflates on the thread pool (`book/lib/parallel-deflate.mjs`), and has no lanes.
+
+### The source tree is read on the lanes
+
+`discover` was one main-thread task: a glob, then every page read and its frontmatter
+parsed, every static file sized and every picture pair's two headers read, all through
+the asynchronous file calls. On a four-CPU CI runner it took about 1.0 s, as a fifth
+thread beside four lanes that were booting, and everything up to the first render waits
+for it. It is three steps now (`builder/discover.mjs`): `discoverList` lists the tree on
+the main thread and cuts the listing into pieces, each `discoverRead:i` does a piece on
+a lane (`builder/discover-read.mjs`, every file opened there, synchronously), and
+`discover` puts the results together. `discover()` is the same code in one piece, for
+the tools.
+
+What makes it worth doing, and what to keep when changing it:
+
+- **A lane boots in two stages** (`builder/cpu-worker.mjs`). The first loads the
+  scheduler and what `discoverRead` needs, and the lane is in the pull loop after it. The
+  second (`loadRest`: the renderer, the search index, the archive) runs before the
+  lane's first task that is not a `discoverRead`. Without the split a piece would start
+  only after a whole boot, later than the main thread used to start reading. **A module
+  `discover-read.mjs` imports is paid for by every lane before the first piece**: keep it
+  to the YAML parser and `paths.mjs`. The glob library stays in `discover.mjs`.
+- **The other early lane tasks wait for `discoverList`**: `scssLight`, `scssDark`, `dot`,
+  `packTests` and `warmInit`. They are READY at the start otherwise, the first lanes up
+  would take them and load the second stage, and the pieces would wait for a lane. The
+  listing takes a few hundredths of a second, less than a lane takes to start. The
+  pieces have the highest priority, so the first lanes that look take them.
+  `buildInfo` waits too, since nothing early needs it: see
+  [dispatch does not wait for buildInfo](#dispatch-does-not-wait-for-buildinfo).
+- **Two pieces below eight CPUs, four from eight on** (`discoverPieces`; owner,
+  2026-11-18). On four CPUs the other two lanes compile the stylesheets meanwhile; with
+  four pieces there `dot` and `packTests` queued behind the reads and `dispatch`, which
+  waits for `dot`, started late. With eight lanes or more, four of them reading leave
+  lanes for the rest. On the dev box (16 CPUs) `discover` ended at 0.10 to 0.11 s in a
+  serve rebuild with four pieces, 0.14 to 0.19 s with two; in a one-off build at 0.23 to
+  0.38 s against 0.32 to 0.46 s.
+- **The reads are synchronous.** Asynchronous calls from every lane queue on libuv's one
+  pool of four threads; synchronous ones on two lanes are two reads at a time, and the
+  lane has nothing else to do. Alone, every page read on one thread takes 67 ms on the
+  dev box, 40 ms on two and 23 ms on four.
+
+Measured, each `discover` ending at:
+
+| | before | two pieces |
+|---|---|---|
+| CI (Linux, four CPUs): one run before, two after | 1.05 s | 0.26 s, 0.38 s |
+| dev box (Windows, 16 CPUs), one-off build | 0.48 to 0.50 s | 0.43 to 0.51 s |
+| dev box, four CPUs (`start /affinity F`) | 0.51 to 0.59 s | 0.35 to 0.46 s |
+| dev box, serve rebuild | 0.16 to 0.22 s | 0.14 to 0.16 s |
+
+On CI the first render started at about 1.2 s in the first run after and about 1.65 s in
+the second, where it had started at 2.05 s. The first run's runner was about a quarter
+faster than the one before (render itself took 10 s against 13 s); the second's was as
+slow as it (render 14 s), so about 0.4 s is the change. `dispatch` ended at 1.45 s in the
+second run against 2.0 s. The whole build's time did not change beyond what the runners
+differ by (24.6 s against 24.2 s on the two slow ones). **On Windows a one-off build gains nothing**:
+while the other lanes boot, a lane's piece takes 0.2 to 0.3 s for half the tree, where
+the same reads alone take 40 ms, and `markdownInit` and `dispatch` then run beside
+every lane's second stage and `warmInit` and take longer than they did. The first
+render started at 1.15 to 1.28 s against 0.96 to 0.99 s in the prototype's runs, on a
+machine that was not quiet; not measured again since. The change is for CI and for
+serve rebuilds.
+
+### The pages' text does not go through the main thread's JSON
+
+`dispatch.submit` packed every page into the render chunks' payloads as JSON
+(`packPayloads`): 12 MB, nearly all of it the pages' text, 50 to 60 ms on the main thread
+of the dev box between the end of `dispatch` and the lanes' first look at a chunk. The
+timing line's `dispatch=` does not count a `submit`; in the chart it is the gap between
+`dispatch`'s bar and `prepDest`'s.
+
+The text is now packed where it is read. Each `discoverRead:i` lane writes its pages'
+`rawContent` as UTF-8 into one SharedArrayBuffer (`packPageText`,
+`builder/discover-read.mjs`) and returns it beside the pages; a shared buffer is not
+copied on the way back. `discover` broadcasts the buffers (`"pageText:<piece>"`) and
+keeps where each page's text is (`state.pageTextAt`). A chunk's payload is
+`{ pages, texts }`: the pages without `rawContent`, and each one's piece, offset and
+length. `render:i` reads the text back (`pageText`) before it renders.
+
+What to keep when changing it:
+
+- **The main thread still has every page's `rawContent`**: the pages come back from the
+  lanes with it, and `vendorAssets`, `markdownInit` and the later tasks read it. Only the
+  chunks' payloads lost it.
+- **Nothing may change a page's `rawContent` after `discoverRead`**: the render lanes
+  would not see the change. Nothing does today (the one assignment is `buildPage`'s). A
+  page with no place in `state.pageTextAt` keeps its text in the payload, so a page
+  added later still renders.
+- **The gap is a `submit`'s**, so it is on the main thread whatever the lanes do.
+
+Measured on the dev box, from the end of `dispatch`'s bar to the start of `prepDest`'s:
+0.05 to 0.13 s before, 0.01 to 0.02 s since, in one-off builds on sixteen CPUs and on
+four. In a serve rebuild the first render started at 0.27 to 0.35 s before and at 0.23
+to 0.27 s since (builds 2 to 5 on one pool). A one-off build's first render is within
+the noise of the runs (0.78 to 0.88 s against 0.82 to 0.84 s): the lanes are still
+loading their second stage and Shiki then. `discover` ends when it did. Not measured: CI.
+
+### dispatch does not wait for buildInfo
+
+`buildInfo` is two `git` processes, and only the book's title page states what they
+return (`book.mjs`, `renderTitlePage`). `dispatch` listed it in `expected` and put its
+result in the shared payload, from when every lane held the whole site object; no render
+reads it. On Windows a process takes long to start while every lane boots: `buildInfo`
+took 0.34 to 0.61 s in a one-off build on the dev box (0.15 s in the best run of eight),
+ended later than `markdownInit` did, and `dispatch` started only then, 0.1 to 0.25 s
+late. In a serve rebuild it took 0.03 to 0.3 s, with the same effect. On CI's Linux it
+was done long before.
+
+`bookPayload` waits for it now, which reads `state.site.buildInfo` and runs after the
+render; the shared payload and the lanes' site object hold it no longer. `buildInfo`
+also waits for `discoverList`, as the other early lane tasks do, so that it does not
+take a lane the source tree's pieces want.
+
+Measured on the dev box, with four pieces of the source tree as well (the two changes
+were measured together), the first render starting at:
+
+| | before | since |
+|---|---|---|
+| serve rebuild (builds 2 to 5 on one pool) | 0.25 to 0.27 s | 0.16 to 0.20 s |
+| one-off build, 16 CPUs (4 runs) | 0.76 to 0.87 s | 0.66 to 0.78 s |
+| one-off build, 4 CPUs (8 runs) | 0.91 to 1.20 s | 0.79 to 1.17 s |
+
+On four CPUs nothing changes: the lanes are not up before `dispatch` ends either way,
+and `dispatch` there still waits a few hundredths of a second for `dot` in some runs.
+Not measured: CI, where neither change should show (four CPUs, and `git` is quick).
+
+**`nav` was looked at and gains nothing in a build.** `computeNav` sorted every page's
+children twice and built a map for each page's levels; it now sorts once and the walk
+carries the levels, which takes 6 ms alone on its first call where it took 19 to 24 ms.
+In a build the task still reads 29 to 69 ms (28 to 64 ms before): its time there is
+not its own work but the main thread's share of a machine whose lanes are all booting.
+
+### What markdownInit is made of
+
+Every render waits for `markdownInit`. On the dev box it took 117 to 151 ms in a one-off
+build, of which `checkPlaceholders` was 70 to 80 ms and `deriveCounts` 20 to 48 ms; the
+link tables, the parser, the SEO constants and the rest are a few milliseconds each.
+Both are scans of page source that need a block parse, and they are the first block
+parses of the build, so they run before the engine has compiled the parser: alone and
+warm, the same two take about 15 ms and 3 ms.
+
+- **`findCountRefs` cuts into code spans only the lines that hold a placeholder.** It
+  called `maskCode` on the whole of each page that holds one, and those are the longest
+  pages of the site (the developer pages: 0.6 MB in all). A placeholder cannot span
+  lines, so a line of a fence is skipped and any other line with a placeholder is cut
+  with `splitCodeSpans`. The block parse remains: it is what says where the fences are.
+  `checkPlaceholders` is 30 to 43 ms since, and `markdownInit` 78 to 109 ms.
+- **`maskCode` finds line ends and backticks with a regular expression and `indexOf`**
+  (`lib/markdown.mjs`: `splitLines`, `splitCodeSpans`), where it read one character at a
+  time. Over every page it took about 200 ms on one thread and takes about 115 ms, of
+  which the block parse is 80 ms. The render lanes call it on every page
+  (`applyPreRenderRewrites`), so that is about 85 ms of CPU off the render, shared among
+  the lanes. Old and new were compared over every page of the site: the same masked
+  text, the same segments of every line, the same placeholders.
+- **The package tests' folders are listed once.** `packageTestRels` is a few dozen
+  synchronous file calls (5 to 20 ms); `markdownInit` keeps its result
+  (`state.site.packageTestRels`) for `dispatch`, which made the listing again.
+
+What is left is the two cold block parses: of `Reference/Attributes.md` and
+`Reference/Enumerations.md` in `deriveCounts`, and of the pages with a placeholder in
+`checkPlaceholders`. Giving them to a lane would need the site's parser there, which is
+the second stage of a lane's boot: on Windows a one-off build's lanes are still loading
+it when `markdownInit` runs, so it would wait for them. Not done.
 
 ### A hung build times out and says where it hung
 
@@ -1012,7 +1216,7 @@ The decisions, each with what it rules out:
   commit behind the add-in being edited. `Resources/HELP/` is also refused by name, in
   case it is ever added. A file git does not track is named in the build's output.
 - **The archive in the project is the one this build wrote, handed over in memory.**
-  The `helpArchive` task (a worker task) returns the zip it wrote, as bytes, and
+  The `helpArchive` task returns the zip it wrote, as bytes, and
   `addinProject` waits for it and packs those bytes as `Resources/HELP/site.zip`. Reading the file back from
   `add-in/Resources/HELP/` could pick up the archive of an earlier build whenever this
   one wrote none (`--no-help-archive`, `--serve`, another `--dest`, a fixture): that
@@ -1023,12 +1227,15 @@ The decisions, each with what it rules out:
   download that held it would differ from one build of a tree to the next.
   `recheckHelpArchive` checks at the end of `runBuild` that the offline tree still lists
   the archive's files and that only those two differ.
-- **The task waits for every writer of the offline tree.** `flushJoin` (the render
-  lanes write each page's offline HTML in their flush), `scss` (the offline
-  stylesheet), `searchIndex` (`search-index.js`) and `writeOffline` (statics, theme
-  assets, redirect stubs, `nav.js`). Nothing else writes there before the injection; a writer added
+- **The archive waits for every writer of the offline tree.** `archivePlan` waits for
+  `flushJoin` (the render lanes write each page's offline HTML in their flush), `scss`
+  (the offline stylesheet) and `writeOffline` (statics, theme assets, redirect stubs,
+  `nav.js`); `archiveLate` waits for `searchIndex` (`search-index.js`, the one file in
+  `LATE_FILES`). Nothing else writes there before the injection; a writer added
   later and missed here fails the build in `recheckHelpArchive`, which is why that
-  check compares every file's content.
+  check compares every file's size and CRC-32. **A file a new task writes into the
+  offline tree after `archivePlan` goes in `LATE_FILES`**, with `archiveLate` waiting
+  for that task.
 - **The offline tree has no copy, and its link goes to the website.** The project
   carries the offline tree's archive, so a copy in that tree would be inside its own
   archive. `deriveTreeRels` takes the path as an online-only file. The page links to
@@ -1086,7 +1293,7 @@ and the reader builds it. `test/addin-project.test.mjs` is the gate.
 
 ### The help archive
 
-- **The help archive is the `helpArchive` task of the build's graph.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, once every task that writes into the offline tree has finished (`flushJoin`, `scss`, `searchIndex`, `writeOffline`; the archive task lists exactly those) and **before** the Gantt injection. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. It reads the file back to verify it. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
+- **The help archive is made by tasks of the build's graph, its deflating on the lanes.** `builder/help-archive-step.mjs` writes `add-in/Resources/HELP/site.zip` from `docs/_site-offline` through `lib/help-archive.mjs`, **before** the Gantt injection. `archivePlan` runs once `flushJoin`, `scss` and `writeOffline` have finished, lists the tree less `LATE_FILES` (`search-index.js`) and deals the deflating into one group of units for each lane (`archiveDeflate:i`), so the tree is deflated while the search index is built. `archiveLate` does the same for `search-index.js` once `searchIndex` has written it (`archiveLateDeflate:i`), and `helpArchive` writes the zip from every group. A unit is a whole file or one 1 MB piece of a larger one; a large file's pieces are one deflate stream, each ending with a sync flush and primed with the 32 KB before it (pigz's method), so the bytes depend only on the piece size. Measured on the 55 MB `search-index.js` at level 9: 3.2 s as one stream, 0.8 s as pieces on four threads, at the same size to within 0.02%. Each unit inflates what it deflated and compares it with the bytes it read; the zip is read back and compared with what was assembled. **The archive leaves out `HELP_ARCHIVE_SKIP`** (`builder/help-archive-step.mjs`): the Documentation Development section (`BuildInfo.html` and `assets/images/gantt.svg` with it, so the chart never reaches the zip), Videos and their poster frames, Challenges, and **every download, which stays online** (owner): a file readers download goes in a `downloads` folder beside its page, and the step fails the build when the Downloads page offers a file the archive would hold. The add-in's server redirects any file the archive lacks to the website, because pages link to all of these; a new entry needs nothing else. A mismatch fails the build (exit 1). After the Gantt injection `recheckHelpArchive` checks that the offline tree on disk lists the same files as the archive and differs from it, in size or CRC-32, only in `BuildInfo.html` and `gantt.svg`; a task that wrote into the offline tree late fails the build there. The help add-in embeds the zip as a resource and serves the pages from it with its own server; a build of the add-in without it uses the live site. The file is gitignored (about 60 MB, 10 MB of it the search index's `search-index.js`, deflated), so a build of the add-in from a clean clone is the online one until `build.bat` has run. The download carries the same zip ([The help add-in's project file](#the-help-add-ins-project-file)). **`--no-help-archive` turns the step off, and neither CI workflow may pass it** (`check_ci_workflows.mjs` refuses it, in `ALLOWED.forbiddenBuildFlags`), because CI's published download would then hold no archive. It runs only for the guarded source tree (`docs`) built into the default `docs/_site-offline` (not another `--dest`, so `compare_trees` and `check_links_diff` leave it alone), never under `--serve` or `--dry-run`, never without an offline tree, and not keyed on `$CI`. There is no command-line tool for the archive: the `help-offline` lane makes its own with `writeHelpArchive`. The zip's format is fixed by the add-in's reader, which does no inflating ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 4, increment 5).
 
 ### Build-time counts as named values
 
@@ -1380,9 +1587,9 @@ light one alone, a plain `<img>` (`lightOnly` in
   `.light.png` is an ordinary static file to the publish allowlist, the link check and the index
   audit, and each one adds one to the page baseline's static-file count.
 - **Each is shown at its own size, at one scale.** The page's `{:width height}` is the dark
-  picture's; the light `<img>` gets it scaled by the two files' pixel sizes, which `discover`
-  reads from their PNG headers on the main thread (`pairSizes`) and the workers receive with the
-  shared render data. The Light theme lays the IDE out a few pixels differently (the toolbar
+  picture's; the light `<img>` gets it scaled by the two files' pixel sizes, which the
+  `discoverRead:i` lanes read from their PNG headers (`picturePairs` names the pairs) and the
+  workers receive with the shared render data. The Light theme lays the IDE out a few pixels differently (the toolbar
   4 CSS px shorter, a panel's title bar 3, some buttons narrower), so a light screenshot is up to
   a few pixels off the dark one's size. Forcing the dark size on it instead either pulls
   neighbouring UI into the frame (a line of the blue title bar over every light toolbar) or
@@ -1410,8 +1617,17 @@ SVGs: online and book do, offline (and so the help archive) does not. Why:
 - **An offline tree that shows PNGs holds no picture SVG.** `tbdocs.mjs` adds each one's path
   to `offline_exclude` in memory, so the offline copy, the help archive, the offline link check
   and the index audit agree without knowing about pictures. That adds a few hundred literal
-  patterns, so `offlineExcluded` (and its copy in `check-tree.mjs`) compares a pattern with no
-  wildcard as a string instead of compiling it. The archive is a stored zip, 37 MB without
+  patterns, and `dispatch` tests every path of both trees against the list, so the list is
+  compiled once (`matchesAny`, [builder/fnmatch.mjs](builder/fnmatch.mjs), which
+  `offlineExcluded` and `check-tree.mjs` both call): the patterns with no wildcard in a `Set`,
+  the others as regular expressions. Testing each path against each pattern, with a regular
+  expression made for every test, was most of `dispatch`: 0.32 to 0.39 s on four CPUs
+  (`start /affinity F`), 0.07 to 0.12 s since; 0.14 s and 0.05 s on sixteen. On CI (one run
+  each, the second on a faster runner: 16.5 s against 24 s in all) about 0.6 s became about
+  0.1 s, and the first render started near 0.9 s where it had started near 1.5 s. What is left in
+  `dispatch` is the JSON of the shared payload (about 10 ms); its `submit` is the subject of
+  [The pages' text does not go through the main thread's JSON](#the-pages-text-does-not-go-through-the-main-threads-json).
+  The archive is a stored zip, 37 MB without
   the SVGs, and the 310 of them would add 18 MB.
 - **A picture's SVG is never inlined.** `figurePlugin` inlines a diagram's SVG in its figure; a
   picture's (`isPictureSvg`: an `.svg` with its `.png` beside it) stays an `<img>` in the
