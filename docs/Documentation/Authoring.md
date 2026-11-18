@@ -24,6 +24,7 @@ The documentation is grouped by area, each a folder under `docs/`:
 - **Features** --- articles on individual twinBASIC language features.
 - **LLVM** --- compiling with the LLVM back end: turning it on, its options, and its current limitations.
 - **IDE** --- the IDE user guide.
+- **Community** --- what twinBASIC users write and share: the lists of add-ins, tools and experimental packages, and links to the contributed packages and to guides.
 - **Downloads** --- one page that lists every file this documentation publishes for readers, with a link to each one's documentation.
 - **Documentation** --- this section: the toolchain reference and this authoring guide.
 

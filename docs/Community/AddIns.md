@@ -1,18 +1,20 @@
 ---
 title: Community Add Ins
-parent: Add Ins
-nav_order: 3
-permalink: /tB/IDE/AddIns/Community
+parent: Community
+nav_order: 1
+permalink: /Community/Add-Ins
+redirect_from:
+  - /tB/IDE/AddIns/Community
 ---
 
 # Community add-ins
 
-Community add-ins are the ones that twinBASIC users write and share, as distinct from [Global Search](GlobalSearch), which ships with the IDE, and the [Help add-in](Help). Programs that are not add-ins, such as one that installs a new version of twinBASIC, are on the [Community tools](Community-Tools) page.
+Community add-ins are the ones that twinBASIC users write and share, as distinct from [Global Search](../tB/IDE/AddIns/GlobalSearch), which ships with the IDE, and the [Help add-in](../tB/IDE/AddIns/Help). Programs that are not add-ins, such as one that installs a new version of twinBASIC, are on the [Community tools](Tools) page.
 
 > [!WARNING]
 > An add-in is a compiled DLL that runs inside the IDE, with your rights. Treat it as you would any program that you have not written yourself.
 
-The add-ins below are listed as their authors describe them. Each is published as compiled DLLs. [Add Ins](./) says where the DLLs go. The **Builds** column says which of the two architecture folders the add-in has a DLL for: an add-in with a 32-bit build only does not load while the project's build target is win64.
+The add-ins below are listed as their authors describe them. Each is published as compiled DLLs. [Add Ins](../tB/IDE/AddIns/) says where the DLLs go. The **Builds** column says which of the two architecture folders the add-in has a DLL for: an add-in with a 32-bit build only does not load while the project's build target is win64.
 
 ## Add-ins by sokinkeso
 
@@ -39,6 +41,6 @@ These add-ins are published only as attachments to a thread in the **show-and-te
 | [tbSplitScreen](https://discord.com/channels/927638153546829845/1522162642700206146) | woeoio2 | Shows the active file a second time, read-only, in a tool window beside the editor. It can follow the editor as you change to another file. Its highlighting is that of VB6, so it does not colour a `/* */` comment. | 1.0.1, July 2026 | not stated |
 | [VB6 to twinBASIC clipboard](https://discord.com/channels/927638153546829845/1333920083914788946) | sokinkeso | Converts the controls that you copy from a form in the VB6 IDE, so that you can paste them on a twinBASIC form without importing the VB6 project. The author calls it experimental. | 0.2.17.0, January 2025 | 32-bit |
 
-To share an add-in, add it to this page: [Authoring](../../../Documentation/Development/Authoring) describes how to change a page of this documentation.
+To share an add-in, add it to this page: [Authoring](../Documentation/Development/Authoring) describes how to change a page of this documentation.
 
-To write one, start from Sample 10, the card **twinBASIC IDE Addin** in the **Samples** section of the **New / Open Project** dialog. See [Samples](../Starting/Samples) and the [tbIDE package](../../Packages/tbIDE/).
+To write one, start from Sample 10, the card **twinBASIC IDE Addin** in the **Samples** section of the **New / Open Project** dialog. See [Samples](../tB/IDE/Starting/Samples) and the [tbIDE package](../tB/Packages/tbIDE/).

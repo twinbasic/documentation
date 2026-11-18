@@ -43,3 +43,7 @@ The DEBUG CONSOLE says why, on a line that starts with the DLL's file name in br
 | `Failed to load addin.  Entry point 'tbCreateCompilerAddin' returned an object that does not implement interface IAddInV1.` | It returned an object that does not implement [**AddIn**](../../Packages/tbIDE/AddIn). |
 
 The Add-Ins menu still lists such a DLL, as *Unknown Addin*.
+
+## Add-ins from the community
+
+The add-ins that twinBASIC users write and share are listed on the [Community add-ins](../../../Community/Add-Ins) page of the [Community](../../../Community/) section. Programs that help with twinBASIC and are not add-ins are on its [Community tools](../../../Community/Tools) page.

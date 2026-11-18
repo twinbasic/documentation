@@ -1,7 +1,7 @@
 ---
 title: Experimental Packages
-parent: Packages
-nav_order: 4
+parent: Community
+nav_order: 3
 permalink: /tB/Packages/Experimental/
 has_toc: false
 ---
@@ -10,7 +10,7 @@ has_toc: false
 
 Community-authored packages from TWINSERV that are not yet ready for use in a program.
 
-These packages are published through TWINSERV, as the [Contributed Packages](../Contributed/) are, and are documented in the same way. A package is listed here when its newest version does not compile in the current twinBASIC, or when it has defects that a program would meet. Each section says which version it documents and what does not work yet. A package moves to the Contributed Packages once a version of it works, and its pages keep their addresses.
+These packages are published through TWINSERV, as the [Contributed Packages](../Contributed/) are, and are documented in the same way. A package is listed here when its newest version does not compile in the current twinBASIC, or when it has defects that a program would meet. Each section says which version it documents and what does not work yet. A package moves to the Contributed Packages, in the Reference Section, once a version of it works, and its pages keep their addresses.
 
 - [**ArrayListLib**](../Contributed/ArrayListLib/) -- a list class in place of .NET's `ArrayList`. Version 1.6.151.1 does not compile in twinBASIC BETA 1042, and in a copy that does, a **For Each** over a list with no items fails, **ToString** of such a list never returns, **Reverse** leaves the two middle items of an even run in place, and a second **GetEnumerator** over the same list ignores its arguments.
 - [**GdiPlus**](../Contributed/GdiPlus/) -- Windows GDI+: lines, shapes, text and images drawn with pens, brushes, fonts, paths and transformations. Version 0.9.45.0 compiles, and has many members that give wrong results, fail or do not return: a colour given as a **Long** has its red and blue swapped and loses its alpha, saving an image with encoder parameters fails, the font collections cannot be created, and several path, metafile and effect members fail.
