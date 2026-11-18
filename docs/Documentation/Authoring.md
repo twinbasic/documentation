@@ -342,6 +342,7 @@ renders as the current figure. The names are derived on every build:
 | `builtInPackages` | of those, the ones under `Reference/Built-In/` |
 | `attributeAnchors` | pinned heading ids in `Reference/Attributes.md` |
 | `enumerations` | entries in the alphabetical index of `Reference/Enumerations.md` |
+| `samples` | rows of the table of sample projects in `IDE/Starting/Samples.md` |
 | `redirectStubs` | whole-page stubs emitted for `redirect_from:` entries |
 
 The package names are separate because the words for them collide. The

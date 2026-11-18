@@ -17,7 +17,7 @@ This chapter follows the IDE from the moment it starts to a project that is open
 - [**New Project**](New-Project) --- the **New / Open Project** dialog: its sections, its search and keys, what each template makes, the **New Project Options** box, and the recent lists.
 - [**Opening projects**](Opening-Projects) --- the ways to open a project, one project at a time, the file association, what happens as a project loads, and what to do when one will not open.
 - [**Importing a VB6 project**](Importing-VB6) --- the routes for a `.vbp` file, what the importer converts and what it leaves, and its log.
-- [**Samples**](Samples) --- the 26 sample projects: what each is, and where the documentation uses it.
+- [**Samples**](Samples) --- the {{tbdocs:samples}} sample projects: what each is, and where the documentation uses it.
 
 ## From a double-click to a project
 

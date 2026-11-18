@@ -196,7 +196,7 @@ A path that holds a `#` is shown cut in two, as a name with a sub-text: `C:\dev\
 
 ## Samples
 
-The **Samples** section holds the 26 sample projects that ship with the IDE. A sample opens as a new, unsaved project through [New Project Options](#new-project-options), like a template. [Samples](Samples) says what each one is.
+The **Samples** section holds the {{tbdocs:samples}} sample projects that ship with the IDE. A sample opens as a new, unsaved project through [New Project Options](#new-project-options), like a template. [Samples](Samples) says what each one is.
 
 ## Import from folder
 

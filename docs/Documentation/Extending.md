@@ -734,7 +734,7 @@ A count name is a number the build works out and substitutes into prose, so a se
 
 **A name must be a derivation over build state, never a stored constant.** A registry holding `pages: 908` only moves the stale figure from a page a contributor reads into a module nobody opens. A number that cannot be derived gets no name and stays a digit.
 
-Two shapes qualify. Most names count things `discover` already found: pages under a prefix, static files, packages. `attributeAnchors` and `enumerations` scan one page's `rawContent` for the pattern that makes an entry. That is legitimate because the page *is* the list, but changing that page's list formatting moves the number. Both scan only the lines outside code, which `proseLines` in `counts.mjs` gives them, so an example of the pattern in a fence is not counted; a new scan should do the same.
+Two shapes qualify. Most names count things `discover` already found: pages under a prefix, static files, packages. `attributeAnchors`, `enumerations` and `samples` each scan one page's `rawContent` for the pattern that makes an entry. That is legitimate because the page *is* the list, but changing that page's list formatting moves the number. Each scans only the lines outside code, which `proseLines` in `counts.mjs` gives them, so an example of the pattern in a fence is not counted; a new scan should do the same.
 
 1. **Add the entry.** A function beside the others in
    [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),
