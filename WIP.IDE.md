@@ -38,7 +38,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
 | 8 | Customising the IDE | `/tB/IDE/Customising/` + children | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
-| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (the community add-ins are listed from their authors' READMEs and release pages: they are published as DLLs with no source, and none is downloaded or run here) |
+| 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* (the community add-ins are listed from their authors' READMEs and release pages, and the Discord-only ones from their show-and-tell threads in the Wisdom harvest, each linked by its thread: they are published as DLLs, and none is downloaded or run here. sokinkeso plans to replace his with a commercial suite, KESO-DevToolz: update the table when it is out. Left out: fafalone's CodeStatAddin, unfinished by his word, and EJ's tb-claude, whose repository is gone) |
 | 10 | When something goes wrong | `/tB/IDE/Troubleshooting/` + children | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
 **Part B, Reference.** Written impersonally. One page per menu, plus the Toolbar, the Status Bar
