@@ -8,7 +8,7 @@ has_toc: false
 # Image class
 {: .no_toc }
 
-An **Image** is a windowless lightweight control for displaying a picture --- a bitmap, JPEG, GIF, PNG, icon, cursor, or Windows metafile. It is the small, efficient alternative to [**PictureBox**](../PictureBox): no underlying Win32 window, no drawing surface, no child controls, no focus --- just a rectangle on the parent that paints whatever is in [**Picture**](#picture). Image controls are ideal for logos, decorative artwork, custom-drawn buttons, glyph rows, and any other place where a heavy **PictureBox** would be overkill.
+![](../../../Images/Toolbox/Image.png){:width="24" height="24"} An **Image** is a windowless lightweight control for displaying a picture --- a bitmap, JPEG, GIF, PNG, icon, cursor, or Windows metafile. It is the small, efficient alternative to [**PictureBox**](../PictureBox): no underlying Win32 window, no drawing surface, no child controls, no focus --- just a rectangle on the parent that paints whatever is in [**Picture**](#picture). Image controls are ideal for logos, decorative artwork, custom-drawn buttons, glyph rows, and any other place where a heavy **PictureBox** would be overkill.
 
 The default property is [**Picture**](#picture) and the default event is [**Click**](#click).
 

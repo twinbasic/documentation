@@ -8,7 +8,7 @@ has_toc: false
 # MultiFrame class
 {: .no_toc }
 
-A **MultiFrame** is a layout container that arranges a set of [**Frame**](../Frame) controls in a single horizontal or vertical strip and resizes them whenever the **MultiFrame** itself is resized. Each contained frame keeps its own border, caption, and child controls; the **MultiFrame** decides only where each frame is placed and how wide (or tall) it is.
+![](../../../Images/Toolbox/MultiFrame.png){:width="24" height="24"} A **MultiFrame** is a layout container that arranges a set of [**Frame**](../Frame) controls in a single horizontal or vertical strip and resizes them whenever the **MultiFrame** itself is resized. Each contained frame keeps its own border, caption, and child controls; the **MultiFrame** decides only where each frame is placed and how wide (or tall) it is.
 
 A frame is associated with a **MultiFrame** by setting the frame's [**Container**](../Frame#container) to point at the **MultiFrame**. The frame's [**MultiFramePosition**](../Frame#multiframeposition) chooses its place in the sequence and [**MultiFrameSize**](../Frame#multiframesize) gives its size as a percentage of the **MultiFrame**'s usable extent. Frames whose **MultiFrameSize** is `0` share whatever extent remains after the fixed-size frames have been laid out.
 

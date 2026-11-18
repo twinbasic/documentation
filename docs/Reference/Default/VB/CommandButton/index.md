@@ -8,7 +8,7 @@ has_toc: false
 # CommandButton class
 {: .no_toc }
 
-A **CommandButton** is a Win32 native push-button control used to trigger an action --- a click-handler runs every time the user presses it. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
+![](../../../Images/Toolbox/CommandButton.png){:width="24" height="24"} A **CommandButton** is a Win32 native push-button control used to trigger an action --- a click-handler runs every time the user presses it. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
 ```tb check_build
 Private Sub Form_Load()

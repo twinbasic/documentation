@@ -8,7 +8,7 @@ has_toc: false
 # CheckBox class
 {: .no_toc }
 
-A **CheckBox** is a Win32 native control that displays a small box, optionally followed by a text caption, used to give the user a choice between two values such as *Yes*/*No*, *True*/*False*, or *On*/*Off*. It can also be put into a third, indeterminate (grey) state from code, typically to mean "not applicable" or "mixed".
+![](../../../Images/Toolbox/CheckBox.png){:width="24" height="24"} A **CheckBox** is a Win32 native control that displays a small box, optionally followed by a text caption, used to give the user a choice between two values such as *Yes*/*No*, *True*/*False*, or *On*/*Off*. It can also be put into a third, indeterminate (grey) state from code, typically to mean "not applicable" or "mixed".
 
 The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 

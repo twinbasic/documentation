@@ -8,7 +8,7 @@ has_toc: false
 # DTPicker class
 {: .no_toc }
 
-A **DTPicker** is a date / time picker control. The inline field shows the current date or time formatted per [**Format**](#format); clicking the dropdown arrow opens a [**MonthView**](MonthView)-style calendar for picking a new date, and dismissing the calendar updates [**Value**](#value).
+![](../../Images/Toolbox/DTPicker.png){:width="24" height="24"} A **DTPicker** is a date / time picker control. The inline field shows the current date or time formatted per [**Format**](#format); clicking the dropdown arrow opens a [**MonthView**](MonthView)-style calendar for picking a new date, and dismissing the calendar updates [**Value**](#value).
 
 ![Date pickers set to January 14, 2025, 3:45 PM: in the long date, time and custom formats, with spin buttons in place of the drop-down button, with a check box, and in the short date format with its calendar dropped down below it](Images/DTPicker.png){:width="561" height="409"}
 

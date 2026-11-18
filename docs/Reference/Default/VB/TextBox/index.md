@@ -8,7 +8,7 @@ has_toc: false
 # TextBox class
 {: .no_toc }
 
-A **TextBox** is a Win32 native edit control that lets the user enter and edit text. It can be configured as a single-line field (default) or a multi-line editor with optional scroll bars, can mask its content for password entry, restrict input to digits, and display a placeholder "cue banner" when empty.
+![](../../../Images/Toolbox/TextBox.png){:width="24" height="24"} A **TextBox** is a Win32 native edit control that lets the user enter and edit text. It can be configured as a single-line field (default) or a multi-line editor with optional scroll bars, can mask its content for password entry, restrict input to digits, and display a placeholder "cue banner" when empty.
 
 The control is normally placed on a [**Form**](../Form) or **UserControl** at design time. The default property is [**Text**](#text) and the default-designer event is [**Change**](#change).
 

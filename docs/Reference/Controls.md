@@ -21,40 +21,40 @@ These classes are *containers* rather than controls in the strict sense --- they
 
 ## Buttons and toggles
 
-- [CommandButton](Packages/VB/CommandButton/) -- push-button used to trigger an action.
-- [CheckBox](Packages/VB/CheckBox/) -- two- or three-state check box with an optional text caption.
-- [CheckMark](Packages/VB/CheckMark/) -- windowless check glyph that scales to fill its rectangle; no caption, no focus.
-- [OptionButton](Packages/VB/OptionButton/) -- radio-button; option buttons sharing a container form a mutually-exclusive group.
+- ![](Images/Toolbox/CommandButton.png){:width="24" height="24"} [CommandButton](Packages/VB/CommandButton/) -- push-button used to trigger an action.
+- ![](Images/Toolbox/CheckBox.png){:width="24" height="24"} [CheckBox](Packages/VB/CheckBox/) -- two- or three-state check box with an optional text caption.
+- ![](Images/Toolbox/CheckMark.png){:width="24" height="24"} [CheckMark](Packages/VB/CheckMark/) -- windowless check glyph that scales to fill its rectangle; no caption, no focus.
+- ![](Images/Toolbox/OptionButton.png){:width="24" height="24"} [OptionButton](Packages/VB/OptionButton/) -- radio-button; option buttons sharing a container form a mutually-exclusive group.
 
 ## Text and value input
 
-- [TextBox](Packages/VB/TextBox/) -- single-line or multi-line edit control, with optional password masking and digit-only input.
-- [ComboBox](Packages/VB/ComboBox/) -- edit field combined with a drop-down list of items.
-- [ListBox](Packages/VB/ListBox/) -- vertically-scrolling list of items, optionally multi-column and multi-select.
-- [HScrollBar](Packages/VB/HScrollBar/) -- stand-alone horizontal scroll bar.
-- [VScrollBar](Packages/VB/VScrollBar/) -- stand-alone vertical scroll bar.
+- ![](Images/Toolbox/TextBox.png){:width="24" height="24"} [TextBox](Packages/VB/TextBox/) -- single-line or multi-line edit control, with optional password masking and digit-only input.
+- ![](Images/Toolbox/ComboBox.png){:width="24" height="24"} [ComboBox](Packages/VB/ComboBox/) -- edit field combined with a drop-down list of items.
+- ![](Images/Toolbox/ListBox.png){:width="24" height="24"} [ListBox](Packages/VB/ListBox/) -- vertically-scrolling list of items, optionally multi-column and multi-select.
+- ![](Images/Toolbox/HScrollBar.png){:width="24" height="24"} [HScrollBar](Packages/VB/HScrollBar/) -- stand-alone horizontal scroll bar.
+- ![](Images/Toolbox/VScrollBar.png){:width="24" height="24"} [VScrollBar](Packages/VB/VScrollBar/) -- stand-alone vertical scroll bar.
 
 ## File-system browsing
 
 These three controls are normally connected together to build a complete file picker.
 
-- [DriveListBox](Packages/VB/DriveListBox/) -- drop-down list of the drives the operating system reports.
-- [DirListBox](Packages/VB/DirListBox/) -- directory-tree picker for a single path.
-- [FileListBox](Packages/VB/FileListBox/) -- file list for a single directory, filtered by wildcard and file-attribute toggles.
+- ![](Images/Toolbox/DriveListBox.png){:width="24" height="24"} [DriveListBox](Packages/VB/DriveListBox/) -- drop-down list of the drives the operating system reports.
+- ![](Images/Toolbox/DirListBox.png){:width="24" height="24"} [DirListBox](Packages/VB/DirListBox/) -- directory-tree picker for a single path.
+- ![](Images/Toolbox/FileListBox.png){:width="24" height="24"} [FileListBox](Packages/VB/FileListBox/) -- file list for a single directory, filtered by wildcard and file-attribute toggles.
 
 ## Containers
 
-- [Frame](Packages/VB/Frame/) -- captioned container that groups related controls and scopes [OptionButton](Packages/VB/OptionButton/) groups.
-- [MultiFrame](Packages/VB/MultiFrame/) -- layout container that arranges a set of [Frame](Packages/VB/Frame/) controls in a horizontal or vertical strip.
-- [PictureBox](Packages/VB/PictureBox/) -- Win32 native control combining picture display, a drawing surface, and a child-control container.
+- ![](Images/Toolbox/Frame.png){:width="24" height="24"} [Frame](Packages/VB/Frame/) -- captioned container that groups related controls and scopes [OptionButton](Packages/VB/OptionButton/) groups.
+- ![](Images/Toolbox/MultiFrame.png){:width="24" height="24"} [MultiFrame](Packages/VB/MultiFrame/) -- layout container that arranges a set of [Frame](Packages/VB/Frame/) controls in a horizontal or vertical strip.
+- ![](Images/Toolbox/PictureBox.png){:width="24" height="24"} [PictureBox](Packages/VB/PictureBox/) -- Win32 native control combining picture display, a drawing surface, and a child-control container.
 
 ## Display-only
 
-- [Label](Packages/VB/Label/) -- windowless lightweight read-only text display, used for captions, status text, and keyboard mnemonics.
-- [Image](Packages/VB/Image/) -- windowless lightweight picture display; the small, efficient alternative to [PictureBox](Packages/VB/PictureBox/).
-- [Line](Packages/VB/Line/) -- windowless single straight line between two endpoints.
-- [Shape](Packages/VB/Shape/) -- windowless geometric primitive (rectangle, oval, circle, star, arrow, …) with configurable border, fill, and rotation.
-- [QRCode](Packages/VB/QRCode/) -- windowless QR-code renderer populated from a text or byte-array payload.
+- ![](Images/Toolbox/Label.png){:width="24" height="24"} [Label](Packages/VB/Label/) -- windowless lightweight read-only text display, used for captions, status text, and keyboard mnemonics.
+- ![](Images/Toolbox/Image.png){:width="24" height="24"} [Image](Packages/VB/Image/) -- windowless lightweight picture display; the small, efficient alternative to [PictureBox](Packages/VB/PictureBox/).
+- ![](Images/Toolbox/Line.png){:width="24" height="24"} [Line](Packages/VB/Line/) -- windowless single straight line between two endpoints.
+- ![](Images/Toolbox/Shape.png){:width="24" height="24"} [Shape](Packages/VB/Shape/) -- windowless geometric primitive (rectangle, oval, circle, star, arrow, …) with configurable border, fill, and rotation.
+- ![](Images/Toolbox/QRCode.png){:width="24" height="24"} [QRCode](Packages/VB/QRCode/) -- windowless QR-code renderer populated from a text or byte-array payload.
 
 ## Menus
 
@@ -62,9 +62,9 @@ These three controls are normally connected together to build a complete file pi
 
 ## Data and external content
 
-- [Data](Packages/VB/Data/) -- Win32 native control that opens a DAO recordset and exposes record-navigation buttons for bound controls.
-- [OLE](Packages/VB/OLE/) -- OLE container hosting a linked or embedded OLE Automation object (Word document, Excel sheet, …).
-- [Timer](Packages/VB/Timer/) -- non-visual control that raises a periodic event at a programmable interval.
+- ![](Images/Toolbox/Data.png){:width="24" height="24"} [Data](Packages/VB/Data/) -- Win32 native control that opens a DAO recordset and exposes record-navigation buttons for bound controls.
+- ![](Images/Toolbox/OLE.png){:width="24" height="24"} [OLE](Packages/VB/OLE/) -- OLE container hosting a linked or embedded OLE Automation object (Word document, Excel sheet, …).
+- ![](Images/Toolbox/Timer.png){:width="24" height="24"} [Timer](Packages/VB/Timer/) -- non-visual control that raises a periodic event at a programmable interval.
 
 ## Controls in other packages
 
@@ -74,14 +74,14 @@ elsewhere:
 - [WinNativeCommonCtls](Packages/WinNativeCommonCtls/) replaces Microsoft Common Controls
   6.0 (`MSCOMCTL.OCX`) with Win32-native equivalents, keeping the VB6 member names so most
   ported code compiles unchanged. This is where
-  [ListView](Packages/WinNativeCommonCtls/ListView/),
-  [TreeView](Packages/WinNativeCommonCtls/TreeView/),
-  [ImageList](Packages/WinNativeCommonCtls/ImageList/),
-  [DTPicker](Packages/WinNativeCommonCtls/DTPicker),
-  [MonthView](Packages/WinNativeCommonCtls/MonthView),
-  [ProgressBar](Packages/WinNativeCommonCtls/ProgressBar),
-  [Slider](Packages/WinNativeCommonCtls/Slider) and
-  [UpDown](Packages/WinNativeCommonCtls/UpDown) are.
+  ![](Images/Toolbox/ListView.png){:width="24" height="24"} [ListView](Packages/WinNativeCommonCtls/ListView/),
+  ![](Images/Toolbox/TreeView.png){:width="24" height="24"} [TreeView](Packages/WinNativeCommonCtls/TreeView/),
+  ![](Images/Toolbox/ImageList.png){:width="24" height="24"} [ImageList](Packages/WinNativeCommonCtls/ImageList/),
+  ![](Images/Toolbox/DTPicker.png){:width="24" height="24"} [DTPicker](Packages/WinNativeCommonCtls/DTPicker),
+  ![](Images/Toolbox/MonthView.png){:width="24" height="24"} [MonthView](Packages/WinNativeCommonCtls/MonthView),
+  ![](Images/Toolbox/ProgressBar.png){:width="24" height="24"} [ProgressBar](Packages/WinNativeCommonCtls/ProgressBar),
+  ![](Images/Toolbox/Slider.png){:width="24" height="24"} [Slider](Packages/WinNativeCommonCtls/Slider) and
+  ![](Images/Toolbox/UpDown.png){:width="24" height="24"} [UpDown](Packages/WinNativeCommonCtls/UpDown) are.
 - [CustomControls](Packages/CustomControls/) holds the owner-drawn **Waynes...** controls,
   which have no VB6 counterpart.
 - [WebView2](Packages/WebView2/) and [CEF](Packages/CEF/) each host a browser engine.

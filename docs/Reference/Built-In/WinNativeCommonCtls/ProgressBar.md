@@ -8,7 +8,7 @@ has_toc: false
 # ProgressBar class
 {: .no_toc }
 
-A **ProgressBar** is a horizontal or vertical bar that visually represents progress through a range. Three configurable axes shape the visual: [**Scrolling**](#scrolling) (standard / smooth / marquee), [**State**](#state) (Normal / Error / Paused, which tints the bar to match the OS theme), and [**Orientation**](#orientation) (horizontal or vertical).
+![](../../Images/Toolbox/ProgressBar.png){:width="24" height="24"} A **ProgressBar** is a horizontal or vertical bar that visually represents progress through a range. Three configurable axes shape the visual: [**Scrolling**](#scrolling) (standard / smooth / marquee), [**State**](#state) (Normal / Error / Paused, which tints the bar to match the OS theme), and [**Orientation**](#orientation) (horizontal or vertical).
 
 ```tb hidden
 Public ItemCount As Long

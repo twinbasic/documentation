@@ -8,7 +8,7 @@ has_toc: false
 # ListBox class
 {: .no_toc }
 
-A **ListBox** is a Win32 native control that displays a vertically-scrolling list of items, optionally laid out in multiple columns, from which the user picks one item --- or any number of items, when [**MultiSelect**](#multiselect) is non-zero. Each item is a string, with an optional **LongPtr** value the application can store alongside it through [**ItemData**](#itemdata). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Click**](#click).
+![](../../../Images/Toolbox/ListBox.png){:width="24" height="24"} A **ListBox** is a Win32 native control that displays a vertically-scrolling list of items, optionally laid out in multiple columns, from which the user picks one item --- or any number of items, when [**MultiSelect**](#multiselect) is non-zero. Each item is a string, with an optional **LongPtr** value the application can store alongside it through [**ItemData**](#itemdata). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Click**](#click).
 
 ```tb check_build
 Private Sub Form_Load()

@@ -8,7 +8,7 @@ has_toc: false
 # OptionButton class
 {: .no_toc }
 
-An **OptionButton** is a Win32 native control that displays a small round selector, optionally followed by a text caption, used to give the user a single choice within a group of related options. Option buttons that share a [**Container**](#container) form a *mutually exclusive group*: selecting one automatically clears every other option button in the same container.
+![](../../../Images/Toolbox/OptionButton.png){:width="24" height="24"} An **OptionButton** is a Win32 native control that displays a small round selector, optionally followed by a text caption, used to give the user a single choice within a group of related options. Option buttons that share a [**Container**](#container) form a *mutually exclusive group*: selecting one automatically clears every other option button in the same container.
 
 The control is normally placed on a [**Form**](../Form), [**Frame**](../Frame), or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 

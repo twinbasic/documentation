@@ -8,7 +8,7 @@ has_toc: false
 # Label class
 {: .no_toc }
 
-A **Label** is a windowless lightweight control for displaying read-only text. Labels are typically used as static captions next to input controls ("Name:", "Email:"), as status displays that code keeps up to date, or as keyboard-mnemonic anchors that route **Alt+** keystrokes to the next focusable control. Because the **Label** has no `hWnd` of its own, it is much cheaper than a [**TextBox**](../TextBox) configured to be read-only --- but it is also non-interactive in the keyboard sense: it cannot take focus, raise key events, or be selected with the **TAB** key.
+![](../../../Images/Toolbox/Label.png){:width="24" height="24"} A **Label** is a windowless lightweight control for displaying read-only text. Labels are typically used as static captions next to input controls ("Name:", "Email:"), as status displays that code keeps up to date, or as keyboard-mnemonic anchors that route **Alt+** keystrokes to the next focusable control. Because the **Label** has no `hWnd` of its own, it is much cheaper than a [**TextBox**](../TextBox) configured to be read-only --- but it is also non-interactive in the keyboard sense: it cannot take focus, raise key events, or be selected with the **TAB** key.
 
 The default property is [**Caption**](#caption) and the default event is [**Click**](#click).
 

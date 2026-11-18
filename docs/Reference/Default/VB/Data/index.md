@@ -8,7 +8,7 @@ has_toc: false
 # Data class
 {: .no_toc }
 
-A **Data** control is a Win32 native control that opens a DAO database and exposes a single recordset to other controls on the form through data binding. It draws a strip of four arrow-shaped buttons --- **Move-First**, **Move-Previous**, **Move-Next**, **Move-Last** --- with a centred [**Caption**](#caption) between them, and lets the user step through the recordset with the mouse. The control is normally placed on a **Form** or **UserControl** at design time. Setting [**DatabaseName**](#databasename) and [**RecordSource**](#recordsource) is enough to populate it; the recordset opens automatically the first time the control is created. The default event is [**Validate**](#validate); the control has no usable default property.
+![](../../../Images/Toolbox/Data.png){:width="24" height="24"} A **Data** control is a Win32 native control that opens a DAO database and exposes a single recordset to other controls on the form through data binding. It draws a strip of four arrow-shaped buttons --- **Move-First**, **Move-Previous**, **Move-Next**, **Move-Last** --- with a centred [**Caption**](#caption) between them, and lets the user step through the recordset with the mouse. The control is normally placed on a **Form** or **UserControl** at design time. Setting [**DatabaseName**](#databasename) and [**RecordSource**](#recordsource) is enough to populate it; the recordset opens automatically the first time the control is created. The default event is [**Validate**](#validate); the control has no usable default property.
 
 ```tb check_build inherits=Form
 Private Sub Form_Load()

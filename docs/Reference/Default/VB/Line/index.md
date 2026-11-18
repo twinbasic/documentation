@@ -8,7 +8,7 @@ has_toc: false
 # Line class
 {: .no_toc }
 
-A **Line** is a windowless lightweight control that draws a single straight line segment from one point to another on its container. It exists purely for visual presentation --- to divide regions of a form, underline a heading, draw a leader to an annotation --- and has no interactive elements of its own: no mouse events, no focus, no caption.
+![](../../../Images/Toolbox/Line.png){:width="24" height="24"} A **Line** is a windowless lightweight control that draws a single straight line segment from one point to another on its container. It exists purely for visual presentation --- to divide regions of a form, underline a heading, draw a leader to an annotation --- and has no interactive elements of its own: no mouse events, no focus, no caption.
 
 A **Line** is positioned by its two endpoints, [**X1**](#x1) / [**Y1**](#y1) and [**X2**](#x2) / [**Y2**](#y2), rather than by a `Left` / `Top` / `Width` / `Height` rectangle. The default property is [**Visible**](#visible) and the default event is [**Initialize**](#initialize).
 
