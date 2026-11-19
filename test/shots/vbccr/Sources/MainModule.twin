@@ -31,8 +31,23 @@ Module MainModule
     ' The ground between two controls, and round the outermost.
     Private Const MARGIN As Single = 16
 
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+    Private Type POINTAPI
+        x As Long
+        y As Long
+    End Type
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef r As RECT) As Long
+    Private Declare PtrSafe Function ClientToScreen Lib "user32" (ByVal hWnd As LongPtr, ByRef p As POINTAPI) As Long
+
     ' The lines of "clips".
     Private Clips As String
+    ' What Place asked for each control, Array(x, y, w, h) by the control's name.
+    Private Asked As New Collection
     ' The progress bars' timers that StillBars stopped, each Array(hWnd, id).
     Private BarTimers As New Collection
     Private Doing As String
@@ -72,6 +87,7 @@ Module MainModule
         DoEvents
     Shown:
         On Error GoTo 0
+        Dump f
         Signal "clips", Clips
         Signal "shown"
         If WaitFor("end", f) Then Unload f
@@ -205,11 +221,61 @@ Module MainModule
         Doing = Name
         Dim c As Object = f.Controls(Name)
         c.Move x, y, w, h
+        Asked.Add Array(x, y, w, h), Name
         c.TabStop = False
         c.Visible = True
         If ClipName = "*" Then ClipName = TypeName(c)
         If Len(ClipName) Then Clip ClipName, x, y, w, h
         Return c
+    End Function
+
+    ' Where each control of the form is, for a person looking into a picture that came out
+    ' wrong: what Place asked for, what the form then reports (in its scale's units), and where
+    ' the control's windows are, in device pixels of the form's client area. Written to the file
+    ' "placements" in the folder of the signals, or, when no tool runs the program, to
+    ' placements.txt beside the program, and to the DEBUG CONSOLE.
+    Private Sub Dump(ByVal f As Form)
+        Dim s As String, c As Object, a As Variant
+        s = "form " & f.Name & ": ScaleMode " & f.ScaleMode & ", scale " & F2(f.ScaleWidth) & " x " & F2(f.ScaleHeight) & _
+            ", size " & F2(f.Width) & " x " & F2(f.Height) & " twips, " & F2(Screen.TwipsPerPixelX) & " twips to a device pixel" & vbCrLf
+        For Each c In f.Controls
+            s = s & c.Name & " (" & TypeName(c) & ")" & vbCrLf
+            On Error Resume Next
+            a = Empty
+            a = Asked(c.Name)
+            If Not IsEmpty(a) Then s = s & "    asked     " & F2(a(0)) & ", " & F2(a(1)) & ", " & F2(a(2)) & " x " & F2(a(3)) & vbCrLf
+            s = s & "    reports   " & F2(c.Left) & ", " & F2(c.Top) & ", " & F2(c.Width) & " x " & F2(c.Height) & ", Visible " & c.Visible & vbCrLf
+            Dim h As LongPtr
+            h = 0
+            h = c.hWndUserControl
+            s = s & "    its window        " & WindowBox(f, h) & vbCrLf
+            h = 0
+            h = c.hWnd
+            s = s & "    its inner window  " & WindowBox(f, h) & vbCrLf
+            On Error GoTo 0
+        Next
+        Debug.Print s
+        Dim n As Integer = FreeFile
+        If Len(Signals()) Then
+            Open Signals() & "\placements" For Output As #n
+        Else
+            Open App.Path & "\placements.txt" For Output As #n
+        End If
+        Print #n, s
+        Close #n
+    End Sub
+
+    ' A window's rectangle in device pixels of the form's client area, or "none".
+    Private Function WindowBox(ByVal f As Form, ByVal h As LongPtr) As String
+        If h = 0 Then Return "none"
+        Dim r As RECT, p As POINTAPI
+        GetWindowRect h, r
+        ClientToScreen f.hWnd, p
+        Return (r.Left - p.x) & ", " & (r.Top - p.y) & ", " & (r.Right - r.Left) & " x " & (r.Bottom - r.Top) & " px"
+    End Function
+
+    Private Function F2(ByVal v As Variant) As String
+        Return Trim$(Str$(Round(CDbl(v), 2)))
     End Function
 
     Private Sub Clip(ByVal Name As String, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single)

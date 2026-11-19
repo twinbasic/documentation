@@ -12017,6 +12017,11 @@ function sheetOf(ctx, scene) {
           .map(([name, ...box]) => [name, box.map(Number)]),
       );
       const p = await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true });
+      // TB_SHOT_PLACEMENTS: print where the program says each control of the sheet is
+      const placements = path.join(dir, "placements");
+      if (process.env.TB_SHOT_PLACEMENTS && existsSync(placements)) {
+        console.log(`sheet ${scene}:\n${readFileSync(placements, "utf8").trimEnd()}`);
+      }
       return { p, clips };
     });
     // a sheet that failed is taken again by the next shot that asks for it
