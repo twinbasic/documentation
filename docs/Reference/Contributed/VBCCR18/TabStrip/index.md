@@ -19,6 +19,8 @@ symbols:
 
 A **TabStrip** is a row of tabs, or of buttons, of which one is selected. It shows no pages of its own: a program shows the controls that belong to the selected tab, and hides the others.
 
+![A tab strip with the tabs General, Folders and Pictures, the last two with a picture before their caption. Folders is selected, and the area under the tabs is empty.](Images/TabStrip.png){:width="332" height="113"}
+
 ```tb check_build check_run arch=win32,win64
 TabStrip1.Tabs(1).Caption = "General"
 TabStrip1.Tabs.Add , "view", "View"
@@ -463,6 +465,8 @@ The values of [**Placement**](#placement).
 {: #tbsstyleconstants }
 
 The values of [**Style**](#style).
+
+![Three tab strips with the tabs General, Folders and Pictures, Folders selected: in TbsStyleTabs they are tabs over an area, in TbsStyleButtons raised buttons with Folders pressed, in TbsStyleFlatButtons flat buttons with lines between them and Folders pressed](Images/TbsStyleConstants.png){:width="651" height="145"}
 
 | Member | Value | Description |
 |---|---|---|

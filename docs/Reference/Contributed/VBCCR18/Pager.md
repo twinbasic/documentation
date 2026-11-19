@@ -16,6 +16,8 @@ symbols:
 
 A **Pager** shows part of one other control, its buddy, that is larger than the pager. It draws a scroll button at each end where there is more to see, and the user scrolls the buddy into view with them.
 
+![A vertical pager over a list box three times as high as the pager, scrolled to show Row 7 to Row 10. A scroll button with an arrow is above the list and another below it.](Images/Pager.png){:width="172" height="112"}
+
 ```tb check_build check_run arch=win32,win64
 Pager1.Width = 2000: Pager1.Height = 1000
 ListBoxW1.Width = 1900: ListBoxW1.Height = 6000

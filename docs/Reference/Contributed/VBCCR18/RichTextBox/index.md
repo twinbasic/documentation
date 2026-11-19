@@ -12,6 +12,8 @@ symbols:
 
 A **RichTextBox** is a box in which the user types and edits formatted text: characters in several fonts, sizes and colors, paragraphs with their own alignment, indents and bullets, links, and pictures. The program reads and writes the text as plain text or in the Rich Text Format (RTF), and loads it from a file or saves it to one.
 
+![A rich text box with the heading Trip report in a larger bold font, a sentence in which noon is bold and worth the climb is red and in italics, and a list of three bullets: Water, Map and Rain coat](Images/RichTextBox.png){:width="332" height="133"}
+
 <!-- test: RichTextBoxFormatTests.SelBold_Assigned_MakesTheSelectionBold -->
 ```tb check_build check_run arch=win32,win64
 RichTextBox1.Text = "Hello world"

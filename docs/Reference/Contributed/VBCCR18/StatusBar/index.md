@@ -18,6 +18,8 @@ symbols:
 
 A **StatusBar** is a bar along the edge of a form that shows short pieces of information in panels: a message, the state of the Caps Lock key, the time. It can also show one piece of text across its whole width.
 
+![A status bar along the bottom of a form with four panels: Ready, which takes the free width, Ln 12, Col 5 and UTF-8, each as wide as its text, and 100% in the middle of a panel of its own width](Images/StatusBar.png){:width="528" height="30"}
+
 ```tb check_build check_run arch=win32,win64
 StatusBar1.Panels(1).Text = "Ready"
 StatusBar1.Panels.Add , "pos", "Ln 1"

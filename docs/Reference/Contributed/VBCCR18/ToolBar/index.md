@@ -17,6 +17,8 @@ symbols:
 
 A **ToolBar** is a row of buttons that start the commands of a program. A button can show a picture, a caption or both, can stay pressed like a check box, can open a drop-down menu, and a separator puts a gap between groups of buttons. The user can also rearrange the buttons in a dialog of Windows.
 
+![A flat toolbar with the buttons New, Open and Save, a separator, the check button Bold, which is pressed, and the drop-down button Paste with its arrow. Each button has a picture above its caption.](Images/ToolBar.png){:width="224" height="51"}
+
 ```tb check_build check_run arch=win32,win64
 ToolBar1.Buttons.Add , "new", "New"
 ToolBar1.Buttons.Add , "open", "Open"
@@ -754,6 +756,8 @@ The values of [**Style**](#style).
 {: #tbrtextalignconstants }
 
 The values of [**TextAlignment**](#textalignment).
+
+![Two toolbars with the same buttons: in TbrTextAlignBottom each caption is under its picture, in TbrTextAlignRight each caption is at the right of its picture and the toolbar is lower](Images/TbrTextAlignConstants.png){:width="320" height="193"}
 
 | Member | Value | Description |
 |---|---|---|

@@ -16,6 +16,8 @@ symbols:
 
 A **CoolBar** is a bar of bands. Each band has a grip, a caption and an optional picture, and holds one control, such as a toolbar or a combo box. The user drags a band by its grip to another place, and along a row to give it more room or less.
 
+![A cool bar of two rows: the bands File and Edit share the first row, and the band Find has the second. Each band has a grip at its left and shows its caption.](Images/CoolBar.png){:width="332" height="65"}
+
 ```tb check_build check_run arch=win32,win64
 CoolBar1.Bands.Clear
 CoolBar1.Bands.Add , "file", "File"
