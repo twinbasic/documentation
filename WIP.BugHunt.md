@@ -109,6 +109,15 @@ narrowed to a UserControl of our own.
   (`Extender.Visible`).
 - **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises
   380, the direct assignment's error.
+- **A control named through its form is not `Is` its own object.** The sub-objects' `Tag`
+  setters refuse their own control with `If Value Is Shadow<Control> Then Err.Raise 35700`
+  (`LvwListItem.cls` 111-118, `ImcComboItem.cls` 85, the same in TvwNode, ImlListImage and the
+  other `Tag`s). `Set f.ListView1.ListItems(1).Tag = f.ListView1` raises nothing, nor
+  `Set n.Tag = f.TreeView1`; the same control first put in a variable declared
+  `As VBCCR18.ImageCombo` is refused. So the object the form gives out and the one the control
+  keeps of itself are different objects to `Is`. Whose doing (twinBASIC's extender, its `Is`,
+  or the package's `Shadow...` reference) is not known; VB6 not checked. The pages say nothing
+  of 35700 until this is settled.
 
 ### WinNativeCommonCtls
 

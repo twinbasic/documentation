@@ -65,9 +65,9 @@ Each of these is the VB6 control of the same name without the `W`, with text in 
 | **Animation** | a silent AVI clip | `MSCOMCT2.OCX` |
 | **CoolBar** | bands that hold other controls, which the user moves and resizes | `COMCT332.OCX` |
 | **DTPicker** | a date or a time, with a drop-down calendar | `MSCOMCT2.OCX` |
-| **ImageCombo** | a drop-down list whose items have pictures | `MSCOMCTL.OCX` |
+| [**ImageCombo**](ImageCombo/) | a drop-down list whose items have pictures | `MSCOMCTL.OCX` |
 | [**ImageList**](ImageList/) | nothing: it holds the pictures other controls show | `MSCOMCTL.OCX` |
-| **ListView** | items as icons, a list, tiles or a report with columns | `MSCOMCTL.OCX` |
+| [**ListView**](ListView/) | items as icons, a list, tiles or a report with columns | `MSCOMCTL.OCX` |
 | **MonthView** | a calendar of one or more months | `MSCOMCT2.OCX` |
 | [**ProgressBar**](ProgressBar) | progress through a range | `MSCOMCTL.OCX` |
 | **RichTextBox** | formatted text, edited | `RICHTX32.OCX` |
@@ -76,7 +76,7 @@ Each of these is the VB6 control of the same name without the `W`, with text in 
 | **SysInfo** | nothing: it reports events and facts of the system | `SYSINFO.OCX` |
 | **TabStrip** | a row of tabs | `MSCOMCTL.OCX` |
 | **ToolBar** | a row of buttons | `MSCOMCTL.OCX` |
-| **TreeView** | a tree of nodes that expand and collapse | `MSCOMCTL.OCX` |
+| [**TreeView**](TreeView/) | a tree of nodes that expand and collapse | `MSCOMCTL.OCX` |
 | **UpDown** | a pair of arrow buttons that change a value | `MSCOMCT2.OCX` |
 
 The **CommonDialog** class shows the Windows common dialogs, as the CommonDialog control of `COMDLG32.OCX` does. It is a class, not a control: a program makes one with **New**.
@@ -84,7 +84,7 @@ The **CommonDialog** class shows the Windows common dialogs, as the CommonDialog
 ## Controls that VB6 does not have
 
 - [**CommandLink**](CommandLink) -- a button with a title, a note under it and an arrow
-- **FontCombo** -- a drop-down list of the fonts installed
+- [**FontCombo**](FontCombo) -- a drop-down list of the fonts installed
 - **HotKey** -- a box that takes a key combination
 - **IPAddress** -- a box for an IPv4 address, in four fields
 - [**LinkLabel**](LinkLabel/) -- text with links in it

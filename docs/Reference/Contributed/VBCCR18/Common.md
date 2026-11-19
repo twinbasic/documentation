@@ -434,7 +434,9 @@ The values of [**FontQuality**](#fontquality). Each is the quality of that name 
 ## CCMousePointerConstants
 {: #ccmousepointerconstants }
 
-The values of [**MousePointer**](#mousepointer). The members to 15 and **CCMousePointerCustom** have the values of the [**MousePointerConstants**](../../VBRUN/Constants/MousePointerConstants) of the same pointers.
+The values of [**MousePointer**](#mousepointer). The members to 15 and **CCMousePointerCustom** have the values of the [**MousePointerConstants**](../../VBRUN/Constants/MousePointerConstants) of the same pointers, but for **CCMousePointerHand**: it is 4, the value of **vbIconPointer**, where **vbHand** is 16. From 16 on, **CCMousePointerArrowCD** is 16 and **CCMousePointerPen** is 19, where **vbArrowCD** is 19 and **vbPen** is 31. The other members from 17 to 30 have the values of the twinBASIC pointers of the same name.
+
+![The mouse pointer of each MousePointer value from CCMousePointerDefault to CCMousePointerScrollAll, as a WindowedLabel shows them on Windows 10](Images/CCMousePointerConstants.png){:width="851" height="588"}
 
 | Member | Value | Member | Value |
 |---|---|---|---|
@@ -475,6 +477,8 @@ The values of [**RightToLeftMode**](#righttoleftmode).
 
 The values of the **Appearance** property of the controls that have one.
 
+![Two check boxes and two frames drawn without visual styles: in CCAppearanceFlat the check box has a flat box and the frame a dark line, in CCAppearance3D the box is sunken and the frame's line is etched](Images/CCAppearanceConstants.png){:width="361" height="191"}
+
 | Member | Value | Description |
 |---|---|---|
 | **CCAppearanceFlat**{: #CCAppearanceConstants_CCAppearanceFlat } | 0 | A flat border. |
@@ -484,6 +488,8 @@ The values of the **Appearance** property of the controls that have one.
 {: #ccborderstyleconstants }
 
 The values of the **BorderStyle** property of the controls that offer more than a single line.
+
+![Five text boxes that show Ada Lovelace, one in each BorderStyle value: CCBorderStyleNone with no border, CCBorderStyleSingle with a dark line, CCBorderStyleThin with a thin sunken edge, CCBorderStyleSunken with a sunken edge, and CCBorderStyleRaised with a raised edge](Images/CCBorderStyleConstants.png){:width="821" height="103"}
 
 | Member | Value | Description |
 |---|---|---|
@@ -496,6 +502,8 @@ The values of the **BorderStyle** property of the controls that offer more than 
 ## CCBackStyleConstants
 {: #ccbackstyleconstants }
 
+![Two labels with a white BackColor over a hatched ground: in CCBackStyleTransparent the hatch shows behind the caption, in CCBackStyleOpaque the label is a white box](Images/CCBackStyleConstants.png){:width="381" height="135"}
+
 | Member | Value | Description |
 |---|---|---|
 | **CCBackStyleTransparent**{: #CCBackStyleConstants_CCBackStyleTransparent } | 0 | What is behind the control shows through. |
@@ -504,6 +512,8 @@ The values of the **BorderStyle** property of the controls that offer more than 
 ## CCLeftRightAlignmentConstants
 {: #ccleftrightalignmentconstants }
 
+![Two ticked check boxes with the caption Remember me: in CCLeftRightAlignmentLeft the box is at the left of the caption, in CCLeftRightAlignmentRight at its right](Images/CCLeftRightAlignmentConstants.png){:width="381" height="99"}
+
 | Member | Value | Description |
 |---|---|---|
 | **CCLeftRightAlignmentLeft**{: #CCLeftRightAlignmentConstants_CCLeftRightAlignmentLeft } | 0 | At the left. |
@@ -511,6 +521,8 @@ The values of the **BorderStyle** property of the controls that offer more than 
 
 ## CCVerticalAlignmentConstants
 {: #ccverticalalignmentconstants }
+
+![Three tall command buttons with the caption Save: at the top in CCVerticalAlignmentTop, in the middle in CCVerticalAlignmentCenter, and at the bottom in CCVerticalAlignmentBottom](Images/CCVerticalAlignmentConstants.png){:width="531" height="143"}
 
 | Member | Value | Description |
 |---|---|---|
