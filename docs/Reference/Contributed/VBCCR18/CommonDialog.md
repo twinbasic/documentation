@@ -400,12 +400,20 @@ Shows the Open dialog. Returns **True** when the user chose a file; [**FileName*
 
 Syntax: *object*.**ShowOpen** **As Boolean**
 
+The Open dialog (left) and the Save As dialog that [**ShowSave**](#showsave) opens (right), with [**InitDir**](#initdir) a folder Reports that holds three text files, [**Filter**](#filter) set to `Text files (*.txt)|*.txt|All files (*.*)|*.*`, [**HookEvents**](#hookevents) **True** and [**Flags**](#flags) set to `CdlOFNExplorer Or CdlOFNHideReadOnly`, and for Save As [**FileName**](#filename) `April sales.txt`:
+
+![An Open dialog and a Save As dialog, each with Reports in its Look in or Save in box, a bar of places at the left (Quick access, Desktop, Libraries, This PC and Network), and a list of the files March sales.txt, Notes.txt and Q1 summary.txt with their date modified, 3/15/2026 10:30 AM. Under the list, the Open dialog has an empty File name box, Text files (*.txt) in Files of type, and the Open and Cancel buttons; the Save As dialog has April sales.txt in File name, Text files (*.txt) in Save as type, and the Save and Cancel buttons.](../VBComDlg/Images/ShowOpen.png){:width="1129" height="426"}
+
 ### ShowPageSetup
 {: .no_toc }
 
 Shows the Page Setup dialog. Returns **True** when the user clicked **OK**; the margins, [**Orientation**](#orientation), [**PaperSize**](#papersize), [**PaperBin**](#paperbin) and [**Flags**](#flags) are then the user's.
 
 Syntax: *object*.**ShowPageSetup** **As Boolean**
+
+The dialog with [**PrinterDefaultInit**](#printerdefaultinit) **False** and [**PrinterName**](#printerdriver-printername-printerport) `Microsoft Print to PDF`:
+
+![The Page Setup dialog: a preview of a page at the top; a Paper group with Letter in its Size list and an empty, disabled Source list; an Orientation group with Portrait chosen; a Margins (inches) group with 1 in its Left, Right, Top and Bottom boxes; and the OK and Cancel buttons.](../VBComDlg/Images/ShowPageSetup.png){:width="361" height="425"}
 
 ### ShowPrinter
 {: .no_toc }
