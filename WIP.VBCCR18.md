@@ -45,6 +45,16 @@ without a page in bold, with no link; link it when its page exists.
 - Mouse events give X and Y in twips, whatever the container's scale (`ScaleX(..., vbPixels,
   vbTwips)`; checked by a run on CheckBoxW with the form's ScaleMode in pixels); the OLE drag
   events give the container's units (`vbContainerPosition`).
+- **Code run in the IDE and a built exe can load different common controls.** The IDE's process
+  has comctl32 6 (visual styles); an exe has it only with a `Microsoft.Windows.Common-Controls`
+  6.0 manifest (the picture fixture has one; `tbrun --exe`'s probe has not, and gets 5.82).
+  The package takes another branch for each (`ComCtlsSupportLevel()`). MonthView's MonthColumns
+  WARNING comes from this: with comctl32 6 `GetReqRect` asks `MCM_SIZERECTTOMIN` for n times
+  `MCM_GETMINREQRECT`'s width, leaving out the gaps. Measured on BETA 1042 at 144 DPI: in the IDE
+  a month is 254 px with a 4 px gap, and 2, 3, 4 give 1, 2, 3 months; in an exe with the manifest
+  303 px with a 1 px gap, and 2, 3, 4 give 2, 3, 3; without it 2, 3, 4. So the page's workaround
+  reads CalendarCount back rather than always adding one. A run-time claim about a VBCCR18 control
+  whose look depends on visual styles is checked both ways.
 
 ## Pictures
 
