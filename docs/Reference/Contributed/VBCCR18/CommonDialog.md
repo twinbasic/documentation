@@ -349,12 +349,20 @@ Shows the Color dialog. Returns **True** when the user clicked **OK**; [**Color*
 
 Syntax: *object*.**ShowColor** **As Boolean**
 
+The dialog with [**Color**](#color) set to `RGB(64, 128, 192)` and [**Flags**](#flags) set to `CdlCCRGBInit Or CdlCCPreventFullOpen` (left) and to `CdlCCRGBInit Or CdlCCFullOpen` (right):
+
+![Two Color dialogs. The left one shows the 48 basic colors and 16 custom colors, with the Define Custom Colors button disabled, and OK and Cancel. The right one shows the same, and beside them the part for defining custom colors: a spectrum with a cross at the chosen color, a luminosity bar, a swatch of the color, its Hue 140, Sat 120 and Lum 120, its Red 64, Green 128 and Blue 192, and an Add to Custom Colors button.](../VBComDlg/Images/ShowColor.png){:width="688" height="332"}
+
 ### ShowFind
 {: .no_toc }
 
 Shows the Find dialog, which stays open while the user works in the program, and returns its window handle. **LongPtr**. Returns 0, and shows nothing, while a Find or Replace dialog of the same object is open. The dialog raises [**FindNext**](#findnext-replace-replaceall) each time the user clicks **Find Next**, and closes when the user cancels it. When Windows cannot make the dialog, the method raises an error, as [Cancel and errors](#cancel-and-errors) says.
 
 Syntax: *object*.**ShowFind** **As LongPtr**
+
+The Find dialog (left) and the Replace dialog that [**ShowReplace**](#showreplace) opens (right), with [**FindWhat**](#findwhat) `total`, [**ReplaceWith**](#replacewith) `sum` and [**Flags**](#flags) set to `CdlFRDown Or CdlFRMatchCase`:
+
+![A Find dialog with total in its Find what box, the Match whole word only box clear, the Match case box checked, Down chosen in its Direction group, and the Find Next and Cancel buttons. Beside it a Replace dialog with total in Find what, sum in Replace with, the same two check boxes, and the Find Next, Replace, Replace All and Cancel buttons.](../VBComDlg/Images/ShowFind.png){:width="718" height="182"}
 
 ### ShowFolderBrowser
 {: .no_toc }
@@ -363,12 +371,20 @@ Shows the Browse for Folder dialog, from [**RootFolder**](#rootfolder) with [**D
 
 Syntax: *object*.**ShowFolderBrowser** **As Boolean**
 
+The dialog with [**RootFolder**](#rootfolder) set to the path of a folder named Projects, [**InitDir**](#initdir) to its folder Reports and [**DialogTitle**](#dialogtitle) to `Choose the folder for the reports.`, with [**Flags**](#flags) set to **CdlBIFReturnOnlyFSDirs** (left) and to **CdlBIFUseNewUI** (right):
+
+![Two Browse For Folder dialogs, each showing the text Choose the folder for the reports. above a tree whose root is the folder Projects, holding the folders Invoices, Reports and Templates, with Reports selected. The left one is small and has only OK and Cancel. The right one, in the new style, is larger and has a Folder box showing Reports, a Make New Folder button, OK and Cancel.](../VBComDlg/Images/ShowFolderBrowser.png){:width="892" height="635"}
+
 ### ShowFont
 {: .no_toc }
 
 Shows the Font dialog, starting with the font properties. Returns **True** when the user clicked **OK**; [**FontName**](#fontname), [**FontSize**](#fontsize), [**FontWeight**](#fontweight), [**FontItalic**](#fontbold-fontitalic-fontstrikethru-fontunderline) and [**FontCharset**](#fontcharset) are then the font chosen, and with **CdlCFEffects** also [**FontStrikethru**](#fontbold-fontitalic-fontstrikethru-fontunderline), [**FontUnderline**](#fontbold-fontitalic-fontstrikethru-fontunderline) and [**Color**](#color). It raises **CdlMaxLessThanMin** when [**Max**](#max-min) is less than [**Min**](#max-min) with **CdlCFLimitSize**, and **CdlNoFonts** when there is no font to list.
 
 Syntax: *object*.**ShowFont** **As Boolean**
+
+The dialog with [**FontName**](#fontname) `Microsoft Sans Serif`, [**FontSize**](#fontsize) 10, [**FontBold**](#fontbold-fontitalic-fontstrikethru-fontunderline) **True**, [**Color**](#color) `RGB(0, 0, 160)` and [**Flags**](#flags) set to `CdlCFScreenFonts Or CdlCFEffects`:
+
+![The Font dialog with Microsoft Sans Serif selected in its list of fonts, Bold in its list of styles and 10 in its list of sizes. Below them, an Effects group with Strikeout and Underline check boxes and a Color list showing a dark blue swatch named Custom, a Sample box showing AaBbYyZz in that blue, a Script list showing Western, a Show more fonts link and the OK and Cancel buttons.](../VBComDlg/Images/ShowFont.png){:width="407" height="513"}
 
 ### ShowHelp
 {: .no_toc }
