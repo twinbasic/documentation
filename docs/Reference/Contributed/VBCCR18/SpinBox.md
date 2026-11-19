@@ -231,6 +231,10 @@ Syntax: *object*.**SetAcceleration** *Delays*, *Increments*
 The two arrays have one dimension and the same bounds, or the method raises run-time error 5. An array that is not an array, and is not **Empty**, raises 380, and an array that is not allocated raises 91. Two **Empty** values take the list away and bring back [**Increment**](#increment).
 <!-- /test -->
 
+<!-- test: SpinBoxTests.SetAcceleration_BadDelays_Raise381 -->
+The delays are 0 or more, each at least the one before it: a negative delay, or one smaller than the delay before it, raises run-time error 381.
+<!-- /test -->
+
 ```tb check_build
 SpinBox1.SetAcceleration Array(0, 2, 5), Array(1, 5, 20)   ' 1 at first, 5 after 2 s, 20 after 5 s
 ```

@@ -98,7 +98,7 @@ An *Index* below 0, and one above [**Count**](#count) + 1, raises run-time error
 A key as *Image* needs an image list on the toolbar that has a picture of that key: where it has not, the call raises run-time error 35601, *Element not found*, and a negative number raises error 35600.
 
 <!-- test: ToolBarTests.Buttons_Add_DuplicateKey_AddsNothingToTheWindow -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > A call that raises error 457 for its key has already put its button on the toolbar. The collection is as it was, and the toolbar shows one button more than [**Count**](#count) says, which no **TbrButton** reaches. A program asks [**Exists**](#exists) before it adds a button with a key that the toolbar may have.
 
 ### Clear

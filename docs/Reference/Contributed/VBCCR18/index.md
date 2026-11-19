@@ -11,18 +11,18 @@ exclude_from_docs:
   - VTableHandle
   - VTableInterfaceConstants
   - ISubclass
-indexed_from: 1.8.136.0
+indexed_from: 1.8.137.0
 permalink: /tB/Packages/Contributed/VBCCR18/
 ---
 
 # VBCCR18 Package
 {: .no_toc }
 
-**Author:** Krool. **Version:** 1.8.136.0. **On GitHub:** [Kr00l/VBCCR](https://github.com/Kr00l/VBCCR)
+**Author:** Krool. **Version:** 1.8.137.0. **On GitHub:** [Kr00l/VBCCR](https://github.com/Kr00l/VBCCR)
 
 The **VBCCR18** contributed package provides controls that stand in place of the Microsoft common controls of VB6, Unicode versions of the VB6 intrinsic controls, and controls of Windows that VB6 never had.
 
-The controls are Krool's *VB Common Controls Replacement* library, written in VB6 and published on GitHub as an ActiveX control library, `VBCCR18.OCX`; this package is the same code compiled by twinBASIC, so a project needs no OCX to be registered. Each control is a window of Windows itself, such as the list view or the rich edit control, so it draws and behaves as the same control does in any Windows program. Most members of the Microsoft controls keep their names and meanings. This section documents version 1.8.136.0, published under the MIT licence. The package describes itself as "VB Common Controls Replacement 1.8 Library (Experimental, 32-bit and 64-bit)".
+The controls are Krool's *VB Common Controls Replacement* library, written in VB6 and published on GitHub as an ActiveX control library, `VBCCR18.OCX`; this package is the same code compiled by twinBASIC, so a project needs no OCX to be registered. Each control is a window of Windows itself, such as the list view or the rich edit control, so it draws and behaves as the same control does in any Windows program. Most members of the Microsoft controls keep their names and meanings. This section documents version 1.8.137.0, published under the MIT licence. The package describes itself as "VB Common Controls Replacement 1.8 Library (Experimental, 32-bit and 64-bit)".
 
 ```tb check_build check_run arch=win32,win64
 ProgressBar1.Min = 0

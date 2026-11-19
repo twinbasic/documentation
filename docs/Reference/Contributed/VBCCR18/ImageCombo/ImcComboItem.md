@@ -80,17 +80,15 @@ An assignment gives the item another key, and the collection no longer finds it 
 ### Selected
 {: .no_toc }
 
-Whether the item is the selected item of the control. **Boolean**. An assignment of **True** selects the item. If the item was not selected, the text box of an **ImcStyleDropDownCombo** control takes the item's text, and the control raises [**Change**](.#change) and then [**Click**](.#click). An assignment of **False** to the selected item removes the selection and empties the text box, and raises **Change**.
+Whether the item is the selected item of the control. **Boolean**. An assignment of **True** selects the item. If the item was not selected, the text box of an **ImcStyleDropDownCombo** control takes the item's text, and the control raises [**Change**](.#change) and then [**Click**](.#click). An assignment of **False** to the selected item removes the selection and empties the text box, and raises **Change** and then **Click**.
 
 <!-- test: ImageComboTests.Selected_True_RaisesChangeThenClick, ImageComboTests.Selected_False_RemovesTheSelection -->
 See [The selection and the text](.#the-selection-and-the-text).
 <!-- /test -->
 
-An assignment of **False** to an item that is not selected leaves the selection as it is.
-
 <!-- test: ImageComboTests.Selected_FalseOnAnotherItem_ChangesNothingAndRaisesNoClick -->
-> [!WARNING] 1.8.136.0
-> An assignment of **False** to an item that is not selected raises [**Click**](.#click), although the selection has not changed. A program sets **Selected** to **False** only for the item that is selected, or tests the value first.
+An assignment of **False** to an item that is not selected leaves the selection as it is, and raises no event.
+<!-- /test -->
 
 ### SelImage
 {: .no_toc }
@@ -102,7 +100,7 @@ An assignment takes a number: a key raises run-time error 13. [**SelImageIndex**
 <!-- /test -->
 
 <!-- test: ImageComboTests.SelImage_KeyGivenToAdd_CanBeRead -->
-> [!NOTE] 1.8.136.0
+> [!NOTE] 1.8.137.0
 > A key that [**Add**](ImcComboItems#add) took for its *SelImage* gives the item the right picture, but reading **SelImage** then raises run-time error 13. [**SelImageIndex**](#selimageindex) gives the picture's number all the same.
 
 ### SelImageIndex

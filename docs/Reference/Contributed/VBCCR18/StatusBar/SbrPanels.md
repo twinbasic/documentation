@@ -97,7 +97,7 @@ A *Key* that another panel has raises run-time error 457, and nothing is added.
 <!-- /test -->
 
 <!-- test: StatusBarTests.Add_InvalidStyle_Raises380AndAddsNothing -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > A *Style* that is not a member of **SbrPanelStyleConstants** raises run-time error 380 after the panel has been added. The collection keeps the new panel, with its key and its text, and the bar's window does not show it until another change lays the panels out again. A program checks the value before the call.
 
 ### Clear

@@ -304,7 +304,11 @@ The number of items in the list. **Long**, read-only.
 The index of the selected item, or -1 when no item is selected. **Long**. Default: -1. In a list that selects several items it is the index of the item with the focus rectangle.
 
 <!-- test: ListBoxWTests.ListIndex_NoSuchItem_Raises380, ListBoxWTests.ListIndex_SameValue_RaisesNothing -->
-An assignment selects the item, or moves the focus rectangle, and raises [**Click**](#click) unless the value is the one the property has. -1 removes the selection. A value that is not an item raises run-time error 380, and so does -1 in a list that selects several items.
+An assignment selects the item, or moves the focus rectangle, and raises [**Click**](#click) unless the value is the one the property has. -1 removes the selection. A value that is not an item raises run-time error 380.
+<!-- /test -->
+
+<!-- test: ListBoxWTests.ListIndex_MultiSelect_MovesTheFocusOnly -->
+In a list that selects several items, -1 leaves the focus rectangle and the selection as they are, and raises **Click**.
 <!-- /test -->
 
 ### MultiColumn
@@ -322,7 +326,7 @@ It can be assigned at run time, and the list keeps its items and its selected it
 <!-- /test -->
 
 <!-- test: ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError, ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError -->
-> [!NOTE] 1.8.136.0
+> [!NOTE] 1.8.137.0
 > An assignment of **vbMultiSelectSimple** or **vbMultiSelectExtended** at run time raises run-time error 380 while the list is empty, although the list then does select several items. While such a list is empty, an assignment to **AllowSelection**, **DisableNoScroll**, **MultiColumn**, **Sorted** or **UseTabStops** raises the same error and takes effect all the same. Add the items first, or set **MultiSelect** at design time.
 
 ### NewIndex
@@ -382,7 +386,7 @@ An assignment selects the item or removes its selection, and raises [**Click**](
 Whether [**AddItem**](#additem) without an index puts each new item in alphabetical order. **Boolean**. Default: **False**. An **AddItem** with an index puts the item at that index all the same.
 
 <!-- test: ListBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace -->
-> [!NOTE] 1.8.136.0
+> [!NOTE] 1.8.137.0
 > An assignment of **True** at run time does not sort the items already in the list, and the items added afterward are placed as if the list were sorted. Set **Sorted** before the first item is added.
 
 ### Style
@@ -399,8 +403,8 @@ It is set at design time: an assignment at run time raises run-time error 382.
 
 The text of the selected item, or an empty string when none is selected. **String**. It is the control's default property. In a list that selects several items it is the text of the item with the focus rectangle.
 
-<!-- test: ListBoxWTests.Text_MultiSelect_NoSuchText_Raises380 -->
-An assignment selects the item whose whole text is the value, without regard to case. When no item has it, the selection is removed; in a list that selects several items the assignment raises run-time error 380 instead.
+<!-- test: ListBoxWTests.Text_MultiSelect_NoSuchText_ChangesNothing -->
+An assignment selects the item whose whole text is the value, without regard to case. When no item has it, the selection is removed; in a list that selects several items the assignment changes nothing.
 <!-- /test -->
 
 ### TopIndex
@@ -494,7 +498,7 @@ Syntax: *object*.**HitTest**( *X*, *Y* )
 : *required* The position as two **Single** values, measured from the list's top left corner in the scale units of the control's container, as the OLE drag-and-drop events give it.
 
 <!-- test: ListBoxWTests.HitTest_EmptyList_ReturnsMinus1 -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > In an empty list the method returns 0, not -1, for a position where the first item would be.
 
 ### HitTestInsertMark

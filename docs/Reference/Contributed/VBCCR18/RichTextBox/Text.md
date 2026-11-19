@@ -86,7 +86,7 @@ Debug.Print RichTextBox1.Text
 **RtbTextSendMessage** in this sample is the Windows function **SendMessageW**, declared by the program.
 
 <!-- test: RichTextBoxTextTests.Typing_AfterALongerTextWasAssigned_IsLimitedToMaxLength -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > An assignment of a text longer than **MaxLength**, to **Text**, **TextRTF** or **SelText**, raises the limit of the box to the length of that text, and **MaxLength** keeps returning the old value. With **MaxLength** 3, after `Text = "abcdef"` and then `Text = "ab"`, the user can type four more characters. A program that assigns long texts assigns **MaxLength** again after each of them.
 
 <!-- test: RichTextBoxTextTests.Typing_Locked_ChangesNothing, RichTextBoxTextTests.SelText_Locked_ChangesTheText -->

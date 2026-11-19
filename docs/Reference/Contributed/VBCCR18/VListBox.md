@@ -188,7 +188,11 @@ A negative value raises run-time error 380.
 The index of the selected item, or -1 when no item is selected. **Long**. Default: -1. In a list that selects several items it is the index of the item with the focus rectangle.
 
 <!-- test: VListBoxTests.ListIndex_Assigned_SelectsAndRaisesClick, VListBoxTests.ListIndex_NoSuchItem_Raises380 -->
-An assignment selects the item, or moves the focus rectangle, and raises [**Click**](#click) unless the value is the one the property has. -1 removes the selection. A value that is not an item raises run-time error 380, and so does -1 in a list that selects several items.
+An assignment selects the item, or moves the focus rectangle, and raises [**Click**](#click) unless the value is the one the property has. -1 removes the selection. A value that is not an item raises run-time error 380.
+<!-- /test -->
+
+<!-- test: VListBoxTests.ListIndex_MultiSelect_MinusOne_ChangesNothing -->
+In a list that selects several items, -1 leaves the focus rectangle and the selection as they are, and raises **Click**.
 <!-- /test -->
 
 ### MultiColumn
@@ -206,7 +210,7 @@ It can be assigned at run time, and the list keeps its **ListCount**.
 <!-- /test -->
 
 <!-- test: VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError -->
-> [!NOTE] 1.8.136.0
+> [!NOTE] 1.8.137.0
 > An assignment of **vbMultiSelectSimple** or **vbMultiSelectExtended** at run time raises run-time error 380 while the list is empty, although the list then does select several items. Set **ListCount** first, or set **MultiSelect** at design time.
 
 ### OLEDragDropScroll
@@ -255,7 +259,7 @@ An assignment selects the item or removes its selection, and raises [**Click**](
 
 The text of the selected item, or an empty string when none is selected. **String**. It is the control's default property.
 
-An assignment raises [**FindVirtualItem**](#findvirtualitem) for an item whose whole text is the value, and selects the item that the handler names. When the handler names none, the selection is removed; in a list that selects several items the assignment raises run-time error 380 instead.
+An assignment raises [**FindVirtualItem**](#findvirtualitem) for an item whose whole text is the value, and selects the item that the handler names. When the handler names none, the selection is removed; in a list that selects several items the assignment changes nothing.
 
 ### TopIndex
 {: .no_toc }
@@ -304,7 +308,7 @@ Syntax: *object*.**HitTest**( *X*, *Y* )
 : *required* The position as two **Single** values, measured from the list's top left corner in the scale units of the control's container, as the OLE drag-and-drop events give it.
 
 <!-- test: VListBoxTests.HitTest_EmptyList_ReturnsMinus1 -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > In an empty list the method returns 0, not -1, for a position where the first item would be.
 
 ### HitTestInsertMark

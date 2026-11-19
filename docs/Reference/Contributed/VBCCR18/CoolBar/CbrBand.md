@@ -62,7 +62,7 @@ An assignment to **Position** that leaves the band where it is, such as its own 
 [**Child**](#child) is the control the band holds, and the cool bar keeps it in the band's area: see [Holding a control](.#holding-a-control). [**ChildEdge**](#childedge) draws an edge at the top and the bottom of the area.
 
 <!-- test: CoolBarTests.Band_Child_RefusedControl_IsNotKept -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > A control that **Child** refuses, with run-time error 380, is kept all the same: **Child** returns the control that was refused, though the band does not hold it. A program that catches the error assigns **Nothing** to **Child**.
 
 Properties
@@ -93,8 +93,8 @@ A control that is not on the cool bar, and the cool bar itself, raise run-time e
 Whether the band draws an edge at the top and the bottom of its control. **Boolean**. Default: **False**.
 
 <!-- test: CoolBarTests.Band_ChildEdge_False_TakesTheEdgeAway -->
-> [!WARNING] 1.8.136.0
-> An assignment of **False** does not take the edge away: the property stays **True**, and the band keeps its edge.
+An assignment of **False** takes the edge away again.
+<!-- /test -->
 
 ### FixedBackground
 {: .no_toc }

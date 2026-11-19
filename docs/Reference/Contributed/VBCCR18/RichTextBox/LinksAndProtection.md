@@ -87,7 +87,7 @@ Text with [**SelProtected**](#selprotected) set to **True** cannot be changed. W
 <!-- /test -->
 
 <!-- test: RichTextBoxLinksTests.LinkEvent_Click_GivesTheRangeOfTheLink, RichTextBoxLinksTests.ModifyProtected_GivesTheRangeOfTheChange -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > In a 64-bit program the numbers that [**LinkEvent**](#linkevent) and [**ModifyProtected**](#modifyprotected) give are wrong: *LinkStart*, *LinkEnd*, *wParam* and *lParam* of **LinkEvent**, and *SelStart* and *SelEnd* of **ModifyProtected**. A click on a link at the characters 4 to 22 gives 22 and 0. The *wMsg* of **LinkEvent** is right, and so is the *Allow* of **ModifyProtected**.
 
 Properties

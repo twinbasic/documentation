@@ -177,7 +177,7 @@ Debug.Print Err.Number
 <!-- /test -->
 
 <!-- test: TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress -->
-> [!WARNING] 1.8.136.0
+> [!WARNING] 1.8.137.0
 > **NetAddressString** is wrong for an IPv4 address: after `192.168.0.1` it holds `0.0.1.0`. **NetAddressFormat**, **NetAddressPortNumber** and **NetAddressPrefixLength** are right, and so is **NetAddressString** for an IPv6 address and for a DNS name. A program that needs the IPv4 address reads **Text**.
 
 Properties
@@ -342,7 +342,7 @@ A string of more than one character raises run-time error 380. An assignment doe
 <!-- /test -->
 
 <!-- test: TextBoxWTests.PasswordChar_NoneSet_IsAnEmptyString -->
-> [!NOTE] 1.8.136.0
+> [!NOTE] 1.8.137.0
 > While the box has no password character, **PasswordChar** returns a string of one character with the code 0, not the empty string that the VB6 text box returns. A program tests `AscW(TextBoxW1.PasswordChar) = 0`.
 
 ### ScrollBars
@@ -455,7 +455,7 @@ Syntax: *object*.**GetLine**( *LineNumber* ) **As String**
 <!-- test: TextBoxWTests.GetLine_Negative_Raises380, TextBoxWTests.GetLine_PastTheLastLine_Raises380, TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380 -->
 A negative number, or a number greater than the number of lines, raises run-time error 380.
 
-> [!NOTE] 1.8.136.0
+> [!NOTE] 1.8.137.0
 > In a 64-bit program a number greater than the number of lines raises run-time error 6, *Overflow*, in **GetLine**, and [**ScrollToLine**](#scrolltoline) raises nothing and does not scroll.
 <!-- /test -->
 
