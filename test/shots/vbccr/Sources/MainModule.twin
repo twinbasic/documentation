@@ -146,6 +146,28 @@ Module MainModule
             Case "ipastates": Set f = frmIpaStates
             Case "anilook": Set f = frmAniLook
             Case "mcilook": Set f = frmMciLook
+            Case "chkvalue": Set f = frmChkValue
+            Case "chkstyles": Set f = frmChkStyles
+            Case "optstyles": Set f = frmOptStyles
+            Case "cmdimlalign": Set f = frmCmdImlAlign
+            Case "cmdsplit": Set f = frmCmdSplit
+            Case "cllooks": Set f = frmClLooks
+            Case "cbodropped": Set f = frmCboDropped
+            Case "lstmulti": Set f = frmLstMulti
+            Case "lstcolumns": Set f = frmLstColumns
+            Case "vcbdropped": Set f = frmVcbDropped
+            Case "txtpassword": Set f = frmTxtPassword
+            Case "txtmultiline": Set f = frmTxtMultiLine
+            Case "txtcue": Set f = frmTxtCue
+            Case "lblellipsis": Set f = frmLblEllipsis
+            Case "lbllines": Set f = frmLblLines
+            Case "wlbtransparent": Set f = frmWlbTransparent
+            Case "fralooks": Set f = frmFraLooks
+            Case "llblooks": Set f = frmLlbLooks
+            Case "prbstate": Set f = frmPrbState
+            Case "prbtext": Set f = frmPrbText
+            Case "imldraw": Set f = frmImlDraw
+            Case "imloverlay": Set f = frmImlOverlay
             Case Else: Set f = frmButtons
         End Select
         Load f
@@ -192,6 +214,28 @@ Module MainModule
             Case "ipastates": AddressStates f
             Case "anilook": AnimationLooks f
             Case "mcilook": MCIWndLooks f
+            Case "chkvalue": CheckBoxValues f
+            Case "chkstyles": CheckBoxStyles f
+            Case "optstyles": OptionButtonStyles f
+            Case "cmdimlalign": ButtonImageListAlignments f
+            Case "cmdsplit": SplitButtons f
+            Case "cllooks": CommandLinkLooks f
+            Case "cbodropped": ComboBoxDropped f
+            Case "lstmulti": ListBoxMultiSelect f
+            Case "lstcolumns": ListBoxColumns f
+            Case "vcbdropped": VirtualComboDropped f
+            Case "txtpassword": TextBoxPasswords f
+            Case "txtmultiline": TextBoxMultiLine f
+            Case "txtcue": TextBoxCueBanner f
+            Case "lblellipsis": LabelEllipsisFormats f
+            Case "lbllines": LabelLines f
+            Case "wlbtransparent": WindowedLabelTransparent f
+            Case "fralooks": FrameLooks f
+            Case "llblooks": LinkLabelLooks f
+            Case "prbstate": ProgressBarStates f
+            Case "prbtext": ProgressBarTexts f
+            Case "imldraw": ImageListDrawStyles f
+            Case "imloverlay": ImageListOverlay f
             Case Else: Err.Raise 5, , "no sheet named " & scene
         End Select
         f.Show
@@ -207,7 +251,8 @@ Module MainModule
         f.Refresh
         DoEvents
         Doing = "after show"
-        If scene = "bars" Then StillBars f
+        If scene = "bars" Or scene = "prbstate" Or scene = "prbtext" Then StillBars f
+        If scene = "prbstate" Then BarStates f
         f.Refresh
         DoEvents
         Doing = "drop down"
@@ -215,6 +260,12 @@ Module MainModule
         Sleep 200
         DoEvents
         KeepDropped
+        ' the virtual combo box's list scrolled far down once it is open
+        If scene = "vcbdropped" Then
+            Doing = "TopIndex"
+            Dropped.TopIndex = 50000
+            DoEvents
+        End If
     Shown:
         On Error GoTo 0
         Dump f
@@ -1158,6 +1209,546 @@ Module MainModule
         c.MousePointer = 0
     End Sub
 
+    ' ---------------------------------------------------------------- the settings of the controls
+
+    ' The settings pictures of the buttons, the lists, the text boxes and labels, the frame, the
+    ' link label, the progress bar and the image list: each a whole form, a control for each
+    ' setting side by side, its settings printed by the form under it.
+
+    ' The three Value states of a check box.
+    Private Sub CheckBoxValues(ByVal f As Form)
+        Const COLUMN As Single = 180
+        Settings f, "Value", 3 * COLUMN + 20, 68
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CheckBoxW" & (i + 1), x + 25, 16, 130, 20, "")
+                .Caption = "Remember me"
+                .Value = i
+            End With
+            Text f, "Value = " & Choose(i + 1, "vbUnchecked", "vbChecked", "vbGrayed") & " (" & i & ")", x, 44, COLUMN
+        Next
+    End Sub
+
+    ' A check box that looks like a push button, up and down, and one in the graphical style
+    ' with an icon, checked.
+    Private Sub CheckBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 64
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 60
+        Dim photo As StdPicture = IconOf(f, 4, CLng(2 * Dpi()))
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CheckBoxW" & (i + 1), x + 40, 16, COLUMN - 80, H, "")
+                .Caption = "Photos"
+                If i < 2 Then
+                    .PushLike = True
+                Else
+                    .Style = vbButtonGraphical
+                    Set .Picture = photo
+                End If
+                .Value = IIf(i = 0, vbUnchecked, vbChecked)
+            End With
+            Dim y As Single = 16 + H + 8
+            If i < 2 Then
+                Text f, "PushLike = True", x, y, COLUMN
+            Else
+                Text f, "Style = vbButtonGraphical", x, y, COLUMN
+                Text f, "Picture = an icon", x, y + 40, COLUMN
+            End If
+            Text f, "Value = " & IIf(i = 0, "vbUnchecked", "vbChecked"), x, y + 20, COLUMN
+        Next
+    End Sub
+
+    ' Option buttons that look like push buttons, up and down, and one in the graphical style
+    ' with an icon, selected. Each Value is set: the form does not clear the others (BETA 1042).
+    Private Sub OptionButtonStyles(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 64
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 60
+        Dim photo As StdPicture = IconOf(f, 4, CLng(2 * Dpi()))
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "OptionButtonW" & (i + 1), x + 40, 16, COLUMN - 80, H, "")
+                .Caption = "Photos"
+                If i < 2 Then
+                    .PushLike = True
+                Else
+                    .Style = vbButtonGraphical
+                    Set .Picture = photo
+                End If
+                .Value = (i > 0)
+            End With
+            Dim y As Single = 16 + H + 8
+            If i < 2 Then
+                Text f, "PushLike = True", x, y, COLUMN
+            Else
+                Text f, "Style = vbButtonGraphical", x, y, COLUMN
+                Text f, "Picture = an icon", x, y + 40, COLUMN
+            End If
+            Text f, "Value = " & IIf(i = 0, "False", "True"), x, y + 20, COLUMN
+        Next
+    End Sub
+
+    ' The five ImageListAlignment values of a tall command button with a picture of a disk.
+    Private Sub ButtonImageListAlignments(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 64
+        Settings f, "ImageListAlignment", 5 * COLUMN + 20, 16 + H + 8 + 20
+        OneImage f, 5, 1
+        Dim i As Long
+        For i = 0 To 4
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CommandButtonW" & (i + 1), x + 40, 16, COLUMN - 80, H, "")
+                .Caption = "Save"
+                .ImageList = "ImageList1"
+                .ImageListAlignment = i
+            End With
+            Text f, Choose(i + 1, "CmdImageListAlignmentLeft", "CmdImageListAlignmentRight", "CmdImageListAlignmentTop", _
+                "CmdImageListAlignmentBottom", "CmdImageListAlignmentCenter") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' A split button, one with its arrow at the left, and one without the line between its parts.
+    Private Sub SplitButtons(ByVal f As Form)
+        Const COLUMN As Single = 300
+        Const H As Single = 28
+        Settings f, "SplitButton", 3 * COLUMN + 20, 16 + H + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CommandButtonW" & (i + 1), x + 80, 16, COLUMN - 160, H, "")
+                .Caption = "Save"
+                .SplitButton = True
+                If i = 1 Then .SplitButtonAlignment = CCLeftRightAlignmentLeft
+                If i = 2 Then .SplitButtonNoSplit = True
+            End With
+            Text f, "SplitButton = True", x, 16 + H + 8, COLUMN
+            If i = 1 Then Text f, "SplitButtonAlignment = CCLeftRightAlignmentLeft", x, 16 + H + 8 + 20, COLUMN
+            If i = 2 Then Text f, "SplitButtonNoSplit = True", x, 16 + H + 8 + 20, COLUMN
+        Next
+    End Sub
+
+    ' A command link with its caption alone, one with a picture of a folder in place of the
+    ' arrow, and one with the shield.
+    Private Sub CommandLinkLooks(ByVal f As Form)
+        Const COLUMN As Single = 320
+        Const H As Single = 52
+        Settings f, "CommandLink", 3 * COLUMN + 20, 16 + H + 8 + 20
+        OneImage f, 1, 1
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CommandLink" & (i + 1), x + 10, 16, COLUMN - 20, H, "")
+                Select Case i
+                    Case 0
+                        .Caption = "Open the folder"
+                    Case 1
+                        .Caption = "Open the folder"
+                        .Hint = "Shows its files in a new window."
+                        .ImageList = "ImageList1"
+                    Case 2
+                        .Caption = "Install for all users"
+                        .Hint = "Windows asks for permission first."
+                        .SetShield True
+                End Select
+            End With
+            Text f, Choose(i + 1, "Hint = """"", "ImageList = ImageList1", "SetShield True"), x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' A combo box whose dropped-down list has a background color of its own.
+    Private Sub ComboBoxDropped(ByVal f As Form)
+        Const W As Single = 200
+        Const FORM_W As Single = W + 160
+        Settings f, "ComboBoxW", FORM_W, 190
+        Text f, "UseListBackColor = True", 0, 8, FORM_W
+        Text f, "ListBackColor = RGB(255, 255, 204)", 0, 28, FORM_W
+        Dim cb As Object = Place(f, "ComboBoxW1", (FORM_W - W) / 2, 52, W, 24, "")
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+        Dim i As Long
+        For i = 0 To UBound(cities)
+            cb.AddItem cities(i)
+        Next
+        cb.UseListBackColor = True
+        cb.ListBackColor = RGB(255, 255, 204)
+        cb.ListIndex = 2
+        Set Dropped = cb
+    End Sub
+
+    ' A list box in which the user selects several items, three of them selected. The items come
+    ' first: MultiSelect raises error 380 on an empty list (1.8.136.0, the page's WARNING).
+    Private Sub ListBoxMultiSelect(ByVal f As Form)
+        Const FORM_W As Single = 280
+        Settings f, "MultiSelect", FORM_W, 16 + 100 + 8 + 20
+        Dim lb As Object = Place(f, "ListBoxW1", (FORM_W - 160) / 2, 16, 160, 100, "")
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+        Dim i As Long
+        For i = 0 To UBound(cities)
+            lb.AddItem cities(i)
+        Next
+        Doing = "MultiSelect"
+        lb.MultiSelect = vbMultiSelectExtended
+        Doing = "Selected"
+        lb.Selected(0) = True
+        lb.Selected(2) = True
+        lb.Selected(3) = True
+        FitList lb
+        Text f, "MultiSelect = vbMultiSelectExtended", 0, 16 + lb.Height + 8, FORM_W
+        FitClient f, FORM_W, 16 + lb.Height + 8 + 20
+    End Sub
+
+    ' The control of the list box lb made as high as its list, which shows whole items only
+    ' (IntegralHeight). The control sets its Extender.Height to the list's height in its Resize,
+    ' and Height returns that, but its window keeps the height it was given, white below the
+    ' list (1.8.136.0, BETA 1042). A move to that height changes nothing, so the control is
+    ' first made a pixel lower.
+    Private Sub FitList(ByVal lb As Object)
+        Doing = "FitList"
+        Dim h As Single = lb.Height
+        lb.Move lb.Left, lb.Top, lb.Width, h - 1
+        lb.Move lb.Left, lb.Top, lb.Width, h
+    End Sub
+
+    ' A list box whose items go on in columns.
+    Private Sub ListBoxColumns(ByVal f As Form)
+        Const FORM_W As Single = 340
+        Settings f, "MultiColumn", FORM_W, 16 + 100 + 8 + 20
+        Dim lb As Object = Place(f, "ListBoxW1", 20, 16, FORM_W - 40, 100, "")
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth", _
+            "Accra", "Bergen", "Cairo", "Dakar", "Hanoi", "Malmo", "Tunis", "Turku")
+        Dim i As Long
+        For i = 0 To UBound(cities)
+            lb.AddItem cities(i)
+        Next
+        Doing = "MultiColumn"
+        lb.MultiColumn = True
+        FitList lb
+        Text f, "MultiColumn = True", 0, 16 + lb.Height + 8, FORM_W
+        FitClient f, FORM_W, 16 + lb.Height + 8 + 20
+    End Sub
+
+    ' A virtual combo box of 100,000 items, its list dropped down and scrolled to the 50,001st.
+    ' No item is selected: when the list opens and FindVirtualItem finds the text box's text, the
+    ' text box is left with the first two characters of the item (1.8.136.0).
+    Private Sub VirtualComboDropped(ByVal f As Form)
+        Const W As Single = 200
+        Const FORM_W As Single = W + 120
+        Settings f, "VirtualCombo", FORM_W, 240
+        Text f, "ListCount = 100000", 0, 8, FORM_W
+        Text f, "TopIndex = 50000", 0, 28, FORM_W
+        Dim vc As Object = Place(f, "VirtualCombo1", (FORM_W - W) / 2, 52, W, 24, "")
+        vc.ListCount = 100000
+        vc.Text = ""
+        Set Dropped = vc
+    End Sub
+
+    ' The two ways of a text box to hide a password.
+    Private Sub TextBoxPasswords(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "Password", 2 * COLUMN + 20, 16 + 24 + 8 + 20
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "TextBoxW" & (i + 1), x + 40, 16, COLUMN - 80, 24, "")
+                If i = 0 Then .PasswordChar = "*" Else .UseSystemPasswordChar = True
+                .Text = "secret"
+            End With
+            Text f, IIf(i = 0, "PasswordChar = ""*""", "UseSystemPasswordChar = True"), x, 16 + 24 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A text box of several lines with a vertical scroll bar, a long line wrapped.
+    Private Sub TextBoxMultiLine(ByVal f As Form)
+        Const FORM_W As Single = 320
+        Const H As Single = 84
+        Settings f, "MultiLine", FORM_W, 16 + H + 8 + 40
+        With Place(f, "TextBoxW1", 30, 16, FORM_W - 60, H, "")
+            .MultiLine = True
+            .ScrollBars = vbVertical
+            .Text = "Dear Ada," & vbCrLf & vbCrLf & "Thank you for the notes on the engine. The second part came " & _
+                "this morning, and I have read it twice." & vbCrLf & vbCrLf & "Yours," & vbCrLf & "Charles"
+        End With
+        Text f, "MultiLine = True", 0, 16 + H + 8, FORM_W
+        Text f, "ScrollBars = vbVertical", 0, 16 + H + 8 + 20, FORM_W
+    End Sub
+
+    ' An empty text box that shows a prompt.
+    Private Sub TextBoxCueBanner(ByVal f As Form)
+        Const FORM_W As Single = 260
+        Settings f, "CueBanner", FORM_W, 16 + 24 + 8 + 40
+        With Place(f, "TextBoxW1", 30, 16, FORM_W - 60, 24, "")
+            .Text = ""
+            .CueBanner = "Search"
+        End With
+        Text f, "Text = """"", 0, 16 + 24 + 8, FORM_W
+        Text f, "CueBanner = ""Search""", 0, 16 + 24 + 8 + 20, FORM_W
+    End Sub
+
+    ' The four EllipsisFormat values of a label of one line too narrow for its path, each label
+    ' outlined by the form. LabelW is not moved (Kr00l/VBCCR#40): the generator of the forms gives
+    ' each its place.
+    Private Sub LabelEllipsisFormats(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "EllipsisFormat", 4 * COLUMN + 20, 16 + 20 + 8 + 20
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single = 10 + i * COLUMN
+            Outline f, x + 15, 16, COLUMN - 30, 20
+            With Place(f, "LabelW" & (i + 1), x + 15, 16, COLUMN - 30, 20, "", True)
+                .SingleLine = True
+                .EllipsisFormat = i
+                .Caption = "C:\Projects\Annual reports\2026\March\summary of sales.txt"
+            End With
+            Text f, Choose(i + 1, "LblEllipsisFormatNone", "LblEllipsisFormatEnd", "LblEllipsisFormatPath", _
+                "LblEllipsisFormatWord") & " (" & i & ")", x, 16 + 20 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A caption of two lines, the second too long for the label, as it is, wrapped, and on one
+    ' line, each label outlined by the form. LabelW is not moved (Kr00l/VBCCR#40).
+    Private Sub LabelLines(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 54
+        Settings f, "WordWrap", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Outline f, x + 20, 16, COLUMN - 40, H
+            With Place(f, "LabelW" & (i + 1), x + 20, 16, COLUMN - 40, H, "", True)
+                If i = 1 Then .WordWrap = True
+                If i = 2 Then .SingleLine = True
+                .Caption = "Total of the orders" & vbCrLf & "placed by the customers in March and April"
+            End With
+            Text f, Choose(i + 1, "WordWrap = False", "WordWrap = True", "SingleLine = True"), x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' Two windowed labels over a hatch the form draws: the second copies the hatch behind its
+    ' caption.
+    Private Sub WindowedLabelTransparent(ByVal f As Form)
+        Settings f, "Transparent", 2 * 180 + 20, 104
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 180
+            f.FillStyle = vbDiagonalCross
+            f.FillColor = RGB(150, 150, 150)
+            f.Line (x + 10, 12)-(x + 170, 72), RGB(150, 150, 150), B
+            With Place(f, "WindowedLabel" & (i + 1), x + 25, 27, 130, 30, "")
+                .Caption = "Paper size"
+                .Transparent = (i = 1)
+            End With
+            Text f, "Transparent = " & IIf(i = 1, "True", "False"), x, 80, 180
+        Next
+        f.FillStyle = vbFSTransparent
+    End Sub
+
+    ' Frames with the caption in the middle, with a picture before and after the caption, and
+    ' without visual styles: two rows of two.
+    Private Sub FrameLooks(ByVal f As Form)
+        Const COLUMN As Single = 300
+        Const H As Single = 64
+        Const ROW As Single = 16 + H + 8 + 40
+        Settings f, "FrameW", 2 * COLUMN + 20, 2 * ROW
+        Dim folder As StdPicture = IconOf(f, 1, 1)
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single = 10 + (i Mod 2) * COLUMN
+            Dim y As Single = 16 + (i \ 2) * ROW
+            With Place(f, "FrameW" & (i + 1), x + 50, y, COLUMN - 100, H, "")
+                .Caption = "Paper"
+                Select Case i
+                    Case 0: .Alignment = vbCenter
+                    Case 1: Set .Picture = folder
+                    Case 2
+                        Set .Picture = folder
+                        .PictureAlignment = CCLeftRightAlignmentRight
+                    Case 3: .VisualStyles = False
+                End Select
+            End With
+            Select Case i
+                Case 0: Text f, "Alignment = vbCenter", x, y + H + 8, COLUMN
+                Case 1: Text f, "Picture = an icon", x, y + H + 8, COLUMN
+                Case 2
+                    Text f, "Picture = an icon", x, y + H + 8, COLUMN
+                    Text f, "PictureAlignment = CCLeftRightAlignmentRight", x, y + H + 8 + 20, COLUMN
+                Case 3: Text f, "VisualStyles = False", x, y + H + 8, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' A link label as its caption makes it, with its second link disabled, and without the
+    ' underline: a row each, its setting at the right. No visited link: a link whose Visited is
+    ' True is drawn as the others are (1.8.136.0).
+    Private Sub LinkLabelLooks(ByVal f As Form)
+        Const ROW As Single = 34
+        Settings f, "LinkLabel", 520, 16 + 2 * ROW + 18 + 16
+        Dim i As Long
+        For i = 0 To 2
+            Dim y As Single = 16 + i * ROW
+            With Place(f, "LinkLabel" & (i + 1), 20, y, 280, 18, "")
+                .Caption = "Read the <A>documentation</A> or <A>ask a question</A>."
+                Select Case i
+                    Case 1: .Links(2).Enabled = False
+                    Case 2: .UnderlineCold = False
+                End Select
+            End With
+            Text f, Choose(i + 1, "Defaults", "Links(2).Enabled = False", "UnderlineCold = False"), 320, y
+        Next
+    End Sub
+
+    ' The three State values of a progress bar at 60.
+    Private Sub ProgressBarStates(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "State", 3 * COLUMN + 20, 16 + 20 + 8 + 20
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Place(f, "ProgressBar" & (i + 1), x + 20, 16, COLUMN - 40, 20, "").Value = 60
+            Text f, Choose(i + 1, "PrbStateNormal", "PrbStateError", "PrbStatePaused") & " (" & (i + 1) & ")", x, 16 + 20 + 8, COLUMN
+        Next
+    End Sub
+
+    ' The states of ProgressBarStates, given once its bars are still: a bar given its value in
+    ' the error or the paused state is drawn part of the way to it, in the normal state's green.
+    ' Each bar's timers are stopped again.
+    Private Sub BarStates(ByVal f As Form)
+        Doing = "State"
+        Dim i As Long
+        For i = 2 To 3
+            Dim c As Object = f.Controls("ProgressBar" & i)
+            c.State = i
+            DoEvents
+            Dim id As Long
+            For id = 0 To 1000
+                If KillTimer(c.hWnd, id) Then BarTimers.Add Array(c.hWnd, id)
+            Next
+        Next
+    End Sub
+
+    ' Two progress bars with a text, each with its placeholders replaced.
+    Private Sub ProgressBarTexts(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "Text", 2 * COLUMN + 20, 16 + 20 + 8 + 40
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "ProgressBar" & (i + 1), x + 20, 16, COLUMN - 40, 20, "")
+                If i = 0 Then
+                    .Value = 60
+                    .Text = "{3} %"
+                Else
+                    .Max = 120
+                    .Value = 42
+                    .Text = "{0} of {2} files"
+                End If
+            End With
+            Text f, IIf(i = 0, "Text = ""{3} %""", "Text = ""{0} of {2} files"""), x, 16 + 20 + 8, COLUMN
+            Text f, IIf(i = 0, "Value = 60", "Value = 42, Max = 120"), x, 16 + 20 + 8 + 20, COLUMN
+        Next
+    End Sub
+
+    ' A picture of a folder drawn by ListImages(1).Draw in each of its styles over a chequered
+    ' ground, once as the list is, and once with UseBackColor and a yellow BackColor.
+    Private Sub ImageListDrawStyles(ByVal f As Form)
+        Const LEFT_W As Single = 170
+        Const COLUMN As Single = 150
+        Const CELL As Single = 64
+        Const ROW As Single = CELL + 16
+        Settings f, "Draw", LEFT_W + 5 * COLUMN + 10, 16 + 2 * ROW + 24
+        OneImage f, 1, CLng(2 * Dpi())
+        Dim il As Object = f.Controls("ImageList1")
+        Dim styles As Variant = Array(ImlDrawNormal, ImlDrawTransparent, ImlDrawSelected, ImlDrawFocus, ImlDrawNoMask)
+        Dim r As Long, i As Long
+        For r = 0 To 1
+            Dim y As Single = 16 + r * ROW
+            If r = 1 Then
+                il.BackColor = vbYellow
+                il.UseBackColor = True
+                Text f, "UseBackColor = True", 10, y + 12
+                Text f, "BackColor = vbYellow", 10, y + 32
+            Else
+                Text f, "UseBackColor = False", 10, y + 22
+            End If
+            For i = 0 To 4
+                Dim x As Single = LEFT_W + i * COLUMN + (COLUMN - CELL) / 2
+                Chequer f, x, y, CELL
+                il.ListImages(1).Draw f.hDC, CLng((x + (CELL - 32) / 2) * Dpi()), CLng((y + (CELL - 32) / 2) * Dpi()), styles(i)
+            Next
+        Next
+        For i = 0 To 4
+            Text f, Choose(i + 1, "ImlDrawNormal", "ImlDrawTransparent", "ImlDrawSelected", "ImlDrawFocus", "ImlDrawNoMask") & _
+                " (" & styles(i) & ")", LEFT_W + i * COLUMN, 16 + 2 * ROW, COLUMN
+        Next
+    End Sub
+
+    ' A page and the arrow of a shortcut, each drawn from the list, and the icon that Overlay
+    ' makes of the two.
+    Private Sub ImageListOverlay(ByVal f As Form)
+        Const COLUMN As Single = 180
+        Settings f, "Overlay", 3 * COLUMN + 20, 16 + 32 + 8 + 20
+        Dim s As Long = CLng(2 * Dpi())
+        OneImage f, 3, s, "file"
+        OneImage f, 8, s, "arrow"
+        Dim il As Object = f.Controls("ImageList1")
+        Dim icon As StdPicture = il.Overlay("file", "arrow")
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim px As Long = CLng((x + (COLUMN - 32) / 2) * Dpi())
+            Dim py As Long = CLng(16 * Dpi())
+            Select Case i
+                Case 0: il.ListImages("file").Draw f.hDC, px, py, ImlDrawNormal
+                Case 1: il.ListImages("arrow").Draw f.hDC, px, py, ImlDrawNormal
+                Case 2: DrawIconEx f.hDC, px, py, icon.Handle, 16 * s, 16 * s, 0, 0, DI_NORMAL
+            End Select
+            Text f, Choose(i + 1, "ListImages(""file"")", "ListImages(""arrow"")", "Overlay(""file"", ""arrow"")"), x, 16 + 32 + 8, COLUMN
+        Next
+    End Sub
+
+    ' The picture Kind of Picture16, Scale times as large, added to ImageList1 of the form under
+    ' Key, its ground MASK left out. The first sets the list's size.
+    Private Sub OneImage(ByVal f As Form, ByVal Kind As Long, ByVal Scale As Long, Optional ByVal Key As String)
+        Doing = "ImageList1"
+        Dim il As Object = f.Controls("ImageList1")
+        If il.ListImages.Count = 0 Then
+            il.ImageWidth = 16 * Scale
+            il.ImageHeight = 16 * Scale
+            il.UseMaskColor = True
+            il.MaskColor = MASK
+        End If
+        If Len(Key) Then
+            il.ListImages.Add , Key, Picture16(Kind, Scale)
+        Else
+            il.ListImages.Add , , Picture16(Kind, Scale)
+        End If
+    End Sub
+
+    ' The picture Kind of Picture16 as an icon, its ground left out: a control's Picture shows a
+    ' bitmap's ground.
+    Private Function IconOf(ByVal f As Form, ByVal Kind As Long, ByVal Scale As Long) As StdPicture
+        OneImage f, Kind, Scale
+        Dim il As Object = f.Controls("ImageList1")
+        Return il.ListImages(il.ListImages.Count).ExtractIcon
+    End Function
+
+    ' A square of Size pixels at (x, y) in squares of 8 pixels, white and light gray.
+    Private Sub Chequer(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal Size As Single)
+        Dim i As Long, j As Long
+        For j = 0 To Size / 8 - 1
+            For i = 0 To Size / 8 - 1
+                f.Line (x + i * 8, y + j * 8)-(x + i * 8 + 8, y + j * 8 + 8), IIf((i + j) Mod 2 = 0, vbWhite, RGB(204, 204, 204)), BF
+            Next
+        Next
+    End Sub
+
+    ' A gray line round the rectangle, a pixel outside it: where a label is.
+    Private Sub Outline(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single)
+        f.Line (x - 1, y - 1)-(x + w, y + h), RGB(160, 160, 160), B
+    End Sub
+
     ' The TreeView page's settings pictures: each a whole form, a tree for each variant side by
     ' side, its settings printed by the form under it.
 
@@ -1549,6 +2140,9 @@ Module MainModule
                 DrawBox dc, &H204080, &H3070A0, 2 * s, 2 * s, 14 * s, 15 * s, s        ' RGB(160, 112, 48)
                 DrawBox dc, GREY, vbWhite, 4 * s, 4 * s, 12 * s, 14 * s, s
                 DrawBox dc, &H606060, &HA0A0A0, 5 * s, 1 * s, 11 * s, 5 * s, s
+            Case 8 ' the arrow of a shortcut: a white box at the bottom left, a blue arrow in it
+                DrawBox dc, GREY, vbWhite, 0, 8 * s, 9 * s, 16 * s, s
+                DrawPolygon dc, &HC06020, &HC06020, Array(2, 13, 4, 11, 3, 10, 7, 10, 7, 14, 6, 13, 3, 15, 2, 15), s  ' RGB(32, 96, 192)
         End Select
         SelectObject dc, oldBmp
         DeleteDC dc

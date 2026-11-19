@@ -12436,6 +12436,35 @@ const vbccrShots = [
     ["MCIWnd_Look", "mcilook"],
   ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/Images/${name}.png`, "vbccr", scene, NO_POPUPS)),
   sceneShot("Reference/Contributed/VBCCR18/Images/DTPicker_DroppedDown.png", "vbccr", "dtpdropped", VBCCR_CALENDAR),
+  // the settings of the buttons, the lists, the text boxes and labels, the frame, the link
+  // label, the progress bar and the image list, a whole form each; a combo box's with its list
+  // dropped down, laid over its form
+  ...[
+    ["Images/CheckBoxW_Value", "chkvalue"],
+    ["Images/CheckBoxW_Styles", "chkstyles"],
+    ["Images/OptionButtonW_Styles", "optstyles"],
+    ["Images/CmdImageListAlignmentConstants", "cmdimlalign"],
+    ["Images/CommandButtonW_SplitButton", "cmdsplit"],
+    ["Images/CommandLink_Looks", "cllooks"],
+    ["Images/ListBoxW_MultiSelect", "lstmulti"],
+    ["Images/ListBoxW_MultiColumn", "lstcolumns"],
+    ["Images/TextBoxW_Password", "txtpassword"],
+    ["Images/TextBoxW_MultiLine", "txtmultiline"],
+    ["Images/TextBoxW_CueBanner", "txtcue"],
+    ["Images/LblEllipsisFormatConstants", "lblellipsis"],
+    ["Images/LabelW_Lines", "lbllines"],
+    ["Images/WindowedLabel_Transparent", "wlbtransparent"],
+    ["Images/FrameW_Looks", "fralooks"],
+    ["LinkLabel/Images/LinkLabel_Looks", "llblooks"],
+    ["Images/PrbStateConstants", "prbstate"],
+    ["Images/ProgressBar_Text", "prbtext"],
+    ["ImageList/Images/ImlDrawConstants", "imldraw"],
+    ["ImageList/Images/ImageList_Overlay", "imloverlay"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, NO_POPUPS)),
+  ...[
+    ["Images/ComboBoxW_DroppedDown", "cbodropped"],
+    ["Images/VirtualCombo_DroppedDown", "vcbdropped"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, VBCCR_POPUPS)),
 ];
 
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
