@@ -863,6 +863,24 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   form (`AutoRedraw`): the annotation layer draws on the IDE's page only, and a line ends at the
   control's edge, since the form draws nothing over a child window. The heights it labels are
   worked out as the control does (a line of the font plus the margins).
+- **Setup `vbccr`**: `test/shots/vbccr`, VBCCRShots, the VBCCR18 section's picture of each
+  control, the package embedded by `startWithPackages`. **A picture of one control has no form
+  round it** (owner, 2026-11-19): a scene is a *sheet*, a form with several controls on it, each
+  as a program would use it, and `clipShot` cuts each control's picture out of the sheet's one
+  capture, with `CLIP_MARGIN` pixels of the form's ground round it. The program writes the
+  rectangles to the file `clips` in the folder of the signals before `shown`: a line for each
+  picture, its name and its left, top, width and height in pixels of the client area at 96 DPI
+  (`Place` writes a control's, `Clip` any other, such as two option buttons together).
+  `sheetOf` takes a sheet once for a setup's run and keeps it by the setup's `ctx`, so a sheet
+  of five controls is one program start. A control whose picture needs a pop-up (a dropped list,
+  a calendar) gets a scene of its own, taken by `sceneShot`: on a sheet the pop-up would cover
+  its neighbours. Any program setup can use `clipShot`. The sheets' forms (`frm<Sheet>`) and
+  Settings are written by `kit/vbccr/make-shots.mjs`; `MainModule.twin` is written by hand.
+  **The fixture has the visual-styles manifest** (`Resources/MANIFEST/#1.xml`): without it the
+  package finds version 5 of the common controls, and LinkLabel and CommandLink make no window
+  (LinkLabel draws a hatch in its place). The sheet's controls are reached through
+  `f.Controls(name)`, late bound, so a wrong member name is a run-time error, which the tool
+  prints with the control's name. Progress bars are stilled as `commonctls`'s are.
 - **Setup `dialogs`**: `test/shots/dialogs`, DialogShots, the pictures of the VBComDlg and
   AutoCompleteLib sections, both packages embedded by `startWithPackages`. A CommonDialog's dialog
   is taken as the `vb` setup's MsgBox is (`programDialogShot`, which `vbDialogShot` calls too): a

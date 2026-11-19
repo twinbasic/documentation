@@ -46,6 +46,31 @@ without a page in bold, with no link; link it when its page exists.
   vbTwips)`; checked by a run on CheckBoxW with the form's ScaleMode in pixels); the OLE drag
   events give the container's units (`vbContainerPosition`).
 
+## Pictures
+
+- **Each control's picture is the control alone, without a form's frame** (owner, 2026-11-19),
+  at `Images/<Control>.png`, from the `shoot_docs` setup `vbccr`
+  ([WIP.Screenshots.md](WIP.Screenshots.md), *Pictures of a running program*). A picture of
+  states, styles or borders is a whole form, as the other sections' are. The scenes of `vb` and
+  `commonctls` are the models for those: the package's members have the same names.
+- The sheets so far are `buttons`, `text`, `lists` and `bars`, with the controls that have
+  pages. No page shows its picture yet: the run that writes under `docs/` is the review
+  session's, and the page's line goes in with it. ImageList and SysInfo show nothing at run
+  time, so ImageList's picture is its drawing styles and SysInfo has none.
+- **LabelW has no picture yet**: on its sheet it draws nothing with its default properties, and
+  with a border and a back color of its own it draws a strip two pixels high, though the form
+  reports its height as 18 pixels (WIP.BugHunt.md, *UserControl*). It is the package's one
+  windowless control among those written.
+- Found by the pictures, for the pages (not yet written there):
+  - **A built program needs the visual-styles manifest.** Without it `ComCtlsSupportLevel` is 0
+    and a control that needs version 6 of the common controls makes no window: LinkLabel draws
+    a hatch in its place, and CommandLink's `GetIdealHeight` returns 0. The landing page does
+    not say so. A case cannot show it (the IDE's process has the manifest); the source does.
+  - **CommandLink's `GetIdealHeight` gives the height of a note on one line**, whatever the
+    control's width (the package sends `BCM_GETIDEALSIZE` with a width of 0): 300 pixels wide,
+    with the page's own caption and a note that wraps to two lines, it returned 53 pixels where
+    78 show both lines. The page says it gives "the height at which both fit". Needs a case.
+
 ## Samples and test cases
 
 - The sample template `contributed-VBCCR18` has a real form for each control, `frm<Control>`,

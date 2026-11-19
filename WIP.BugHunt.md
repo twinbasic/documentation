@@ -105,6 +105,14 @@ narrowed to a UserControl of our own.
   FrameW and WindowedLabel 2 GDI; LinkLabel 1 GDI. The others leave none. They do not cause the
   stop above (2,100 such loads change nothing in the time of a HostForm load). Not checked in
   VB6.
+- **LabelW, a windowless UserControl, draws nothing in a built program** (the `vbccr` picture
+  fixture, win32 exe, the form's scale set by `Scale`): no pixel of the form changes where it
+  stands, with `Caption` set before or after `Show`, `Visible` True and the extender's `Height`
+  18 pixels. With `BorderStyle`, `BackColor` and `ForeColor` of its own it draws a strip the
+  right width and two pixels high. Placing it after the form's last change of scale, and giving
+  its height in twips, change nothing. WindowedLabel beside it draws. Not narrowed: a form with
+  no `Scale`, a control placed at design time and never moved, the IDE's run, a windowless
+  UserControl of our own.
 - **`Visible` reads False** for a control on a form that is loaded and not shown
   (`Extender.Visible`).
 - **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises
