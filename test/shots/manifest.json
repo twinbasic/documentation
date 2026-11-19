@@ -810,6 +810,14 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/ImageCombo/Images/DroppedDown.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/ImageCombo/Images/ImageCombo.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/CCAppearanceConstants.png": {
       "build": 1042,
       "scale": 1.5
@@ -850,6 +858,14 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/FontCombo.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/FontCombo_Recent.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/FrameW.png": {
       "build": 1042,
       "scale": 1.5
@@ -887,6 +903,18 @@
       "scale": 1.5
     },
     "Reference/Contributed/VBCCR18/Images/WindowedLabel.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/ListView/Images/Groups.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/ListView/Images/ListView.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/ListView/Images/Views.png": {
       "build": 1042,
       "scale": 1.5
     },
