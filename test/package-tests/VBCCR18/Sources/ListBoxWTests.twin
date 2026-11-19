@@ -300,11 +300,15 @@ Module ListBoxWTests
             Expect.IsFalse .Selected(3), "Selected(3) after ListIndex = 3 in a list that selects several items"
             Expect.AreEqual "white", .Text, "Text after ListIndex = 3"
             Expect.AreEqual 1, .SelCount, "SelCount after ListIndex = 3"
+            Rig.ClearLog
             On Error Resume Next
             Err.Clear
             .ListIndex = -1
-            Expect.AreEqual 380, Err.Number, "ListIndex = -1 in a list that selects several items"
+            Expect.AreEqual 0, Err.Number, "ListIndex = -1 in a list that selects several items"
             On Error GoTo 0
+            Expect.AreEqual 3, .ListIndex, "ListIndex after ListIndex = -1"
+            Expect.AreEqual 1, .SelCount, "SelCount after ListIndex = -1"
+            Expect.AreEqual "Click 3", Rig.Events(), "the events of ListIndex = -1"
         End With
         Set sink.List = Nothing
         Unload f
@@ -356,18 +360,22 @@ Module ListBoxWTests
     End Sub
 
     [TestCase]
-    Public Sub Text_MultiSelect_NoSuchText_Raises380()
+    Public Sub Text_MultiSelect_NoSuchText_ChangesNothing()
         Expect.Begin
         Dim f As HostForm
         Set f = Rig.NewForm()
         AddColors f.ListBoxW1
         f.ListBoxW1.ListIndex = 1
         f.ListBoxW1.MultiSelect = vbMultiSelectExtended
+        Dim index As Long = f.ListBoxW1.ListIndex
+        Dim count As Long = f.ListBoxW1.SelCount
         On Error Resume Next
         Err.Clear
         f.ListBoxW1.Text = "mauve"
-        Expect.AreEqual 380, Err.Number, "Text = ""mauve"", which no item has, in a list that selects several items"
+        Expect.AreEqual 0, Err.Number, "Text = ""mauve"", which no item has, in a list that selects several items"
         On Error GoTo 0
+        Expect.AreEqual index, f.ListBoxW1.ListIndex, "ListIndex after Text = ""mauve"""
+        Expect.AreEqual count, f.ListBoxW1.SelCount, "SelCount after Text = ""mauve"""
         Unload f
         Expect.Done
     End Sub

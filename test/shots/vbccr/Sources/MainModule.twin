@@ -304,7 +304,11 @@ Module MainModule
         Place(f, "OptionButtonW2", MARGIN, y + 24, 150, 20, "").Caption = "Landscape"
         Clip "OptionButtonW", MARGIN, y, 150, 44
         y += 44 + MARGIN
-        Place(f, "CommandButtonW1", MARGIN, y, 96, 28).Caption = "Save"
+        ' with the shield of an action that needs an administrator, which a VB CommandButton lacks
+        With Place(f, "CommandButtonW1", MARGIN, y, 96, 28)
+            .Caption = "Install"
+            .SetShield True
+        End With
         y += 28 + MARGIN
         ' the height of a caption and a hint of two lines: GetIdealHeight gives that of a hint
         ' on one line, whatever the control's width

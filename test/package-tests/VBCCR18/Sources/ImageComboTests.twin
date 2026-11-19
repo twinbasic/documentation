@@ -744,7 +744,7 @@ Module ImageComboTests
         f.ImageCombo1.ComboItems("b").Selected = False
         Expect.AreEqual "", f.ImageCombo1.Text, "Text after the selected item gets Selected = False"
         Expect.IsTrue f.ImageCombo1.SelectedItem Is Nothing, "SelectedItem after the selected item gets Selected = False"
-        Expect.AreEqual "Change", Rig.Events(), "the events of Selected = False for the selected item"
+        Expect.AreEqual "Change | Click", Rig.Events(), "the events of Selected = False for the selected item"
         Set sink.Combo = Nothing
         Unload f
         Expect.Done

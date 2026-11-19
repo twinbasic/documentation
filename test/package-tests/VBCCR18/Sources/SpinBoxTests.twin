@@ -380,6 +380,26 @@ Module SpinBoxTests
     End Sub
 
     [TestCase]
+    Public Sub SetAcceleration_BadDelays_Raise381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(0, 5, 2), Array(1, 5, 20)
+        Expect.AreEqual 381, Err.Number, "SetAcceleration of delays out of order"
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(-1, 2), Array(1, 5)
+        Expect.AreEqual 381, Err.Number, "SetAcceleration of a negative delay"
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(0, 2, 2), Array(1, 5, 20)
+        Expect.AreEqual 0, Err.Number, "SetAcceleration of two equal delays"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
     Public Sub SetAcceleration_Empty_RestoresIncrement()
         Expect.Begin
         Dim f As HostForm

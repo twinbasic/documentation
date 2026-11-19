@@ -111,6 +111,33 @@ Module VListBoxTests
     End Sub
 
     [TestCase]
+    Public Sub ListIndex_MultiSelect_MinusOne_ChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VListBoxSink
+        Set sink.List = f.VListBox1
+        With f.VListBox1
+            .ListCount = 10
+            .MultiSelect = vbMultiSelectExtended
+            .Selected(1) = True
+            .ListIndex = 3
+            Rig.ClearLog
+            On Error Resume Next
+            Err.Clear
+            .ListIndex = -1
+            Expect.AreEqual 0, Err.Number, "ListIndex = -1 in a list that selects several items"
+            On Error GoTo 0
+            Expect.AreEqual 3, .ListIndex, "ListIndex after ListIndex = -1"
+            Expect.AreEqual 1, .SelCount, "SelCount after ListIndex = -1"
+            Expect.AreEqual "Click 3", Rig.Events(), "the events of ListIndex = -1"
+        End With
+        Set sink.List = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
     Public Sub ListIndex_NoSuchItem_Raises380()
         Expect.Begin
         Dim f As HostForm

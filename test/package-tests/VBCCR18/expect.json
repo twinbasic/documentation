@@ -1,14 +1,11 @@
 {
-  "version": "1.8.136.0",
+  "version": "1.8.137.0",
   "cases": {
     "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher": {
       "fails": "1 of 2 checks failed: GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word: expected True, got False"
     },
     "CoolBarTests.Bands_Add_DuplicateKey_AddsNothingToTheWindow": {
       "fails": "1 of 1 checks failed: the bands the window of the cool bar has after the refused Add: expected 2, got 3"
-    },
-    "CoolBarTests.Band_ChildEdge_False_TakesTheEdgeAway": {
-      "fails": "1 of 2 checks failed: ChildEdge after ChildEdge = False: expected False, got True"
     },
     "CoolBarTests.Band_Child_RefusedControl_IsNotKept": {
       "fails": "1 of 1 checks failed: whether Child is Nothing after a Set Child that raised 380: expected True, got False"
@@ -27,9 +24,6 @@
     },
     "ImageComboTests.Add_NegativeIndentation_AddsNothing": {
       "fails": "1 of 3 checks failed: ComboItems.Count after the refused Add: expected 0, got 1"
-    },
-    "ImageComboTests.Selected_FalseOnAnotherItem_ChangesNothingAndRaisesNoClick": {
-      "fails": "1 of 2 checks failed: the number of Click events of Selected = False for an item that is not selected: expected 0, got 1"
     },
     "ImageComboTests.SelImage_KeyGivenToAdd_CanBeRead": {
       "fails": "2 of 3 checks failed: reading SelImage of an item added with the SelImage key \"blue\": expected 0, got 13; SelImage of an item added with the SelImage key \"blue\": expected 3, got 0"
