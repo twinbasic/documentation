@@ -118,6 +118,24 @@ narrowed to a UserControl of our own.
   keeps of itself are different objects to `Is`. Whose doing (twinBASIC's extender, its `Is`,
   or the package's `Shadow...` reference) is not known; VB6 not checked. The pages say nothing
   of 35700 until this is settled.
+- **A UserControl's designer properties from a `.tbform` written by `make-shots` are not read.**
+  In the `vbccr` picture fixture, an ImageCombo's entry `"Style": 1` (or the member's name) and
+  `"Text": "given"`, and a ProgressBar's `"Step": 5`, `"Max": 50`, come back as
+  `UserControl_InitProperties` sets them (Text is `Ambient.DisplayName`): `ReadProperties` does
+  not run, though it reads those very keys (ImageCombo.ctl.twin 603). The sheets so far set only
+  extender properties, so none showed it. Not settled: whether the IDE writes something more
+  for a UserControl's own properties (set Style in the designer, save, compare the `.tbform`
+  with make-shots'), or twinBASIC ignores them. The ImageCombo styles picture waits for this.
+
+### Late binding (from the VBCCR18 work)
+
+- **An unknown member of a `Collection` reached late never returns.** Narrowed, BETA 1042, a
+  console project with no package, win32 and win64:
+  `Dim o As Object: Set o = New Collection: On Error Resume Next: Debug.Print o.Foo` does not
+  return; with `On Error GoTo` a handler, the same. The same statements with `New StdFont`
+  print error 438. Found from VBCCR18's Pager: `BuddyControl = <a Collection>` hangs in
+  `ControlIsValid`'s `Control.Container`. VB6, expected to raise 438, not checked; a reproducer under
+  `bugs/` is the next step (WIP.BugHunt.md's steps).
 
 ### WinNativeCommonCtls
 

@@ -15,6 +15,8 @@ symbols:
 
 A **FontCombo** is a combo box that lists the fonts installed in Windows, each name written in its own font, as the font box of a word processor does. It keeps a list of the fonts the user chose last, and can feed a second **FontCombo** with the sizes of the chosen font.
 
+![A font combo box in which Segoe UI is selected](Images/FontCombo.png){:width="212" height="35"}
+
 ```tb check_build check_run arch=win32,win64
 FontCombo1.ListIndex = 0                 ' the first font of the list
 Debug.Print FontCombo1.ListCount > 0
@@ -106,6 +108,8 @@ On a control with a text box, [**AutoSelect**](#autoselect) selects a font as so
 ## Recent fonts
 
 With [**RecentMax**](#recentmax) greater than 0 the list starts with the fonts that the user chose last, drawn in [**RecentBackColor**](#recentbackcolor) and [**RecentForeColor**](#recentforecolor), and the complete list follows, so that a recent font is in the list twice. [**RecentCount**](#recentcount) is the number of recent fonts, and [**ListCount**](#listcount) and [**List**](#list) count them too.
+
+![A font combo box with RecentMax set to 3 and its list dropped down, MaxDropDownItems set to 3: the recent fonts Segoe UI, Arial and Times New Roman, each written in its own font on a pale yellow ground, with Segoe UI selected](Images/FontCombo_Recent.png){:width="241" height="169"}
 
 <!-- test: FontComboTests.Recent_UserPicksAFont_IsAddedAtTheTop, FontComboTests.Recent_PicksBeyondRecentMax_DropTheOldest, FontComboTests.Recent_OriginalOfARecentFont_MovesToTheTop, FontComboTests.Recent_APickedRecentFont_IsNotMoved, FontComboTests.Recent_ListIndexAssigned_AddsNothing -->
 A font that the user chooses from the complete list is added at the top of the recent fonts, as the most recent one; when the recent fonts already have **RecentMax** of them, the oldest goes. A font that is already among the recent fonts moves to the top, when the user chooses it from the complete list. Choosing a recent font does not change the order. A font selected by the program, with **ListIndex**, **Text** or **SelectItem**, is not added.

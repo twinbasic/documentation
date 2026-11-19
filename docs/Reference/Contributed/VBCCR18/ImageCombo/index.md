@@ -16,6 +16,8 @@ symbols:
 
 An **ImageCombo** is a combo box whose items can each show a picture, and be indented, so that the list can show a folder tree or a list of files with their icons. The pictures come from an [**ImageList**](../ImageList/) control.
 
+![An image combo box in which the folder Letters is selected, with the picture of a folder beside its name](Images/ImageCombo.png){:width="212" height="35"}
+
 ```tb hidden
 Public Type SquarePictDesc
     Size As Long
@@ -236,6 +238,8 @@ End Sub
 <!-- test: ImageComboTests.DroppedDown_True_RaisesDropDownThenEndEdit, ImageComboTests.DroppedDown_False_RaisesCloseUp -->
 [**DroppedDown**](#droppeddown) says whether the list is open, and opens or closes it. The control raises [**DropDown**](#dropdown) before the list opens, which is the moment to fill a list that depends on something else, and [**CloseUp**](#closeup) when it has closed.
 <!-- /test -->
+
+![An image combo box with its list dropped down: Documents, and indented under it the folders Letters and Reports and the files Holiday.jpg and Notes.txt, each with its picture. Letters is selected.](Images/DroppedDown.png){:width="241" height="197"}
 
 The list shows [**MaxDropDownItems**](#maxdropdownitems) items at most without scrolling, and is as wide as the control unless [**DropDownWidth**](#dropdownwidth) is wider. [**TopItem**](#topitem) is the item at the top of the list, and [**Scroll**](#scroll) is raised when it changes.
 

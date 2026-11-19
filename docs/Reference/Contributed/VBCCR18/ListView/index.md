@@ -12,6 +12,8 @@ symbols:
 
 A **ListView** shows a list of items as large icons, small icons, a list, tiles or a report with a column for each part of an item. The user selects items, checks them, edits their labels, sorts the report by a column and drags items; the program can show the items in groups, or supply them as they are shown.
 
+![A list view in the report view with check boxes and grid lines, under the columns Name, Size, aligned to the right, and Type. The arrow over Name shows the list sorted by it from A to Z. Beach.jpg and Notes.txt are checked, and the whole row of Notes.txt is selected.](Images/ListView.png){:width="332" height="134"}
+
 ```tb check_build check_run arch=win32,win64
 With ListView1
     .View = LvwViewReport

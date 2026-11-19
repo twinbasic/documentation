@@ -38,6 +38,8 @@ ListView1.Arrange = LvwArrangeAutoTop     ' in rows from the top, again after ea
 
 The report view is the only one that shows the [column headers](Columns) and the [subitems](Items#subitems) in columns; the tile view shows the subitems that an item's [**TileViewIndices**](LvwListItem#tileviewindices) names. The [groups](Groups) are shown in every view but the list view.
 
+![Four list views of the same four items: in LvwViewIcon large icons with the names under them in a row, in LvwViewSmallIcon small icons with the names beside them in rows, in LvwViewList small icons in a column, and under them LvwViewTile, large icons in two columns with the name, the type and the size beside each, with TileViewLines set to 2](Images/Views.png){:width="741" height="327"}
+
 ## The image lists
 
 An item takes its large icon from the image list of [**Icons**](#icons), in the icon and tile views, and its small icon from that of [**SmallIcons**](#smallicons), in the others. The item names its icons by their number or their key in that list, as its [**Icon**](LvwListItem#icon) and [**SmallIcon**](LvwListItem#smallicon); the [subitems](LvwListSubItem#reporticon) take theirs from **SmallIcons** as well.

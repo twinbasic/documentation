@@ -59,6 +59,8 @@ Removing every group with [**Clear**](LvwGroups#clear) leaves **GroupView** as i
 
 A group has a header, with an icon from [**GroupIcons**](#groupicons) and an optional [**Hint**](LvwGroup#hint) under it, a [**Link**](LvwGroup#link) that raises [**GroupLinkClick**](#grouplinkclick), and a footer. A group that is [**Collapsible**](LvwGroup#collapsible) has a button in its header with which the user hides and shows its items.
 
+![A list view in the report view with GroupView set to True: the group Folders, with a button at the right of its header, holds Letters and Reports, and the group Files holds Holiday.jpg, Notes.txt and Old notes.txt, with the footer 3 files under them](Images/Groups.png){:width="361" height="285"}
+
 <!-- test: ListViewGroupsTests.Collapsed_Assigned_RaisesGroupCollapsedChanged -->
 Each change of a group's [**Collapsed**](LvwGroup#collapsed), by the user or by code, raises [**GroupCollapsedChanged**](#groupcollapsedchanged), and each change of its [**Selected**](LvwGroup#selected) raises [**GroupSelectedChanged**](#groupselectedchanged).
 <!-- /test -->
