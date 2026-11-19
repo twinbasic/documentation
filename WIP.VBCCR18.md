@@ -78,7 +78,18 @@ without a page in bold, with no link; link it when its page exists.
   reproducer in `.claude/drafts/vbccr-labelw-move/` (not committed). Whether twinBASIC or the package is at
   fault is not known: VB6 is not checked, nor a windowless UserControl of our own. On a form in
   twips a moved label is not drawn at all; on one whose ScaleMode is pixels the label whose
-  `Left` was set was drawn at its new place about an eighth as wide.
+  `Left` was set was drawn at its new place about an eighth as wide. Kr00l closed #40: in his
+  view the fault is twinBASIC's. Parked (owner, 2026-11-19).
+- **A control's own designer properties are in `_IPersistStreamData`, not in its flat keys.**
+  The IDE writes every property of a control flat in its `.tbform` entry, and for a VB6-style
+  UserControl also `_IPersistStreamData`: the base64 of the property bag `WriteProperties`
+  filled. At load the runtime gives that bag to `ReadProperties`; an entry without it gets
+  `InitProperties`, whatever its flat keys say (checked on BETA 1042 with a UserControl of our
+  own, in the IDE and an exe). So `make-shots` can set extender properties only, and a property
+  that raises 382 at run time (ImageCombo's Style) needs a bag. The bag: `EAEAEAEA`, two Longs,
+  then per property its VARTYPE (Integer), the name's length in characters (Integer), a hash of
+  the name (Long; `foo` is `&H980DE06E`), a Long not yet understood, the name in UTF-16, and the
+  value. A value changed in place in a bag the IDE wrote is read (Foo 5 to 7).
 - Found by the pictures, and now on the pages:
   - **A built program needs the visual-styles manifest** (the landing page, *Adding a control
     to a form*). Without it `ComCtlsSupportLevel` is 0, LinkLabel and CommandLink make no window

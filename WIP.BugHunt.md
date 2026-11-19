@@ -118,14 +118,6 @@ narrowed to a UserControl of our own.
   keeps of itself are different objects to `Is`. Whose doing (twinBASIC's extender, its `Is`,
   or the package's `Shadow...` reference) is not known; VB6 not checked. The pages say nothing
   of 35700 until this is settled.
-- **A UserControl's designer properties from a `.tbform` written by `make-shots` are not read.**
-  In the `vbccr` picture fixture, an ImageCombo's entry `"Style": 1` (or the member's name) and
-  `"Text": "given"`, and a ProgressBar's `"Step": 5`, `"Max": 50`, come back as
-  `UserControl_InitProperties` sets them (Text is `Ambient.DisplayName`): `ReadProperties` does
-  not run, though it reads those very keys (ImageCombo.ctl.twin 603). The sheets so far set only
-  extender properties, so none showed it. Not settled: whether the IDE writes something more
-  for a UserControl's own properties (set Style in the designer, save, compare the `.tbform`
-  with make-shots'), or twinBASIC ignores them. The ImageCombo styles picture waits for this.
 - **A UserControl's own property is not reached through `As Control`.** VBCCR18's
   `UpDown.BuddyProperty = "Text"` with a TextBoxW buddy raises 380: its Let checks the name
   through `Dim BuddyControl As Control` (UpDown.ctl.twin 786-829), and only the extender's
