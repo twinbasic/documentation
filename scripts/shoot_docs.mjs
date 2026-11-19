@@ -12361,8 +12361,7 @@ const vbccrClip = (control, sheet) =>
   clipShot(`Reference/Contributed/VBCCR18/Images/${control}.png`, "vbccr", sheet, control);
 const vbccrShots = [
   ...["CheckBoxW", "OptionButtonW", "CommandButtonW", "CommandLink"].map((c) => vbccrClip(c, "buttons")),
-  // LabelW is on the sheet and has no picture yet: it draws nothing there (WIP.VBCCR18.md)
-  ...["TextBoxW", "WindowedLabel", "LinkLabel", "FrameW"].map((c) => vbccrClip(c, "text")),
+  ...["TextBoxW", "LabelW", "WindowedLabel", "LinkLabel", "FrameW"].map((c) => vbccrClip(c, "text")),
   ...["ListBoxW", "VListBox", "ComboBoxW", "VirtualCombo"].map((c) => vbccrClip(c, "lists")),
   vbccrClip("ProgressBar", "bars"),
 ];

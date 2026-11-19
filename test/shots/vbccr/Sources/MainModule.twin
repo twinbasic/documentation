@@ -136,7 +136,7 @@ Module MainModule
         Dim y As Single = MARGIN
         Place(f, "TextBoxW1", MARGIN, y, 200, 24).Text = "Ada Lovelace"
         y += 24 + MARGIN
-        Place(f, "LabelW1", MARGIN, y, 200, 18).Caption = "Name of the author:"
+        Place(f, "LabelW1", MARGIN, y, 200, 18, , True).Caption = "Name of the author:"
         y += 18 + MARGIN
         Place(f, "WindowedLabel1", MARGIN, y, 200, 18).Caption = "Ready to print"
         y += 18 + MARGIN
@@ -215,12 +215,16 @@ Module MainModule
     ' ---------------------------------------------------------------- helpers
 
     ' The control `Name` of the form, placed and shown, and its picture's rectangle written
-    ' under `ClipName`: the control's class when left out, and none when "".
+    ' under `ClipName`: the control's class when left out, and none when "". With `Fixed`, the
+    ' control is one the form's designer file has at this place already, and it is not moved:
+    ' LabelW, a windowless control, is not drawn once its Left or Top is set at run time (BETA
+    ' 1042), so the generator of the sheets' forms gives it its place.
     Private Function Place(ByVal f As Form, ByVal Name As String, ByVal x As Single, ByVal y As Single, _
-            ByVal w As Single, ByVal h As Single, Optional ByVal ClipName As String = "*") As Object
+            ByVal w As Single, ByVal h As Single, Optional ByVal ClipName As String = "*", _
+            Optional ByVal Fixed As Boolean = False) As Object
         Doing = Name
         Dim c As Object = f.Controls(Name)
-        c.Move x, y, w, h
+        If Not Fixed Then c.Move x, y, w, h
         Asked.Add Array(x, y, w, h), Name
         c.TabStop = False
         c.Visible = True

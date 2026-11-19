@@ -57,10 +57,11 @@ without a page in bold, with no link; link it when its page exists.
   pages. No page shows its picture yet: the run that writes under `docs/` is the review
   session's, and the page's line goes in with it. ImageList and SysInfo show nothing at run
   time, so ImageList's picture is its drawing styles and SysInfo has none.
-- **LabelW has no picture yet**: on its sheet it draws nothing with its default properties, and
-  with a border and a back color of its own it draws a strip two pixels high, though the form
-  reports its height as 18 pixels (WIP.BugHunt.md, *UserControl*). It is the package's one
-  windowless control among those written.
+- **LabelW is never moved by the fixture**: it is the package's one windowless control among
+  those written, and one whose `Left` or `Top` is set at run time is no longer drawn (owner's
+  finding, 2026-11-19; WIP.BugHunt.md, *UserControl*). The sheet's designer file has it at its
+  place (`make-shots.mjs`, a control's third entry), and `Place` is told `Fixed`. **The LabelW
+  page does not say this yet**: it needs a callout and a case.
 - Found by the pictures, for the pages (not yet written there):
   - **A built program needs the visual-styles manifest.** Without it `ComCtlsSupportLevel` is 0
     and a control that needs version 6 of the common controls makes no window: LinkLabel draws
