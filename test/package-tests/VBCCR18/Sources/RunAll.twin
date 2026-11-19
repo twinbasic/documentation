@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 974 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 975 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -2731,6 +2731,10 @@ Module RunAll
         Err.Clear
         SpinBoxTests.NumberStyle_Hexadecimal_ShowsEightDigits
         Expect.EndCase "SpinBoxTests.NumberStyle_Hexadecimal_ShowsEightDigits", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.NumberStyle_Hexadecimal_SmallRange_ShowsFourDigits
+        Expect.EndCase "SpinBoxTests.NumberStyle_Hexadecimal_SmallRange_ShowsFourDigits", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         SpinBoxTests.ThousandsSeparator_False_ShowsNoSeparator
