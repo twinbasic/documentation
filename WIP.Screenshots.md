@@ -875,7 +875,10 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   of five controls is one program start. A control whose picture needs a pop-up (a dropped list,
   a calendar) gets a scene of its own, taken by `sceneShot`: on a sheet the pop-up would cover
   its neighbours. Any program setup can use `clipShot`. The sheets' forms (`frm<Sheet>`) and
-  Settings are written by `kit/vbccr/make-shots.mjs`; `MainModule.twin` is written by hand.
+  Settings are written by `kit/vbccr/make-shots.mjs`; `MainModule.twin` is written by hand. A
+  control's own designer properties, such as a Style that raises 382 at run time, go in its
+  property bag (`_IPersistStreamData`), which make-shots writes from a `bag`
+  ([WIP.VBCCR18.md](WIP.VBCCR18.md), *The package*).
   **A picture of states, styles or an enumeration's values is a whole form** (owner), taken by
   `sceneShot`: one control per value side by side, each labelled by the program with its
   setting. A folder control's pictures go in `<Control>/Images/`, as VBFlexGrid's do. A tree

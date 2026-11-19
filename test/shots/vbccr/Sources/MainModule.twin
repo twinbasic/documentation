@@ -168,6 +168,9 @@ Module MainModule
             Case "prbtext": Set f = frmPrbText
             Case "imldraw": Set f = frmImlDraw
             Case "imloverlay": Set f = frmImlOverlay
+            Case "imcstyle": Set f = frmImcStyle
+            Case "cbostyle": Set f = frmCboStyle
+            Case "lststyle": Set f = frmLstStyle
             Case Else: Set f = frmButtons
         End Select
         Load f
@@ -236,6 +239,9 @@ Module MainModule
             Case "prbtext": ProgressBarTexts f
             Case "imldraw": ImageListDrawStyles f
             Case "imloverlay": ImageListOverlay f
+            Case "imcstyle": ImageComboStyles f
+            Case "cbostyle": ComboBoxStyles f
+            Case "lststyle": ListBoxStyles f
             Case Else: Err.Raise 5, , "no sheet named " & scene
         End Select
         f.Show
@@ -1705,6 +1711,83 @@ Module MainModule
                 Case 2: DrawIconEx f.hDC, px, py, icon.Handle, 16 * s, 16 * s, 0, 0, DI_NORMAL
             End Select
             Text f, Choose(i + 1, "ListImages(""file"")", "ListImages(""arrow"")", "Overlay(""file"", ""arrow"")"), x, 16 + 32 + 8, COLUMN
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- the Style pictures
+
+    ' Style raises 382 at run time, so the three controls of each of these sheets have their
+    ' Style in their property bag (make-shots.mjs): 0, 1 and 2, read back here. The simple combo
+    ' is as high as its open list; the others are a box.
+
+    ' The three styles of an image combo, the folders' items in each, Letters selected.
+    Private Sub ImageComboStyles(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Const W As Single = 180
+        Const H As Single = 120
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        TreeImages f
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim ic As Object = Place(f, "ImageCombo" & (i + 1), x + (COLUMN - W) / 2, 16, W, IIf(i = 1, H, 24), "")
+            If ic.Style <> i Then Err.Raise 5, , ic.Name & " has the Style " & ic.Style & ", not " & i & " from its bag"
+            Set ic.ImageList = f.Controls("ImageList1")
+            FolderItems ic
+            Set ic.SelectedItem = ic.ComboItems("letters")
+            Text f, Choose(i + 1, "ImcStyleDropDownCombo", "ImcStyleSimpleCombo", "ImcStyleDropDownList") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' The three styles of a combo box, the same cities in each, Kyoto selected; the simple one
+    ' high enough to show all six.
+    Private Sub ComboBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Const W As Single = 180
+        Const H As Single = 150
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long, k As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim cb As Object = Place(f, "ComboBoxW" & (i + 1), x + (COLUMN - W) / 2, 16, W, IIf(i = 1, H, 24), "")
+            If cb.Style <> i Then Err.Raise 5, , cb.Name & " has the Style " & cb.Style & ", not " & i & " from its bag"
+            Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+            For k = 0 To UBound(cities)
+                cb.AddItem cities(k)
+            Next
+            cb.ListIndex = 2
+            Text f, Choose(i + 1, "CboStyleDropDownCombo", "CboStyleSimpleCombo", "CboStyleDropDownList") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' The three styles of a list box, the same cities in each: Kyoto selected in the standard
+    ' list, Lima and Nairobi checked in the list of check boxes, Kyoto in the list of options.
+    Private Sub ListBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Const W As Single = 160
+        Const H As Single = 120
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long, k As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim lb As Object = Place(f, "ListBoxW" & (i + 1), x + (COLUMN - W) / 2, 16, W, H, "")
+            If lb.Style <> i Then Err.Raise 5, , lb.Name & " has the Style " & lb.Style & ", not " & i & " from its bag"
+            Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+            For k = 0 To UBound(cities)
+                lb.AddItem cities(k)
+            Next
+            Select Case i
+                Case 0: lb.ListIndex = 2
+                Case 1
+                    Doing = "ItemChecked"
+                    lb.ItemChecked(1) = True
+                    lb.ItemChecked(3) = True
+                Case 2
+                    Doing = "OptionIndex"
+                    lb.OptionIndex = 2
+            End Select
+            FitList lb
+            Text f, Choose(i + 1, "LstStyleStandard", "LstStyleCheckbox", "LstStyleOption") & " (" & i & ")", x, 16 + H + 8, COLUMN
         Next
     End Sub
 

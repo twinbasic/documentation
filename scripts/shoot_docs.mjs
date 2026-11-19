@@ -12460,6 +12460,10 @@ const vbccrShots = [
     ["Images/ProgressBar_Text", "prbtext"],
     ["ImageList/Images/ImlDrawConstants", "imldraw"],
     ["ImageList/Images/ImageList_Overlay", "imloverlay"],
+    // Style is set through each control's property bag, the only way to set it
+    ["ImageCombo/Images/ImcStyleConstants", "imcstyle"],
+    ["Images/CboStyleConstants", "cbostyle"],
+    ["Images/LstStyleConstants", "lststyle"],
   ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, NO_POPUPS)),
   ...[
     ["Images/ComboBoxW_DroppedDown", "cbodropped"],

@@ -85,13 +85,18 @@ without a page in bold, with no link; link it when its page exists.
   UserControl also `_IPersistStreamData`: the base64 of the property bag `WriteProperties`
   filled. At load the runtime gives that bag to `ReadProperties`; an entry without it gets
   `InitProperties`, whatever its flat keys say (checked on BETA 1042 with a UserControl of our
-  own, in the IDE and an exe). So `make-shots` can set extender properties only, and a property
-  that raises 382 at run time (ImageCombo's Style) needs a bag. The bag: `EAEAEAEA`, two Longs,
-  then per property its VARTYPE (Integer), the name's length in characters (Integer), a hash of
-  the name (Long; `foo` is `&H980DE06E`), a Long not yet understood, the name in UTF-16, and the
-  value. A value changed in place in a bag the IDE wrote is read (Foo 5 to 7). **The bag is
-  `EAEAEAEA` followed by `PropertyBag.Contents`**, byte for byte, for a `New PropertyBag` given the
-  same `WriteProperty` calls in the same order: a fixture's bag is made that way, by a run.
+  own, in the IDE and an exe). A property that raises 382 at run time (the Style of ImageCombo,
+  ComboBoxW and ListBoxW) is set in a picture through a bag: `make-shots` writes one from a
+  control's `bag` (`kit/vbccr/bag.mjs`), and the control then has `ReadProperties`' defaults for
+  everything else (ProgressBar's Step, for one, differs from `InitProperties`'). **The bag is
+  `EAEAEAEA` followed by `PropertyBag.Contents`**, byte for byte (BETA 1042). Contents:
+  `93B20000`, a Long with the length of the whole; then per property, in the order written, its
+  VARTYPE (Integer), the name's length in characters (Integer), a hash of the lowercased name
+  (Long: `h = rotl(h, 13) xor c` over its UTF-16 units), a link (Long: the entry's own size; the
+  last entry's is minus the distance back to the first, 0 when it is the only one), the name
+  lowercased in UTF-16, and the value (I2 and BOOL 2 bytes, I4 4, BSTR a Long count of
+  characters and the characters); each entry padded to 4 bytes. `bag.mjs --self-test` checks
+  the encoder against what `PropertyBag.Contents` returned for eleven bags.
 - Found by the pictures, and now on the pages:
   - **A built program needs the visual-styles manifest** (the landing page, *Adding a control
     to a form*). Without it `ComCtlsSupportLevel` is 0, LinkLabel and CommandLink make no window
