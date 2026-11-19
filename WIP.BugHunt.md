@@ -91,8 +91,13 @@ narrowed to a UserControl of our own.
   inside one `[TestCase]`, runs at a steady speed (about 3 to 5 ms a load) and does not return
   from a load between the 9,000th and the 9,500th, win32; the test project's HostForm, with one
   of every control, stops between its 270th and 280th. The same loop over a form with a VB
-  Label or CommandButton runs 30,000 times. GDI and USER handle counts do not grow in the
-  ToolBar and LabelW loops. Not narrowed: a UserControl of our own (twinBASIC's or the
+  Label or CommandButton runs 30,000 times. In the LabelW loop, which stops between its 9,140th
+  and 9,160th load, nothing counted runs out: GDI objects stay at 26 (peak 32), USER objects at
+  116 (peak 119), kernel handles at 664, and the atoms of the table that window classes and
+  window properties share at 1,015. Two things do grow: private memory, by about 30 KB a load
+  (545 MB to 826 MB, in a 32-bit process), and the time of a load, linearly (500 loads take
+  0.84 s at first and 2.2 s at the end), so each load leaves something on a list that a later
+  load goes through. Not narrowed: a UserControl of our own (twinBASIC's or the
   package's), win64, a built exe, where the process waits. `package_tests` avoids it with
   `CASES_PER_IDE` (`lib/package-tests.mjs`).
 - **Some VBCCR18 controls leave handles behind at each load and unload** of their form (win32,
