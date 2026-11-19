@@ -822,6 +822,10 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/ImageCombo/Images/ImcStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/ImageList/Images/ImageList_Overlay.png": {
       "build": 1042,
       "scale": 1.5
@@ -859,6 +863,10 @@
       "scale": 1.5
     },
     "Reference/Contributed/VBCCR18/Images/CCVerticalAlignmentConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CboStyleConstants.png": {
       "build": 1042,
       "scale": 1.5
     },
@@ -975,6 +983,10 @@
       "scale": 1.5
     },
     "Reference/Contributed/VBCCR18/Images/ListBoxW_MultiSelect.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/LstStyleConstants.png": {
       "build": 1042,
       "scale": 1.5
     },
