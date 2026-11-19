@@ -1,0 +1,112 @@
+' CommonDialogTests: the defaults and the refused values of the CommonDialog class. No case calls
+' a Show method, and no case assigns Action a number that shows a dialog.
+[TestFixture]
+Module CommonDialogTests
+
+    [TestCase]
+    Public Sub Defaults_OfANewObject()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        Expect.AreEqual 260, Dlg.MaxFileSize, "MaxFileSize of a new object"
+        Expect.AreEqual 1, CLng(Dlg.Copies), "Copies of a new object"
+        Expect.AreEqual 8!, Dlg.FontSize, "FontSize of a new object"
+        Expect.AreEqual 400, CLng(Dlg.FontWeight), "FontWeight of a new object"
+        Expect.AreEqual 0, Dlg.Flags, "Flags of a new object"
+        Expect.AreEqual CLng(CdlPRPQHigh), CLng(Dlg.PrintQuality), "PrintQuality of a new object"
+        Expect.AreEqual CLng(CdlPRBNAuto), CLng(Dlg.PaperBin), "PaperBin of a new object"
+        Expect.IsTrue Dlg.PrinterDefault, "PrinterDefault of a new object"
+        Expect.IsTrue Dlg.PrinterDefaultInit, "PrinterDefaultInit of a new object"
+        Expect.IsFalse Dlg.CancelError, "CancelError of a new object"
+        Expect.AreEqual CLng(vbEmpty), CLng(VarType(Dlg.RootFolder)), "VarType of the RootFolder of a new object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontBold_True_SetsTheWeightTo700()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        Dlg.FontBold = True
+        Expect.AreEqual 700, CLng(Dlg.FontWeight), "FontWeight after FontBold = True"
+        Dlg.FontWeight = 600
+        Expect.IsTrue Dlg.FontBold, "FontBold with FontWeight 600"
+        Dlg.FontBold = False
+        Expect.AreEqual 400, CLng(Dlg.FontWeight), "FontWeight after FontBold = False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontWeight_OtherValue_Raises380()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        On Error Resume Next
+        Err.Clear
+        Dlg.FontWeight = 450
+        Expect.AreEqual 380, Err.Number, "FontWeight = 450"
+        On Error GoTo 0
+        Expect.AreEqual 400, CLng(Dlg.FontWeight), "FontWeight after the refused assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Action_Read_Raises394()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        Dim Value As Integer
+        On Error Resume Next
+        Err.Clear
+        Value = Dlg.Action
+        Expect.AreEqual 394, Err.Number, "reading Action"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Action_OutOfRange_Raises380()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        On Error Resume Next
+        Err.Clear
+        Dlg.Action = 0
+        Expect.AreEqual 380, Err.Number, "Action = 0"
+        Err.Clear
+        Dlg.Action = 11
+        Expect.AreEqual 380, Err.Number, "Action = 11"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileTitle_Assigned_Raises383()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        On Error Resume Next
+        Err.Clear
+        Dlg.FileTitle = "notes.txt"
+        Expect.AreEqual 383, Err.Number, "FileTitle = ""notes.txt"""
+        On Error GoTo 0
+        Expect.AreEqual "", Dlg.FileTitle, "FileTitle after the refused assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomColors_ShortArray_KeepsTheOthers()
+        Expect.Begin
+        Dim Dlg As New VBCCR18.CommonDialog
+        Dlg.CustomColors = Array(vbRed, vbButtonFace)
+        Dim Colors As Variant = Dlg.CustomColors
+        Expect.AreEqual 15, CLng(UBound(Colors)), "UBound of CustomColors"
+        Expect.AreEqual 255, CLng(Colors(0)), "CustomColors(0) after Array(vbRed, vbButtonFace)"
+        Expect.IsTrue CLng(Colors(1)) >= 0 And CLng(Colors(1)) <= &HFFFFFF, "CustomColors(1) is the RGB value of vbButtonFace, not the system color: " & Hex$(Colors(1))
+        Expect.AreEqual &HDFDFDF, CLng(Colors(2)), "CustomColors(2) is kept"
+        Dlg.CustomColors = Empty
+        Colors = Dlg.CustomColors
+        Expect.AreEqual &HFFFFFF, CLng(Colors(0)), "CustomColors(0) after CustomColors = Empty"
+        On Error Resume Next
+        Err.Clear
+        Dlg.CustomColors = 5
+        Expect.AreEqual 380, Err.Number, "CustomColors = 5"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+End Module

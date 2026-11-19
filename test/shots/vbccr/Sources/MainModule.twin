@@ -126,6 +126,9 @@ Module MainModule
             Case "ftcrecent": Set f = frmFtcRecent
             Case "lvviews": Set f = frmLvViews
             Case "lvgroups": Set f = frmLvGroups
+            Case "strips": Set f = frmStrips
+            Case "tbrtextalign": Set f = frmTbrTextAlign
+            Case "tbsstyle": Set f = frmTbsStyle
             Case Else: Set f = frmButtons
         End Select
         Load f
@@ -152,6 +155,9 @@ Module MainModule
             Case "ftcrecent": FontComboRecent f
             Case "lvviews": ListViews f
             Case "lvgroups": ListGroups f
+            Case "strips": Strips f
+            Case "tbrtextalign": ToolBarTextAlignments f
+            Case "tbsstyle": TabStripStyles f
             Case Else: Err.Raise 5, , "no sheet named " & scene
         End Select
         f.Show
@@ -342,6 +348,161 @@ Module MainModule
         Dim lv As Object = Place(f, "ListView1", 2 * MARGIN + W, MARGIN, LIST_W, LIST_H)
         ReportList lv, f.Controls("ImageList1")
         Set FocusOn = lv
+    End Sub
+
+    ' A toolbar, a cool bar, a tab strip and a rich text box in a column, a pager beside them,
+    ' and a status bar along the bottom of the form. The toolbar, the cool bar and the status
+    ' bar set their own heights, so each picture is clipped at the height the control reports.
+    Private Sub Strips(ByVal f As Form)
+        Const W As Single = 320
+        Const PAGER_W As Single = 160
+        Const FORM_W As Single = 3 * MARGIN + W + PAGER_W
+        FitClient f, FORM_W, 600
+        ToolImages f
+        Dim y As Single = MARGIN
+        Dim tb As Object = Place(f, "ToolBar1", MARGIN, y, W, 40, "")
+        ToolButtons tb, f.Controls("ImageList1")
+        tb.Buttons("bold").Value = TbrButtonValuePressed
+        Dim last As Object = tb.Buttons(tb.Buttons.Count)
+        tb.Width = last.Left + last.Width
+        Clip "ToolBar", MARGIN, y, tb.Width, tb.Height
+        y += tb.Height + MARGIN
+        Dim cb As Object = Place(f, "CoolBar1", MARGIN, y, W, 50, "")
+        cb.Bands.Clear
+        cb.Bands.Add , "file", "File"
+        cb.Bands.Add , "edit", "Edit"
+        cb.Bands.Add , "find", "Find", , True
+        ' File and Edit share their row: the first band would otherwise take it all
+        ' (the Width of a band without a child changes nothing; Maximize does)
+        cb.Bands("edit").IdealWidth = W / 2
+        cb.Bands("edit").Maximize
+        Clip "CoolBar", MARGIN, y, W, cb.Height
+        y += cb.Height + MARGIN
+        Dim ts As Object = Place(f, "TabStrip1", MARGIN, y, W, 100)
+        Set ts.ImageList = f.Controls("ImageList1")
+        ts.Tabs(1).Caption = "General"
+        ts.Tabs.Add , "folders", "Folders", "folder"
+        ts.Tabs.Add , "pictures", "Pictures", "photo"
+        ts.Tabs("folders").Selected = True
+        y += 100 + MARGIN
+        Dim rt As Object = Place(f, "RichTextBox1", MARGIN, y, W, 120)
+        TripReport rt
+        y += 120 + MARGIN
+        ' the pager: a list box three times as high as the pager, scrolled to its middle, with
+        ' rows that all fit in it, so that it has no scroll bar of its own
+        Dim lb As Object = Place(f, "ListBoxW1", 2 * MARGIN + W, MARGIN, PAGER_W, 300, "")
+        Dim i As Long
+        For i = 1 To 15
+            lb.AddItem "Row " & i
+        Next
+        Dim pg As Object = Place(f, "Pager1", 2 * MARGIN + W, MARGIN, PAGER_W, 100)
+        Set pg.BuddyControl = lb
+        pg.ReCalcSize
+        pg.Value = 100
+        ' the status bar along the bottom: its Align does nothing in twinBASIC
+        Dim sb As Object = Place(f, "StatusBar1", 0, y, FORM_W, 24, "")
+        With sb.Panels(1)
+            .Text = "Ready"
+            .AutoSize = SbrPanelAutoSizeSpring
+        End With
+        sb.Panels.Add(, "pos", "Ln 12, Col 5").AutoSize = SbrPanelAutoSizeContent
+        sb.Panels.Add(, "enc", "UTF-8").AutoSize = SbrPanelAutoSizeContent
+        With sb.Panels.Add(, "zoom", "100%")
+            .Alignment = SbrPanelAlignmentCenter
+            .Width = 50
+        End With
+        Clip "StatusBar", 0, y, FORM_W, sb.Height
+        FitClient f, FORM_W, y + sb.Height
+        sb.Move 0, y, FORM_W, sb.Height
+    End Sub
+
+    ' The buttons New, Open and Save, a separator, the check button Bold and the drop-down
+    ' button Paste, on a flat toolbar with pictures of 16 pixels.
+    Private Sub ToolButtons(ByVal tb As Object, ByVal il As Object)
+        tb.Style = TbrStyleFlat
+        Set tb.ImageList = il
+        With tb.Buttons
+            .Add , "new", "New", , "file"
+            .Add , "open", "Open", , "open"
+            .Add , "save", "Save", , "save"
+            .Add , , , TbrButtonStyleSeparator
+            .Add , "bold", "Bold", TbrButtonStyleCheck, "bold"
+            .Add , "paste", "Paste", TbrButtonStyleDropDown, "paste"
+        End With
+    End Sub
+
+    ' A short report in a rich text box: a heading in a larger bold font, a sentence with a
+    ' word in bold and a phrase in red italics, and a list of three bullets.
+    Private Sub TripReport(ByVal rt As Object)
+        Const HEAD As String = "Trip report"
+        Const LINE1 As String = "We reached the hut at noon. The view was worth the climb."
+        rt.Text = HEAD & vbCrLf & LINE1 & vbCrLf & "Water" & vbCrLf & "Map" & vbCrLf & "Rain coat"
+        Dim at As Long = Len(HEAD) + 1
+        Mark rt, 0, Len(HEAD)
+        rt.SelBold = True
+        rt.SelFontSize = 12
+        Mark rt, at + InStr(LINE1, "noon") - 1, 4
+        rt.SelBold = True
+        Mark rt, at + InStr(LINE1, "worth the climb") - 1, Len("worth the climb")
+        rt.SelItalic = True
+        rt.SelColor = RGB(192, 0, 0)
+        ' the bullets indented by about 200 twips, and their text as far again after them, in
+        ' the form's scale, which is pixels at 96 DPI
+        Mark rt, at + Len(LINE1) + 1, Len(rt.Text)
+        rt.BulletIndent = 13
+        rt.SelBullet = True
+        rt.SelIndent = 13
+        Mark rt, 0, 0
+    End Sub
+
+    Private Sub Mark(ByVal rt As Object, ByVal Start As Long, ByVal Length As Long)
+        rt.SelStart = Start
+        rt.SelLength = Length
+    End Sub
+
+    ' The two TextAlignment values of a toolbar, one above the other: the captions under the
+    ' pictures, and beside them.
+    Private Sub ToolBarTextAlignments(ByVal f As Form)
+        Settings f, "TextAlignment", 600, 300
+        ToolImages f
+        Dim tbs(1) As Object, ws(1) As Single, ys(1) As Single
+        Dim y As Single = 16, widest As Single
+        Dim i As Long
+        For i = 0 To 1
+            Set tbs(i) = Place(f, "ToolBar" & (i + 1), 20, y, 560, 40, "")
+            tbs(i).TextAlignment = i
+            ToolButtons tbs(i), f.Controls("ImageList1")
+            tbs(i).Buttons("bold").Value = TbrButtonValuePressed
+            Dim last As Object = tbs(i).Buttons(tbs(i).Buttons.Count)
+            ws(i) = last.Left + last.Width
+            If ws(i) > widest Then widest = ws(i)
+            ys(i) = y
+            y += tbs(i).Height + 8 + 20 + 16
+        Next
+        Dim formW As Single = widest + 40
+        FitClient f, formW, y - 16 + 8
+        For i = 0 To 1
+            tbs(i).Move (formW - ws(i)) / 2, ys(i), ws(i), tbs(i).Height
+            Text f, Choose(i + 1, "TbrTextAlignBottom", "TbrTextAlignRight") & " (" & i & ")", 0, ys(i) + tbs(i).Height + 8, formW
+        Next
+    End Sub
+
+    ' The three Style values of a tab strip of three tabs, Folders selected.
+    Private Sub TabStripStyles(ByVal f As Form)
+        Const COLUMN As Single = 210
+        Const H As Single = 70
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim ts As Object = Place(f, "TabStrip" & (i + 1), x + 10, 16, COLUMN - 20, H, "")
+            ts.Style = i
+            ts.Tabs(1).Caption = "General"
+            ts.Tabs.Add , "folders", "Folders"
+            ts.Tabs.Add , "pictures", "Pictures"
+            ts.Tabs("folders").Selected = True
+            Text f, Choose(i + 1, "TbsStyleTabs", "TbsStyleButtons", "TbsStyleFlatButtons") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
     End Sub
 
     ' The bars' timers stopped again while the form waits.
@@ -811,6 +972,18 @@ Module MainModule
         FillImages f.Controls("ImageList2"), 2
     End Sub
 
+    ' The ImageList1 of the form given the four pictures of TreeImages and three more for the
+    ' toolbars' buttons: a disk, a bold B and a clipboard.
+    Private Sub ToolImages(ByVal f As Form)
+        Doing = "ImageList1"
+        Dim il As Object = f.Controls("ImageList1")
+        FillImages il, 1
+        Dim i As Long
+        For i = 5 To 7
+            il.ListImages.Add , Choose(i - 4, "save", "bold", "paste"), Picture16(i)
+        Next
+    End Sub
+
     ' The image list il given the four pictures, 16 pixels times Scale.
     Private Sub FillImages(ByVal il As Object, ByVal Scale As Long)
         il.ImageWidth = 16 * Scale
@@ -854,6 +1027,21 @@ Module MainModule
                 DrawBox dc, GREY, &HF0C896, 1 * s, 2 * s, 15 * s, 14 * s, s           ' RGB(150, 200, 240)
                 DrawBox dc, &H28D2FA, &H28D2FA, 10 * s, 4 * s, 13 * s, 7 * s, s        ' RGB(250, 210, 40)
                 DrawPolygon dc, &H46A046, &H46A046, Array(2, 13, 2, 10, 6, 7, 9, 10, 12, 8, 14, 10, 14, 13), s
+            Case 5 ' a disk: its blue case, its white label and its gray shutter
+                DrawBox dc, &H804020, &HC08040, 1 * s, 1 * s, 15 * s, 15 * s, s        ' RGB(64, 128, 192)
+                DrawBox dc, GREY, vbWhite, 4 * s, 1 * s, 12 * s, 7 * s, s
+                DrawBox dc, GREY, &HC0C0C0, 5 * s, 10 * s, 11 * s, 15 * s, s
+            Case 6 ' a bold B, of blocks
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 2 * s, 7 * s, 14 * s, s
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 2 * s, 10 * s, 4 * s, s
+                DrawBox dc, vbBlack, vbBlack, 9 * s, 3 * s, 12 * s, 7 * s, s
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 7 * s, 11 * s, 9 * s, s
+                DrawBox dc, vbBlack, vbBlack, 10 * s, 8 * s, 13 * s, 13 * s, s
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 12 * s, 11 * s, 14 * s, s
+            Case 7 ' a clipboard: its brown board, a sheet of paper and the gray clip
+                DrawBox dc, &H204080, &H3070A0, 2 * s, 2 * s, 14 * s, 15 * s, s        ' RGB(160, 112, 48)
+                DrawBox dc, GREY, vbWhite, 4 * s, 4 * s, 12 * s, 14 * s, s
+                DrawBox dc, &H606060, &HA0A0A0, 5 * s, 1 * s, 11 * s, 5 * s, s
         End Select
         SelectObject dc, oldBmp
         DeleteDC dc

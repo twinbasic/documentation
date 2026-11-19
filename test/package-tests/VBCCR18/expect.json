@@ -22,6 +22,9 @@
     "FontComboTests.SelectItem_UpdatesTheBuddy": {
       "fails": "1 of 1 checks failed: the sizes of the buddy after a font is selected with SelectItem: expected 16, got 0"
     },
+    "IPAddressTests.MouseMove_OverTheBorder_XAndYAreInTwips": {
+      "fails": "1 of 1 checks failed: MouseMove at the pixel (10, 5) of the control's own window: expected \"MouseMove 100 50\", got \"MouseMove 10 5\""
+    },
     "ImageComboTests.Add_NegativeIndentation_AddsNothing": {
       "fails": "1 of 3 checks failed: ComboItems.Count after the refused Add: expected 0, got 1"
     },
@@ -72,6 +75,9 @@
     },
     "ListViewItemsTests.SubItems_LongText_IsReturnedWhole": {
       "fails": "1 of 2 checks failed: Len(SubItems(1)) of a subitem of 300 characters: expected 300, got 259"
+    },
+    "MonthViewTests.MonthColumns_Three_ShowsThreeMonths": {
+      "fails": "1 of 1 checks failed: CalendarCount of 3 by 1: expected 3, got 2"
     },
     "RichTextBoxFilesTests.SaveFile_FolderMissing_RaisesAnError": {
       "fails": "1 of 1 checks failed: an error from SaveFile into a folder that does not exist: expected True, got False"
@@ -135,6 +141,12 @@
     },
     "TreeViewTests.Expanded_BeforeExpandCancelled_LeavesTheNodeCollapsed": {
       "fails": "1 of 2 checks failed: Expanded after Expanded = True with BeforeExpand cancelled: expected False, got True"
+    },
+    "UpDownTests.BuddyProperty_Text_ShowsTheValue": {
+      "fails": "2 of 2 checks failed: BuddyProperty = \"Text\": expected 0, got 380; the Text of the buddy after Value = 7: expected \"7\", got \"TextBoxW1\""
+    },
+    "UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy": {
+      "fails": "2 of 2 checks failed: SyncBuddy = True: expected 0, got 380; the Text of the buddy after Value = 7: expected \"7\", got \"TextBoxW1\""
     },
     "VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
       "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectSimple on an empty list raises no error 380: expected True, got False"

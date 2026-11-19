@@ -5,8 +5,40 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 797 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 974 test cases"
         On Error Resume Next
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.Defaults_OfANewControl
+        Expect.EndCase "AnimationTests.Defaults_OfANewControl", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.BackStyle_OutOfRange_Raises380
+        Expect.EndCase "AnimationTests.BackStyle_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.LoadFile_MissingFile_Raises53
+        Expect.EndCase "AnimationTests.LoadFile_MissingFile_Raises53", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.LoadRes_MissingResource_Raises326
+        Expect.EndCase "AnimationTests.LoadRes_MissingResource_Raises326", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.LoadRes_MissingFile_Raises53
+        Expect.EndCase "AnimationTests.LoadRes_MissingFile_Raises53", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.Play_AndStopPlay_ChangeTheStateAndRaiseChange
+        Expect.EndCase "AnimationTests.Play_AndStopPlay_ChangeTheStateAndRaiseChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.Unload_ReleasesTheFile
+        Expect.EndCase "AnimationTests.Unload_ReleasesTheFile", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        AnimationTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "AnimationTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         CheckBoxWTests.Click_ByTheUser_ChecksAndUnchecks
@@ -277,6 +309,34 @@ Module RunAll
         Expect.EndCase "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        CommonDialogTests.Defaults_OfANewObject
+        Expect.EndCase "CommonDialogTests.Defaults_OfANewObject", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommonDialogTests.FontBold_True_SetsTheWeightTo700
+        Expect.EndCase "CommonDialogTests.FontBold_True_SetsTheWeightTo700", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommonDialogTests.FontWeight_OtherValue_Raises380
+        Expect.EndCase "CommonDialogTests.FontWeight_OtherValue_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommonDialogTests.Action_Read_Raises394
+        Expect.EndCase "CommonDialogTests.Action_Read_Raises394", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommonDialogTests.Action_OutOfRange_Raises380
+        Expect.EndCase "CommonDialogTests.Action_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommonDialogTests.FileTitle_Assigned_Raises383
+        Expect.EndCase "CommonDialogTests.FileTitle_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CommonDialogTests.CustomColors_ShortArray_KeepsTheOthers
+        Expect.EndCase "CommonDialogTests.CustomColors_ShortArray_KeepsTheOthers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         CommonTests.Name_IsTheNameOnTheForm
         Expect.EndCase "CommonTests.Name_IsTheNameOnTheForm", Err.Number, Err.Description
         Expect.StartCase
@@ -399,6 +459,98 @@ Module RunAll
         Err.Clear
         CoolBarTests.HeightChanged_BandsRemoved_FollowsResize
         Expect.EndCase "CoolBarTests.HeightChanged_BandsRemoved_FollowsResize", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Value_Date_KeepsTheTimeOfDay
+        Expect.EndCase "DTPickerTests.Value_Date_KeepsTheTimeOfDay", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Value_Number_BecomesADate
+        Expect.EndCase "DTPickerTests.Value_Number_BecomesADate", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Value_NotADate_Raises380
+        Expect.EndCase "DTPickerTests.Value_NotADate_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Parts_Assigned_ChangeThatPartOfTheValue
+        Expect.EndCase "DTPickerTests.Parts_Assigned_ChangeThatPartOfTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Parts_OutOfRange_Raise380
+        Expect.EndCase "DTPickerTests.Parts_OutOfRange_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Value_OutsideTheRange_Raises35773
+        Expect.EndCase "DTPickerTests.Value_OutsideTheRange_Raises35773", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.MinDate_AboveMaxDate_Raises35775
+        Expect.EndCase "DTPickerTests.MinDate_AboveMaxDate_Raises35775", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.MaxDate_BelowMinDate_Raises35774
+        Expect.EndCase "DTPickerTests.MaxDate_BelowMinDate_Raises35774", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.MinDate_BeforeTheYear1900_Raises380
+        Expect.EndCase "DTPickerTests.MinDate_BeforeTheYear1900_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.MinDate_AboveValue_MovesTheValueWithoutChange
+        Expect.EndCase "DTPickerTests.MinDate_AboveValue_MovesTheValueWithoutChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.MaxDate_BelowValue_MovesTheValueWithoutChange
+        Expect.EndCase "DTPickerTests.MaxDate_BelowValue_MovesTheValueWithoutChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Value_NullWithCheckBox_UnselectsTheDate
+        Expect.EndCase "DTPickerTests.Value_NullWithCheckBox_UnselectsTheDate", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Value_NullWithoutCheckBox_Raises35787
+        Expect.EndCase "DTPickerTests.Value_NullWithoutCheckBox_Raises35787", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.CheckBox_Off_SelectsTheLastDateAgain
+        Expect.EndCase "DTPickerTests.CheckBox_Off_SelectsTheLastDateAgain", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.DayOfWeek_NoDateSelected_Raises94
+        Expect.EndCase "DTPickerTests.DayOfWeek_NoDateSelected_Raises94", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Format_OutOfRange_Raises380
+        Expect.EndCase "DTPickerTests.Format_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.StartOfWeek_OutOfRange_Raises380
+        Expect.EndCase "DTPickerTests.StartOfWeek_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.CalendarAlignment_OutOfRange_Raises380
+        Expect.EndCase "DTPickerTests.CalendarAlignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Change_ForEachChangeOfValue
+        Expect.EndCase "DTPickerTests.Change_ForEachChangeOfValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.Change_ByTheUser_IsRaised
+        Expect.EndCase "DTPickerTests.Change_ByTheUser_IsRaised", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.CustomFormat_CallbackField_RaisesFormatSize
+        Expect.EndCase "DTPickerTests.CustomFormat_CallbackField_RaisesFormatSize", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.DropDown_ByAltDown_OpensTheCalendar
+        Expect.EndCase "DTPickerTests.DropDown_ByAltDown_OpensTheCalendar", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        DTPickerTests.DroppedDown_False_ClosesTheCalendar
+        Expect.EndCase "DTPickerTests.DroppedDown_False_ClosesTheCalendar", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         FontComboTests.Defaults_OfANewControl
@@ -647,6 +799,122 @@ Module RunAll
         Err.Clear
         FrameWTests.Appearance_SetsForeColor
         Expect.EndCase "FrameWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.Value_Default_IsNoKey
+        Expect.EndCase "HotKeyTests.Value_Default_IsNoKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.Value_AssignedWithModifiers_IsReturnedWithThem
+        Expect.EndCase "HotKeyTests.Value_AssignedWithModifiers_IsReturnedWithThem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.RawValue_IsTheKeyInTheLowByteAndTheModifiersInTheHighByte
+        Expect.EndCase "HotKeyTests.RawValue_IsTheKeyInTheLowByteAndTheModifiersInTheHighByte", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.SetRules_KeyWithAnInvalidCombination_GetsTheDefaultModifiers
+        Expect.EndCase "HotKeyTests.SetRules_KeyWithAnInvalidCombination_GetsTheDefaultModifiers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.SetRules_DoesNotChangeAValueThatIsAssigned
+        Expect.EndCase "HotKeyTests.SetRules_DoesNotChangeAValueThatIsAssigned", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.SetRules_NotOneCombination_Raises380
+        Expect.EndCase "HotKeyTests.SetRules_NotOneCombination_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.BorderStyle_OutOfRange_Raises380
+        Expect.EndCase "HotKeyTests.BorderStyle_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.Change_RaisedWhenTheUserChangesTheKey
+        Expect.EndCase "HotKeyTests.Change_RaisedWhenTheUserChangesTheKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.Change_NotRaisedForAnAssignment
+        Expect.EndCase "HotKeyTests.Change_NotRaisedForAnAssignment", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        HotKeyTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "HotKeyTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Text_Assigned_IsReturnedAsFourNumbers
+        Expect.EndCase "IPAddressTests.Text_Assigned_IsReturnedAsFourNumbers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Text_NotFourFieldsOfDigits_Raises380
+        Expect.EndCase "IPAddressTests.Text_NotFourFieldsOfDigits_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Text_FieldAboveTheMaximum_IsTheMaximum
+        Expect.EndCase "IPAddressTests.Text_FieldAboveTheMaximum_IsTheMaximum", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Value_IsTheFirstFieldInTheHighByte
+        Expect.EndCase "IPAddressTests.Value_IsTheFirstFieldInTheHighByte", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.MinAndMax_LimitTheFieldsOfAnAssignedText
+        Expect.EndCase "IPAddressTests.MinAndMax_LimitTheFieldsOfAnAssignedText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Value_Assigned_IsNotLimitedByMinAndMax
+        Expect.EndCase "IPAddressTests.Value_Assigned_IsNotLimitedByMinAndMax", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.MinAndMax_PastEachOther_AreStoppedAtTheOther
+        Expect.EndCase "IPAddressTests.MinAndMax_PastEachOther_AreStoppedAtTheOther", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.MinAndMax_ItemOutOfRange_Raises5
+        Expect.EndCase "IPAddressTests.MinAndMax_ItemOutOfRange_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.hWndEdit_IndexOutOfRange_Raises35600
+        Expect.EndCase "IPAddressTests.hWndEdit_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.SelectedItem_OutOfRange_Raises380
+        Expect.EndCase "IPAddressTests.SelectedItem_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.AutoSelect_OutOfRange_Raises380
+        Expect.EndCase "IPAddressTests.AutoSelect_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.SelChange_RaisedWhenTheFocusMovesToAnotherField
+        Expect.EndCase "IPAddressTests.SelChange_RaisedWhenTheFocusMovesToAnotherField", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.ContextMenu_ByTheKeyboard_GivesMinusOne
+        Expect.EndCase "IPAddressTests.ContextMenu_ByTheKeyboard_GivesMinusOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Locked_MakesTheFieldsReadOnly
+        Expect.EndCase "IPAddressTests.Locked_MakesTheFieldsReadOnly", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Change_RaisedOnceForEachChangeOfTheText
+        Expect.EndCase "IPAddressTests.Change_RaisedOnceForEachChangeOfTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Change_ByTheUser_RaisedForEachFieldChange
+        Expect.EndCase "IPAddressTests.Change_ByTheUser_RaisedForEachFieldChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.Messages_OfTheWindowsControl_AreAnswered
+        Expect.EndCase "IPAddressTests.Messages_OfTheWindowsControl_AreAnswered", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.MouseMove_OverAField_XAndYAreInTwips
+        Expect.EndCase "IPAddressTests.MouseMove_OverAField_XAndYAreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        IPAddressTests.MouseMove_OverTheBorder_XAndYAreInTwips
+        Expect.EndCase "IPAddressTests.MouseMove_OverTheBorder_XAndYAreInTwips", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         ImageComboTests.Defaults_OfANewControl
@@ -1657,6 +1925,142 @@ Module RunAll
         Expect.EndCase "ListViewTests.WorkAreas_Add_ZeroWidth_Raises380", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        MCIWndTests.FileName_Wav_OpensTheFile
+        Expect.EndCase "MCIWndTests.FileName_Wav_OpensTheFile", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.FileName_Wav_RaisesMediaChange
+        Expect.EndCase "MCIWndTests.FileName_Wav_RaisesMediaChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.FileName_MissingFile_Raises53
+        Expect.EndCase "MCIWndTests.FileName_MissingFile_Raises53", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.FileName_AutoSizeWindow_ChangesTheHeight
+        Expect.EndCase "MCIWndTests.FileName_AutoSizeWindow_ChangesTheHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.FileName_AutoSizeWindowFalse_KeepsTheHeight
+        Expect.EndCase "MCIWndTests.FileName_AutoSizeWindowFalse_KeepsTheHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.TimeFormat_Bytes_GivesTheLengthInBytes
+        Expect.EndCase "MCIWndTests.TimeFormat_Bytes_GivesTheLengthInBytes", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.TimeFormat_NotOfTheDevice_RaisesTheErrorEvent
+        Expect.EndCase "MCIWndTests.TimeFormat_NotOfTheDevice_RaisesTheErrorEvent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.Command_Status_SetsCommandReturn
+        Expect.EndCase "MCIWndTests.Command_Status_SetsCommandReturn", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.Command_Unknown_RaisesTheErrorEvent
+        Expect.EndCase "MCIWndTests.Command_Unknown_RaisesTheErrorEvent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.TimerFreq_Zero_Raises380
+        Expect.EndCase "MCIWndTests.TimerFreq_Zero_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MCIWndTests.Zoom_Zero_Raises380
+        Expect.EndCase "MCIWndTests.Zoom_Zero_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.Value_Assigned_DropsTheTimeOfDay
+        Expect.EndCase "MonthViewTests.Value_Assigned_DropsTheTimeOfDay", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.Value_OutsideTheRange_Raises35773
+        Expect.EndCase "MonthViewTests.Value_OutsideTheRange_Raises35773", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MinDate_AboveMaxDate_Raises35775
+        Expect.EndCase "MonthViewTests.MinDate_AboveMaxDate_Raises35775", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MaxDate_BelowMinDate_Raises35774
+        Expect.EndCase "MonthViewTests.MaxDate_BelowMinDate_Raises35774", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MinDate_BeforeTheYear1900_Raises380
+        Expect.EndCase "MonthViewTests.MinDate_BeforeTheYear1900_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.Parts_OutOfRange_Raise380
+        Expect.EndCase "MonthViewTests.Parts_OutOfRange_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.SetSelRange_MultiSelect_SelectsTheRange
+        Expect.EndCase "MonthViewTests.SetSelRange_MultiSelect_SelectsTheRange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.SetSelRange_LongerThanMaxSelCount_Raises35770
+        Expect.EndCase "MonthViewTests.SetSelRange_LongerThanMaxSelCount_Raises35770", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.SetSelRange_OutsideTheRange_Raises35770
+        Expect.EndCase "MonthViewTests.SetSelRange_OutsideTheRange_Raises35770", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.SetSelRange_WithoutMultiSelect_SelectsTheFirstDate
+        Expect.EndCase "MonthViewTests.SetSelRange_WithoutMultiSelect_SelectsTheFirstDate", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MultiSelect_Changed_SelectsTheFirstDateOnly
+        Expect.EndCase "MonthViewTests.MultiSelect_Changed_SelectsTheFirstDateOnly", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MonthColumns_Changed_ResizesTheControl
+        Expect.EndCase "MonthViewTests.MonthColumns_Changed_ResizesTheControl", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MonthColumns_Three_ShowsThreeMonths
+        Expect.EndCase "MonthViewTests.MonthColumns_Three_ShowsThreeMonths", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.Width_Assigned_HasNoLastingEffect
+        Expect.EndCase "MonthViewTests.Width_Assigned_HasNoLastingEffect", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MonthColumns_OutOfRange_Raises35776
+        Expect.EndCase "MonthViewTests.MonthColumns_OutOfRange_Raises35776", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MonthColumnsTimesRows_OverTwelve_Raises35777
+        Expect.EndCase "MonthViewTests.MonthColumnsTimesRows_OverTwelve_Raises35777", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.MonthColumns_Zero_Raises380
+        Expect.EndCase "MonthViewTests.MonthColumns_Zero_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.HitTest_OutsideTheControl_IsNoWhere
+        Expect.EndCase "MonthViewTests.HitTest_OutsideTheControl_IsNoWhere", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.HitTest_OnADay_GivesTheDate
+        Expect.EndCase "MonthViewTests.HitTest_OnADay_GivesTheDate", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.Click_OnADay_RaisesClickSelChangeAndDateClick
+        Expect.EndCase "MonthViewTests.Click_OnADay_RaisesClickSelChangeAndDateClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.DayState_Set_RaisesGetDayBold
+        Expect.EndCase "MonthViewTests.DayState_Set_RaisesGetDayBold", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.SelChange_ForEachChangeOfTheSelection
+        Expect.EndCase "MonthViewTests.SelChange_ForEachChangeOfTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        MonthViewTests.View_Changed_RaisesViewChange
+        Expect.EndCase "MonthViewTests.View_Changed_RaisesViewChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         OptionButtonWTests.Click_RaisedWhenValueBecomesTrue
         Expect.EndCase "OptionButtonWTests.Click_RaisedWhenValueBecomesTrue", Err.Number, Err.Description
         Expect.StartCase
@@ -2197,6 +2601,194 @@ Module RunAll
         Expect.EndCase "RichTextBoxDragTests.OLEDropMode_Automatic_Raises380", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        SliderTests.Value_OutsideTheRange_IsTheNearestEnd
+        Expect.EndCase "SliderTests.Value_OutsideTheRange_IsTheNearestEnd", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Max_NotAboveMin_Raises380
+        Expect.EndCase "SliderTests.Max_NotAboveMin_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Min_NotBelowMax_Raises380
+        Expect.EndCase "SliderTests.Min_NotBelowMax_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Range_MovedPastTheValue_MovesTheValue
+        Expect.EndCase "SliderTests.Range_MovedPastTheValue_MovesTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.TickFrequency_NotPositive_Raises380
+        Expect.EndCase "SliderTests.TickFrequency_NotPositive_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Orientation_Vertical_ExchangesWidthAndHeight
+        Expect.EndCase "SliderTests.Orientation_Vertical_ExchangesWidthAndHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Thickness_AboveTheLimit_IsCut
+        Expect.EndCase "SliderTests.Thickness_AboveTheLimit_IsCut", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Orientation_OutOfRange_Raises380
+        Expect.EndCase "SliderTests.Orientation_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.SelStart_OutsideTheRange_Raises380
+        Expect.EndCase "SliderTests.SelStart_OutsideTheRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.SelLength_WithoutSelectRange_Raises380
+        Expect.EndCase "SliderTests.SelLength_WithoutSelectRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.SelStart_WithoutSelectRange_IsTheValue
+        Expect.EndCase "SliderTests.SelStart_WithoutSelectRange_IsTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.SelectRange_True_StartsAtTheValueWithNoLength
+        Expect.EndCase "SliderTests.SelectRange_True_StartsAtTheValueWithNoLength", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Max_BelowTheSelection_CutsIt
+        Expect.EndCase "SliderTests.Max_BelowTheSelection_CutsIt", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Min_AboveTheSelection_MovesItsStart
+        Expect.EndCase "SliderTests.Min_AboveTheSelection_MovesItsStart", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.ClearSel_LeavesNoLength
+        Expect.EndCase "SliderTests.ClearSel_LeavesNoLength", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.GetNumTicks_FollowsTickFrequencyAndTickStyle
+        Expect.EndCase "SliderTests.GetNumTicks_FollowsTickFrequencyAndTickStyle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.GetTickPosition_IndexBelowOne_Raises380
+        Expect.EndCase "SliderTests.GetTickPosition_IndexBelowOne_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Change_RaisedOnceForEachChangeOfValue
+        Expect.EndCase "SliderTests.Change_RaisedOnceForEachChangeOfValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Keys_MoveByTheSmallAndTheLargeChange
+        Expect.EndCase "SliderTests.Keys_MoveByTheSmallAndTheLargeChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Change_ByTheKeyboard_RaisedWhenTheKeyIsReleased
+        Expect.EndCase "SliderTests.Change_ByTheKeyboard_RaisedWhenTheKeyIsReleased", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.Scroll_WhileTheThumbIsDragged_ThenChangeWhenReleased
+        Expect.EndCase "SliderTests.Scroll_WhileTheThumbIsDragged_ThenChangeWhenReleased", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "SliderTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SliderTests.ContextMenu_ByTheKeyboard_GivesMinusOne
+        Expect.EndCase "SliderTests.ContextMenu_ByTheKeyboard_GivesMinusOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Value_Assigned_ShowsTheNumber
+        Expect.EndCase "SpinBoxTests.Value_Assigned_ShowsTheNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Value_OutsideTheRange_IsTheNearestEnd
+        Expect.EndCase "SpinBoxTests.Value_OutsideTheRange_IsTheNearestEnd", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Min_AboveMax_Raises380
+        Expect.EndCase "SpinBoxTests.Min_AboveMax_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Max_BelowMin_Raises380
+        Expect.EndCase "SpinBoxTests.Max_BelowMin_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Min_AboveValue_MovesTheValue
+        Expect.EndCase "SpinBoxTests.Min_AboveValue_MovesTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Text_Assigned_ChangesTheValue
+        Expect.EndCase "SpinBoxTests.Text_Assigned_ChangesTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Text_NotANumber_LeavesTheValue
+        Expect.EndCase "SpinBoxTests.Text_NotANumber_LeavesTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Text_OutsideTheRange_ClampsTheValueNotTheText
+        Expect.EndCase "SpinBoxTests.Text_OutsideTheRange_ClampsTheValueNotTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.ValidateText_ReplacesTheText
+        Expect.EndCase "SpinBoxTests.ValidateText_ReplacesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.NumberStyle_Hexadecimal_ShowsEightDigits
+        Expect.EndCase "SpinBoxTests.NumberStyle_Hexadecimal_ShowsEightDigits", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.ThousandsSeparator_False_ShowsNoSeparator
+        Expect.EndCase "SpinBoxTests.ThousandsSeparator_False_ShowsNoSeparator", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.ThousandsSeparator_True_ShowsTheSeparatorOfTheUser
+        Expect.EndCase "SpinBoxTests.ThousandsSeparator_True_ShowsTheSeparatorOfTheUser", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Click_Up_RaisesBeforeChangeTextChangeChangeUpClick
+        Expect.EndCase "SpinBoxTests.Click_Up_RaisesBeforeChangeTextChangeChangeUpClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Click_Down_RaisesBeforeChangeTextChangeChangeDownClick
+        Expect.EndCase "SpinBoxTests.Click_Down_RaisesBeforeChangeTextChangeChangeDownClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.BeforeChange_DeltaZero_CancelsTheClick
+        Expect.EndCase "SpinBoxTests.BeforeChange_DeltaZero_CancelsTheClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.ArrowKeysChange_UpKey_RaisesTheValue
+        Expect.EndCase "SpinBoxTests.ArrowKeysChange_UpKey_RaisesTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.Alignment_OutOfRange_Raises380
+        Expect.EndCase "SpinBoxTests.Alignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.NumberStyle_OutOfRange_Raises380
+        Expect.EndCase "SpinBoxTests.NumberStyle_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.TextAlignment_OutOfRange_Raises380
+        Expect.EndCase "SpinBoxTests.TextAlignment_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.SelLength_Negative_Raises380
+        Expect.EndCase "SpinBoxTests.SelLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.SelStart_Negative_Raises380
+        Expect.EndCase "SpinBoxTests.SelStart_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.SelText_Assigned_ReplacesTheSelection
+        Expect.EndCase "SpinBoxTests.SelText_Assigned_ReplacesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.SetAcceleration_BadArrays_RaiseErrors
+        Expect.EndCase "SpinBoxTests.SetAcceleration_BadArrays_RaiseErrors", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SpinBoxTests.SetAcceleration_Empty_RestoresIncrement
+        Expect.EndCase "SpinBoxTests.SetAcceleration_Empty_RestoresIncrement", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         StatusBarTests.Panels_NewBar_HasOneEmptyPanel
         Expect.EndCase "StatusBarTests.Panels_NewBar_HasOneEmptyPanel", Err.Number, Err.Description
         Expect.StartCase
@@ -2299,6 +2891,18 @@ Module RunAll
         Err.Clear
         StatusBarTests.ShowTips_True_MakesTheToolTipWindow
         Expect.EndCase "StatusBarTests.ShowTips_True_MakesTheToolTipWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SysInfoTests.ACStatus_Assigned_Raises383
+        Expect.EndCase "SysInfoTests.ACStatus_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SysInfoTests.TimeChanged_RaisedByWmTimeChange
+        Expect.EndCase "SysInfoTests.TimeChanged_RaisedByWmTimeChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        SysInfoTests.SettingChanged_GivesTheItemAndTheSection
+        Expect.EndCase "SysInfoTests.SettingChanged_GivesTheItemAndTheSection", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         TabStripTests.Tabs_NewStrip_HasOneSelectedTab
@@ -3019,6 +3623,110 @@ Module RunAll
         Err.Clear
         TreeViewTests.Defaults_OfANewTree
         Expect.EndCase "TreeViewTests.Defaults_OfANewTree", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Value_OutsideTheRange_IsTheNearestEnd
+        Expect.EndCase "UpDownTests.Value_OutsideTheRange_IsTheNearestEnd", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Min_AboveMax_Raises380
+        Expect.EndCase "UpDownTests.Min_AboveMax_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Max_BelowMin_Raises380
+        Expect.EndCase "UpDownTests.Max_BelowMin_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Min_AboveValue_MovesTheValue
+        Expect.EndCase "UpDownTests.Min_AboveValue_MovesTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Value_Assigned_RaisesChangeOnce
+        Expect.EndCase "UpDownTests.Value_Assigned_RaisesChangeOnce", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Width_Assigned_KeepsTheWidthOfTheArrows
+        Expect.EndCase "UpDownTests.Width_Assigned_KeepsTheWidthOfTheArrows", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Orientation_Changed_ExchangesWidthAndHeight
+        Expect.EndCase "UpDownTests.Orientation_Changed_ExchangesWidthAndHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Click_Up_RaisesBeforeChangeChangeUpClick
+        Expect.EndCase "UpDownTests.Click_Up_RaisesBeforeChangeChangeUpClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Click_Down_RaisesBeforeChangeChangeDownClick
+        Expect.EndCase "UpDownTests.Click_Down_RaisesBeforeChangeChangeDownClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BeforeChange_DeltaZero_CancelsTheClick
+        Expect.EndCase "UpDownTests.BeforeChange_DeltaZero_CancelsTheClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Click_AtMax_RaisesUpClickWithoutChange
+        Expect.EndCase "UpDownTests.Click_AtMax_RaisesUpClickWithoutChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.Wrap_AtMax_GoesToMin
+        Expect.EndCase "UpDownTests.Wrap_AtMax_GoesToMin", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyControl_Control_IsTheBuddy
+        Expect.EndCase "UpDownTests.BuddyControl_Control_IsTheBuddy", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyControl_Name_IsTheBuddy
+        Expect.EndCase "UpDownTests.BuddyControl_Name_IsTheBuddy", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyControl_OnAnotherForm_IsNothing
+        Expect.EndCase "UpDownTests.BuddyControl_OnAnotherForm_IsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyControl_NotAControl_Raises35610
+        Expect.EndCase "UpDownTests.BuddyControl_NotAControl_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyControl_Number_Raises13
+        Expect.EndCase "UpDownTests.BuddyControl_Number_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyControl_UnknownName_IsNothing
+        Expect.EndCase "UpDownTests.BuddyControl_UnknownName_IsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyProperty_NoBuddy_Raises35754
+        Expect.EndCase "UpDownTests.BuddyProperty_NoBuddy_Raises35754", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyProperty_UnknownProperty_Raises380
+        Expect.EndCase "UpDownTests.BuddyProperty_UnknownProperty_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyProperty_Tag_WritesTheValueAsText
+        Expect.EndCase "UpDownTests.BuddyProperty_Tag_WritesTheValueAsText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyProperty_Empty_StopsTheSync
+        Expect.EndCase "UpDownTests.BuddyProperty_Empty_StopsTheSync", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.SyncFromBuddy_Tag_ReadsTheValue
+        Expect.EndCase "UpDownTests.SyncFromBuddy_Tag_ReadsTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.NumberStyle_Hexadecimal_WritesFourOrEightDigits
+        Expect.EndCase "UpDownTests.NumberStyle_Hexadecimal_WritesFourOrEightDigits", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.BuddyProperty_Text_ShowsTheValue
+        Expect.EndCase "UpDownTests.BuddyProperty_Text_ShowsTheValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy
+        Expect.EndCase "UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         VListBoxTests.List_RaisesGetVirtualItem

@@ -1,0 +1,378 @@
+' IPAddressTests: the four fields of the IPAddress, its text and value, the limits of each field and
+' its events. Mouse input is a message sent to the control's window.
+[TestFixture]
+Module IPAddressTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_SETFOCUS As Long = &H7
+    Private Const WM_CONTEXTMENU As Long = &H7B
+    Private Const IPM_CLEARADDRESS As Long = &H400 + 100
+    Private Const IPM_SETADDRESS As Long = &H400 + 101
+    Private Const IPM_GETADDRESS As Long = &H400 + 102
+    Private Const IPM_SETRANGE As Long = &H400 + 103
+    Private Const IPM_ISBLANK As Long = &H400 + 105
+    Private Const GWL_STYLE As Long = -16
+    Private Const ES_READONLY As Long = &H800
+
+    [TestCase]
+    Public Sub Text_Assigned_IsReturnedAsFourNumbers()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual "", f.IPAddress1.Text, "Text of a new control"
+        f.IPAddress1.Text = "192.168.0.1"
+        Expect.AreEqual "192.168.0.1", f.IPAddress1.Text, "Text after Text = ""192.168.0.1"""
+        f.IPAddress1.Text = "007.01.2.3"
+        Expect.AreEqual "007.01.2.3", f.IPAddress1.Text, "Text after Text = ""007.01.2.3"""
+        f.IPAddress1.Text = "1.2.3."
+        Expect.AreEqual "1.2.3.", f.IPAddress1.Text, "Text after Text = ""1.2.3."", with the last field empty"
+        f.IPAddress1.Text = ""
+        Expect.AreEqual "", f.IPAddress1.Text, "Text after Text = """""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_NotFourFieldsOfDigits_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.IPAddress1.Text = "10.0.0.1"
+        On Error Resume Next
+        Err.Clear
+        f.IPAddress1.Text = "1.2.3"
+        Expect.AreEqual 380, Err.Number, "Text = ""1.2.3"""
+        Err.Clear
+        f.IPAddress1.Text = "1.2.3.4.5"
+        Expect.AreEqual 380, Err.Number, "Text = ""1.2.3.4.5"""
+        Err.Clear
+        f.IPAddress1.Text = "1.2.3.x"
+        Expect.AreEqual 380, Err.Number, "Text = ""1.2.3.x"""
+        Err.Clear
+        f.IPAddress1.Text = "1.2.3.1234"
+        Expect.AreEqual 380, Err.Number, "Text = ""1.2.3.1234"""
+        On Error GoTo 0
+        Expect.AreEqual "10.0.0.1", f.IPAddress1.Text, "Text after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_FieldAboveTheMaximum_IsTheMaximum()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.IPAddress1.Text = "300.1.2.3"
+        Expect.AreEqual "255.1.2.3", f.IPAddress1.Text, "Text after Text = ""300.1.2.3"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_IsTheFirstFieldInTheHighByte()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.IPAddress1.Text = "192.168.0.1"
+        Expect.AreEqual &HC0A80001, f.IPAddress1.Value, "Value after Text = ""192.168.0.1"""
+        f.IPAddress1.Value = &H0A000102
+        Expect.AreEqual "10.0.1.2", f.IPAddress1.Text, "Text after Value = &H0A000102"
+        f.IPAddress1.Value = -1
+        Expect.AreEqual "255.255.255.255", f.IPAddress1.Text, "Text after Value = -1"
+        f.IPAddress1.Text = ""
+        Expect.AreEqual 0, f.IPAddress1.Value, "Value after Text = """""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinAndMax_LimitTheFieldsOfAnAssignedText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.IPAddress1.Min(1) = 10: f.IPAddress1.Max(1) = 20
+        f.IPAddress1.Max(2) = 5
+        f.IPAddress1.Text = "99.9.0.0"
+        Expect.AreEqual "20.5.0.0", f.IPAddress1.Text, "Text after Text = ""99.9.0.0"" with the limits 10 to 20 and 0 to 5"
+        f.IPAddress1.Text = "1.1.0.0"
+        Expect.AreEqual "10.1.0.0", f.IPAddress1.Text, "Text after Text = ""1.1.0.0"" with the limits 10 to 20 and 0 to 5"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Assigned_IsNotLimitedByMinAndMax()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.IPAddress1.Min(1) = 10
+        f.IPAddress1.Value = &H01000000
+        Expect.AreEqual "1.0.0.0", f.IPAddress1.Text, "Text after Value = &H01000000 with Min(1) = 10"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinAndMax_PastEachOther_AreStoppedAtTheOther()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.IPAddress1.Max(2) = 5
+        f.IPAddress1.Min(2) = 200
+        Expect.AreEqual 5, CLng(f.IPAddress1.Min(2)), "Min(2) after Min(2) = 200 with Max(2) 5"
+        f.IPAddress1.Min(1) = 10
+        f.IPAddress1.Max(1) = 5
+        Expect.AreEqual 10, CLng(f.IPAddress1.Max(1)), "Max(1) after Max(1) = 5 with Min(1) 10"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinAndMax_ItemOutOfRange_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As Byte
+        On Error Resume Next
+        Err.Clear
+        f.IPAddress1.Min(5) = 1
+        Expect.AreEqual 5, Err.Number, "Min(5) = 1"
+        Err.Clear
+        f.IPAddress1.Max(0) = 1
+        Expect.AreEqual 5, Err.Number, "Max(0) = 1"
+        Err.Clear
+        b = f.IPAddress1.Min(0)
+        Expect.AreEqual 5, Err.Number, "reading Min(0)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub hWndEdit_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr
+        On Error Resume Next
+        Err.Clear
+        h = f.IPAddress1.hWndEdit(5)
+        Expect.AreEqual 35600, Err.Number, "hWndEdit(5)"
+        Err.Clear
+        h = f.IPAddress1.hWndEdit(0)
+        Expect.AreEqual 35600, Err.Number, "hWndEdit(0)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedItem_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 1, CLng(f.IPAddress1.SelectedItem), "SelectedItem of a new control"
+        On Error Resume Next
+        Err.Clear
+        f.IPAddress1.SelectedItem = 5
+        Expect.AreEqual 380, Err.Number, "SelectedItem = 5"
+        Err.Clear
+        f.IPAddress1.SelectedItem = 0
+        Expect.AreEqual 380, Err.Number, "SelectedItem = 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSelect_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual CLng(IpaAutoSelectFirst), CLng(f.IPAddress1.AutoSelect), "AutoSelect of a new control"
+        On Error Resume Next
+        Err.Clear
+        f.IPAddress1.AutoSelect = 6
+        Expect.AreEqual 380, Err.Number, "AutoSelect = 6"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelChange_RaisedWhenTheFocusMovesToAnotherField()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New IPAddressSink
+        Set sink.Box = f.IPAddress1
+        Rig.ClearLog
+        ' The focus moves to the third field, stays in it, and moves to the first.
+        SendMessageW f.IPAddress1.hWndEdit(3), WM_SETFOCUS, f.IPAddress1.hWnd, 0
+        SendMessageW f.IPAddress1.hWndEdit(3), WM_SETFOCUS, f.IPAddress1.hWnd, 0
+        SendMessageW f.IPAddress1.hWndEdit(1), WM_SETFOCUS, f.IPAddress1.hWnd, 0
+        Expect.AreEqual "SelChange 3 | SelChange 1", Rig.Events(), "the events of the focus moving to the third field and to the first"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ContextMenu_ByTheKeyboard_GivesMinusOne()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New IPAddressSink
+        Set sink.Box = f.IPAddress1
+        Rig.ClearLog
+        SendMessageW f.IPAddress1.hWndEdit(2), WM_CONTEXTMENU, f.IPAddress1.hWndEdit(2), -1
+        Expect.AreEqual "ContextMenu -1 -1", Rig.Events(), "the event of a context menu asked for by the keyboard"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Locked_MakesTheFieldsReadOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        For i = 1 To 4
+            Expect.IsFalse (GetWindowLongW(f.IPAddress1.hWndEdit(i), GWL_STYLE) And ES_READONLY) <> 0, "field " & i & " read-only on a new control"
+        Next
+        f.IPAddress1.Locked = True
+        For i = 1 To 4
+            Expect.IsTrue (GetWindowLongW(f.IPAddress1.hWndEdit(i), GWL_STYLE) And ES_READONLY) <> 0, "field " & i & " read-only after Locked = True"
+        Next
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_RaisedOnceForEachChangeOfTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New IPAddressSink
+        Set sink.Box = f.IPAddress1
+        Rig.ClearLog
+        f.IPAddress1.Text = ""
+        f.IPAddress1.Text = "10.0.0.1"
+        f.IPAddress1.Text = "10.0.0.1"
+        f.IPAddress1.Value = &HA000002
+        f.IPAddress1.Value = &HA000002
+        f.IPAddress1.Text = ""
+        Expect.AreEqual "Change 10.0.0.1 | Change 10.0.0.2 | Change ", Rig.Events(), "the events of Text = """", Text = ""10.0.0.1"" twice, Value = &HA000002 twice and Text = """""
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_ByTheUser_RaisedForEachFieldChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New IPAddressSink
+        Set sink.Box = f.IPAddress1
+        f.IPAddress1.Text = "10.0.0.1"
+        Rig.ClearLog
+        ' The user types 7 in the second field.
+        SendMessageW f.IPAddress1.hWndEdit(2), WM_SETTEXT, 0, StrPtr("7")
+        Expect.AreEqual "Change 10.7.0.1", Rig.Events(), "the events of a change of the second field"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Messages_OfTheWindowsControl_AreAnswered()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr
+        h = f.IPAddress1.hWnd
+        Dim v As Long
+        SendMessageW h, IPM_SETADDRESS, 0, &HA000102
+        Expect.AreEqual "10.0.1.2", f.IPAddress1.Text, "Text after IPM_SETADDRESS"
+        Expect.AreEqual 4, CLng(SendMessageW(h, IPM_GETADDRESS, 0, VarPtr(v))), "the fields IPM_GETADDRESS reports as filled"
+        Expect.AreEqual &HA000102, v, "the address IPM_GETADDRESS writes"
+        Expect.AreEqual 0, CLng(SendMessageW(h, IPM_ISBLANK, 0, 0)), "IPM_ISBLANK of an address"
+        SendMessageW h, IPM_SETRANGE, 0, &H1405
+        Expect.AreEqual 5, CLng(f.IPAddress1.Min(1)), "Min(1) after IPM_SETRANGE of the first field to 5 to 20"
+        Expect.AreEqual 20, CLng(f.IPAddress1.Max(1)), "Max(1) after IPM_SETRANGE of the first field to 5 to 20"
+        SendMessageW h, IPM_CLEARADDRESS, 0, 0
+        Expect.AreEqual 1, CLng(SendMessageW(h, IPM_ISBLANK, 0, 0)), "IPM_ISBLANK after IPM_CLEARADDRESS"
+        Expect.AreEqual "", f.IPAddress1.Text, "Text after IPM_CLEARADDRESS"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_OverAField_XAndYAreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New IPAddressSink
+        Set sink.Box = f.IPAddress1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the first field, then to the pixel (20, 5).
+        SendMessageW f.IPAddress1.hWndEdit(1), WM_MOUSEMOVE, 0, &H5000A
+        SendMessageW f.IPAddress1.hWndEdit(1), WM_MOUSEMOVE, 0, &H50014
+        Dim moves() As String
+        moves = Split(Rig.Events(), " | ")
+        Expect.AreEqual 1, UBound(moves), "the MouseMove events of two moves"
+        Dim a() As String, b() As String
+        a = Split(moves(0), " ")
+        b = Split(moves(1), " ")
+        Expect.AreEqual CLng(10 * Screen.TwipsPerPixelX), CLng(Val(b(1)) - Val(a(1))), "the distance in X of two moves 10 pixels apart"
+        Expect.AreEqual CLng(Val(a(2))), CLng(Val(b(2))), "Y of two moves on the same row"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_OverTheBorder_XAndYAreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New IPAddressSink
+        Set sink.Box = f.IPAddress1
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the control's own window.
+        SendMessageW f.IPAddress1.hWnd, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5) of the control's own window"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of an IPAddress, written to Rig.Log.
+Class IPAddressSink
+
+    Public WithEvents Box As VBCCR18.IPAddress
+
+    Private Sub Box_Change() Handles Box.Change
+        Rig.Ev "Change " & Box.Text
+    End Sub
+
+    Private Sub Box_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Box.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+    Private Sub Box_SelChange() Handles Box.SelChange
+        Rig.Ev "SelChange " & Box.SelectedItem
+    End Sub
+
+    ' The handler says it showed a menu of its own, so that the standard menu is not shown.
+    Private Sub Box_ContextMenu(Handled As Boolean, ByVal X As Single, ByVal Y As Single) Handles Box.ContextMenu
+        Rig.Ev "ContextMenu " & X & " " & Y
+        Handled = True
+    End Sub
+
+End Class

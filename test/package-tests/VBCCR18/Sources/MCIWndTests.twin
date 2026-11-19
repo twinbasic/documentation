@@ -1,0 +1,257 @@
+' MCIWndTests: opening a file, the time formats, the MCI command strings and the refused values
+' of the MCIWnd. No case plays anything: the file is a tenth of a second of silence.
+[TestFixture]
+Module MCIWndTests
+
+    Private Declare PtrSafe Function MciTestSendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const MCI_CLOSE As Long = &H804
+
+    ' Writes a WAV file of 800 samples of silence (8-bit mono, 8000 Hz) and returns its path.
+    Private Function SilentWav() As String
+        Dim Folder As String = Environ$("TEMP") & "\tbdocs-package-tests"
+        If Len(Dir$(Folder, vbDirectory)) = 0 Then MkDir Folder
+        Folder = Folder & "\VBCCR18"
+        If Len(Dir$(Folder, vbDirectory)) = 0 Then MkDir Folder
+        Dim Path As String = Folder & "\mciwnd-silence.wav"
+        Const Samples As Long = 800
+        Dim Header As String = "RIFF" & DWord(36 + Samples) & "WAVEfmt " & DWord(16) & _
+            Word(1) & Word(1) & DWord(8000) & DWord(8000) & Word(1) & Word(8) & "data" & DWord(Samples)
+        Dim Bytes() As Byte
+        ReDim Bytes(0 To Len(Header) + Samples - 1)
+        Dim i As Long
+        For i = 1 To Len(Header)
+            Bytes(i - 1) = Asc(Mid$(Header, i, 1))
+        Next
+        For i = Len(Header) To UBound(Bytes)
+            Bytes(i) = 128
+        Next
+        On Error Resume Next
+        Kill Path
+        On Error GoTo 0
+        Dim F As Integer = FreeFile
+        Open Path For Binary Access Write As #F
+        Put #F, 1, Bytes
+        Close #F
+        SilentWav = Path
+    End Function
+
+    Private Function DWord(ByVal Value As Long) As String
+        DWord = Word(Value And &HFFFF&) & Word((Value \ &H10000) And &HFFFF&)
+    End Function
+
+    Private Function Word(ByVal Value As Long) As String
+        Word = Chr$(Value And &HFF&) & Chr$((Value \ &H100&) And &HFF&)
+    End Function
+
+    ' Closes the device, unloads the form and deletes the file.
+    Private Sub Done(ByVal f As HostForm, ByVal Path As String)
+        MciTestSendMessage f.MCIWnd1.hWnd, MCI_CLOSE, 0, 0
+        Unload f
+        On Error Resume Next
+        Kill Path
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_Wav_OpensTheFile()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String = SilentWav()
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        Expect.AreEqual 0, Err.Number, "FileName = a WAV file"
+        On Error GoTo 0
+        Expect.AreEqual "WaveAudio", f.MCIWnd1.Device, "Device of a WAV file"
+        Expect.AreEqual CLng(MciModeStop), CLng(f.MCIWnd1.Mode), "Mode after opening"
+        Expect.AreEqual 100, f.MCIWnd1.Length, "Length in milliseconds of 800 samples at 8000 Hz"
+        Expect.IsTrue f.MCIWnd1.FileName = Path, "FileName is the path opened"
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_Wav_RaisesMediaChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Sink As New MCIWndSink
+        Set Sink.Player = f.MCIWnd1
+        Dim Path As String = SilentWav()
+        Rig.ClearLog
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        On Error GoTo 0
+        Expect.AreEqual "MediaChange True", Rig.Events(), "the events of FileName = a WAV file"
+        Set Sink.Player = Nothing
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_MissingFile_Raises53()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.MCIWnd1.FileName = Environ$("TEMP") & "\tbdocs-package-tests\no such file.wav"
+        Expect.AreEqual 53, Err.Number, "FileName = a file that does not exist"
+        On Error GoTo 0
+        Expect.AreEqual "", f.MCIWnd1.FileName, "FileName after the refused file"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_AutoSizeWindow_ChangesTheHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String = SilentWav()
+        Dim Before As Single = f.MCIWnd1.Height
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        On Error GoTo 0
+        Expect.IsTrue f.MCIWnd1.Height <> Before, "Height changes when a WAV file is opened with AutoSizeWindow True (was " & Before & ", is " & f.MCIWnd1.Height & ")"
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_AutoSizeWindowFalse_KeepsTheHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String = SilentWav()
+        f.MCIWnd1.AutoSizeWindow = False
+        Dim Before As Single = f.MCIWnd1.Height
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        On Error GoTo 0
+        Expect.AreEqual Before, f.MCIWnd1.Height, "Height after opening a WAV file with AutoSizeWindow False"
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TimeFormat_Bytes_GivesTheLengthInBytes()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String = SilentWav()
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        On Error GoTo 0
+        f.MCIWnd1.TimeFormat = MciFormatBytes
+        Expect.AreEqual CLng(MciFormatBytes), CLng(f.MCIWnd1.TimeFormat), "TimeFormat after TimeFormat = MciFormatBytes"
+        Expect.AreEqual 800, f.MCIWnd1.Length, "Length in bytes of 800 one-byte samples"
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TimeFormat_NotOfTheDevice_RaisesTheErrorEvent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Sink As New MCIWndSink
+        Set Sink.Player = f.MCIWnd1
+        Dim Path As String = SilentWav()
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        Rig.ClearLog
+        Err.Clear
+        f.MCIWnd1.TimeFormat = MciFormatFrames
+        Expect.AreEqual 0, Err.Number, "TimeFormat = MciFormatFrames for a WAV file raises no run-time error"
+        On Error GoTo 0
+        Expect.IsTrue Left$(Rig.Events(), 6) = "Error ", "the events of TimeFormat = MciFormatFrames for a WAV file: " & Rig.Events()
+        Expect.AreEqual CLng(MciFormatMilliseconds), CLng(f.MCIWnd1.TimeFormat), "TimeFormat after the refused format"
+        Set Sink.Player = Nothing
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Command_Status_SetsCommandReturn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String = SilentWav()
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        On Error GoTo 0
+        f.MCIWnd1.Command = "status mode"
+        Expect.AreEqual "stopped", f.MCIWnd1.CommandReturn, "CommandReturn after Command = ""status mode"""
+        Expect.AreEqual 0, f.MCIWnd1.Error, "Error after a command that worked"
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Command_Unknown_RaisesTheErrorEvent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Sink As New MCIWndSink
+        Set Sink.Player = f.MCIWnd1
+        Dim Path As String = SilentWav()
+        On Error Resume Next
+        f.MCIWnd1.FileName = Path
+        Rig.ClearLog
+        Err.Clear
+        f.MCIWnd1.Command = "rewind"
+        Expect.AreEqual 0, Err.Number, "Command = ""rewind"" raises no run-time error"
+        On Error GoTo 0
+        Expect.AreEqual "Error 261", Rig.Events(), "the events of Command = ""rewind"""
+        Expect.AreEqual 261, f.MCIWnd1.Error, "Error after Command = ""rewind"""
+        Set Sink.Player = Nothing
+        Done f, Path
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TimerFreq_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.MCIWnd1.TimerFreq = 0
+        Expect.AreEqual 380, Err.Number, "TimerFreq = 0"
+        On Error GoTo 0
+        Expect.AreEqual 500, CLng(f.MCIWnd1.TimerFreq), "TimerFreq after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Zoom_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.MCIWnd1.Zoom = 0
+        Expect.AreEqual 380, Err.Number, "Zoom = 0"
+        On Error GoTo 0
+        Expect.AreEqual 100, f.MCIWnd1.Zoom, "Zoom after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The MediaChange and Error events of an MCIWnd, written to Rig.Log.
+Class MCIWndSink
+
+    Public WithEvents Player As VBCCR18.MCIWnd
+
+    Private Sub Player_MediaChange(ByVal NewFileName As String) Handles Player.MediaChange
+        Rig.Ev "MediaChange " & (Len(NewFileName) > 0)
+    End Sub
+
+    Private Sub Player_Error(ByVal ErrorCode As Long) Handles Player.Error
+        Rig.Ev "Error " & ErrorCode
+    End Sub
+
+End Class

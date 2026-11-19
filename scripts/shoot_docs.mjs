@@ -12397,6 +12397,20 @@ const vbccrShots = [
     ["ListView/Images/Views", "lvviews"],
     ["ListView/Images/Groups", "lvgroups"],
   ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, VBCCR_POPUPS)),
+  // ToolBar, CoolBar, StatusBar, TabStrip, Pager and RichTextBox from the sheet strips, and the
+  // settings of ToolBar and TabStrip, a whole form each
+  ...[
+    ["ToolBar/Images/ToolBar", "ToolBar"],
+    ["CoolBar/Images/CoolBar", "CoolBar"],
+    ["StatusBar/Images/StatusBar", "StatusBar"],
+    ["TabStrip/Images/TabStrip", "TabStrip"],
+    ["Images/Pager", "Pager"],
+    ["RichTextBox/Images/RichTextBox", "RichTextBox"],
+  ].map(([name, control]) => clipShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", "strips", control)),
+  ...[
+    ["ToolBar/Images/TbrTextAlignConstants", "tbrtextalign"],
+    ["TabStrip/Images/TbsStyleConstants", "tbsstyle"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, NO_POPUPS)),
 ];
 
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'

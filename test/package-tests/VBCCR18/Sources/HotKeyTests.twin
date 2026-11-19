@@ -1,0 +1,183 @@
+' HotKeyTests: the key combination of the HotKey, its rules and its events. A key of the user is a
+' message sent to the control's window.
+[TestFixture]
+Module HotKeyTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const WM_KEYDOWN As Long = &H100
+
+    [TestCase]
+    Public Sub Value_Default_IsNoKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim m As Integer
+        Dim k As Long
+        k = f.HotKey1.Value(m)
+        Expect.AreEqual 0, k, "Value of a new control"
+        Expect.AreEqual 0, CLng(m), "the modifiers of a new control"
+        Expect.AreEqual 0, f.HotKey1.RawValue, "RawValue of a new control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_AssignedWithModifiers_IsReturnedWithThem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.HotKey1.Value(vbCtrlMask Or vbShiftMask) = vbKeyF5
+        Dim m As Integer
+        Dim k As Long
+        k = f.HotKey1.Value(m)
+        Expect.AreEqual CLng(vbKeyF5), k, "Value after Value(vbCtrlMask Or vbShiftMask) = vbKeyF5"
+        Expect.AreEqual CLng(vbCtrlMask Or vbShiftMask), CLng(m), "the modifiers after Value(vbCtrlMask Or vbShiftMask) = vbKeyF5"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RawValue_IsTheKeyInTheLowByteAndTheModifiersInTheHighByte()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.HotKey1.RawValue = &H241
+        Dim m As Integer
+        Dim k As Long
+        k = f.HotKey1.Value(m)
+        Expect.AreEqual 65, k, "Value after RawValue = &H241"
+        Expect.AreEqual 2, CLng(m), "the modifiers after RawValue = &H241"
+        f.HotKey1.Value(vbShiftMask) = vbKeyB
+        Expect.AreEqual &H142, f.HotKey1.RawValue, "RawValue after Value(vbShiftMask) = vbKeyB"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRules_KeyWithAnInvalidCombination_GetsTheDefaultModifiers()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.HotKey1.SetRules HkeInvalidKeyCombinationNone, vbCtrlMask
+        SendMessageW f.HotKey1.hWnd, WM_KEYDOWN, vbKeyA, 0
+        Dim m As Integer
+        Dim k As Long
+        k = f.HotKey1.Value(m)
+        Expect.AreEqual 65, k, "Value after the A key with no modifier"
+        Expect.AreEqual 2, CLng(m), "the modifiers after the A key with no modifier, when that is invalid and the default is vbCtrlMask"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRules_DoesNotChangeAValueThatIsAssigned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.HotKey1.SetRules HkeInvalidKeyCombinationNone, vbCtrlMask
+        f.HotKey1.RawValue = &H41
+        Dim m As Integer
+        Dim k As Long
+        k = f.HotKey1.Value(m)
+        Expect.AreEqual 65, k, "Value after RawValue = &H41"
+        Expect.AreEqual 0, CLng(m), "the modifiers after RawValue = &H41 under a rule that makes no modifier invalid"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRules_NotOneCombination_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.HotKey1.SetRules 0
+        Expect.AreEqual 380, Err.Number, "SetRules 0"
+        Err.Clear
+        f.HotKey1.SetRules HkeInvalidKeyCombinationNone Or HkeInvalidKeyCombinationShift
+        Expect.AreEqual 380, Err.Number, "SetRules of two combinations added together"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BorderStyle_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual CLng(CCBorderStyleSunken), CLng(f.HotKey1.BorderStyle), "BorderStyle of a new control"
+        On Error Resume Next
+        Err.Clear
+        f.HotKey1.BorderStyle = 5
+        Expect.AreEqual 380, Err.Number, "BorderStyle = 5"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_RaisedWhenTheUserChangesTheKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New HotKeySink
+        Set sink.Key = f.HotKey1
+        Rig.ClearLog
+        SendMessageW f.HotKey1.hWnd, WM_KEYDOWN, vbKeyA, 0
+        Expect.AreEqual "Change 65", Rig.Events(), "the events of the A key"
+        Set sink.Key = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_NotRaisedForAnAssignment()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New HotKeySink
+        Set sink.Key = f.HotKey1
+        Rig.ClearLog
+        f.HotKey1.RawValue = &H241
+        f.HotKey1.Value(vbShiftMask) = vbKeyB
+        Expect.AreEqual "", Rig.Events(), "the events of RawValue = &H241 and Value(vbShiftMask) = vbKeyB"
+        Set sink.Key = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New HotKeySink
+        Set sink.Key = f.HotKey1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the control.
+        SendMessageW f.HotKey1.hWnd, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.Key = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a HotKey, written to Rig.Log.
+Class HotKeySink
+
+    Public WithEvents Key As VBCCR18.HotKey
+
+    Private Sub Key_Change() Handles Key.Change
+        Rig.Ev "Change " & Key.Value
+    End Sub
+
+    Private Sub Key_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Key.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class
