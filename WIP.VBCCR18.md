@@ -54,23 +54,29 @@ without a page in bold, with no link; link it when its page exists.
   states, styles or borders is a whole form, as the other sections' are. The scenes of `vb` and
   `commonctls` are the models for those: the package's members have the same names.
 - The sheets so far are `buttons`, `text`, `lists` and `bars`, with the controls that have
-  pages. No page shows its picture yet: the run that writes under `docs/` is the review
-  session's, and the page's line goes in with it. ImageList and SysInfo show nothing at run
-  time, so ImageList's picture is its drawing styles and SysInfo has none.
+  pages. Each page shows its picture under its opening paragraph. A control added to a sheet
+  gets its shot in `vbccrShots`, a run through the review session, and that line on its page.
+  ImageList and SysInfo show nothing at run time, so ImageList's picture is its drawing styles
+  and SysInfo has none.
 - **LabelW is never moved by the fixture**: it is the package's one windowless control among
   those written, and one whose `Left` or `Top` is set at run time is no longer drawn (owner's
-  finding, 2026-11-19; WIP.BugHunt.md, *UserControl*). The sheet's designer file has it at its
-  place (`make-shots.mjs`, a control's third entry), and `Place` is told `Fixed`. **The LabelW
-  page does not say this yet**: it needs a callout and a case.
-- Found by the pictures, for the pages (not yet written there):
-  - **A built program needs the visual-styles manifest.** Without it `ComCtlsSupportLevel` is 0
-    and a control that needs version 6 of the common controls makes no window: LinkLabel draws
-    a hatch in its place, and CommandLink's `GetIdealHeight` returns 0. The landing page does
-    not say so. A case cannot show it (the IDE's process has the manifest); the source does.
+  finding, 2026-11-19). The sheet's designer file has it at its place (`make-shots.mjs`, a
+  control's third entry), and `Place` is told `Fixed`. The page has a WARNING, checked by
+  `LabelWTests.Moved_IsDrawnAtItsNewPlace`, which shows the host form, reads the form's pixels
+  for the label's back color, and passes once anything is drawn at the new place (owner: good
+  enough to tell a fix). The owner filed the defect upstream from the reproducer in
+  `.claude/drafts/vbccr-labelw-move/` (not committed). Whether twinBASIC or the package is at
+  fault is not known: VB6 is not checked, nor a windowless UserControl of our own. On a form in
+  twips a moved label is not drawn at all; on one whose ScaleMode is pixels the label whose
+  `Left` was set was drawn at its new place about an eighth as wide.
+- Found by the pictures, and now on the pages:
+  - **A built program needs the visual-styles manifest** (the landing page, *Adding a control
+    to a form*). Without it `ComCtlsSupportLevel` is 0, LinkLabel and CommandLink make no window
+    and draw a hatch. No case can show it: the IDE's process, where the cases run, has the
+    manifest.
   - **CommandLink's `GetIdealHeight` gives the height of a note on one line**, whatever the
-    control's width (the package sends `BCM_GETIDEALSIZE` with a width of 0): 300 pixels wide,
-    with the page's own caption and a note that wraps to two lines, it returned 53 pixels where
-    78 show both lines. The page says it gives "the height at which both fit". Needs a case.
+    control's width (the package sends `BCM_GETIDEALSIZE` with a width of 0): a NOTE on its
+    page, checked by `CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher`.
 
 ## Samples and test cases
 

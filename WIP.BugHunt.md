@@ -105,21 +105,6 @@ narrowed to a UserControl of our own.
   FrameW and WindowedLabel 2 GDI; LinkLabel 1 GDI. The others leave none. They do not cause the
   stop above (2,100 such loads change nothing in the time of a HostForm load). Not checked in
   VB6.
-- **LabelW, a windowless UserControl, is not drawn once it is moved at run time** (the `vbccr`
-  picture fixture, win32 exe and the IDE's run; the owner's finding, 2026-11-19). Placed in the
-  designer and never moved, it draws its caption. After `Move x, y, w, h` (the form's scale set
-  by `Scale`, in pixels) no pixel of the form changes where it stands, though the extender
-  reports the place asked for and `Visible` True; with `BorderStyle`, `BackColor` and
-  `ForeColor` of its own it then draws a strip the right width and two pixels high. The owner:
-  setting the position is what does it, and setting `Width` and `Height` works. WindowedLabel
-  beside it, which has a window, draws wherever it is moved. **A reproducer for the package's
-  author** is `.claude/drafts/vbccr-labelw-move/` (not committed: `LabelWMove.twinproj` with
-  the package embedded, its picture, and `make.mjs`, which packs it): on a form in twips, a
-  LabelW whose `Left` alone is set, one whose `Top` alone is set and one moved with `Move x, y`
-  are each not drawn at all, while each reports the new place and its old size; a LabelW not
-  moved and a VB Label moved the same way are drawn. On a form whose ScaleMode is pixels the
-  LabelW whose `Left` was set was drawn at the new place about an eighth as wide. Not narrowed:
-  VB6, a windowless UserControl of our own (whether twinBASIC's or the package's).
 - **`Visible` reads False** for a control on a form that is loaded and not shown
   (`Extender.Visible`).
 - **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises
