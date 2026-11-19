@@ -880,8 +880,10 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   `sceneShot`: one control per value side by side, each labelled by the program with its
   setting. A folder control's pictures go in `<Control>/Images/`, as VBFlexGrid's do. A tree
   draws its selection in the highlight colour only with the focus: `FocusOn` gives it the focus
-  once the form is shown. `StillBars` waits 1.5 s for a progress bar's growing animation to end:
-  at 0.6 s a bar at 60 was once taken at 48.
+  once the form is shown. No fixed wait stills a progress bar: at 0.6 s a bar at 60 was
+  once taken at 48, at 1.5 s with its light running along it. `StillBars` gives each bar one
+  more than its value and then its value (a themed bar shrinks without an animation), and stops
+  its timers at once.
   **The fixture has the visual-styles manifest** (`Resources/MANIFEST/#1.xml`): without it the
   package finds version 5 of the common controls, and LinkLabel and CommandLink make no window
   (LinkLabel draws a hatch in its place). The sheet's controls are reached through
