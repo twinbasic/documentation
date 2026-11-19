@@ -631,6 +631,8 @@ Syntax: *object*\_**Scroll**( )
 
 The values of [**Style**](#style).
 
+![Three combo boxes with six cities, Kyoto selected: CboStyleDropDownCombo is a white box with Kyoto and a button with an arrow, CboStyleSimpleCombo is a box with Kyoto over its open list of the six cities, in which Kyoto is highlighted, and CboStyleDropDownList is a gray box with Kyoto and the arrow button](Images/CboStyleConstants.png){:width="681" height="225"}
+
 | Member | Value | Description |
 |---|---|---|
 | **CboStyleDropDownCombo**{: #CboStyleConstants_CboStyleDropDownCombo } | 0 | A text box and a list that drops down. |

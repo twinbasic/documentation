@@ -562,6 +562,8 @@ Syntax: *object*\_**Scroll**( )
 
 The values of [**Style**](#style).
 
+![Three image combos with the folder items, Letters selected: ImcStyleDropDownCombo is a box with Letters and its folder picture and a button with an arrow, ImcStyleSimpleCombo is a box with the text Letters over its open list, in which Letters is highlighted, and ImcStyleDropDownList is a gray box with Letters and its picture and the arrow button](Images/ImcStyleConstants.png){:width="681" height="195"}
+
 | Member | Value | Description |
 |---|---|---|
 | **ImcStyleDropDownCombo**{: #ImcStyleConstants_ImcStyleDropDownCombo } | 0 | A text box and a list that drops down. |

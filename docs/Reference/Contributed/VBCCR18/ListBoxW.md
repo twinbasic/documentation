@@ -683,6 +683,8 @@ Syntax: *object*\_**Scroll**( )
 
 The values of [**Style**](#style).
 
+![Three list boxes with six cities: in LstStyleStandard Kyoto is highlighted, in LstStyleCheckbox each city has a check box and Lima and Nairobi are checked, and in LstStyleOption each city has an option button and Kyoto's is set](Images/LstStyleConstants.png){:width="681" height="195"}
+
 | Member | Value | Description |
 |---|---|---|
 | **LstStyleStandard**{: #LstStyleConstants_LstStyleStandard } | 0 | Items of text alone. |
