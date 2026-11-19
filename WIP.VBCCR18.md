@@ -64,8 +64,8 @@ without a page in bold, with no link; link it when its page exists.
   control's third entry), and `Place` is told `Fixed`. The page has a WARNING, checked by
   `LabelWTests.Moved_IsDrawnAtItsNewPlace`, which shows the host form, reads the form's pixels
   for the label's back color, and passes once anything is drawn at the new place (owner: good
-  enough to tell a fix). The owner filed the defect upstream from the reproducer in
-  `.claude/drafts/vbccr-labelw-move/` (not committed). Whether twinBASIC or the package is at
+  enough to tell a fix). The owner filed the defect upstream as Kr00l/VBCCR#40, from the
+  reproducer in `.claude/drafts/vbccr-labelw-move/` (not committed). Whether twinBASIC or the package is at
   fault is not known: VB6 is not checked, nor a windowless UserControl of our own. On a form in
   twips a moved label is not drawn at all; on one whose ScaleMode is pixels the label whose
   `Left` was set was drawn at its new place about an eighth as wide.
