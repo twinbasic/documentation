@@ -12485,6 +12485,8 @@ const comDlgShots = [
   comDlgShot("ShowFont", ["font"]),
   comDlgShot("ShowFolderBrowser", ["folder-old", "folder-new"]),
   comDlgShot("ShowFind", ["find", "replace"]),
+  comDlgShot("ShowPageSetup", ["pagesetup"]),
+  comDlgShot("ShowOpen", ["open", "save"]),
   sceneRuns(
     "Reference/Contributed/AutoCompleteLib/Images/Options.png",
     "dialogs",

@@ -902,8 +902,16 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   with the focus, so the fading is switched off (`TVS_EX_FADEINOUTEXPANDOS`). **The Font dialog
   lists the machine's fonts**: its list is scrolled to start at Microsoft Himalaya
   (`CB_SETTOPINDEX`), so that the rows around Microsoft Sans Serif hold only fonts that come with
-  Windows or Office, and none of the novelty fonts this machine has. File Open and File Save are
-  not taken: their navigation pane shows the user's own folders. The AutoComplete scenes type
+  Windows or Office, and none of the novelty fonts this machine has. **File Open and File Save are
+  taken hooked** (`HookEvents` True with `CdlOFNExplorer`): a hooked dialog is Windows' older one,
+  whose places bar names no folder of the user's, while the newer one (no hook) has a navigation
+  pane of the user's own folders and a breadcrumb of the real path, user name included: not
+  taken (owner's idea, not started: intercept, in the program, the shell calls that fill both).
+  Their folder Reports is the program's, its files' times set to 15 March 2026 10:30
+  (`TheTime`), and the dialogs show their access keys again after the first `WM_CHANGEUISTATE`,
+  so it is sent at every tick and the picture waits ten. **Page Setup** uses Microsoft Print to
+  PDF (`PrinterDefaultInit` False), not the machine's default printer. **The Print dialog is not
+  taken** (owner): it lists the machine's printers by name. The AutoComplete scenes type
   `Ap` into a text box (`WM_CHAR`, as the package's test cases do) and lay the suggestion list
   (`Auto-Suggest Dropdown`) over the form, three runs in a row (`sceneRuns`); the caret is hidden,
   since it blinks.
