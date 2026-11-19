@@ -1,0 +1,201 @@
+' LabelWTests: the caption, the wrapping, the size and the appearance of the LabelW.
+[TestFixture]
+Module LabelWTests
+
+    [TestCase]
+    Public Sub Caption_Assigned_RaisesChangeOnlyWhenItDiffers()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New LabelWSink
+        Set sink.Label = f.LabelW1
+        f.LabelW1.Caption = ""
+        Rig.ClearLog
+        f.LabelW1.Caption = "One"
+        f.LabelW1.Caption = "One"
+        f.LabelW1.Caption = "Two"
+        Expect.AreEqual "Change One | Change Two", Rig.Events(), "the events of Caption = ""One"", Caption = ""One"", Caption = ""Two"""
+        Set sink.Label = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordWrap_WhileSingleLine_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LabelW1.SingleLine = True
+        On Error Resume Next
+        Err.Clear
+        f.LabelW1.WordWrap = True
+        Expect.AreEqual 383, Err.Number, "WordWrap = True with SingleLine True"
+        On Error GoTo 0
+        Expect.IsFalse f.LabelW1.WordWrap, "WordWrap after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SingleLine_True_SetsWordWrapFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LabelW1.WordWrap = True
+        f.LabelW1.SingleLine = True
+        Expect.IsFalse f.LabelW1.WordWrap, "WordWrap after SingleLine = True"
+        Expect.IsTrue f.LabelW1.SingleLine, "SingleLine after SingleLine = True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSize_LongerCaption_WidensTheLabel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single, h As Single
+        f.LabelW1.Caption = "Short"
+        f.LabelW1.AutoSize = True
+        w = f.LabelW1.Width
+        h = f.LabelW1.Height
+        f.LabelW1.Caption = "A much longer caption than before"
+        Expect.IsTrue f.LabelW1.Width > w, "the label is wider after a longer caption"
+        Expect.IsTrue f.LabelW1.Height = h, "the label is as high as before after a longer caption of one line"
+        f.LabelW1.Caption = "Two" & vbCrLf & "lines"
+        Expect.IsTrue f.LabelW1.Height > h, "the label is higher after a caption of two lines"
+        f.LabelW1.Caption = "Short"
+        Expect.IsTrue f.LabelW1.Width = w, "the label has its first width after its first caption"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSize_WordWrap_KeepsTheWidthAndGrowsDown()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single, h As Single
+        f.LabelW1.Caption = "x"
+        f.LabelW1.AutoSize = True
+        h = f.LabelW1.Height
+        f.LabelW1.AutoSize = False
+        f.LabelW1.Width = 1500
+        f.LabelW1.WordWrap = True
+        f.LabelW1.AutoSize = True
+        w = f.LabelW1.Width
+        f.LabelW1.Caption = "one two three four five six seven eight nine ten eleven twelve"
+        Expect.IsTrue f.LabelW1.Width = w, "a wrapping label keeps its width after a long caption"
+        Expect.IsTrue f.LabelW1.Height > h, "a wrapping label is higher than one line after a long caption"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSize_RightAligned_KeepsTheRightEdge()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim oldRight As Single, oldLeft As Single
+        f.LabelW1.Alignment = vbRightJustify
+        f.LabelW1.AutoSize = True
+        f.LabelW1.Caption = "Total:"
+        oldRight = f.LabelW1.Left + f.LabelW1.Width
+        oldLeft = f.LabelW1.Left
+        f.LabelW1.Caption = "Total of all the orders:"
+        Expect.IsTrue Abs(f.LabelW1.Left + f.LabelW1.Width - oldRight) < 20, "the right edge of a right-aligned label stays after a longer caption"
+        Expect.IsTrue f.LabelW1.Left < oldLeft, "the left edge of a right-aligned label moves left after a longer caption"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Appearance_Flat_MakesABorderASingleLine()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LabelW1.BorderStyle = CCBorderStyleRaised
+        f.LabelW1.Appearance = CCAppearanceFlat
+        Expect.AreEqual CLng(CCBorderStyleSingle), CLng(f.LabelW1.BorderStyle), "BorderStyle of a label with a raised border after Appearance = CCAppearanceFlat"
+        f.LabelW1.Appearance = CCAppearance3D
+        Expect.AreEqual CLng(CCBorderStyleSunken), CLng(f.LabelW1.BorderStyle), "BorderStyle after Appearance = CCAppearance3D"
+        f.LabelW1.BorderStyle = CCBorderStyleNone
+        f.LabelW1.Appearance = CCAppearanceFlat
+        Expect.AreEqual CLng(CCBorderStyleNone), CLng(f.LabelW1.BorderStyle), "BorderStyle of a label without a border after Appearance = CCAppearanceFlat"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Appearance_SetsForeColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.LabelW1.ForeColor = vbRed
+        f.LabelW1.Appearance = CCAppearanceFlat
+        Expect.IsTrue f.LabelW1.ForeColor = vbWindowText, "ForeColor after Appearance = CCAppearanceFlat is vbWindowText"
+        f.LabelW1.Appearance = CCAppearance3D
+        Expect.IsTrue f.LabelW1.ForeColor = vbButtonText, "ForeColor after Appearance = CCAppearance3D is vbButtonText"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' A label in a back color of its own, on a form that is shown: it is drawn where the designer
+    ' put it, and must be drawn at its new place once it is moved. The form is made large enough
+    ' for every control, and the label is moved under all of them.
+    [TestCase]
+    Public Sub Moved_IsDrawnAtItsNewPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Width = 800 * 15
+        f.Height = 600 * 15
+        Dim c As Object
+        Set c = f.Controls("LabelW1")
+        f.LabelW1.Caption = ""
+        f.LabelW1.BackColor = vbRed
+        f.Show
+        f.Refresh
+        DoEvents
+        Expect.IsTrue RedPixels(f, c) > 0, "a label that was not moved is drawn in its back color"
+        c.Top = 420 * 15
+        f.Refresh
+        DoEvents
+        Expect.AreEqual 420, CLng(c.Top / 15), "Top of the label after Top = 420 pixels"
+        Expect.IsTrue RedPixels(f, c) > 0, "a label whose Top was set is drawn in its back color at its new place"
+        Unload f
+        Expect.Done
+    End Sub
+
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+
+    ' How many pixels of the form are red where the form says the control is, every third pixel
+    ' looked at.
+    Private Function RedPixels(ByVal f As Form, ByVal c As Object) As Long
+        Dim hDC As LongPtr, x As Long, y As Long
+        Dim tx As Single, ty As Single
+        tx = Screen.TwipsPerPixelX
+        ty = Screen.TwipsPerPixelY
+        hDC = GetDC(f.hWnd)
+        For y = c.Top / ty To (c.Top + c.Height) / ty - 1 Step 3
+            For x = c.Left / tx To (c.Left + c.Width) / tx - 1 Step 3
+                If GetPixel(hDC, x, y) = vbRed Then RedPixels = RedPixels + 1
+            Next
+        Next
+        ReleaseDC f.hWnd, hDC
+    End Function
+
+End Module
+
+' The events of a LabelW, written to Rig.Log.
+Class LabelWSink
+
+    Public WithEvents Label As VBCCR18.LabelW
+
+    Private Sub Label_Change() Handles Label.Change
+        Rig.Ev "Change " & Label.Caption
+    End Sub
+
+End Class

@@ -1,0 +1,157 @@
+' CommandLinkTests: the Click event, the note and the image list of the CommandLink.
+[TestFixture]
+Module CommandLinkTests
+
+    [TestCase]
+    Public Sub Value_True_RaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandLinkSink
+        Set sink.Lnk = f.CommandLink1
+        Rig.ClearLog
+        f.CommandLink1.Value = True
+        f.CommandLink1.Value = False
+        Expect.AreEqual "Click True", Rig.Events(), "the events of Value = True, Value = False, each with Value in the handler"
+        Expect.IsFalse f.CommandLink1.Value, "Value after Value = True"
+        Set sink.Lnk = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PerformClick_RaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CommandLinkSink
+        Set sink.Lnk = f.CommandLink1
+        Rig.ClearLog
+        f.CommandLink1.PerformClick
+        Expect.AreEqual "Click True", Rig.Events(), "the events of PerformClick"
+        Set sink.Lnk = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hint_KeepsUnicodeText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual "", f.CommandLink1.Hint, "Hint of a new control"
+        Dim note As String
+        note = "Writes the file " & ChrW$(&H3A9)
+        f.CommandLink1.Hint = note
+        Expect.AreEqual note, f.CommandLink1.Hint, "Hint after Hint = a text with a Greek capital omega"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hot_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandLink1.Hot = True
+        Expect.AreEqual 383, Err.Number, "Hot = True"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_TakesAControlANameOrAHandle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , f.Image
+        Dim h As LongPtr
+        h = f.ImageList1.hImageList
+        f.CommandLink1.ImageList = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(f.CommandLink1.ImageList), "the type of ImageList after ImageList = the control"
+        f.CommandLink1.ImageList = Nothing
+        f.CommandLink1.ImageList = "ImageList1"
+        Expect.AreEqual "ImageList", TypeName(f.CommandLink1.ImageList), "the type of ImageList after ImageList = the control's name"
+        f.CommandLink1.ImageList = h
+        Expect.IsTrue f.CommandLink1.ImageList = h, "ImageList after ImageList = a handle is that handle"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_UnknownName_IsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , f.Image
+        f.CommandLink1.ImageList = f.ImageList1
+        f.CommandLink1.ImageList = "NoSuchImageList"
+        Expect.AreEqual "Nothing", TypeName(f.CommandLink1.ImageList), "the type of ImageList after ImageList = a name no control has"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OtherObject_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.CommandLink1.ImageList = f.CheckBoxW1
+        Expect.AreEqual 35610, Err.Number, "Set ImageList = a CheckBoxW"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_OtherType_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.CommandLink1.ImageList = 5
+        Expect.AreEqual 13, Err.Number, "ImageList = 5, an Integer"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' A note too long for one line at the control's width is wrapped, so the height at which the
+    ' caption and the note fit is more than with a note of one word.
+    [TestCase]
+    Public Sub GetIdealHeight_NoteThatWraps_IsHigher()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim c As Object
+        Set c = f.Controls("CommandLink1")
+        c.Width = 300 * 15
+        f.CommandLink1.Caption = "Install the update now"
+        f.CommandLink1.Hint = "Now."
+        Dim short As Single
+        short = f.CommandLink1.GetIdealHeight()
+        Expect.IsTrue short > 0, "GetIdealHeight with a note of one word is more than 0"
+        f.CommandLink1.Hint = "The program closes, installs the update and starts again. This takes about a minute, and nothing that is open is lost."
+        Expect.IsTrue f.CommandLink1.GetIdealHeight() > short, "GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a CommandLink, written to Rig.Log.
+Class CommandLinkSink
+
+    Public WithEvents Lnk As VBCCR18.CommandLink
+
+    Private Sub Lnk_Click() Handles Lnk.Click
+        Rig.Ev "Click " & Lnk.Value
+    End Sub
+
+End Class

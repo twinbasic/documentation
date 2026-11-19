@@ -1,0 +1,460 @@
+' DTPickerTests: the value, the range, the check box, the calendar and the events of the DTPicker.
+[TestFixture]
+Module DTPickerTests
+
+    Private Declare PtrSafe Function DtpMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Function D(ByVal v As Variant) As String
+        If IsNull(v) Then D = "Null" Else D = Format$(v, "yyyy-mm-dd hh:nn:ss")
+    End Function
+
+    [TestCase]
+    Public Sub Value_Date_KeepsTheTimeOfDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.Value = DateSerial(2026, 3, 15) + TimeSerial(10, 20, 30)
+        Expect.AreEqual "2026-03-15 10:20:30", D(f.DTPicker1.Value), "Value after assigning a date with a time"
+        Expect.AreEqual vbDate, VarType(f.DTPicker1.Value), "the type of Value"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Number_BecomesADate()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.Value = 46000
+        Expect.AreEqual "2025-12-09 00:00:00", D(f.DTPicker1.Value), "Value after assigning 46000"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_NotADate_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.Value = "not a date"
+        Expect.AreEqual 380, Err.Number, "Value = a string that is not a date"
+        On Error GoTo 0
+        Expect.AreEqual "2026-03-15 00:00:00", D(f.DTPicker1.Value), "Value after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parts_Assigned_ChangeThatPartOfTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.DTPicker1
+            .Value = DateSerial(2026, 3, 15) + TimeSerial(10, 20, 30)
+            .Year = 2030
+            Expect.AreEqual "2030-03-15 10:20:30", D(.Value), "Value after Year = 2030"
+            .Month = 7
+            Expect.AreEqual "2030-07-15 10:20:30", D(.Value), "Value after Month = 7"
+            .Day = 31
+            Expect.AreEqual "2030-07-31 10:20:30", D(.Value), "Value after Day = 31"
+            .Hour = 1
+            .Minute = 2
+            .Second = 3
+            Expect.AreEqual "2030-07-31 01:02:03", D(.Value), "Value after Hour, Minute and Second"
+            Expect.AreEqual 2030, CLng(.Year), "Year"
+            Expect.AreEqual 7, CLng(.Month), "Month"
+            Expect.AreEqual 31, CLng(.Day), "Day"
+            Expect.AreEqual 31, CLng(.DayCount), "DayCount of July"
+            Expect.AreEqual 3, CLng(.DayOfWeek), "DayOfWeek of 2030-07-31, a Wednesday"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parts_OutOfRange_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.Value = DateSerial(2026, 2, 10)
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.Month = 13
+        Expect.AreEqual 380, Err.Number, "Month = 13"
+        Err.Clear
+        f.DTPicker1.Day = 29
+        Expect.AreEqual 380, Err.Number, "Day = 29 in February 2026"
+        Err.Clear
+        f.DTPicker1.Hour = 24
+        Expect.AreEqual 380, Err.Number, "Hour = 24"
+        Err.Clear
+        f.DTPicker1.Minute = 60
+        Expect.AreEqual 380, Err.Number, "Minute = 60"
+        Err.Clear
+        f.DTPicker1.Second = 60
+        Expect.AreEqual 380, Err.Number, "Second = 60"
+        Err.Clear
+        f.DTPicker1.Week = 54
+        Expect.AreEqual 380, Err.Number, "Week = 54"
+        On Error GoTo 0
+        Expect.AreEqual "2026-02-10 00:00:00", D(f.DTPicker1.Value), "Value after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_OutsideTheRange_Raises35773()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.DTPicker1
+            .MinDate = DateSerial(2026, 1, 1)
+            .MaxDate = DateSerial(2026, 12, 31)
+            .Value = DateSerial(2026, 3, 15)
+            On Error Resume Next
+            Err.Clear
+            .Value = DateSerial(2027, 1, 1)
+            Expect.AreEqual 35773, Err.Number, "Value after MaxDate"
+            Err.Clear
+            .Value = DateSerial(2025, 12, 31)
+            Expect.AreEqual 35773, Err.Number, "Value before MinDate"
+            On Error GoTo 0
+            Expect.AreEqual "2026-03-15 00:00:00", D(.Value), "Value after the refused assignments"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinDate_AboveMaxDate_Raises35775()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.MaxDate = DateSerial(2026, 6, 1)
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.MinDate = DateSerial(2026, 7, 1)
+        Expect.AreEqual 35775, Err.Number, "MinDate after MaxDate"
+        On Error GoTo 0
+        Expect.AreEqual "1900-01-01 00:00:00", D(f.DTPicker1.MinDate), "MinDate after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDate_BelowMinDate_Raises35774()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.MinDate = DateSerial(2026, 6, 1)
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.MaxDate = DateSerial(2026, 5, 1)
+        Expect.AreEqual 35774, Err.Number, "MaxDate before MinDate"
+        On Error GoTo 0
+        Expect.AreEqual "9999-12-31 00:00:00", D(f.DTPicker1.MaxDate), "MaxDate after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinDate_BeforeTheYear1900_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.MinDate = DateSerial(1899, 12, 31)
+        Expect.AreEqual 380, Err.Number, "MinDate = 31 December 1899"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinDate_AboveValue_MovesTheValueWithoutChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        f.DTPicker1.MinDate = DateSerial(2026, 4, 1)
+        DoEvents
+        Expect.AreEqual "2026-04-01", Format$(f.DTPicker1.Value, "yyyy-mm-dd"), "Value after MinDate = 1 April"
+        Expect.AreEqual "", Rig.Events(), "the events of the new MinDate"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDate_BelowValue_MovesTheValueWithoutChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        f.DTPicker1.MaxDate = DateSerial(2026, 3, 1)
+        DoEvents
+        Expect.AreEqual "2026-03-01", Format$(f.DTPicker1.Value, "yyyy-mm-dd"), "Value after MaxDate = 1 March"
+        Expect.AreEqual "", Rig.Events(), "the events of the new MaxDate"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_NullWithCheckBox_UnselectsTheDate()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.DTPicker1
+            .CheckBox = True
+            .Value = DateSerial(2026, 3, 15)
+            Expect.IsTrue .Selected, "Selected with a date"
+            .Value = Null
+            Expect.IsFalse .Selected, "Selected after Value = Null"
+            Expect.IsTrue IsNull(.Value), "Value after Value = Null"
+            .Selected = True
+            Expect.AreEqual "2026-03-15", Format$(.Value, "yyyy-mm-dd"), "Value after Selected = True"
+            .Selected = False
+            Expect.IsTrue IsNull(.Value), "Value after Selected = False"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_NullWithoutCheckBox_Raises35787()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.Value = Null
+        Expect.AreEqual 35787, Err.Number, "Value = Null with CheckBox False"
+        On Error GoTo 0
+        Expect.AreEqual "2026-03-15", Format$(f.DTPicker1.Value, "yyyy-mm-dd"), "Value after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CheckBox_Off_SelectsTheLastDateAgain()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.DTPicker1
+            .CheckBox = True
+            .Value = DateSerial(2026, 3, 15)
+            .Selected = False
+            Expect.IsTrue IsNull(.Value), "Value with the date unselected"
+            .CheckBox = False
+            Expect.IsTrue .Selected, "Selected after CheckBox = False"
+            Expect.AreEqual "2026-03-15", Format$(.Value, "yyyy-mm-dd"), "Value after CheckBox = False"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DayOfWeek_NoDateSelected_Raises94()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.DTPicker1.CheckBox = True
+        f.DTPicker1.Selected = False
+        On Error Resume Next
+        Err.Clear
+        Dim n As Long
+        n = f.DTPicker1.DayOfWeek
+        Expect.AreEqual 94, Err.Number, "DayOfWeek with no date"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Format_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.Format = 4
+        Expect.AreEqual 380, Err.Number, "Format = 4"
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(f.DTPicker1.Format), "Format after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartOfWeek_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.StartOfWeek = 8
+        Expect.AreEqual 380, Err.Number, "StartOfWeek = 8"
+        Err.Clear
+        f.DTPicker1.StartOfWeek = -1
+        Expect.AreEqual 380, Err.Number, "StartOfWeek = -1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CalendarAlignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.DTPicker1.CalendarAlignment = 2
+        Expect.AreEqual 380, Err.Number, "CalendarAlignment = 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_ForEachChangeOfValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        With f.DTPicker1
+            .Value = DateSerial(2026, 3, 15)
+            .Value = DateSerial(2026, 3, 16) + TimeSerial(1, 2, 3)
+            .Value = DateSerial(2026, 3, 16) + TimeSerial(1, 2, 4)
+            .Value = DateSerial(2026, 3, 16) + TimeSerial(1, 2, 4)
+        End With
+        DoEvents
+        Expect.AreEqual "Change 2026-03-16 01:02:03 | Change 2026-03-16 01:02:04", Rig.Events(), "the events of four assignments"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_ByTheUser_IsRaised()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        ' a click on the first field, the month, and the Up key
+        DtpMessage f.DTPicker1.hWnd, &H201, 1, 10 + 8 * 65536
+        DtpMessage f.DTPicker1.hWnd, &H202, 0, 10 + 8 * 65536
+        DtpMessage f.DTPicker1.hWnd, &H100, &H26, 0
+        DtpMessage f.DTPicker1.hWnd, &H101, &H26, 0
+        DoEvents
+        Expect.AreEqual "2026-04-15", Format$(f.DTPicker1.Value, "yyyy-mm-dd"), "Value after the Up key in the month field"
+        Expect.AreEqual "Change 2026-04-15 00:00:00", Rig.Events(), "the events of the Up key"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomFormat_CallbackField_RaisesFormatSize()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.Format = DtpFormatCustom
+        f.DTPicker1.CustomFormat = "yyyy 'X'"
+        DoEvents
+        Expect.AreEqual "", Rig.Events(), "the events of a format whose X is in quotes"
+        f.DTPicker1.CustomFormat = "dd XXX MMM"
+        DoEvents
+        Expect.AreEqual "FormatSize XXX", Rig.Events(), "the events of a format with a callback field"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DropDown_ByAltDown_OpensTheCalendar()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        Expect.AreEqual 0, CLng(f.DTPicker1.hWndCalendar), "hWndCalendar of a closed calendar"
+        DtpMessage f.DTPicker1.hWnd, &H104, &H28, 0
+        DoEvents
+        Expect.IsTrue f.DTPicker1.DroppedDown, "DroppedDown after Alt+Down"
+        Expect.IsTrue f.DTPicker1.hWndCalendar <> 0, "hWndCalendar of an open calendar"
+        Expect.AreEqual "DropDown", Rig.Events(), "the events of Alt+Down"
+        f.DTPicker1.DroppedDown = False
+        DoEvents
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_False_ClosesTheCalendar()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New DTPickerSink
+        Set sink.Ctl = f.DTPicker1
+        f.DTPicker1.DroppedDown = True
+        DoEvents
+        Expect.IsTrue f.DTPicker1.DroppedDown, "DroppedDown after DroppedDown = True"
+        f.DTPicker1.DroppedDown = False
+        DoEvents
+        Expect.IsFalse f.DTPicker1.DroppedDown, "DroppedDown after DroppedDown = False"
+        Expect.AreEqual "DropDown | CloseUp", Rig.Events(), "the events of opening and closing"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a DTPicker, written to Rig.Log.
+Class DTPickerSink
+
+    Public WithEvents Ctl As VBCCR18.DTPicker
+
+    Private Sub Ctl_Change() Handles Ctl.Change
+        Rig.Ev "Change " & Format$(Ctl.Value, "yyyy-mm-dd hh:nn:ss")
+    End Sub
+
+    Private Sub Ctl_DropDown() Handles Ctl.DropDown
+        Rig.Ev "DropDown"
+    End Sub
+
+    Private Sub Ctl_CloseUp() Handles Ctl.CloseUp
+        Rig.Ev "CloseUp"
+    End Sub
+
+    Private Sub Ctl_FormatSize(ByVal CallbackField As String, Size As Integer) Handles Ctl.FormatSize
+        Rig.Ev "FormatSize " & CallbackField
+        Size = 5
+    End Sub
+
+End Class

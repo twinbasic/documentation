@@ -67,6 +67,83 @@ the control opens the database, moves through it, and the bound TextBox shows ea
   opened an `.accdb` is a native exception, and the run ends. The same probe passes on win32
   with Jet. Not narrowed: late-bound call, ACE or 64-bit.
 
+### UserControl (from the VBCCR18 work)
+
+Seen on BETA 1042 with VBCCR18 1.8.136.0's controls on a form. None checked in VB6, and none
+narrowed to a UserControl of our own.
+
+- **`Err.Number` is 438 after a property assignment that succeeded.** Under `On Error Resume
+  Next`, `ProgressBar1.MarqueeSpeed = 5` leaves `Err.Number` 438 (*Object doesn't support this
+  property or method*), though the value is set and nothing is raised: the same statement with
+  no handler runs on. Every setter that ends with `UserControl.PropertyChanged "<Name>"` does it
+  (FontQuality, MousePointer, Max); `Value`, whose setter runs an `On Error Resume Next` block
+  after that call, leaves 0. So the suspect is `PropertyChanged`, failing inside and leaving
+  `Err` set.
+- **A form does not make option buttons that are UserControls exclusive.** OptionButtonW's
+  `Value` is `OLE_OPTEXCLUSIVE`, and the control calls `UserControl.PropertyChanged "Value"`
+  when it becomes True, on which a VB6 form clears the other such controls of the container.
+  Two OptionButtonW on one form stay True together, set by code or clicked (`BM_CLICK`), the
+  form loaded or shown, win32 and win64. The OptionButtonW page has a WARNING and a probe
+  sample (`optionbuttonw-group`). Probably one defect with the 438 above: `PropertyChanged`
+  failing inside.
+- **A process stops returning after about ten thousand loads of a VBCCR18 control.** A form with
+  one control (ToolBar, LabelW), made with `New`, loaded, unloaded and set to Nothing in a loop
+  inside one `[TestCase]`, runs at a steady speed (about 3 to 5 ms a load) and does not return
+  from a load between the 9,000th and the 9,500th, win32; the test project's HostForm, with one
+  of every control, stops between its 270th and 280th. The same loop over a form with a VB
+  Label or CommandButton runs 30,000 times. In the LabelW loop, which stops between its 9,140th
+  and 9,160th load, nothing counted runs out: GDI objects stay at 26 (peak 32), USER objects at
+  116 (peak 119), kernel handles at 664, and the atoms of the table that window classes and
+  window properties share at 1,015. Two things do grow: private memory, by about 30 KB a load
+  (545 MB to 826 MB, in a 32-bit process), and the time of a load, linearly (500 loads take
+  0.84 s at first and 2.2 s at the end), so each load leaves something on a list that a later
+  load goes through. Not narrowed: a UserControl of our own (twinBASIC's or the
+  package's), win64, a built exe, where the process waits. `package_tests` avoids it with
+  `CASES_PER_IDE` (`lib/package-tests.mjs`).
+- **Some VBCCR18 controls leave handles behind at each load and unload** of their form (win32,
+  `GetGuiResources`, 300 loads): Animation, ImageList and SysInfo 4 GDI and 1 USER a load;
+  FrameW and WindowedLabel 2 GDI; LinkLabel 1 GDI. The others leave none. They do not cause the
+  stop above (2,100 such loads change nothing in the time of a HostForm load). Not checked in
+  VB6.
+- **`Visible` reads False** for a control on a form that is loaded and not shown
+  (`Extender.Visible`).
+- **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises
+  380, the direct assignment's error.
+- **A control named through its form is not `Is` its own object.** The sub-objects' `Tag`
+  setters refuse their own control with `If Value Is Shadow<Control> Then Err.Raise 35700`
+  (`LvwListItem.cls` 111-118, `ImcComboItem.cls` 85, the same in TvwNode, ImlListImage and the
+  other `Tag`s). `Set f.ListView1.ListItems(1).Tag = f.ListView1` raises nothing, nor
+  `Set n.Tag = f.TreeView1`; the same control first put in a variable declared
+  `As VBCCR18.ImageCombo` is refused. So the object the form gives out and the one the control
+  keeps of itself are different objects to `Is`. Whose doing (twinBASIC's extender, its `Is`,
+  or the package's `Shadow...` reference) is not known; VB6 not checked. The pages say nothing
+  of 35700 until this is settled.
+- **A UserControl's own property is not reached through `As Control`.** VBCCR18's
+  `UpDown.BuddyProperty = "Text"` with a TextBoxW buddy raises 380: its Let checks the name
+  through `Dim BuddyControl As Control` (UpDown.ctl.twin 786-829), and only the extender's
+  members (Tag, ToolTipText, Width) pass. NOTE and failing case on UpDown.md
+  (`UpDownTests.BuddyProperty_Text_ShowsTheValue`). Not narrowed to a UserControl of our own;
+  VB6 not checked.
+- **MCIWnd's string getters give Windows twice the buffer's length**: `LenB(Buffer)` (512) for a
+  256-character buffer, where the MCIWnd messages take a count of characters
+  (MCIWnd.ctl.twin 1288, 1303, 1339, 1375, 1439, 1464). A value over 255 characters would be
+  written past the string. The package's, not twinBASIC's; not reproduced.
+
+### Late binding (from the VBCCR18 work)
+
+- **An unknown member of a `Collection` reached late never returns.** Narrowed, BETA 1042, a
+  console project with no package, win32 and win64:
+  `Dim o As Object: Set o = New Collection: On Error Resume Next: Debug.Print o.Foo` does not
+  return; with `On Error GoTo` a handler, the same. The same statements with `New StdFont`
+  print error 438. Found from VBCCR18's Pager: `BuddyControl = <a Collection>` hangs in
+  `ControlIsValid`'s `Control.Container`. VB6, expected to raise 438, not checked; a reproducer under
+  `bugs/` is the next step (WIP.BugHunt.md's steps).
+- **`CallByName obj, "", VbGet`** (the default member, by an empty name) raises 438. Found from
+  VBCCR18's `UpDown.SyncBuddy = True`, which reads the buddy's default property so
+  (UpDown.ctl.twin 831-866) and raises 380; NOTE and failing case on UpDown.md
+  (`UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy`). Whether VB6 accepts an empty
+  name is not checked: that decides whether this is a defect.
+
 ### WinNativeCommonCtls
 
 Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).

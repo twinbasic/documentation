@@ -66,6 +66,7 @@ import {
 } from "../lib/cli.mjs";
 import {
   ALL_PACKAGES_SKIP,
+  CASES_PER_IDE,
   COMPILE_DIR,
   compileOnlyNames,
   compileSources,
@@ -277,9 +278,11 @@ async function runPackage(pkg) {
     let rest = own.filter((n) => !hangs.includes(n));
     // A case that does not return keeps the compiler busy, so tbrun reports the cases it did not
     // send as "not run", and those are run again in a new IDE: by name, whatever order tbrun ran
-    // the files in.
+    // the files in. A package in CASES_PER_IDE gets a new IDE every so many cases.
+    const perIde = CASES_PER_IDE.get(pkg) ?? Number.POSITIVE_INFINITY;
     while (rest.length) {
-      const results = tbrunCases(tree, arch, rest, opts.timeout, pkg);
+      const later = rest.slice(perIde);
+      const results = tbrunCases(tree, arch, rest.slice(0, perIde), opts.timeout, pkg);
       const next = [];
       let stalled = null;
       for (const r of results) {
@@ -295,7 +298,7 @@ async function runPackage(pkg) {
         say(`  ${arch}: ${stalled ?? "a case"} did not return; running the ${next.length} not run again`);
       if (next.length && !stalled)
         throw new Error(`tbrun left ${next.length} cases not run, and no case that did not return`);
-      rest = next;
+      rest = [...next, ...later];
     }
     for (const name of hangs) {
       const [r] = tbrunCases(tree, arch, [name], opts.hangTimeout, pkg);

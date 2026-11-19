@@ -1,0 +1,9 @@
+' The sheet Buttons of VBCCRShots: CheckBoxW, 2 OptionButtonW, CommandButtonW, CommandLink.
+' Written by a generator, with its designer file.
+
+[Description("")]
+[FormDesignerId("9E3C51B2-6A47-4F0D-B8E2-3D71C0A5EA16")]
+[PredeclaredId]
+Class frmButtons
+
+End Class

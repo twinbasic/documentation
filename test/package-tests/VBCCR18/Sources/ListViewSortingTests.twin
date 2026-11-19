@@ -1,0 +1,157 @@
+' ListViewSortingTests: sorting the items of the ListView, and finding an item by its text.
+[TestFixture]
+Module ListViewSortingTests
+
+    ' A loaded form whose ListView1 is in the report view with the columns Name and Size, and the
+    ' items b (10), c (9) and a (100).
+    Private Function SizesForm() As HostForm
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListView1
+            .View = LvwViewReport
+            .ColumnHeaders.Add , , "Name"
+            .ColumnHeaders.Add , , "Size"
+            .ListItems.Add(, , "b").SubItems(1) = "10"
+            .ListItems.Add(, , "c").SubItems(1) = "9"
+            .ListItems.Add(, , "a").SubItems(1) = "100"
+        End With
+        Set SizesForm = f
+    End Function
+
+    ' The texts of the items, in their order.
+    Private Function Texts(ByVal LV As VBCCR18.ListView) As String
+        Dim i As Long
+        For i = 1 To LV.ListItems.Count
+            Texts = Texts & LV.ListItems(i).Text
+        Next
+    End Function
+
+    [TestCase]
+    Public Sub Sorted_True_SortsByText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = SizesForm()
+        f.ListView1.Sorted = True
+        Expect.AreEqual "abc", Texts(f.ListView1), "the order after Sorted = True"
+        f.ListView1.SortOrder = LvwSortOrderDescending
+        Expect.AreEqual "cba", Texts(f.ListView1), "the order after SortOrder = LvwSortOrderDescending"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SortType_Numeric_SortsByValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = SizesForm()
+        f.ListView1.Sorted = True
+        f.ListView1.SortKey = 1
+        Expect.AreEqual "bac", Texts(f.ListView1), "the order by the sizes as text"
+        f.ListView1.SortType = LvwSortTypeNumeric
+        Expect.AreEqual "cba", Texts(f.ListView1), "the order by the sizes as numbers"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_AddedItem_GoesToItsPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = SizesForm()
+        f.ListView1.Sorted = True
+        Dim added As LvwListItem
+        Set added = f.ListView1.ListItems.Add(, , "aa")
+        Expect.AreEqual "aaabc", Texts(f.ListView1), "the order after adding ""aa"" while Sorted is True"
+        Expect.AreEqual 2, added.Index, "Index of the added item"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_SortKeySubitem_AddedItemIsNotSorted()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = SizesForm()
+        f.ListView1.Sorted = True
+        f.ListView1.SortKey = 1
+        f.ListView1.ListItems.Add(, , "d").SubItems(1) = "1"
+        Expect.AreEqual "bacd", Texts(f.ListView1), "the order after adding ""d"" (1) while Sorted is True and SortKey is 1"
+        f.ListView1.Sorted = True
+        Expect.AreEqual "dbac", Texts(f.ListView1), "the order after Sorted = True again"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SortKey_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.SortKey = -1
+        Expect.AreEqual 380, Err.Number, "SortKey = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListView1.SortKey, "SortKey after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_Partial_FindsTheStart()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListView1
+            .ListItems.Add , , "readme"
+            .ListItems.Add , , "report"
+            Expect.IsTrue .FindItem("rep") Is Nothing, "FindItem(""rep"")"
+            Expect.AreEqual "report", .FindItem("rep", , True).Text, "FindItem(""rep"", , True)"
+            Expect.AreEqual 2, .FindItem("REPORT").Index, "FindItem(""REPORT"")"
+            Expect.IsTrue .FindItem("readme", 2) Is Nothing, "FindItem(""readme"", 2)"
+            Expect.AreEqual 1, .FindItem("readme", 2, , True).Index, "FindItem(""readme"", 2, , True)"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_IndexPastTheEnd_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "one"
+        Dim it As LvwListItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ListView1.FindItem("one", 2)
+        Expect.AreEqual 380, Err.Number, "FindItem(""one"", 2) of one item"
+        Err.Clear
+        Set it = f.ListView1.FindItem("one", -1)
+        Expect.AreEqual 380, Err.Number, "FindItem(""one"", -1)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindSubItem_Partial_FindsTextInside()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim found As Long
+        With f.ListView1
+            .View = LvwViewReport
+            .ColumnHeaders.Add , , "Name"
+            .ColumnHeaders.Add , , "Type"
+            .ListItems.Add(, , "readme").SubItems(1) = "Text"
+            .ListItems.Add(, , "picture").SubItems(1) = "Image"
+            Expect.AreEqual "picture", .FindSubItem("ag", , , True).Text, "FindSubItem(""ag"", , , True)"
+            Expect.AreEqual "readme", .FindSubItem("TEXT", , found).Text, "FindSubItem(""TEXT"")"
+            Expect.AreEqual 1, found, "the subitem number FindSubItem(""TEXT"") gives"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,9 @@
+' The sheet TbrTextAlign of VBCCRShots: 2 ToolBar, ImageList.
+' Written by a generator, with its designer file.
+
+[Description("")]
+[FormDesignerId("9E3C51B2-6A47-4F0D-B8E2-3D71C0A5EA37")]
+[PredeclaredId]
+Class frmTbrTextAlign
+
+End Class

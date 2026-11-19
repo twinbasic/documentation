@@ -24,6 +24,32 @@ Module MainModule
     Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
     Private Declare PtrSafe Function RedrawWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal lprcUpdate As LongPtr, _
         ByVal hrgnUpdate As LongPtr, ByVal flags As Long) As Long
+    ' What gives the files of the Open and Save dialogs a time of the fixture's own.
+    Private Type SYSTEMTIME
+        wYear As Integer
+        wMonth As Integer
+        wDayOfWeek As Integer
+        wDay As Integer
+        wHour As Integer
+        wMinute As Integer
+        wSecond As Integer
+        wMilliseconds As Integer
+    End Type
+    Private Type FILETIME
+        Low As Long
+        High As Long
+    End Type
+    Private Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, _
+        ByVal dwShareMode As Long, ByVal lpSecurityAttributes As LongPtr, ByVal dwCreationDisposition As Long, _
+        ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+    Private Declare PtrSafe Function SetFileTime Lib "kernel32" (ByVal hFile As LongPtr, ByRef lpCreationTime As FILETIME, _
+        ByRef lpLastAccessTime As FILETIME, ByRef lpLastWriteTime As FILETIME) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function SystemTimeToFileTime Lib "kernel32" (ByRef lpSystemTime As SYSTEMTIME, ByRef lpFileTime As FILETIME) As Long
+    Private Declare PtrSafe Function LocalFileTimeToFileTime Lib "kernel32" (ByRef lpLocalFileTime As FILETIME, ByRef lpFileTime As FILETIME) As Long
+    Private Const GENERIC_WRITE As Long = &H40000000
+    Private Const OPEN_EXISTING As Long = 3
+
     Private Const WM_NCACTIVATE As Long = &H86
     Private Const CB_FINDSTRINGEXACT As Long = &H158
     Private Const CB_SETTOPINDEX As Long = &H15C
@@ -100,6 +126,37 @@ Module MainModule
                 dlg.Flags = IIf(scene = "folder-new", CdlBIFUseNewUI, CdlBIFReturnOnlyFSDirs)
                 SetTimer 0, 0, 100, AddressOf KeepDialog
                 dlg.ShowFolderBrowser
+            Case "pagesetup"
+                ' a printer that every Windows has, not the machine's default
+                DialogTitle = "Page Setup"
+                dlg.PrinterDefaultInit = False
+                dlg.PrinterName = "Microsoft Print to PDF"
+                SetTimer 0, 0, 100, AddressOf KeepDialog
+                dlg.ShowPageSetup
+            Case "open", "save"
+                ' Explorer-style and hooked, the older dialog, whose places bar names no folder
+                ' of the user's, in the fixture's folder Reports
+                DialogTitle = IIf(scene = "open", "Open", "Save As")
+                Dim reports As String = Folders() & "\Reports"
+                Dim f As Variant
+                For Each f In Array("March sales.txt", "Q1 summary.txt", "Notes.txt")
+                    Dim n As Integer = FreeFile
+                    Open reports & "\" & f For Output As #n
+                    Close #n
+                    TheTime reports & "\" & f
+                Next
+                dlg.InitDir = reports
+                dlg.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+                dlg.HookEvents = True
+                dlg.Flags = CdlOFNExplorer Or CdlOFNHideReadOnly
+                SetTimer 0, 0, 100, AddressOf KeepDialog
+                If scene = "open" Then
+                    dlg.ShowOpen
+                Else
+                    dlg.FileName = "April sales.txt"
+                    dlg.DefaultExt = "txt"
+                    dlg.ShowSave
+                End If
             Case "find", "replace"
                 DialogTitle = IIf(scene = "find", "Find", "Replace")
                 dlg.FindWhat = "total"
@@ -128,12 +185,34 @@ Module MainModule
         Return root
     End Function
 
+    ' The file's times made 15 March 2026, 10:30 local time, so that a dialog listing it shows
+    ' no time read from the clock.
+    Private Sub TheTime(ByVal Path As String)
+        Dim st As SYSTEMTIME
+        st.wYear = 2026: st.wMonth = 3: st.wDay = 15: st.wHour = 10: st.wMinute = 30
+        Dim local As FILETIME, utc As FILETIME
+        SystemTimeToFileTime st, local
+        LocalFileTimeToFileTime local, utc
+        Dim h As LongPtr = CreateFileW(StrPtr(Path), GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0)
+        If h = -1 Then Err.Raise 5, , "cannot open " & Path
+        SetFileTime h, utc, utc, utc
+        CloseHandle h
+    End Sub
+
     ' The dialog drawn as the active window whenever it is not the foreground window, and, once,
     ' put in the state a dialog opened by a mouse user has: no focus rectangle and no underlined
     ' access keys (test/shots/vb does the same).
     Private Sub KeepDialog(ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal Id As LongPtr, ByVal Time As Long)
         Dim box As LongPtr = FindWindowW(StrPtr("#32770"), StrPtr(DialogTitle))
         If box = 0 Then Exit Sub
+        ' The Open and Save As dialogs show their access keys again after the first change, at a
+        ' time of their own: the change is made at every tick, and the picture waits ten ticks.
+        Static Ticks As Long
+        If DialogTitle = "Open" Or DialogTitle = "Save As" Then
+            SendMessageW box, WM_CHANGEUISTATE, UIS_SET Or (UISF_HIDEFOCUS Or UISF_HIDEACCEL) * &H10000, 0
+            Ticks = Ticks + 1
+            If Ticks < 10 Then Exit Sub
+        End If
         If Not DialogKept Then
             ' The Font dialog's list scrolled to start at a font that comes with Windows, so that
             ' its rows show the fonts beside Microsoft Sans Serif and none that a person installed.

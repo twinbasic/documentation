@@ -1,0 +1,9 @@
+' The sheet MvMonths of VBCCRShots: MonthView.
+' Written by a generator, with its designer file.
+
+[Description("")]
+[FormDesignerId("9E3C51B2-6A47-4F0D-B8E2-3D71C0A5EA45")]
+[PredeclaredId]
+Class frmMvMonths
+
+End Class

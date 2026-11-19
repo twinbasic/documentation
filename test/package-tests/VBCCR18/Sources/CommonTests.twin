@@ -1,0 +1,98 @@
+' CommonTests: the members that nearly every control of VBCCR18 has, checked on a ProgressBar
+' and, for the focus, on a TextBoxW.
+[TestFixture]
+Module CommonTests
+
+    Private Declare PtrSafe Function GetParent Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+
+    [TestCase]
+    Public Sub Name_IsTheNameOnTheForm()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual "ProgressBar1", f.ProgressBar1.Name, "Name of the form's control ProgressBar1"
+        Expect.AreEqual "TextBoxW1", f.TextBoxW1.Name, "Name of the form's control TextBoxW1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub hWnd_IsAChildOfhWndUserControl()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.ProgressBar1.hWnd <> 0, "hWnd of a ProgressBar on a loaded form is a window"
+        Expect.IsTrue f.ProgressBar1.hWnd <> f.ProgressBar1.hWndUserControl, "hWnd and hWndUserControl are two windows"
+        Expect.IsTrue GetParent(f.ProgressBar1.hWnd) = f.ProgressBar1.hWndUserControl, "the parent of hWnd is hWndUserControl"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Font_Nothing_IsTheContainersFont()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim other As New StdFont
+        other.Name = "Courier New"
+        other.Size = 14
+        Set f.ProgressBar1.Font = other
+        Expect.AreEqual "Courier New", f.ProgressBar1.Font.Name, "Font.Name after Set Font to a Courier New font"
+        Set f.ProgressBar1.Font = Nothing
+        Expect.AreEqual f.Font.Name, f.ProgressBar1.Font.Name, "Font.Name after Set Font = Nothing, against the form's"
+        Expect.AreEqual f.Font.Size, f.ProgressBar1.Font.Size, "Font.Size after Set Font = Nothing, against the form's"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontQuality_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ProgressBar1.FontQuality = 7
+        Expect.AreEqual 380, Err.Number, "FontQuality = 7"
+        On Error GoTo 0
+        f.ProgressBar1.FontQuality = 6
+        Expect.AreEqual 6, CLng(f.ProgressBar1.FontQuality), "FontQuality after FontQuality = CCFontQualityClearTypeNatural"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MousePointer_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ProgressBar1.MousePointer = 31
+        Expect.AreEqual 380, Err.Number, "MousePointer = 31"
+        On Error GoTo 0
+        f.ProgressBar1.MousePointer = 30
+        Expect.AreEqual 30, CLng(f.ProgressBar1.MousePointer), "MousePointer after MousePointer = CCMousePointerScrollAll"
+        f.ProgressBar1.MousePointer = 99
+        Expect.AreEqual 99, CLng(f.ProgressBar1.MousePointer), "MousePointer after MousePointer = CCMousePointerCustom"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDropMode_Automatic_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ProgressBar1.OLEDropMode = 2
+        Expect.AreEqual 380, Err.Number, "OLEDropMode = 2 (vbOLEDropAutomatic) on a ProgressBar"
+        On Error GoTo 0
+        f.ProgressBar1.OLEDropMode = 1
+        Expect.AreEqual 1, CLng(f.ProgressBar1.OLEDropMode), "OLEDropMode after OLEDropMode = OLEDropModeManual on a ProgressBar"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

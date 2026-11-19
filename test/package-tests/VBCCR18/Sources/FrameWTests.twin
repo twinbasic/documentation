@@ -1,0 +1,111 @@
+' FrameWTests: the FrameW as a container, its Resize event and the values its properties refuse.
+[TestFixture]
+Module FrameWTests
+
+    [TestCase]
+    Public Sub Container_Set_PutsTheControlInTheFrame()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsFalse f.TextBoxW1.Container Is f.FrameW1, "the text box is outside the frame on a new form"
+        Set f.TextBoxW1.Container = f.FrameW1
+        Expect.IsTrue f.TextBoxW1.Container Is f.FrameW1, "Container of the text box after Set Container to the frame"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_LeavesTheContainedControlsEnabledProperty()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Set f.TextBoxW1.Container = f.FrameW1
+        f.FrameW1.Enabled = False
+        Expect.IsFalse f.FrameW1.Enabled, "Enabled of the frame after Enabled = False"
+        Expect.IsTrue f.TextBoxW1.Enabled, "Enabled of a text box in a disabled frame"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Resize_RaisedWhenTheSizeChanges()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FrameWSink
+        Set sink.Frame = f.FrameW1
+        Rig.ClearLog
+        f.FrameW1.Width = f.FrameW1.Width + 300
+        Expect.AreEqual "Resize", Rig.Events(), "the events of a wider frame"
+        Rig.ClearLog
+        f.FrameW1.Height = f.FrameW1.Height + 300
+        Expect.AreEqual "Resize", Rig.Events(), "the events of a higher frame"
+        Rig.ClearLog
+        f.FrameW1.Width = f.FrameW1.Width
+        f.FrameW1.Left = f.FrameW1.Left + 300
+        Expect.AreEqual "", Rig.Events(), "the events of the same width and of a move"
+        Set sink.Frame = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BorderStyle_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FrameW1.BorderStyle = 2
+        Expect.AreEqual 380, Err.Number, "BorderStyle = 2"
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(f.FrameW1.BorderStyle), "BorderStyle after the refused assignment"
+        f.FrameW1.BorderStyle = 0
+        Expect.AreEqual 0, CLng(f.FrameW1.BorderStyle), "BorderStyle after BorderStyle = 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PictureAlignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FrameW1.PictureAlignment = 2
+        Expect.AreEqual 380, Err.Number, "PictureAlignment = 2"
+        Err.Clear
+        f.FrameW1.Alignment = 3
+        Expect.AreEqual 380, Err.Number, "Alignment = 3"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Appearance_SetsForeColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.FrameW1.ForeColor = vbRed
+        f.FrameW1.Appearance = CCAppearanceFlat
+        Expect.IsTrue f.FrameW1.ForeColor = vbWindowText, "ForeColor after Appearance = CCAppearanceFlat is vbWindowText"
+        f.FrameW1.Appearance = CCAppearance3D
+        Expect.IsTrue f.FrameW1.ForeColor = vbButtonText, "ForeColor after Appearance = CCAppearance3D is vbButtonText"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a FrameW, written to Rig.Log.
+Class FrameWSink
+
+    Public WithEvents Frame As VBCCR18.FrameW
+
+    Private Sub Frame_Resize() Handles Frame.Resize
+        Rig.Ev "Resize"
+    End Sub
+
+End Class

@@ -48,6 +48,7 @@ is known about the package beyond its pages, is in a file of its own:
 - [tbRegExp](WIP.tbRegExp.md)
 - [tsJson](WIP.tsJson.md)
 - [tsPwGen](WIP.tsPwGen.md)
+- [VBCCR18](WIP.VBCCR18.md)
 - [VBComDlg](WIP.VBComDlg.md)
 - [VBFLXGRD18](WIP.VBFLXGRD18.md)
 - [WinReg](WIP.WinReg.md)

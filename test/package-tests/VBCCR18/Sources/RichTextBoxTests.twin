@@ -1,0 +1,115 @@
+' RichTextBoxTests: the members of the RichTextBox that belong to no topic, and the sink and the
+' helpers that the RichTextBox fixtures share. A key the user presses is given to the box as a
+' WM_CHAR or WM_KEYDOWN message, which is what the keyboard sends it.
+[TestFixture]
+Module RichTextBoxTests
+
+    [TestCase]
+    Public Sub BorderStyle_Two_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.BorderStyle = 2
+        Expect.AreEqual 380, Err.Number, "BorderStyle = 2"
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(f.RichTextBox1.BorderStyle), "BorderStyle after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' What the RichTextBox fixtures share.
+Module RichTextBoxRig
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_KEYDOWN As Long = &H100
+    Private Const WM_CHAR As Long = &H102
+
+    ' Gives the box the characters of a string, one WM_CHAR each, as keys the user presses do.
+    Public Sub TypeText(ByVal Box As VBCCR18.RichTextBox, ByVal Text As String)
+        Dim i As Long
+        For i = 1 To Len(Text)
+            SendMessageW Box.hWnd, WM_CHAR, AscW(Mid$(Text, i, 1)), 0
+        Next
+    End Sub
+
+    ' Gives the box a key, as a WM_KEYDOWN.
+    Public Sub PressKey(ByVal Box As VBCCR18.RichTextBox, ByVal KeyCode As Long)
+        SendMessageW Box.hWnd, WM_KEYDOWN, KeyCode, 0
+    End Sub
+
+    ' The folder of the files the cases write, made when it is missing.
+    Public Function TempFolder() As String
+        TempFolder = Environ$("TEMP") & "\tbdocs-package-tests"
+        If Len(Dir$(TempFolder, vbDirectory)) = 0 Then MkDir TempFolder
+        TempFolder = TempFolder & "\VBCCR18"
+        If Len(Dir$(TempFolder, vbDirectory)) = 0 Then MkDir TempFolder
+    End Function
+
+    ' Deletes a file when it is there.
+    Public Sub DeleteFile(ByVal Path As String)
+        If Len(Dir$(Path)) > 0 Then Kill Path
+    End Sub
+
+    ' Whether a value that may be Null is a number within Tolerance of Expected.
+    Public Function IsNear(ByVal Value As Variant, ByVal Expected As Double, ByVal Tolerance As Double) As Boolean
+        If IsNull(Value) Then Exit Function
+        If Not IsNumeric(Value) Then Exit Function
+        IsNear = Abs(CDbl(Value) - Expected) < Tolerance
+    End Function
+
+    ' "Null" for a Null, or the value as a string.
+    Public Function Show(ByVal Value As Variant) As String
+        If IsNull(Value) Then Show = "Null" Else Show = CStr(Value)
+    End Function
+
+End Module
+
+' The events of a RichTextBox, written to Rig.Log.
+Class RichTextBoxSink
+
+    Public WithEvents Box As VBCCR18.RichTextBox
+    ' What a handler of ModifyProtected sets Allow to.
+    Public AllowChange As Boolean
+
+    Private Sub Box_Change() Handles Box.Change
+        Rig.Ev "Change"
+    End Sub
+
+    Private Sub Box_SelChange(ByVal SelType As Integer, ByVal SelStart As Long, ByVal SelEnd As Long) Handles Box.SelChange
+        Rig.Ev "SelChange " & SelType & " " & SelStart & " " & SelEnd
+    End Sub
+
+    Private Sub Box_MaxText() Handles Box.MaxText
+        Rig.Ev "MaxText"
+    End Sub
+
+    Private Sub Box_Scroll() Handles Box.Scroll
+        Rig.Ev "Scroll"
+    End Sub
+
+    Private Sub Box_ModifyProtected(Allow As Boolean, ByVal SelStart As Long, ByVal SelEnd As Long) Handles Box.ModifyProtected
+        Rig.Ev "ModifyProtected " & SelStart & " " & SelEnd
+        Allow = AllowChange
+    End Sub
+
+    Private Sub Box_LinkEvent(ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByVal LinkStart As Long, ByVal LinkEnd As Long) Handles Box.LinkEvent
+        Rig.Ev "LinkEvent &H" & Hex$(wMsg) & " " & LinkStart & " " & LinkEnd
+    End Sub
+
+    Private Sub Box_OLEDeleteObject(ByVal LpOleObject As LongPtr) Handles Box.OLEDeleteObject
+        Rig.Ev "OLEDeleteObject"
+    End Sub
+
+    Private Sub Box_ContextMenu(Handled As Boolean, ByVal X As Single, ByVal Y As Single) Handles Box.ContextMenu
+        Rig.Ev "ContextMenu " & X & " " & Y
+    End Sub
+
+    Private Sub Box_OLEGetContextMenu(ByVal SelType As Integer, ByVal LpOleObject As LongPtr, ByVal SelStart As Long, ByVal SelEnd As Long, hMenu As LongPtr) Handles Box.OLEGetContextMenu
+        Rig.Ev "OLEGetContextMenu " & SelType & " " & SelStart & " " & SelEnd
+    End Sub
+
+End Class

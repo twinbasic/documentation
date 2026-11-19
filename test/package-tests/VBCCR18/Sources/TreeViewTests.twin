@@ -1,0 +1,1589 @@
+' TreeViewTests: the TreeView control, its TvwNodes collection, its TvwNode items and its
+' TvwSelectedNodes collection: adding and moving nodes, the pictures, opening, selecting and
+' checking nodes with the events each raises, and sorting.
+[TestFixture]
+Module TreeViewTests
+
+    Private Type PictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+
+    Private Type PictGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal X As Long, ByVal Y As Long, ByVal W As Long, ByVal H As Long, ByVal Rop As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PictDesc, ByRef IID As PictGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+
+    Private Const PATCOPY As Long = &HF00021
+    Private Const TVM_GETIMAGELIST As Long = &H1108
+
+    ' A bitmap of one color.
+    Private Function ColorSquare(ByVal Color As Long, Optional ByVal Width As Long = 16, Optional ByVal Height As Long = 16) As StdPicture
+        Dim screenDC As LongPtr, memDC As LongPtr, bmp As LongPtr, brush As LongPtr, oldBmp As LongPtr, oldBrush As LongPtr
+        screenDC = GetDC(0)
+        memDC = CreateCompatibleDC(screenDC)
+        bmp = CreateCompatibleBitmap(screenDC, Width, Height)
+        brush = CreateSolidBrush(Color)
+        oldBmp = SelectObject(memDC, bmp)
+        oldBrush = SelectObject(memDC, brush)
+        PatBlt memDC, 0, 0, Width, Height, PATCOPY
+        SelectObject memDC, oldBrush
+        SelectObject memDC, oldBmp
+        DeleteObject brush
+        DeleteDC memDC
+        ReleaseDC 0, screenDC
+        Dim desc As PictDesc, iid As PictGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = bmp
+        ' IID_IPictureDisp, {7BF80981-BF32-101A-8BBB-00AA00300CAB}
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set ColorSquare = pic
+    End Function
+
+    ' The texts of a node and of the nodes after it in its branch, separated by spaces.
+    Private Function Siblings(ByVal Node As TvwNode) As String
+        Do While Not Node Is Nothing
+            Siblings = Siblings & IIf(Len(Siblings) > 0, " ", "") & Node.Text
+            Set Node = Node.NextSibling
+        Loop
+    End Function
+
+    ' ------------------------------------------------------------------ adding nodes
+
+    [TestCase]
+    Public Sub Add_Relationships_PlaceTheNewNode()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim fruit As TvwNode
+        With f.TreeView1.Nodes
+            Set fruit = .Add(, , "fruit", "Fruit")
+            .Add fruit, TvwNodeRelationshipChild, "pear", "Pear"
+            .Add fruit, TvwNodeRelationshipChild, "apple", "Apple"
+            .Add "pear", TvwNodeRelationshipPrevious, "fig", "Fig"
+            Expect.AreEqual "Fig Pear Apple", Siblings(fruit.Child), "the children of a node after two Add with Child and one with Previous"
+            .Add "pear", TvwNodeRelationshipFirst, "first", "First"
+            .Add "pear", TvwNodeRelationshipLast, "last", "Last"
+            .Add "apple", TvwNodeRelationshipNext, "next", "Next"
+            Expect.AreEqual "First Fig Pear Apple Next Last", Siblings(fruit.Child), "the children after Add with First, Last and Next beside them"
+            .Add fruit, TvwNodeRelationshipChild, "child", "Child"
+            Expect.AreEqual "First Fig Pear Apple Next Last Child", Siblings(fruit.Child), "the children after one more Add with Child"
+            Expect.AreEqual 1, CLng(.Item("first").Level), "Level of a node added with First beside a child"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_NoRelative_GoesToTheRootLevel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim first As TvwNode
+        With f.TreeView1.Nodes
+            Set first = .Add(, , "r", "R")
+            .Add , TvwNodeRelationshipFirst, "f", "F"
+            .Add , TvwNodeRelationshipLast, "l", "L"
+            .Add , TvwNodeRelationshipNext, "n", "N"
+            .Add , TvwNodeRelationshipChild, "c", "C"
+            Expect.AreEqual "F R L N C", Siblings(first.FirstSibling), "the root level after Add without Relative and with First, Last, Next and Child"
+            Expect.AreEqual 0, CLng(.Item("c").Level), "Level of a node added with Child and no Relative"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457_AddsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            .Add , , "fruit", "Fruit"
+            On Error Resume Next
+            Err.Clear
+            Set n = .Add(, , "FRUIT", "Other")
+            Expect.AreEqual 457, Err.Number, "Add with a key that another node has, in other letter case"
+            On Error GoTo 0
+            Expect.AreEqual 1, CLng(.Count), "Count after the Add that raised"
+            Expect.AreEqual "Fruit", .Item("fruit").Text, "Text of the node that has the key"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_RelativeUnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            .Add , , "a", "A"
+            On Error Resume Next
+            Err.Clear
+            Set n = .Add("nokey", TvwNodeRelationshipChild, "b", "B")
+            Expect.AreEqual 5, Err.Number, "Add with a Relative that is a key no node has"
+            On Error GoTo 0
+            Expect.AreEqual 1, CLng(.Count), "Count after the Add that raised"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_RelativeNumberOutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            .Add , , "a", "A"
+            On Error Resume Next
+            Err.Clear
+            Set n = .Add(9, TvwNodeRelationshipChild, "b", "B")
+            Expect.AreEqual 9, Err.Number, "Add with a Relative that is a number beyond Count"
+            On Error GoTo 0
+            Set n = .Add(1, TvwNodeRelationshipChild, "c", "C")
+            Expect.AreEqual "A", n.Parent.Text, "Parent of a node added with the number 1 as its Relative"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_RelativeOfAnotherType_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            .Add , , "a", "A"
+            On Error Resume Next
+            Err.Clear
+            Set n = .Add(1.5, TvwNodeRelationshipChild, "b", "B")
+            Expect.AreEqual 13, Err.Number, "Add with a Relative that is a Double"
+            On Error GoTo 0
+            Expect.AreEqual 1, CLng(.Count), "Count after the Add that raised"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_Image_NumberAndKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        f.ImageList1.ListImages.Add , "blue", ColorSquare(vbBlue)
+        Set f.TreeView1.ImageList = f.ImageList1
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            Set n = .Add(, , "a", "A", "blue", 1)
+            Expect.AreEqual 2, CLng(n.ImageIndex), "ImageIndex of a node added with the key ""blue"""
+            Expect.AreEqual 1, CLng(n.SelectedImageIndex), "SelectedImageIndex of a node added with the number 1"
+            Set n = .Add(, , "b", "B", 9)
+            Expect.AreEqual 9, CLng(n.ImageIndex), "ImageIndex of a node added with the number 9, which the list does not have"
+            On Error Resume Next
+            Err.Clear
+            Set n = .Add(, , "c", "C", "nokey")
+            Expect.AreEqual 35601, Err.Number, "Add with an image key the list does not have"
+            Err.Clear
+            Set n = .Add(, , "d", "D", -1)
+            Expect.AreEqual 35600, Err.Number, "Add with the image number -1"
+            On Error GoTo 0
+            Expect.AreEqual 2, CLng(.Count), "Count after the two Add that raised"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_KeyWithoutAnImageListControl_Raises35601()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        Dim n As TvwNode
+        On Error Resume Next
+        Err.Clear
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A", "red")
+        Expect.AreEqual 35601, Err.Number, "Add with an image key in a tree that has no image list"
+        On Error GoTo 0
+        f.TreeView1.ImageList = f.ImageList1.hImageList
+        On Error Resume Next
+        Err.Clear
+        Set n = f.TreeView1.Nodes.Add(, , "b", "B", "red")
+        Expect.AreEqual 35601, Err.Number, "Add with an image key in a tree that has the handle of an image list"
+        On Error GoTo 0
+        Set n = f.TreeView1.Nodes.Add(, , "c", "C", 1)
+        Expect.AreEqual 1, CLng(n.ImageIndex), "ImageIndex of a node added with the number 1 in a tree that has the handle"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_WithoutPicture_TakesTheImageListFromTheWindow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        Set f.TreeView1.ImageList = f.ImageList1
+        Expect.IsTrue SendMessageW(f.TreeView1.hWnd, TVM_GETIMAGELIST, 0, 0) = f.ImageList1.hImageList, "the image list of the window after ImageList was assigned, with the default Style"
+        f.TreeView1.Style = TvwStyleTextOnly
+        Expect.IsTrue SendMessageW(f.TreeView1.hWnd, TVM_GETIMAGELIST, 0, 0) = 0, "the image list of the window with Style TvwStyleTextOnly"
+        Expect.AreEqual "ImageList", TypeName(f.TreeView1.ImageList), "TypeName of ImageList with Style TvwStyleTextOnly"
+        f.TreeView1.Style = TvwStyleTreeLinesPictureText
+        Expect.IsTrue SendMessageW(f.TreeView1.hWnd, TVM_GETIMAGELIST, 0, 0) = f.ImageList1.hImageList, "the image list of the window after Style changed to TvwStyleTreeLinesPictureText"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_TakesAControlANameOrAHandle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        With f.TreeView1
+            Set .ImageList = f.ImageList1
+            Expect.AreEqual "ImageList", TypeName(.ImageList), "TypeName of ImageList after the control was assigned"
+            .ImageList = f.ImageList1.hImageList
+            Expect.IsTrue .ImageList = f.ImageList1.hImageList, "ImageList after the handle was assigned"
+            .ImageList = "ImageList1"
+            Expect.AreEqual "ImageList", TypeName(.ImageList), "TypeName of ImageList after the name ""ImageList1"" was assigned"
+            .ImageList = "NoSuchList"
+            Expect.AreEqual "Nothing", TypeName(.ImageList), "TypeName of ImageList after a name no control has was assigned"
+            Set .ImageList = f.ImageList1
+            Set .ImageList = Nothing
+            Expect.AreEqual "Nothing", TypeName(.ImageList), "TypeName of ImageList after Nothing was assigned"
+            Expect.IsTrue SendMessageW(.hWnd, TVM_GETIMAGELIST, 0, 0) = 0, "the image list of the window after Nothing was assigned"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_EmptyList_IsNotTaken()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Set f.TreeView1.ImageList = f.ImageList1
+        Expect.AreEqual "Nothing", TypeName(f.TreeView1.ImageList), "TypeName of ImageList after an image list with no picture was assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_NotAnImageList_Raises()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TreeView1.ImageList = f.TreeView1
+        Expect.AreEqual 35610, Err.Number, "ImageList = the TreeView itself"
+        Err.Clear
+        f.TreeView1.ImageList = 3.5
+        Expect.AreEqual 13, Err.Number, "ImageList = 3.5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ the collection
+
+    [TestCase]
+    Public Sub Nodes_Index_IsTheOrderOfAddition()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1.Nodes
+            .Add , , "x", "X"
+            .Add , , "y", "Y"
+            .Add "x", TvwNodeRelationshipNext, "z", "Z"
+            Expect.AreEqual 3, CLng(.Item("z").Index), "Index of the node added last, between X and Y"
+            Expect.AreEqual "Z", .Item("x").NextSibling.Text, "the node after X"
+            Expect.AreEqual "Y", .Item(2).Text, "the node numbered 2"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Index_AfterRemove_IsRenumbered()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1.Nodes
+            .Add , , "a", "A"
+            .Add , , "b", "B"
+            .Add , , "c", "C"
+            .Remove "a"
+            Expect.AreEqual 1, CLng(.Item("b").Index), "Index of B after A was removed"
+            Expect.AreEqual 2, CLng(.Item("c").Index), "Index of C after A was removed"
+            Expect.AreEqual "c", .Item(2).Key, "Key of the node numbered 2 after A was removed"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Item_KeyIgnoresCase()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1.Nodes
+            .Add , , "fruit", "Fruit"
+            Expect.AreEqual "Fruit", .Item("FRUIT").Text, "Text of Item(""FRUIT"") for the key ""fruit"""
+            Expect.IsTrue .Exists("Fruit"), "Exists(""Fruit"") for the key ""fruit"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Item_NumberOutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TreeView1.Nodes.Add , , "a", "A"
+        Dim n As TvwNode
+        On Error Resume Next
+        Err.Clear
+        Set n = f.TreeView1.Nodes(5)
+        Expect.AreEqual 9, Err.Number, "Item(5) in a tree of one node"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Item_UnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TreeView1.Nodes.Add , , "a", "A"
+        Dim n As TvwNode
+        On Error Resume Next
+        Err.Clear
+        Set n = f.TreeView1.Nodes("nokey")
+        Expect.AreEqual 5, Err.Number, "Item(""nokey"")"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Exists_SaysWhetherTheTreeHasTheNumberOrKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1.Nodes
+            .Add , , "a", "A"
+            .Add , , , "B"
+            Expect.IsTrue .Exists("a"), "Exists(""a"") in a tree with that key"
+            Expect.IsFalse .Exists("b"), "Exists(""b"") in a tree without that key"
+            Expect.IsTrue .Exists(2), "Exists(2) in a tree of two nodes"
+            Expect.IsFalse .Exists(3), "Exists(3) in a tree of two nodes"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Remove_RemovesTheChildrenToo()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            .Add r, TvwNodeRelationshipChild, "c1", "C1"
+            .Add "c1", TvwNodeRelationshipChild, "g1", "G1"
+            .Add r, TvwNodeRelationshipChild, "c2", "C2"
+            .Add , , "s", "S"
+            .Remove "c1"
+            Expect.AreEqual 3, CLng(.Count), "Count after the removal of a node that had a child"
+            Expect.IsFalse .Exists("g1"), "Exists(""g1"") after its parent was removed"
+            Expect.AreEqual 2, CLng(.Item("c2").Index), "Index of C2 after the removal"
+            Expect.AreEqual 3, CLng(.Item("s").Index), "Index of S after the removal"
+            .Remove "r"
+            Expect.AreEqual 1, CLng(.Count), "Count after the removal of a node with a child"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Remove_RemovedNode_IsEmpty()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+            .Add a, TvwNodeRelationshipChild, "b", "B"
+            .Remove "a"
+            Expect.AreEqual "", a.Text, "Text of a removed node"
+            Expect.AreEqual 0, CLng(a.Children), "Children of a removed node"
+            Expect.AreEqual "Nothing", TypeName(a.Parent), "TypeName of Parent of a removed node"
+            Expect.AreEqual 2, CLng(a.Index), "Index of a removed node"
+            Expect.AreEqual "a", a.Key, "Key of a removed node"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nodes_Clear_RemovesEveryNode()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            .Add r, TvwNodeRelationshipChild, "a", "A"
+            .Clear
+            Expect.AreEqual 0, CLng(.Count), "Count after Clear"
+            Expect.IsFalse .Exists("a"), "Exists(""a"") after Clear"
+            .Add , , "a", "A again"
+            Expect.AreEqual 1, CLng(.Item("a").Index), "Index of a node added after Clear"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ a node
+
+    [TestCase]
+    Public Sub Key_Assigned_ChangesTheKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            Set n = .Add(, , "a", "A")
+            .Add , , "b", "B"
+            n.Key = "z"
+            Expect.AreEqual "z", n.Key, "Key after Key = ""z"""
+            Expect.IsFalse .Exists("a"), "Exists(""a"") after the key changed"
+            Expect.AreEqual 1, CLng(.Item("z").Index), "Index of the node found by its new key"
+            n.Key = ""
+            Expect.AreEqual "", n.Key, "Key after Key = an empty string"
+            Expect.AreEqual "A", .Item(1).Text, "Text of the node numbered 1 after its key was taken away"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Duplicate_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1.Nodes
+            Set n = .Add(, , "a", "A")
+            .Add , , "b", "B"
+            On Error Resume Next
+            Err.Clear
+            n.Key = "b"
+            Expect.AreEqual 457, Err.Number, "Key = a key that another node has"
+            On Error GoTo 0
+            Expect.AreEqual "a", n.Key, "Key after the refused assignment"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Child_Set_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        On Error Resume Next
+        Err.Clear
+        Set n.Child = n
+        Expect.AreEqual 383, Err.Number, "Set Child"
+        Err.Clear
+        Set n.Root = n
+        Expect.AreEqual 383, Err.Number, "Set Root"
+        Err.Clear
+        Set n.NextVisible = n
+        Expect.AreEqual 383, Err.Number, "Set NextVisible"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Root_OfANodeInALaterBranch_IsItsTopLevelAncestor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode, b As TvwNode, c As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(, , "a", "A")
+            Set b = .Add(r, TvwNodeRelationshipChild, "b", "B")
+            Set c = .Add(a, TvwNodeRelationshipChild, "c", "C")
+        End With
+        Expect.AreEqual "R", b.Root.Text, "Root of a node in the first branch"
+        Expect.AreEqual "A", c.Root.Text, "Root of a node in the second branch"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_LongerThan259_IsReadBackWhole()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", String$(300, "x"))
+        Expect.AreEqual 300, Len(n.Text), "Len of Text for a node added with 300 characters"
+        n.Text = String$(1000, "y")
+        Expect.AreEqual 1000, Len(n.Text), "Len of Text after 1000 characters were assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FullPath_UsesThePathSeparator()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode, t As TvwNode
+        With f.TreeView1
+            Set n = .Nodes.Add(, , "r", "Root")
+            Set t = .Nodes.Add(n, TvwNodeRelationshipChild, "a", "Sub")
+            Set t = .Nodes.Add(t, TvwNodeRelationshipChild, "b", "Leaf")
+            Expect.AreEqual "Root\Sub\Leaf", t.FullPath, "FullPath with the default separator"
+            .PathSeparator = " > "
+            Expect.AreEqual "Root > Sub > Leaf", t.FullPath, "FullPath with the separator "" > """
+            .PathSeparator = ""
+            Expect.AreEqual "RootSubLeaf", t.FullPath, "FullPath with an empty separator"
+            Expect.AreEqual "Root", n.FullPath, "FullPath of a node of the root level"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PathSeparator_AnyString_IsUsedByFullPath()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1
+            Set n = .Nodes.Add(, , "r", "A")
+            Set n = .Nodes.Add(n, TvwNodeRelationshipChild, "b", "B")
+            .PathSeparator = "<>"
+            Expect.AreEqual "<>", .PathSeparator, "PathSeparator after the assignment of ""<>"""
+            Expect.AreEqual "A<>B", n.FullPath, "FullPath with the separator ""<>"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tag_HoldsAnyValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode, k As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        Set k = f.TreeView1.Nodes.Add(, , "b", "B")
+        Expect.AreEqual "String", TypeName(n.Tag), "TypeName of the Tag of a new node"
+        Expect.AreEqual "", CStr(n.Tag), "the Tag of a new node"
+        n.Tag = 42
+        Expect.AreEqual 42, CLng(n.Tag), "Tag after 42 was assigned"
+        Set n.Tag = k
+        Expect.AreEqual "TvwNode", TypeName(n.Tag), "TypeName of Tag after a node was assigned with Set"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NodeColors_MinusOne_FollowsTheTree()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        Expect.IsTrue n.BackColor = f.TreeView1.BackColor, "BackColor of a new node equals the tree's"
+        Expect.IsTrue n.ForeColor = f.TreeView1.ForeColor, "ForeColor of a new node equals the tree's"
+        n.BackColor = vbRed
+        n.ForeColor = vbYellow
+        Expect.IsTrue n.BackColor = vbRed, "BackColor after vbRed was assigned"
+        Expect.IsTrue n.ForeColor = vbYellow, "ForeColor after vbYellow was assigned"
+        n.BackColor = -1
+        n.ForeColor = -1
+        Expect.IsTrue n.BackColor = f.TreeView1.BackColor, "BackColor after -1 was assigned"
+        Expect.IsTrue n.ForeColor = f.TreeView1.ForeColor, "ForeColor after -1 was assigned"
+        n.ForeColor = vbYellow
+        f.TreeView1.ResetForeColors
+        Expect.IsTrue n.ForeColor = f.TreeView1.ForeColor, "ForeColor after ResetForeColors"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_ReadsFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        Expect.IsTrue n.Enabled, "Enabled of a new node"
+        n.Enabled = False
+        Expect.IsFalse n.Enabled, "Enabled after False was assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CheckBox_False_TakesTheBoxAway()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        f.TreeView1.Checkboxes = True
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        Expect.IsTrue n.CheckBox, "CheckBox of a new node in a tree with Checkboxes"
+        n.CheckBox = False
+        Expect.IsFalse n.CheckBox, "CheckBox after False was assigned"
+        n.Checked = True
+        Expect.IsFalse n.Checked, "Checked after True was assigned to a node without a box"
+        n.CheckBox = True
+        Expect.IsTrue n.CheckBox, "CheckBox after True was assigned"
+        Expect.IsFalse n.Checked, "Checked of a node that got its box back"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ moving
+
+    [TestCase]
+    Public Sub Move_KeepsTheStateAndTheChildren()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode, b As TvwNode, h As LongPtr
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+            Set b = .Add(r, TvwNodeRelationshipChild, "b", "B")
+            .Add a, TvwNodeRelationshipChild, "c", "C"
+        End With
+        a.Expanded = True
+        a.Selected = True
+        h = a.Handle
+        a.Move b, TvwNodeRelationshipNext
+        Expect.IsTrue h <> a.Handle, "Handle of a node after Move"
+        Expect.IsTrue a.Expanded, "Expanded after Move"
+        Expect.IsTrue a.Selected, "Selected after Move"
+        Expect.AreEqual "A", f.TreeView1.SelectedItem.Text, "SelectedItem after Move"
+        Expect.AreEqual 1, CLng(a.Children), "Children after Move"
+        Expect.AreEqual 2, CLng(a.Index), "Index after Move"
+        Expect.AreEqual "A", b.NextSibling.Text, "the node after B after A moved there"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Move_NoRelative_GoesToTheRootLevel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode, b As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+            Set b = .Add(r, TvwNodeRelationshipChild, "b", "B")
+        End With
+        a.Move
+        Expect.AreEqual 0, CLng(a.Level), "Level of a node moved with no Relative"
+        Expect.AreEqual "A", r.LastSibling.Text, "the last node of the root level after Move with no Relative"
+        b.Move , TvwNodeRelationshipFirst
+        Expect.AreEqual "B", r.FirstSibling.Text, "the first node of the root level after Move with First and no Relative"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Move_IntoItsOwnBranch_Raises35614()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+        End With
+        On Error Resume Next
+        Err.Clear
+        r.Move a, TvwNodeRelationshipChild
+        Expect.AreEqual 35614, Err.Number, "Move of a node to be a child of its own child"
+        Err.Clear
+        r.Move a, TvwNodeRelationshipNext
+        Expect.AreEqual 35614, Err.Number, "Move of a node to follow its own child"
+        Err.Clear
+        Set r.Parent = a
+        Expect.AreEqual 35614, Err.Number, "Set Parent of a node to its own child"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parent_Set_MovesTheNodeAsFirstChild()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode, c As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+            Set c = .Add(, , "c", "C")
+        End With
+        Set c.Parent = r
+        Expect.AreEqual "R", c.Parent.Text, "Parent after Set Parent"
+        Expect.AreEqual "C A", Siblings(r.Child), "the children of R after C was given R as its Parent"
+        Expect.AreEqual 1, CLng(c.Level), "Level after Set Parent"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parent_SetToNothing_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+        End With
+        On Error Resume Next
+        Err.Clear
+        Set a.Parent = Nothing
+        Expect.AreEqual 35610, Err.Number, "Set Parent to Nothing"
+        On Error GoTo 0
+        Expect.AreEqual "R", a.Parent.Text, "Parent after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ opening and selecting
+
+    [TestCase]
+    Public Sub Expanded_Change_RaisesTheEvents()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+        End With
+        Rig.ClearLog
+        r.Expanded = True
+        Expect.AreEqual "BeforeExpand R | Expand R", Rig.Events(), "the events of Expanded = True on a closed branch"
+        Rig.ClearLog
+        r.Expanded = True
+        Expect.AreEqual "", Rig.Events(), "the events of Expanded = True on an open branch"
+        r.Expanded = False
+        Rig.ClearLog
+        r.Expanded = True
+        Expect.AreEqual "BeforeExpand R | Expand R", Rig.Events(), "the events of opening the branch a second time"
+        Rig.ClearLog
+        r.Expanded = False
+        Expect.AreEqual "BeforeCollapse R | Collapse R", Rig.Events(), "the events of Expanded = False on an open branch"
+        Rig.ClearLog
+        a.Selected = True
+        Expect.AreEqual "NodeBeforeSelect A | BeforeExpand R | Expand R | NodeSelect A", Rig.Events(), "the events of selecting a node in a closed branch"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Expanded_NodeWithoutChildren_IsRememberedUntilItGetsOne()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim b As TvwNode, x As TvwNode
+        Set b = f.TreeView1.Nodes.Add(, , "b", "B")
+        Rig.ClearLog
+        Expect.IsFalse b.Expanded, "Expanded of a node without children"
+        b.Expanded = True
+        Expect.IsTrue b.Expanded, "Expanded after True was assigned to a node without children"
+        Expect.AreEqual "", Rig.Events(), "the events of Expanded = True on a node without children"
+        Set x = f.TreeView1.Nodes.Add(b, TvwNodeRelationshipChild, "x", "X")
+        Expect.IsTrue b.Expanded, "Expanded after the node got a child"
+        Expect.IsTrue x.Visible, "Visible of the first child of a node set to Expanded before"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Expanded_BeforeExpandCancelled_LeavesTheNodeCollapsed()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+        End With
+        sink.CancelBefore = True
+        r.Expanded = True
+        Expect.IsFalse r.Expanded, "Expanded after Expanded = True with BeforeExpand cancelled"
+        Expect.IsFalse a.Visible, "Visible of the child after Expanded = True with BeforeExpand cancelled"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Visible_ClosedBranch_IsFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+        End With
+        Expect.IsTrue r.Visible, "Visible of a node of the root level"
+        Expect.IsFalse a.Visible, "Visible of a child in a closed branch"
+        r.Expanded = True
+        Expect.IsTrue a.Visible, "Visible of the child after the branch was opened"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_Change_RaisesTheEvents()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim a As TvwNode, b As TvwNode
+        With f.TreeView1.Nodes
+            Set a = .Add(, , "a", "A")
+            Set b = .Add(, , "b", "B")
+        End With
+        Expect.AreEqual "Nothing", TypeName(f.TreeView1.SelectedItem), "TypeName of SelectedItem in a new tree"
+        Rig.ClearLog
+        b.Selected = True
+        Expect.AreEqual "NodeBeforeSelect B | NodeSelect B", Rig.Events(), "the events of Selected = True"
+        Rig.ClearLog
+        b.Selected = True
+        Expect.AreEqual "", Rig.Events(), "the events of Selected = True on the selected node"
+        Set f.TreeView1.SelectedItem = a
+        Expect.AreEqual "NodeBeforeSelect A | NodeSelect A", Rig.Events(), "the events of SelectedItem = another node"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_BeforeSelectCancelled_KeepsTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim a As TvwNode, b As TvwNode
+        With f.TreeView1.Nodes
+            Set a = .Add(, , "a", "A")
+            Set b = .Add(, , "b", "B")
+        End With
+        sink.CancelBefore = True
+        a.Selected = True
+        Expect.AreEqual "Nothing", TypeName(f.TreeView1.SelectedItem), "TypeName of SelectedItem after Selected = True with NodeBeforeSelect cancelled"
+        sink.CancelBefore = False
+        b.Selected = True
+        sink.CancelBefore = True
+        Rig.ClearLog
+        Set f.TreeView1.SelectedItem = a
+        Expect.AreEqual "NodeBeforeSelect A", Rig.Events(), "the events of SelectedItem = A with NodeBeforeSelect cancelled"
+        Expect.AreEqual "B", f.TreeView1.SelectedItem.Text, "SelectedItem after the cancelled selection"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_False_KeepsTheSelectedItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TvwNode
+        Set b = f.TreeView1.Nodes.Add(, , "b", "B")
+        b.Selected = True
+        Expect.IsTrue b.Selected, "Selected after Selected = True"
+        b.Selected = False
+        Expect.IsFalse b.Selected, "Selected after Selected = False"
+        Expect.AreEqual "B", f.TreeView1.SelectedItem.Text, "SelectedItem after Selected = False"
+        Set f.TreeView1.SelectedItem = Nothing
+        Expect.AreEqual "Nothing", TypeName(f.TreeView1.SelectedItem), "TypeName of SelectedItem after Nothing was assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_True_OpensTheBranchesAbove()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+        End With
+        Expect.IsFalse r.Expanded, "Expanded of the parent before its child was selected"
+        a.Selected = True
+        Expect.IsTrue r.Expanded, "Expanded of the parent after its child was selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ several nodes
+
+    [TestCase]
+    Public Sub SelectedNodes_ProgramSelecting_ListsTheNewestFirst()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As TvwNode, b As TvwNode, c As TvwNode, n As TvwNode, s As String
+        With f.TreeView1
+            Set a = .Nodes.Add(, , "a", "A")
+            Set b = .Nodes.Add(, , "b", "B")
+            Set c = .Nodes.Add(, , "c", "C")
+            .MultiSelect = TvwMultiSelectAll
+            Expect.AreEqual 0, CLng(.SelectedNodes.Count), "Count of SelectedNodes before a node is selected"
+            a.Selected = True
+            c.Selected = True
+            b.Selected = True
+            For Each n In .SelectedNodes
+                s = s & n.Text
+            Next
+            Expect.AreEqual "BCA", s, "the nodes of SelectedNodes after A, C and B were selected"
+            Expect.AreEqual 3, CLng(.SelectedNodes.Count), "Count of SelectedNodes"
+            Expect.AreEqual "A", .SelectedItem.Text, "SelectedItem after A, C and B were selected"
+            Expect.AreEqual 1, CLng(b.SelectedIndex), "SelectedIndex of the node selected last"
+            Expect.AreEqual 3, CLng(a.SelectedIndex), "SelectedIndex of the node selected first"
+            b.Selected = False
+            Expect.AreEqual 0, CLng(b.SelectedIndex), "SelectedIndex of a node that was deselected"
+            Expect.AreEqual 2, CLng(.SelectedNodes.Count), "Count of SelectedNodes after one node was deselected"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedNodes_MultiSelectNone_Raises91()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As Long
+        On Error Resume Next
+        Err.Clear
+        n = f.TreeView1.SelectedNodes.Count
+        Expect.AreEqual 91, Err.Number, "SelectedNodes while MultiSelect is TvwMultiSelectNone"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiSelect_Changed_KeepsOnlyTheFocusedNode()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As TvwNode, c As TvwNode
+        With f.TreeView1
+            Set a = .Nodes.Add(, , "a", "A")
+            .Nodes.Add , , "b", "B"
+            Set c = .Nodes.Add(, , "c", "C")
+            .MultiSelect = TvwMultiSelectAll
+            a.Selected = True
+            c.Selected = True
+            Expect.AreEqual 2, CLng(.SelectedNodes.Count), "Count of SelectedNodes with two nodes selected"
+            .MultiSelect = TvwMultiSelectVisibleOnly
+            Expect.AreEqual 1, CLng(.SelectedNodes.Count), "Count of SelectedNodes after MultiSelect changed"
+            Expect.IsTrue a.Selected, "Selected of the node that has the focus after MultiSelect changed"
+            Expect.IsFalse c.Selected, "Selected of the other node after MultiSelect changed"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedNodes_Item_OutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        f.TreeView1.MultiSelect = TvwMultiSelectAll
+        f.TreeView1.Nodes.Add , , "a", "A"
+        f.TreeView1.Nodes("a").Selected = True
+        On Error Resume Next
+        Err.Clear
+        Set n = f.TreeView1.SelectedNodes(5)
+        Expect.AreEqual 35600, Err.Number, "SelectedNodes(5) with one node selected"
+        Err.Clear
+        Set n = f.TreeView1.SelectedNodes.Item(0)
+        Expect.AreEqual 35600, Err.Number, "SelectedNodes.Item(0)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedNodes_Exists_SaysWhetherTheNumberIsInTheRange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TreeView1.MultiSelect = TvwMultiSelectAll
+        f.TreeView1.Nodes.Add , , "a", "A"
+        f.TreeView1.Nodes.Add , , "b", "B"
+        f.TreeView1.Nodes("a").Selected = True
+        f.TreeView1.Nodes("b").Selected = True
+        With f.TreeView1.SelectedNodes
+            Expect.IsFalse .Exists(0), "Exists(0)"
+            Expect.IsTrue .Exists(1), "Exists(1) with two nodes selected"
+            Expect.IsTrue .Exists(2), "Exists(2) with two nodes selected"
+            Expect.IsFalse .Exists(3), "Exists(3) with two nodes selected"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AnchorItem_SetAndCleared()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1
+            .Nodes.Add , , "a", "A"
+            .Nodes.Add , , "b", "B"
+            Expect.AreEqual "Nothing", TypeName(.AnchorItem), "TypeName of AnchorItem in a new tree"
+            Set .AnchorItem = .Nodes("b")
+            Expect.AreEqual "B", .AnchorItem.Text, "AnchorItem after a node was assigned"
+            Set .AnchorItem = Nothing
+            Expect.AreEqual "Nothing", TypeName(.AnchorItem), "TypeName of AnchorItem after Nothing was assigned"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ check boxes
+
+    [TestCase]
+    Public Sub Checked_Change_RaisesTheEvents()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim r As TvwNode
+        f.TreeView1.Checkboxes = True
+        Set r = f.TreeView1.Nodes.Add(, , "r", "R")
+        Expect.IsFalse r.Checked, "Checked of a new node"
+        Rig.ClearLog
+        r.Checked = True
+        Expect.IsTrue r.Checked, "Checked after True was assigned"
+        Expect.AreEqual "NodeBeforeCheck R | NodeCheck R", Rig.Events(), "the events of Checked = True"
+        Rig.ClearLog
+        r.Checked = True
+        Expect.AreEqual "", Rig.Events(), "the events of Checked = True on a checked node"
+        r.Checked = False
+        Expect.IsFalse r.Checked, "Checked after False was assigned"
+        Expect.AreEqual "NodeBeforeCheck R | NodeCheck R", Rig.Events(), "the events of Checked = False on a checked node"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Checked_BeforeCheckCancelled_KeepsTheState()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim r As TvwNode
+        f.TreeView1.Checkboxes = True
+        Set r = f.TreeView1.Nodes.Add(, , "r", "R")
+        sink.CancelBefore = True
+        Rig.ClearLog
+        r.Checked = True
+        Expect.IsFalse r.Checked, "Checked after True was assigned with NodeBeforeCheck cancelled"
+        Expect.AreEqual "NodeBeforeCheck R", Rig.Events(), "the events of Checked = True with NodeBeforeCheck cancelled"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ labels
+
+    [TestCase]
+    Public Sub StartLabelEdit_RaisesBeforeLabelEdit()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim r As TvwNode
+        Set r = f.TreeView1.Nodes.Add(, , "r", "R")
+        Rig.ClearLog
+        f.TreeView1.StartLabelEdit
+        Expect.AreEqual "", Rig.Events(), "the events of StartLabelEdit while no node is selected"
+        Expect.IsTrue f.TreeView1.hWndLabelEdit = 0, "hWndLabelEdit after StartLabelEdit while no node is selected"
+        r.Selected = True
+        Rig.ClearLog
+        f.TreeView1.StartLabelEdit
+        Expect.AreEqual "BeforeLabelEdit", Rig.Events(), "the events of StartLabelEdit with a node selected"
+        Expect.IsTrue f.TreeView1.hWndLabelEdit <> 0, "hWndLabelEdit while a label is edited"
+        f.TreeView1.EndLabelEdit True
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartLabelEdit_LabelEditDisabled_StartsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New TreeViewSink
+        Set sink.Tree = f.TreeView1
+        Dim r As TvwNode
+        Set r = f.TreeView1.Nodes.Add(, , "r", "R")
+        r.Selected = True
+        f.TreeView1.LabelEdit = TvwLabelEditDisabled
+        Rig.ClearLog
+        f.TreeView1.StartLabelEdit
+        Expect.AreEqual "", Rig.Events(), "the events of StartLabelEdit with LabelEdit TvwLabelEditDisabled"
+        Expect.IsTrue f.TreeView1.hWndLabelEdit = 0, "hWndLabelEdit after StartLabelEdit with LabelEdit TvwLabelEditDisabled"
+        Set sink.Tree = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ sorting
+
+    [TestCase]
+    Public Sub Sorted_SortsTheRootLevel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1
+            Set n = .Nodes.Add(, , "p", "pear")
+            .Nodes.Add , , "a", "Apple"
+            .Nodes.Add , , "f", "fig"
+            Expect.AreEqual "pear Apple fig", Siblings(n.FirstSibling), "the root level before Sorted"
+            .Sorted = True
+            Expect.AreEqual "Apple fig pear", Siblings(n.FirstSibling), "the root level after Sorted = True"
+            .SortOrder = TvwSortOrderDescending
+            Expect.AreEqual "pear fig Apple", Siblings(n.FirstSibling), "the root level after SortOrder = TvwSortOrderDescending"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_OfANode_SortsItsChildren()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1
+            Set n = .Nodes.Add(, , "p", "pear")
+            .Nodes.Add n, TvwNodeRelationshipChild, "k", "kiwi"
+            .Nodes.Add n, TvwNodeRelationshipChild, "b", "banana"
+            .Sorted = True
+            Expect.AreEqual "kiwi banana", Siblings(n.Child), "the children of a node when the tree's Sorted is True"
+            n.Sorted = True
+            Expect.AreEqual "banana kiwi", Siblings(n.Child), "the children of a node after its Sorted was set to True"
+            n.SortOrder = TvwSortOrderDescending
+            Expect.AreEqual "kiwi banana", Siblings(n.Child), "the children after its SortOrder was set to TvwSortOrderDescending"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_NodeAddedLater_TakesItsSortedPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        With f.TreeView1
+            Set n = .Nodes.Add(, , "p", "pear")
+            .Nodes.Add , , "a", "apple"
+            .Sorted = True
+            .Nodes.Add , , "z", "zebra"
+            .Nodes.Add , TvwNodeRelationshipFirst, "m", "mango"
+            Expect.AreEqual "apple mango pear zebra", Siblings(n.FirstSibling), "the root level after two nodes were added to a sorted tree"
+            n.Sorted = True
+            .Nodes.Add n, TvwNodeRelationshipChild, "k", "kiwi"
+            .Nodes.Add n, TvwNodeRelationshipChild, "b", "banana"
+            Expect.AreEqual "banana kiwi", Siblings(n.Child), "the children of a node whose Sorted is True after two were added"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NodeSortOrder_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        On Error Resume Next
+        Err.Clear
+        n.SortOrder = 5
+        Expect.AreEqual 380, Err.Number, "SortOrder of a node = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NodeSortType_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As TvwNode
+        Set n = f.TreeView1.Nodes.Add(, , "a", "A")
+        On Error Resume Next
+        Err.Clear
+        n.SortType = 5
+        Expect.AreEqual 380, Err.Number, "SortType of a node = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ positions and scrolling
+
+    ' The key of a node, or "Nothing" for no node, so that a wrong answer fails the case instead of raising.
+    Private Function KeyOf(ByVal Node As TvwNode) As String
+        If Node Is Nothing Then KeyOf = "Nothing" Else KeyOf = Node.Key
+    End Function
+
+    [TestCase]
+    Public Sub HitTest_GivesTheNodeUnderThePosition()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As TvwNode, after As Boolean
+        ' The tree of HostForm is 40 pixels high: short labels and no pictures keep it free of scroll bars, so that both rows are in view.
+        With f.TreeView1
+            .Style = TvwStyleTextOnly
+            .Nodes.Add , , "a", "First row"
+            .Nodes.Add , , "b", "Second row"
+            Expect.AreEqual "a", KeyOf(.HitTest(300, 100)), "Key of HitTest(300, 100)"
+            Expect.AreEqual "b", KeyOf(.HitTest(300, 350)), "Key of HitTest(300, 350)"
+            Expect.AreEqual "Nothing", KeyOf(.HitTest(300, 3000)), "Key of HitTest below the last node"
+            Set h = .HitTestInsertMark(300, 20, after)
+            Expect.AreEqual "a", KeyOf(h), "Key of HitTestInsertMark in the upper half of the first row"
+            Expect.IsFalse after, "After for the upper half of the first row"
+            Set h = .HitTestInsertMark(300, 200, after)
+            Expect.AreEqual "a", KeyOf(h), "Key of HitTestInsertMark in the lower half of the first row"
+            Expect.IsTrue after, "After for the lower half of the first row"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FirstVisible_OfAnyNode_IsTheTopItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        With f.TreeView1
+            For i = 1 To 40
+                .Nodes.Add , , "k" & i, "Node " & i
+            Next
+            Set .TopItem = .Nodes("k20")
+            Expect.AreEqual "Node 20", .TopItem.Text, "TopItem after TopItem was set to Node 20"
+            Expect.AreEqual "Node 20", .Nodes("k3").FirstVisible.Text, "FirstVisible of Node 3 while Node 20 is at the top"
+            Expect.AreEqual "Node 20", .Nodes("k39").FirstVisible.Text, "FirstVisible of Node 39 while Node 20 is at the top"
+            Expect.IsTrue .Nodes("k39").Visible, "Visible of a node scrolled out of the window"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TopItem_Set_ScrollsTheNodeToTheTop()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        With f.TreeView1
+            For i = 1 To 40
+                .Nodes.Add , , "k" & i, "Node " & i
+            Next
+            Expect.AreEqual "Node 1", .TopItem.Text, "TopItem of a new tree"
+            Set .TopItem = .Nodes("k20")
+            Expect.AreEqual "Node 20", .TopItem.Text, "TopItem after Node 20 was assigned"
+            .Nodes("k5").EnsureVisible
+            Expect.AreEqual "Node 5", .TopItem.Text, "TopItem after EnsureVisible of Node 5 scrolled up to it"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TopItem_SetToNothing_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TreeView1.Nodes.Add , , "a", "A"
+        On Error Resume Next
+        Err.Clear
+        Set f.TreeView1.TopItem = Nothing
+        Expect.AreEqual 380, Err.Number, "Set TopItem to Nothing"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastVisible_OfAnyNode_IsTheLastShownNode()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim r As TvwNode, a As TvwNode, b As TvwNode
+        With f.TreeView1.Nodes
+            Set r = .Add(, , "r", "R")
+            Set a = .Add(r, TvwNodeRelationshipChild, "a", "A")
+            Set b = .Add(, , "b", "B")
+            .Add b, TvwNodeRelationshipChild, "x", "X"
+        End With
+        Expect.AreEqual "B", r.LastVisible.Text, "LastVisible while both branches are closed"
+        b.Expanded = True
+        Expect.AreEqual "X", r.LastVisible.Text, "LastVisible after the last branch was opened"
+        Expect.AreEqual "X", a.LastVisible.Text, "LastVisible of another node"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DropHighlight_SetAndCleared()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1
+            .Nodes.Add , , "a", "A"
+            .Nodes.Add , , "b", "B"
+            Expect.AreEqual "Nothing", TypeName(.DropHighlight), "TypeName of DropHighlight in a new tree"
+            Set .DropHighlight = .Nodes("b")
+            Expect.AreEqual "B", .DropHighlight.Text, "DropHighlight after a node was assigned"
+            Set .DropHighlight = Nothing
+            Expect.AreEqual "Nothing", TypeName(.DropHighlight), "TypeName of DropHighlight after Nothing was assigned"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_SetAndRead()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim after As Boolean
+        With f.TreeView1
+            .Nodes.Add , , "a", "A"
+            .Nodes.Add , , "b", "B"
+            Expect.AreEqual "Nothing", TypeName(.InsertMark), "TypeName of InsertMark in a new tree"
+            Set .InsertMark(True) = .Nodes("b")
+            Expect.AreEqual "B", .InsertMark(after).Text, "InsertMark after a node was assigned"
+            Expect.IsTrue after, "After of InsertMark after the node was assigned with After True"
+            Set .InsertMark = Nothing
+            Expect.AreEqual "Nothing", TypeName(.InsertMark), "TypeName of InsertMark after Nothing was assigned"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ------------------------------------------------------------------ the properties
+
+    [TestCase]
+    Public Sub Properties_NotAMember_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        With f.TreeView1
+            Err.Clear: .BorderStyle = 7
+            Expect.AreEqual 380, Err.Number, "BorderStyle = 7"
+            Err.Clear: .Style = 8
+            Expect.AreEqual 380, Err.Number, "Style = 8"
+            Err.Clear: .LineStyle = 2
+            Expect.AreEqual 380, Err.Number, "LineStyle = 2"
+            Err.Clear: .LabelEdit = 3
+            Expect.AreEqual 380, Err.Number, "LabelEdit = 3"
+            Err.Clear: .SortOrder = 2
+            Expect.AreEqual 380, Err.Number, "SortOrder = 2"
+            Err.Clear: .SortType = 2
+            Expect.AreEqual 380, Err.Number, "SortType = 2"
+            Err.Clear: .MultiSelect = 4
+            Expect.AreEqual 380, Err.Number, "MultiSelect = 4"
+            Err.Clear: .VisualTheme = 2
+            Expect.AreEqual 380, Err.Number, "VisualTheme = 2"
+            Err.Clear: .OLEDragMode = 2
+            Expect.AreEqual 380, Err.Number, "OLEDragMode = 2"
+            Err.Clear: .OLEDragExpandTime = -2
+            Expect.AreEqual 380, Err.Number, "OLEDragExpandTime = -2"
+            Err.Clear: .Indentation = -1
+            Expect.AreEqual 380, Err.Number, "Indentation = -1"
+            Err.Clear: .LineHeight = -5
+            Expect.AreEqual 380, Err.Number, "LineHeight = -5"
+            Err.Clear: .IMEMode = 11
+            Expect.AreEqual 380, Err.Number, "IMEMode = 11"
+        End With
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_OfANewTree()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.TreeView1
+            Expect.AreEqual 3, CLng(.BorderStyle), "BorderStyle of a new tree"
+            Expect.AreEqual 7, CLng(.Style), "Style of a new tree"
+            Expect.AreEqual 0, CLng(.LineStyle), "LineStyle of a new tree"
+            Expect.AreEqual 0, CLng(.LabelEdit), "LabelEdit of a new tree"
+            Expect.IsFalse .Checkboxes, "Checkboxes of a new tree"
+            Expect.IsFalse .ShowTips, "ShowTips of a new tree"
+            Expect.IsTrue .HideSelection, "HideSelection of a new tree"
+            Expect.IsFalse .FullRowSelect, "FullRowSelect of a new tree"
+            Expect.IsFalse .HotTracking, "HotTracking of a new tree"
+            Expect.AreEqual 0, CLng(.Indentation), "Indentation of a new tree"
+            Expect.AreEqual "\", .PathSeparator, "PathSeparator of a new tree"
+            Expect.IsTrue .Scroll, "Scroll of a new tree"
+            Expect.IsFalse .SingleSel, "SingleSel of a new tree"
+            Expect.IsFalse .Sorted, "Sorted of a new tree"
+            Expect.AreEqual 0, CLng(.SortOrder), "SortOrder of a new tree"
+            Expect.AreEqual 0, CLng(.SortType), "SortType of a new tree"
+            Expect.IsTrue .DoubleBuffer, "DoubleBuffer of a new tree"
+            Expect.IsTrue .Redraw, "Redraw of a new tree"
+            Expect.AreEqual 0, CLng(.MultiSelect), "MultiSelect of a new tree"
+            Expect.AreEqual 0, CLng(.VisualTheme), "VisualTheme of a new tree"
+            Expect.AreEqual 0, CLng(.OLEDragMode), "OLEDragMode of a new tree"
+            Expect.IsTrue .OLEDragDropScroll, "OLEDragDropScroll of a new tree"
+            Expect.AreEqual -1, CLng(.OLEDragExpandTime), "OLEDragExpandTime of a new tree"
+            Expect.AreEqual 0, CLng(.IMEMode), "IMEMode of a new tree"
+            Expect.IsTrue .BackColor = vbWindowBackground, "BackColor of a new tree"
+            Expect.IsTrue .ForeColor = vbWindowText, "ForeColor of a new tree"
+            Expect.IsTrue .LineColor = vbGrayText, "LineColor of a new tree"
+            Expect.IsTrue .InsertMarkColor = vbBlack, "InsertMarkColor of a new tree"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a TreeView, written to Rig.Log. CancelBefore makes each Before event cancel.
+Class TreeViewSink
+
+    Public WithEvents Tree As VBCCR18.TreeView
+    Public CancelBefore As Boolean
+
+    Private Sub Tree_BeforeExpand(ByVal Node As TvwNode, Cancel As Boolean) Handles Tree.BeforeExpand
+        Rig.Ev "BeforeExpand " & Node.Text
+        Cancel = CancelBefore
+    End Sub
+
+    Private Sub Tree_Expand(ByVal Node As TvwNode) Handles Tree.Expand
+        Rig.Ev "Expand " & Node.Text
+    End Sub
+
+    Private Sub Tree_BeforeCollapse(ByVal Node As TvwNode, Cancel As Boolean) Handles Tree.BeforeCollapse
+        Rig.Ev "BeforeCollapse " & Node.Text
+        Cancel = CancelBefore
+    End Sub
+
+    Private Sub Tree_Collapse(ByVal Node As TvwNode) Handles Tree.Collapse
+        Rig.Ev "Collapse " & Node.Text
+    End Sub
+
+    Private Sub Tree_NodeBeforeSelect(ByVal Node As TvwNode, Cancel As Boolean) Handles Tree.NodeBeforeSelect
+        Rig.Ev "NodeBeforeSelect " & Node.Text
+        Cancel = CancelBefore
+    End Sub
+
+    Private Sub Tree_NodeSelect(ByVal Node As TvwNode) Handles Tree.NodeSelect
+        Rig.Ev "NodeSelect " & Node.Text
+    End Sub
+
+    Private Sub Tree_NodeBeforeCheck(ByVal Node As TvwNode, Cancel As Boolean) Handles Tree.NodeBeforeCheck
+        Rig.Ev "NodeBeforeCheck " & Node.Text
+        Cancel = CancelBefore
+    End Sub
+
+    Private Sub Tree_NodeCheck(ByVal Node As TvwNode) Handles Tree.NodeCheck
+        Rig.Ev "NodeCheck " & Node.Text
+    End Sub
+
+    Private Sub Tree_BeforeLabelEdit(Cancel As Boolean) Handles Tree.BeforeLabelEdit
+        Rig.Ev "BeforeLabelEdit"
+        Cancel = CancelBefore
+    End Sub
+
+End Class

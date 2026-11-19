@@ -1,0 +1,9 @@
+' A real form with one control on it, UpDown1, for the samples of the VBCCR18 section: the
+' reader's form with the control on it. Written by a generator, with its designer file.
+
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEACC000032")]
+[PredeclaredId]
+Class frmUpDown
+
+End Class

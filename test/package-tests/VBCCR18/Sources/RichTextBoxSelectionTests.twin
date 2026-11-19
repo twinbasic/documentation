@@ -1,0 +1,118 @@
+' RichTextBoxSelectionTests: the selection of the RichTextBox, its text, the text of a range and the
+' SelChange event.
+[TestFixture]
+Module RichTextBoxSelectionTests
+
+    [TestCase]
+    Public Sub SelLength_Assigned_RaisesSelChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        f.RichTextBox1.Text = "Hello world"
+        f.RichTextBox1.SelStart = 6
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        f.RichTextBox1.SelLength = 5
+        Expect.AreEqual "SelChange 5 6 11", Rig.Events(), "the events of SelLength = 5 at 6"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelText_Assigned_ReplacesTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        f.RichTextBox1.Text = "Hello world"
+        f.RichTextBox1.SelStart = 6
+        f.RichTextBox1.SelLength = 5
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        f.RichTextBox1.SelText = "there"
+        Expect.AreEqual "Hello there", f.RichTextBox1.Text, "Text after SelText = ""there"" over ""world"""
+        Expect.AreEqual 11, f.RichTextBox1.SelStart, "SelStart after the assignment"
+        Expect.AreEqual 0, f.RichTextBox1.SelLength, "SelLength after the assignment"
+        Expect.IsTrue InStr(Rig.Events(), "Change") > 0, "a Change event for the assignment: " & Rig.Events()
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTextRange_ReturnsTheCharactersBetween()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "Hello world"
+        Expect.AreEqual "Hello", f.RichTextBox1.GetTextRange(0, 5), "GetTextRange(0, 5)"
+        Expect.AreEqual "world", f.RichTextBox1.GetTextRange(6, 100), "GetTextRange(6, 100)"
+        Expect.AreEqual "", f.RichTextBox1.GetTextRange(2, 2), "GetTextRange(2, 2)"
+        Expect.AreEqual 0, f.RichTextBox1.SelLength, "SelLength after GetTextRange"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTextRange_MinAboveMax_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "Hello world"
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.RichTextBox1.GetTextRange(3, 1)
+        Expect.AreEqual 380, Err.Number, "GetTextRange(3, 1)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "Hello"
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.SelLength = -1
+        Expect.AreEqual 380, Err.Number, "SelLength = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelStart_PastTheEnd_IsTheEnd()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "Hello"
+        f.RichTextBox1.SelStart = 1000
+        Expect.AreEqual 5, f.RichTextBox1.SelStart, "SelStart after SelStart = 1000 in ""Hello"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelStart_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "Hello"
+        f.RichTextBox1.SelStart = 2
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.SelStart = -1
+        Expect.AreEqual 380, Err.Number, "SelStart = -1"
+        On Error GoTo 0
+        Expect.AreEqual 2, f.RichTextBox1.SelStart, "SelStart after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

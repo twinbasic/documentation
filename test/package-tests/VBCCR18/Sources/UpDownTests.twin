@@ -1,0 +1,471 @@
+' UpDownTests: the range, the clicks and the buddy of the UpDown.
+[TestFixture]
+Module UpDownTests
+
+    Private Declare PtrSafe Function UdnMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    ' A click of the left button on the up arrow (Up is True) or on the down arrow.
+    Private Sub ClickArrow(ByVal u As VBCCR18.UpDown, ByVal Up As Boolean)
+        Dim lp As Long
+        If Up Then
+            lp = 3 + 3 * 65536
+        Else
+            lp = 3 + (CLng(u.Height / Screen.TwipsPerPixelY) - 3) * 65536
+        End If
+        UdnMessage u.hWnd, &H201, 1, lp
+        UdnMessage u.hWnd, &H202, 0, lp
+        DoEvents
+    End Sub
+
+    Private Function Name_(ByVal o As Object) As String
+        If o Is Nothing Then Name_ = "Nothing" Else Name_ = "an object"
+    End Function
+
+    [TestCase]
+    Public Sub Value_OutsideTheRange_IsTheNearestEnd()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            .Min = 0: .Max = 10
+            .Value = 50
+            Expect.AreEqual 10, .Value, "Value after Value = 50 in a range of 0 to 10"
+            .Value = -50
+            Expect.AreEqual 0, .Value, "Value after Value = -50"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Min_AboveMax_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.Min = 11
+        Expect.AreEqual 380, Err.Number, "Min = 11 with Max 10"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.UpDown1.Min, "Min after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Max_BelowMin_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.Max = -1
+        Expect.AreEqual 380, Err.Number, "Max = -1 with Min 0"
+        On Error GoTo 0
+        Expect.AreEqual 10, f.UpDown1.Max, "Max after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Min_AboveValue_MovesTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            .Min = 0: .Max = 10: .Value = 3
+            .Min = 5
+            Expect.AreEqual 5, .Value, "Value after Min = 5"
+            .Max = 20: .Value = 9
+            .Max = 6
+            Expect.AreEqual 6, .Value, "Value after Max = 6"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Assigned_RaisesChangeOnce()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New UpDownSink
+        Set sink.Ctl = f.UpDown1
+        DoEvents
+        Rig.ClearLog
+        f.UpDown1.Value = 3
+        f.UpDown1.Value = 3
+        f.UpDown1.Value = 50
+        DoEvents
+        Expect.AreEqual "Change 3 | Change 10", Rig.Events(), "the events of Value = 3, 3 and 50"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Width_Assigned_KeepsTheWidthOfTheArrows()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single
+        w = f.UpDown1.Width
+        f.UpDown1.Width = 5000
+        Expect.AreEqual CLng(w), CLng(f.UpDown1.Width), "Width after Width = 5000"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Orientation_Changed_ExchangesWidthAndHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single, h As Single
+        w = f.UpDown1.Width: h = f.UpDown1.Height
+        f.UpDown1.Orientation = UdnOrientationHorizontal
+        Expect.AreEqual CLng(h), CLng(f.UpDown1.Width), "Width after Orientation = horizontal"
+        Expect.AreEqual CLng(w), CLng(f.UpDown1.Height), "Height after Orientation = horizontal"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_Up_RaisesBeforeChangeChangeUpClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New UpDownSink
+        Set sink.Ctl = f.UpDown1
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10: f.UpDown1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.UpDown1, True
+        Expect.AreEqual "BeforeChange 5 1 | Change 6 | UpClick", Rig.Events(), "the events of a click on the up arrow"
+        Expect.AreEqual 6, f.UpDown1.Value, "Value after the click"
+        f.UpDown1.Increment = 4
+        Rig.ClearLog
+        ClickArrow f.UpDown1, True
+        Expect.AreEqual "BeforeChange 6 4 | Change 10 | UpClick", Rig.Events(), "the events of a click with Increment 4"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_Down_RaisesBeforeChangeChangeDownClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New UpDownSink
+        Set sink.Ctl = f.UpDown1
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10: f.UpDown1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.UpDown1, False
+        Expect.AreEqual "BeforeChange 5 -1 | Change 4 | DownClick", Rig.Events(), "the events of a click on the down arrow"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeChange_DeltaZero_CancelsTheClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New UpDownSink
+        Set sink.Ctl = f.UpDown1
+        sink.CancelClicks = True
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10: f.UpDown1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.UpDown1, True
+        Expect.AreEqual "BeforeChange 5 1", Rig.Events(), "the events of a cancelled click"
+        Expect.AreEqual 5, f.UpDown1.Value, "Value after the cancelled click"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_AtMax_RaisesUpClickWithoutChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New UpDownSink
+        Set sink.Ctl = f.UpDown1
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10: f.UpDown1.Value = 10
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.UpDown1, True
+        Expect.AreEqual "BeforeChange 10 1 | UpClick", Rig.Events(), "the events of a click on the up arrow at Max"
+        Expect.AreEqual 10, f.UpDown1.Value, "Value after the click"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Wrap_AtMax_GoesToMin()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.UpDown1.Min = 0: f.UpDown1.Max = 10: f.UpDown1.Value = 10
+        f.UpDown1.Wrap = True
+        f.UpDown1.Value = 10
+        ClickArrow f.UpDown1, True
+        Expect.AreEqual 0, f.UpDown1.Value, "Value after the up arrow at Max with Wrap"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_Control_IsTheBuddy()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.UpDown1.BuddyControl Is Nothing, "BuddyControl of a new control"
+        Set f.UpDown1.BuddyControl = f.TextBoxW1
+        Expect.IsTrue f.UpDown1.BuddyControl Is f.TextBoxW1, "BuddyControl after Set BuddyControl = TextBoxW1"
+        Set f.UpDown1.BuddyControl = Nothing
+        Expect.IsTrue f.UpDown1.BuddyControl Is Nothing, "BuddyControl after Nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_Name_IsTheBuddy()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.UpDown1.BuddyControl = "TextBoxW1"
+        Expect.IsTrue f.UpDown1.BuddyControl Is f.TextBoxW1, "BuddyControl after BuddyControl = ""TextBoxW1"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_OnAnotherForm_IsNothing()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        Set f.UpDown1.BuddyControl = g.TextBoxW1
+        Expect.IsTrue f.UpDown1.BuddyControl Is Nothing, "BuddyControl after a control of another form"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_NotAControl_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.UpDown1.BuddyControl = f.UpDown1
+        Expect.AreEqual 35610, Err.Number, "BuddyControl = the UpDown itself"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_Number_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.BuddyControl = 5
+        Expect.AreEqual 13, Err.Number, "BuddyControl = 5"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_UnknownName_IsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Set f.UpDown1.BuddyControl = f.TextBoxW1
+        f.UpDown1.BuddyControl = "NoSuchControl"
+        Expect.IsTrue f.UpDown1.BuddyControl Is Nothing, "BuddyControl after the name of no control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyProperty_NoBuddy_Raises35754()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.BuddyProperty = "Tag"
+        Expect.AreEqual 35754, Err.Number, "BuddyProperty = ""Tag"" without a buddy"
+        Err.Clear
+        f.UpDown1.SyncBuddy = True
+        Expect.AreEqual 35754, Err.Number, "SyncBuddy = True without a buddy"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyProperty_UnknownProperty_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Set f.UpDown1.BuddyControl = f.TextBoxW1
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.BuddyProperty = "NoSuchProperty"
+        Expect.AreEqual 380, Err.Number, "BuddyProperty = ""NoSuchProperty"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyProperty_Tag_WritesTheValueAsText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            .Min = 0: .Max = 100000
+            Set .BuddyControl = f.TextBoxW1
+            .BuddyProperty = "Tag"
+            Expect.IsTrue .SyncBuddy, "SyncBuddy after BuddyProperty = ""Tag"""
+            .Value = 12345
+            Expect.AreEqual Format$(12345, "#,###,###,##0"), f.TextBoxW1.Tag, "Tag after Value = 12345 with ThousandsSeparator"
+            .ThousandsSeparator = False
+            .Value = 4321
+            Expect.AreEqual "4321", f.TextBoxW1.Tag, "Tag after Value = 4321 without ThousandsSeparator"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyProperty_Empty_StopsTheSync()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            Set .BuddyControl = f.TextBoxW1
+            .BuddyProperty = "Tag"
+            .Value = 5
+            .BuddyProperty = ""
+            Expect.IsFalse .SyncBuddy, "SyncBuddy after BuddyProperty = """""
+            .Value = 6
+            Expect.AreEqual "5", f.TextBoxW1.Tag, "Tag after Value = 6 without a synchronized property"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SyncFromBuddy_Tag_ReadsTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            .Min = 0: .Max = 100000
+            .ThousandsSeparator = False
+            Set .BuddyControl = f.TextBoxW1
+            .BuddyProperty = "Tag"
+            f.TextBoxW1.Tag = "99"
+            .SyncFromBuddy
+            Expect.AreEqual 99, .Value, "Value after SyncFromBuddy of ""99"""
+            f.TextBoxW1.Tag = "abc"
+            .SyncFromBuddy
+            Expect.AreEqual 99, .Value, "Value after SyncFromBuddy of ""abc"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumberStyle_Hexadecimal_WritesFourOrEightDigits()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            .Min = 0: .Max = 100000
+            Set .BuddyControl = f.TextBoxW1
+            .BuddyProperty = "Tag"
+            .NumberStyle = UdnNumberStyleHexadecimal
+            .Value = 255
+            Expect.AreEqual "0x00FF", f.TextBoxW1.Tag, "Tag after Value = 255"
+            .Value = 70000
+            Expect.AreEqual "0x00011170", f.TextBoxW1.Tag, "Tag after Value = 70000"
+            f.TextBoxW1.Tag = "0x0010"
+            .SyncFromBuddy
+            Expect.AreEqual 16, .Value, "Value after SyncFromBuddy of ""0x0010"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyProperty_Text_ShowsTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Set f.UpDown1.BuddyControl = f.TextBoxW1
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.BuddyProperty = "Text"
+        Expect.AreEqual 0, Err.Number, "BuddyProperty = ""Text"""
+        On Error GoTo 0
+        f.UpDown1.Value = 7
+        Expect.AreEqual "7", f.TextBoxW1.Text, "the Text of the buddy after Value = 7"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Set f.UpDown1.BuddyControl = f.TextBoxW1
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.SyncBuddy = True
+        Expect.AreEqual 0, Err.Number, "SyncBuddy = True"
+        On Error GoTo 0
+        f.UpDown1.Value = 7
+        Expect.AreEqual "7", f.TextBoxW1.Text, "the Text of the buddy after Value = 7"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of an UpDown, written to Rig.Log. With CancelClicks the handler of BeforeChange sets Delta to 0.
+Class UpDownSink
+
+    Public WithEvents Ctl As VBCCR18.UpDown
+    Public CancelClicks As Boolean
+
+    Private Sub Ctl_Change() Handles Ctl.Change
+        Rig.Ev "Change " & Ctl.Value
+    End Sub
+
+    Private Sub Ctl_BeforeChange(ByVal Value As Long, Delta As Long) Handles Ctl.BeforeChange
+        Rig.Ev "BeforeChange " & Value & " " & Delta
+        If CancelClicks Then Delta = 0
+    End Sub
+
+    Private Sub Ctl_UpClick() Handles Ctl.UpClick
+        Rig.Ev "UpClick"
+    End Sub
+
+    Private Sub Ctl_DownClick() Handles Ctl.DownClick
+        Rig.Ev "DownClick"
+    End Sub
+
+End Class

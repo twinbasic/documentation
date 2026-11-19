@@ -1,0 +1,345 @@
+' RichTextBoxViewTests: the lines of the RichTextBox, scrolling, the scroll bars, the margins and
+' the zoom.
+[TestFixture]
+Module RichTextBoxViewTests
+
+    Private Const ThreeLines As String = "one" & vbCr & "two" & vbCr & "three"
+
+    [TestCase]
+    Public Sub GetLine_ReturnsTheLineOfThatNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Width = 6000
+        f.RichTextBox1.Text = ThreeLines
+        Expect.AreEqual 3, f.RichTextBox1.GetLineCount, "GetLineCount of three short paragraphs"
+        Expect.AreEqual "two", f.RichTextBox1.GetLine(2), "GetLine(2)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_Zero_IsTheLineOfTheInsertionPoint()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Width = 6000
+        f.RichTextBox1.Text = ThreeLines
+        f.RichTextBox1.SelStart = 9
+        Expect.AreEqual "three", f.RichTextBox1.GetLine(0), "GetLine(0) with the insertion point at 9"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLineFromChar_ReturnsTheLineNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Width = 6000
+        f.RichTextBox1.Text = ThreeLines
+        Expect.AreEqual 2, f.RichTextBox1.GetLineFromChar(5), "GetLineFromChar(5)"
+        f.RichTextBox1.SelStart = 9
+        Expect.AreEqual 3, f.RichTextBox1.GetLineFromChar(-1), "GetLineFromChar(-1) with the insertion point at 9"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_PastTheLastLine_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Width = 6000
+        f.RichTextBox1.Text = ThreeLines
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.RichTextBox1.GetLine(9)
+        Expect.AreEqual 380, Err.Number, "GetLine(9) of three lines"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLine_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = ThreeLines
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.RichTextBox1.GetLine(-1)
+        Expect.AreEqual 380, Err.Number, "GetLine(-1)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollToLine_PastTheLastLine_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Width = 6000
+        f.RichTextBox1.Text = ThreeLines
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.ScrollToLine 9
+        Expect.AreEqual 380, Err.Number, "ScrollToLine 9 of three lines"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollToLine_RaisesScroll()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        Dim i As Long, t As String
+        For i = 1 To 60
+            t = t & "line " & i & vbCr
+        Next
+        f.RichTextBox1.Text = t
+        f.RichTextBox1.SelStart = 0
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        f.RichTextBox1.ScrollToLine 30
+        Expect.IsTrue InStr(Rig.Events(), "Scroll") > 0, "a Scroll event for ScrollToLine 30 of 60 lines: " & Rig.Events()
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ZoomFactor_Assigned_ReadsBack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 1#, f.RichTextBox1.ZoomFactor, "ZoomFactor of a new control"
+        f.RichTextBox1.ZoomFactor = 1.5
+        Expect.AreEqual 1.5, f.RichTextBox1.ZoomFactor, "ZoomFactor after ZoomFactor = 1.5"
+        f.RichTextBox1.ZoomFactor = 1
+        Expect.AreEqual 1#, f.RichTextBox1.ZoomFactor, "ZoomFactor after ZoomFactor = 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ZoomFactor_Above64_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.ZoomFactor = 100
+        Expect.AreEqual 380, Err.Number, "ZoomFactor = 100"
+        Err.Clear
+        f.RichTextBox1.ZoomFactor = 0.01
+        Expect.AreEqual 380, Err.Number, "ZoomFactor = 0.01"
+        On Error GoTo 0
+        Expect.AreEqual 1#, f.RichTextBox1.ZoomFactor, "ZoomFactor after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisableNoScroll_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.DisableNoScroll = True
+        Expect.AreEqual 382, Err.Number, "DisableNoScroll = True at run time"
+        On Error GoTo 0
+        Expect.IsFalse f.RichTextBox1.DisableNoScroll, "DisableNoScroll after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LeftMargin_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.LeftMargin = -2
+        Expect.AreEqual 380, Err.Number, "LeftMargin = -2"
+        Err.Clear
+        f.RichTextBox1.RightMargin = -2
+        Expect.AreEqual 380, Err.Number, "RightMargin = -2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollBars_Changed_KeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "kept"
+        f.RichTextBox1.SelStart = 2
+        Dim h As LongPtr
+        h = f.RichTextBox1.hWnd
+        f.RichTextBox1.ScrollBars = vbVertical
+        Expect.IsTrue h <> f.RichTextBox1.hWnd, "hWnd differs after ScrollBars = vbVertical"
+        Expect.AreEqual "kept", f.RichTextBox1.Text, "Text after ScrollBars = vbVertical"
+        Expect.AreEqual 2, f.RichTextBox1.SelStart, "SelStart after ScrollBars = vbVertical"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollBars_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.ScrollBars = 7
+        Expect.AreEqual 380, Err.Number, "ScrollBars = 7"
+        On Error GoTo 0
+        Expect.AreEqual CLng(vbSBNone), CLng(f.RichTextBox1.ScrollBars), "ScrollBars after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' RichTextBoxMenuTests: the events of a shortcut menu.
+[TestFixture]
+Module RichTextBoxMenuTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_CONTEXTMENU As Long = &H7B
+
+    [TestCase]
+    Public Sub ContextMenu_RaisedBeforeOLEGetContextMenu()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        f.RichTextBox1.Text = "text"
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        ' Shift+F10: the place is -1, -1. With AutoVerbMenu False and no menu given, none is shown.
+        SendMessageW f.RichTextBox1.hWnd, WM_CONTEXTMENU, f.RichTextBox1.hWnd, -1
+        Expect.AreEqual "ContextMenu -1 -1 | OLEGetContextMenu 0 0 0", Rig.Events(), "the events of WM_CONTEXTMENU from the keyboard"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' RichTextBoxDragTests: the two kinds of drag and drop.
+[TestFixture]
+Module RichTextBoxDragTests
+
+    [TestCase]
+    Public Sub OLEDragMode_AutomaticWithOLEDragDropRTF_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.RichTextBox1.OLEDragDropRTF, "OLEDragDropRTF of a new control"
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.OLEDragMode = vbOLEDragAutomatic
+        Expect.AreEqual 383, Err.Number, "OLEDragMode = vbOLEDragAutomatic with OLEDragDropRTF True"
+        On Error GoTo 0
+        Expect.AreEqual CLng(vbOLEDragManual), CLng(f.RichTextBox1.OLEDragMode), "OLEDragMode after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDropMode_ManualWithOLEDragDropRTF_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.OLEDropMode = OLEDropModeManual
+        Expect.AreEqual 383, Err.Number, "OLEDropMode = OLEDropModeManual with OLEDragDropRTF True"
+        On Error GoTo 0
+        Expect.AreEqual CLng(OLEDropModeNone), CLng(f.RichTextBox1.OLEDropMode), "OLEDropMode after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDragDropScroll_FalseWithOLEDragDropRTF_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.OLEDragDropScroll = False
+        Expect.AreEqual 383, Err.Number, "OLEDragDropScroll = False with OLEDragDropRTF True"
+        On Error GoTo 0
+        Expect.IsTrue f.RichTextBox1.OLEDragDropScroll, "OLEDragDropScroll after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDragDropRTF_False_MakesANewWindowAndKeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "kept"
+        Dim h As LongPtr
+        h = f.RichTextBox1.hWnd
+        f.RichTextBox1.OLEDragDropRTF = False
+        Expect.IsTrue h <> f.RichTextBox1.hWnd, "hWnd differs after OLEDragDropRTF = False"
+        Expect.AreEqual "kept", f.RichTextBox1.Text, "Text after OLEDragDropRTF = False"
+        f.RichTextBox1.OLEDragMode = vbOLEDragAutomatic
+        f.RichTextBox1.OLEDropMode = OLEDropModeManual
+        Expect.AreEqual CLng(vbOLEDragAutomatic), CLng(f.RichTextBox1.OLEDragMode), "OLEDragMode after OLEDragMode = vbOLEDragAutomatic"
+        Expect.AreEqual CLng(OLEDropModeManual), CLng(f.RichTextBox1.OLEDropMode), "OLEDropMode after OLEDropMode = OLEDropModeManual"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDragDropRTF_True_ResetsTheOtherProperties()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .OLEDragDropRTF = False
+            .OLEDragMode = vbOLEDragAutomatic
+            .OLEDropMode = OLEDropModeManual
+            .OLEDragDropScroll = False
+            .OLEDragDropRTF = True
+            Expect.AreEqual CLng(vbOLEDragManual), CLng(.OLEDragMode), "OLEDragMode after OLEDragDropRTF = True"
+            Expect.AreEqual CLng(OLEDropModeNone), CLng(.OLEDropMode), "OLEDropMode after OLEDragDropRTF = True"
+            Expect.IsTrue .OLEDragDropScroll, "OLEDragDropScroll after OLEDragDropRTF = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDropMode_Automatic_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.OLEDragDropRTF = False
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.OLEDropMode = 2
+        Expect.AreEqual 380, Err.Number, "OLEDropMode = 2 with OLEDragDropRTF False"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

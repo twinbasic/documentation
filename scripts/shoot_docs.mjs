@@ -104,6 +104,9 @@
 //   xcalendar   test/shots/xcalendar, XCalendarShots, with the TWINSERV package xCalendar
 //               embedded as vbflexgrid's is: the xCalendar section's pictures of its control,
 //               taken as the programs setup's are
+//   vbccr       test/shots/vbccr, VBCCRShots, with the TWINSERV package VBCCR18 embedded: the
+//               VBCCR18 section's picture of each control, cut out of a form of several
+//               controls (a sheet), without the form's frame
 //   dialogs     test/shots/dialogs, DialogShots, with the TWINSERV packages VBComDlg and
 //               AutoCompleteLib embedded: the dialogs of a CommonDialog, taken as the vb setup's
 //               MsgBox is, and an AutoComplete's suggestion list laid over its form
@@ -2011,6 +2014,10 @@ const SETUPS = {
   xcalendar: {
     start: (run) => startWithPackages(run, XCALENDAR_SHOTS),
     prepare: (run) => preparePrograms(run, "XCalendarShots"),
+  },
+  vbccr: {
+    start: (run) => startWithPackages(run, VBCCR_SHOTS),
+    prepare: (run) => preparePrograms(run, "VBCCRShots"),
   },
   dialogs: {
     start: (run) => startWithPackages(run, DIALOG_SHOTS),
@@ -11704,7 +11711,7 @@ async function windowPicture(desktop, hwnd, name, file, { active = false } = {})
       }
     }
   }
-  return { picture: crop(picture, info.frame), dpi: info.dpi, frame: info.frame };
+  return { picture: crop(picture, info.frame), dpi: info.dpi, frame: info.frame, client: info.client };
 }
 
 // A window with the menu its menu bar opens: the window's picture, and the menu's window (a
@@ -11984,6 +11991,74 @@ const sceneRuns = (out, setup, scenes, popups, perRow = scenes.length) => ({
     const shown = [];
     for (const scene of scenes) shown.push(await scenePicture(ctx, setup, scene, popups));
     return inRows(shown, perRow);
+  },
+});
+
+// A sheet: a scene whose form holds several controls, taken once for a setup's run and cut into
+// a picture for each. The program writes the file "clips" before "shown": a line for each
+// picture, its name and its left, top, width and height in pixels of the form's client area at
+// 96 DPI. A setup's shots share its `ctx`, so the sheet's capture is kept there by scene.
+const SHEETS = new WeakMap();
+// The ground of the form kept round a clip, in pixels at 96 DPI.
+const CLIP_MARGIN = 6;
+
+function sheetOf(ctx, scene) {
+  if (!SHEETS.has(ctx)) SHEETS.set(ctx, new Map());
+  const taken = SHEETS.get(ctx);
+  if (!taken.has(scene)) {
+    const sheet = withProgram(ctx, scene, async (dir, w) => {
+      const error = path.join(dir, "error");
+      if (existsSync(error)) throw new Error(`sheet ${scene}: ${readFileSync(error, "utf8").trim()}`);
+      const clips = new Map(
+        readFileSync(path.join(dir, "clips"), "utf8")
+          .split(/\r?\n/)
+          .map((line) => line.trim().split(/\s+/))
+          .filter((parts) => parts.length === 5)
+          .map(([name, ...box]) => [name, box.map(Number)]),
+      );
+      const p = await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true });
+      // TB_SHOT_PLACEMENTS: print where the program says each control of the sheet is
+      const placements = path.join(dir, "placements");
+      if (process.env.TB_SHOT_PLACEMENTS && existsSync(placements)) {
+        console.log(`sheet ${scene}:\n${readFileSync(placements, "utf8").trimEnd()}`);
+      }
+      return { p, clips };
+    });
+    // a sheet that failed is taken again by the next shot that asks for it
+    sheet.catch(() => taken.delete(scene));
+    taken.set(scene, sheet);
+  }
+  return taken.get(scene);
+}
+
+// The part `name` of the sheet `scene`, with CLIP_MARGIN of the form's ground round it and no
+// more than the client area holds: a control's picture without its form's frame.
+const clipShot = (out, setup, scene, name) => ({
+  out,
+  setup,
+  once: true,
+  window: true,
+  async take(ctx) {
+    const { p, clips } = await sheetOf(ctx, scene);
+    const box = clips.get(name);
+    if (!box) throw new Error(`sheet ${scene} has no clip named ${name}: it has ${[...clips.keys()].join(", ")}`);
+    const k = p.dpi / 96;
+    const [x, y, w, h] = box;
+    // the client area within the picture, which is the capture cut to its visible frame
+    const [cl, ct, cr, cb] = [
+      p.client[0] - p.frame[0],
+      p.client[1] - p.frame[1],
+      p.client[2] - p.frame[0],
+      p.client[3] - p.frame[1],
+    ];
+    const rect = [
+      Math.max(cl, cl + Math.floor((x - CLIP_MARGIN) * k)),
+      Math.max(ct, ct + Math.floor((y - CLIP_MARGIN) * k)),
+      Math.min(cr, cl + Math.ceil((x + w + CLIP_MARGIN) * k)),
+      Math.min(cb, ct + Math.ceil((y + h + CLIP_MARGIN) * k)),
+    ];
+    if (rect[2] <= rect[0] || rect[3] <= rect[1]) throw new Error(`the clip ${name} of ${scene} is outside its form`);
+    return { png: encodePng(crop(p.picture, rect)), scale: k, window: true };
   },
 });
 
@@ -12276,6 +12351,126 @@ const xCalendarShots = [
   xCalendarShot("Sample", "sample"),
 ];
 
+// ---- vbccr: test/shots/vbccr, VBCCRShots, the VBCCR18 section's picture of each control, with
+// the TWINSERV package VBCCR18 embedded as vbflexgrid embeds VBFLXGRD18. A scene is a sheet, a
+// form of several controls, and each picture is one control cut out of it (clipShot), without
+// the form's frame.
+
+const VBCCR_SHOTS = path.join(REPO_ROOT, "test", "shots", "vbccr");
+// The windows a scene shows besides its form: a combo box's dropped-down list.
+const VBCCR_POPUPS = /^ComboLBox$/;
+// The window of a date picker's dropped calendar.
+const VBCCR_CALENDAR = /^DropDown$/;
+const vbccrClip = (control, sheet) =>
+  clipShot(`Reference/Contributed/VBCCR18/Images/${control}.png`, "vbccr", sheet, control);
+const vbccrShots = [
+  ...["CheckBoxW", "OptionButtonW", "CommandButtonW", "CommandLink"].map((c) => vbccrClip(c, "buttons")),
+  ...["TextBoxW", "LabelW", "WindowedLabel", "LinkLabel", "FrameW"].map((c) => vbccrClip(c, "text")),
+  ...["ListBoxW", "VListBox", "ComboBoxW", "VirtualCombo"].map((c) => vbccrClip(c, "lists")),
+  vbccrClip("ProgressBar", "bars"),
+  // the settings pictures of the shared enumerations (Common.md): a whole form each
+  ...[
+    ["CCAppearanceConstants", "appearance"],
+    ["CCBorderStyleConstants", "borderstyle"],
+    ["CCBackStyleConstants", "backstyle"],
+    ["CCLeftRightAlignmentConstants", "alignment"],
+    ["CCVerticalAlignmentConstants", "valignment"],
+    ["CCMousePointerConstants", "mousepointer"],
+  ].map(([e, scene]) => sceneShot(`Reference/Contributed/VBCCR18/Images/${e}.png`, "vbccr", scene, NO_POPUPS)),
+  // the TreeView, whose pages are a folder of their own with its pictures beside them, as
+  // VBFlexGrid's are: the control from the sheet views, and its settings a whole form each
+  clipShot("Reference/Contributed/VBCCR18/TreeView/Images/TreeView.png", "vbccr", "views", "TreeView"),
+  ...[
+    ["TvwLineStyleConstants", "tvlinestyle"],
+    ["TvwVisualThemeConstants", "tvtheme"],
+    ["Checkboxes", "tvcheckboxes"],
+    ["MultiSelect", "tvmultiselect"],
+  ].map(([name, scene]) =>
+    sceneShot(`Reference/Contributed/VBCCR18/TreeView/Images/${name}.png`, "vbccr", scene, NO_POPUPS),
+  ),
+  // ImageCombo, FontCombo and ListView from the sheet items; a scene with a dropped list has the
+  // list's window (ComboLBox) laid over its form
+  clipShot("Reference/Contributed/VBCCR18/ImageCombo/Images/ImageCombo.png", "vbccr", "items", "ImageCombo"),
+  clipShot("Reference/Contributed/VBCCR18/Images/FontCombo.png", "vbccr", "items", "FontCombo"),
+  clipShot("Reference/Contributed/VBCCR18/ListView/Images/ListView.png", "vbccr", "items", "ListView"),
+  ...[
+    ["ImageCombo/Images/DroppedDown", "imcdropped"],
+    ["Images/FontCombo_Recent", "ftcrecent"],
+    ["ListView/Images/Views", "lvviews"],
+    ["ListView/Images/Groups", "lvgroups"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, VBCCR_POPUPS)),
+  // ToolBar, CoolBar, StatusBar, TabStrip, Pager and RichTextBox from the sheet strips, and the
+  // settings of ToolBar and TabStrip, a whole form each
+  ...[
+    ["ToolBar/Images/ToolBar", "ToolBar"],
+    ["CoolBar/Images/CoolBar", "CoolBar"],
+    ["StatusBar/Images/StatusBar", "StatusBar"],
+    ["TabStrip/Images/TabStrip", "TabStrip"],
+    ["Images/Pager", "Pager"],
+    ["RichTextBox/Images/RichTextBox", "RichTextBox"],
+  ].map(([name, control]) => clipShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", "strips", control)),
+  ...[
+    ["ToolBar/Images/TbrTextAlignConstants", "tbrtextalign"],
+    ["TabStrip/Images/TbsStyleConstants", "tbsstyle"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, NO_POPUPS)),
+  // DTPicker and MonthView from the sheet dates; UpDown (with its text box), SpinBox, Slider,
+  // HotKey and IPAddress from spins; Animation and MCIWnd from media, each with a file the
+  // program writes; and the settings of each, a whole form each. The dropped calendar of a
+  // DTPicker is its window DropDown, laid over the form.
+  ...["DTPicker", "MonthView"].map((c) => vbccrClip(c, "dates")),
+  ...["UpDown", "SpinBox", "Slider", "HotKey", "IPAddress"].map((c) => vbccrClip(c, "spins")),
+  ...["Animation", "MCIWnd"].map((c) => vbccrClip(c, "media")),
+  ...[
+    ["DTPicker_CheckBox", "dtpcheckbox"],
+    ["DTPicker_Formats", "dtpformats"],
+    ["MonthView_Months", "mvmonths"],
+    ["MonthView_MultiSelect", "mvmultiselect"],
+    ["MonthView_Views", "mvviews"],
+    ["UdnOrientationConstants", "udorientation"],
+    ["SpinBox_Styles", "spbstyles"],
+    ["SldTickStyleConstants", "sldticks"],
+    ["Slider_SelectRange", "sldselect"],
+    ["HotKey_States", "hkstates"],
+    ["IPAddress_States", "ipastates"],
+    ["Animation_Look", "anilook"],
+    ["MCIWnd_Look", "mcilook"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/Images/${name}.png`, "vbccr", scene, NO_POPUPS)),
+  sceneShot("Reference/Contributed/VBCCR18/Images/DTPicker_DroppedDown.png", "vbccr", "dtpdropped", VBCCR_CALENDAR),
+  // the settings of the buttons, the lists, the text boxes and labels, the frame, the link
+  // label, the progress bar and the image list, a whole form each; a combo box's with its list
+  // dropped down, laid over its form
+  ...[
+    ["Images/CheckBoxW_Value", "chkvalue"],
+    ["Images/CheckBoxW_Styles", "chkstyles"],
+    ["Images/OptionButtonW_Styles", "optstyles"],
+    ["Images/CmdImageListAlignmentConstants", "cmdimlalign"],
+    ["Images/CommandButtonW_SplitButton", "cmdsplit"],
+    ["Images/CommandLink_Looks", "cllooks"],
+    ["Images/ListBoxW_MultiSelect", "lstmulti"],
+    ["Images/ListBoxW_MultiColumn", "lstcolumns"],
+    ["Images/TextBoxW_Password", "txtpassword"],
+    ["Images/TextBoxW_MultiLine", "txtmultiline"],
+    ["Images/TextBoxW_CueBanner", "txtcue"],
+    ["Images/LblEllipsisFormatConstants", "lblellipsis"],
+    ["Images/LabelW_Lines", "lbllines"],
+    ["Images/WindowedLabel_Transparent", "wlbtransparent"],
+    ["Images/FrameW_Looks", "fralooks"],
+    ["LinkLabel/Images/LinkLabel_Looks", "llblooks"],
+    ["Images/PrbStateConstants", "prbstate"],
+    ["Images/ProgressBar_Text", "prbtext"],
+    ["ImageList/Images/ImlDrawConstants", "imldraw"],
+    ["ImageList/Images/ImageList_Overlay", "imloverlay"],
+    // Style is set through each control's property bag, the only way to set it
+    ["ImageCombo/Images/ImcStyleConstants", "imcstyle"],
+    ["Images/CboStyleConstants", "cbostyle"],
+    ["Images/LstStyleConstants", "lststyle"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, NO_POPUPS)),
+  ...[
+    ["Images/ComboBoxW_DroppedDown", "cbodropped"],
+    ["Images/VirtualCombo_DroppedDown", "vcbdropped"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, VBCCR_POPUPS)),
+];
+
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
 // pictures, with both TWINSERV packages embedded as vbflexgrid embeds VBFLXGRD18: the dialogs of a
 // CommonDialog, each taken as the vb setup's MsgBox is (programDialogShot), and a text box served by an
@@ -12290,6 +12485,8 @@ const comDlgShots = [
   comDlgShot("ShowFont", ["font"]),
   comDlgShot("ShowFolderBrowser", ["folder-old", "folder-new"]),
   comDlgShot("ShowFind", ["find", "replace"]),
+  comDlgShot("ShowPageSetup", ["pagesetup"]),
+  comDlgShot("ShowOpen", ["open", "save"]),
   sceneRuns(
     "Reference/Contributed/AutoCompleteLib/Images/Options.png",
     "dialogs",
@@ -15951,6 +16148,7 @@ const SHOTS = [
   ...cefShots,
   ...waynesShots,
   ...xCalendarShots,
+  ...vbccrShots,
   ...comDlgShots,
   ...tbIdeShots,
   ...codeLensShots,
@@ -16063,6 +16261,7 @@ const JOB_SECONDS = {
   cef: 40,
   waynes: 90,
   xcalendar: 40,
+  vbccr: 40,
   dialogs: 60,
   tbide: 40,
   "tbide-sample10": 30,

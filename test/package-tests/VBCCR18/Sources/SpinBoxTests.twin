@@ -1,0 +1,447 @@
+' SpinBoxTests: the value and the text, the clicks and the acceleration of the SpinBox.
+[TestFixture]
+Module SpinBoxTests
+
+    Private Declare PtrSafe Function SpbMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    ' A click of the left button on the up arrow (Up is True) or on the down arrow, which are at the right of the box.
+    Private Sub ClickArrow(ByVal s As VBCCR18.SpinBox, ByVal Up As Boolean)
+        Dim lp As Long, x As Long
+        x = CLng(s.Width / Screen.TwipsPerPixelX) - 6
+        If Up Then
+            lp = x + 3 * 65536
+        Else
+            lp = x + (CLng(s.Height / Screen.TwipsPerPixelY) - 3) * 65536
+        End If
+        SpbMessage s.hWnd, &H201, 1, lp
+        SpbMessage s.hWnd, &H202, 0, lp
+        DoEvents
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Assigned_ShowsTheNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New SpinBoxSink
+        Set sink.Ctl = f.SpinBox1
+        DoEvents
+        Rig.ClearLog
+        f.SpinBox1.Value = 7
+        DoEvents
+        Expect.AreEqual "7", f.SpinBox1.Text, "Text after Value = 7"
+        Expect.AreEqual "TextChange [7] | Change 7", Rig.Events(), "the events of Value = 7"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_OutsideTheRange_IsTheNearestEnd()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.SpinBox1
+            .Min = 0: .Max = 100
+            .Value = 500
+            Expect.AreEqual 100, .Value, "Value after Value = 500"
+            Expect.AreEqual "100", .Text, "Text after Value = 500"
+            .Value = -500
+            Expect.AreEqual 0, .Value, "Value after Value = -500"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Min_AboveMax_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.Min = 101
+        Expect.AreEqual 380, Err.Number, "Min = 101 with Max 100"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.SpinBox1.Min, "Min after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Max_BelowMin_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.Max = -1
+        Expect.AreEqual 380, Err.Number, "Max = -1 with Min 0"
+        On Error GoTo 0
+        Expect.AreEqual 100, f.SpinBox1.Max, "Max after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Min_AboveValue_MovesTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.SpinBox1
+            .Value = 3
+            .Min = 5
+            Expect.AreEqual 5, .Value, "Value after Min = 5"
+            .Value = 90
+            .Max = 60
+            Expect.AreEqual 60, .Value, "Value after Max = 60"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_ChangesTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New SpinBoxSink
+        Set sink.Ctl = f.SpinBox1
+        f.SpinBox1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        f.SpinBox1.Text = "42"
+        DoEvents
+        Expect.AreEqual 42, f.SpinBox1.Value, "Value after Text = ""42"""
+        Expect.AreEqual "TextChange [42] | Change 42", Rig.Events(), "the events of Text = ""42"""
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_NotANumber_LeavesTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Value = 42
+        f.SpinBox1.Text = "abc"
+        DoEvents
+        Expect.AreEqual 42, f.SpinBox1.Value, "Value after Text = ""abc"""
+        Expect.AreEqual "abc", f.SpinBox1.Text, "Text after Text = ""abc"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_OutsideTheRange_ClampsTheValueNotTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Text = "250"
+        DoEvents
+        Expect.AreEqual 100, f.SpinBox1.Value, "Value after Text = ""250"" with Max 100"
+        Expect.AreEqual "250", f.SpinBox1.Text, "Text after Text = ""250"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateText_ReplacesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Text = "250"
+        DoEvents
+        f.SpinBox1.ValidateText
+        Expect.AreEqual "100", f.SpinBox1.Text, "Text after ValidateText"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumberStyle_Hexadecimal_ShowsEightDigits()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Max = 100000
+        f.SpinBox1.NumberStyle = SpbNumberStyleHexadecimal
+        f.SpinBox1.Value = 255
+        Expect.AreEqual "0x000000FF", f.SpinBox1.Text, "Text of 255 in hexadecimal"
+        f.SpinBox1.Value = 12345
+        Expect.AreEqual "0x00003039", f.SpinBox1.Text, "Text of 12345 in hexadecimal"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumberStyle_Hexadecimal_SmallRange_ShowsFourDigits()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Max = 1000
+        f.SpinBox1.NumberStyle = SpbNumberStyleHexadecimal
+        f.SpinBox1.Value = 255
+        Expect.AreEqual "0x00FF", f.SpinBox1.Text, "Text of 255 in hexadecimal, Max 1000"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThousandsSeparator_False_ShowsNoSeparator()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Max = 100000
+        f.SpinBox1.ThousandsSeparator = False
+        f.SpinBox1.Value = 12345
+        Expect.AreEqual "12345", f.SpinBox1.Text, "Text of 12345 without a separator"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThousandsSeparator_True_ShowsTheSeparatorOfTheUser()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Max = 100000
+        f.SpinBox1.Value = 12345
+        Expect.AreEqual Format$(12345, "#,##0"), f.SpinBox1.Text, "Text of 12345 with a separator"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_Up_RaisesBeforeChangeTextChangeChangeUpClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New SpinBoxSink
+        Set sink.Ctl = f.SpinBox1
+        f.SpinBox1.Max = 10: f.SpinBox1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.SpinBox1, True
+        Expect.AreEqual "BeforeChange 5 1 | TextChange [6] | Change 6 | UpClick", Rig.Events(), "the events of a click on the up arrow"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_Down_RaisesBeforeChangeTextChangeChangeDownClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New SpinBoxSink
+        Set sink.Ctl = f.SpinBox1
+        f.SpinBox1.Max = 10: f.SpinBox1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.SpinBox1, False
+        Expect.AreEqual "BeforeChange 5 -1 | TextChange [4] | Change 4 | DownClick", Rig.Events(), "the events of a click on the down arrow"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeChange_DeltaZero_CancelsTheClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New SpinBoxSink
+        Set sink.Ctl = f.SpinBox1
+        sink.CancelClicks = True
+        f.SpinBox1.Max = 10: f.SpinBox1.Value = 5
+        DoEvents
+        Rig.ClearLog
+        ClickArrow f.SpinBox1, True
+        Expect.AreEqual "BeforeChange 5 1", Rig.Events(), "the events of a cancelled click"
+        Expect.AreEqual 5, f.SpinBox1.Value, "Value after the cancelled click"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrowKeysChange_UpKey_RaisesTheValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Max = 10: f.SpinBox1.Value = 5
+        SpbMessage f.SpinBox1.hWndEdit, &H100, &H26, 0
+        SpbMessage f.SpinBox1.hWndEdit, &H101, &H26, 0
+        DoEvents
+        Expect.AreEqual 6, f.SpinBox1.Value, "Value after the Up key"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.Alignment = 2
+        Expect.AreEqual 380, Err.Number, "Alignment = 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumberStyle_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.NumberStyle = 2
+        Expect.AreEqual 380, Err.Number, "NumberStyle = 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextAlignment_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.TextAlignment = 3
+        Expect.AreEqual 380, Err.Number, "TextAlignment = 3"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.SelLength = -1
+        Expect.AreEqual 380, Err.Number, "SelLength = -1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelStart_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.SelStart = -1
+        Expect.AreEqual 380, Err.Number, "SelStart = -1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelText_Assigned_ReplacesTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Value = 12
+        f.SpinBox1.SelStart = 1
+        f.SpinBox1.SelLength = 1
+        Expect.AreEqual "2", f.SpinBox1.SelText, "SelText"
+        f.SpinBox1.SelText = "9"
+        Expect.AreEqual "19", f.SpinBox1.Text, "Text after SelText = ""9"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAcceleration_BadArrays_RaiseErrors()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim e() As Long
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(1, 2), Array(5)
+        Expect.AreEqual 5, Err.Number, "SetAcceleration of arrays with other bounds"
+        Err.Clear
+        f.SpinBox1.SetAcceleration 5, Array(5)
+        Expect.AreEqual 380, Err.Number, "SetAcceleration of a number"
+        Err.Clear
+        f.SpinBox1.SetAcceleration e, Array(5)
+        Expect.AreEqual 91, Err.Number, "SetAcceleration of an array that is not allocated"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAcceleration_BadDelays_Raise381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(0, 5, 2), Array(1, 5, 20)
+        Expect.AreEqual 381, Err.Number, "SetAcceleration of delays out of order"
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(-1, 2), Array(1, 5)
+        Expect.AreEqual 381, Err.Number, "SetAcceleration of a negative delay"
+        Err.Clear
+        f.SpinBox1.SetAcceleration Array(0, 2, 2), Array(1, 5, 20)
+        Expect.AreEqual 0, Err.Number, "SetAcceleration of two equal delays"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAcceleration_Empty_RestoresIncrement()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.SpinBox1
+            .Increment = 3
+            .SetAcceleration Array(0, 2), Array(1, 10)
+            Expect.AreEqual 1, .Increment, "Increment with a list set"
+            .SetAcceleration Empty, Empty
+            Expect.AreEqual 3, .Increment, "Increment after two Empty"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a SpinBox, written to Rig.Log. With CancelClicks the handler of BeforeChange sets Delta to 0.
+Class SpinBoxSink
+
+    Public WithEvents Ctl As VBCCR18.SpinBox
+    Public CancelClicks As Boolean
+
+    Private Sub Ctl_Change() Handles Ctl.Change
+        Rig.Ev "Change " & Ctl.Value
+    End Sub
+
+    Private Sub Ctl_TextChange() Handles Ctl.TextChange
+        Rig.Ev "TextChange [" & Ctl.Text & "]"
+    End Sub
+
+    Private Sub Ctl_BeforeChange(ByVal Value As Long, Delta As Long) Handles Ctl.BeforeChange
+        Rig.Ev "BeforeChange " & Value & " " & Delta
+        If CancelClicks Then Delta = 0
+    End Sub
+
+    Private Sub Ctl_UpClick() Handles Ctl.UpClick
+        Rig.Ev "UpClick"
+    End Sub
+
+    Private Sub Ctl_DownClick() Handles Ctl.DownClick
+        Rig.Ev "DownClick"
+    End Sub
+
+End Class

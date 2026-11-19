@@ -1,0 +1,170 @@
+' ListViewSelectionTests: the selection, the focus, the check boxes and the ghosted items of the
+' ListView, and the events each change raises.
+[TestFixture]
+Module ListViewSelectionTests
+
+    [TestCase]
+    Public Sub Add_FirstItem_IsSelectedAndFocused()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ListViewItemSink
+        Set sink.LV = f.ListView1
+        f.ListView1.ListItems.Add , , "alpha"
+        Expect.AreEqual "ItemFocus alpha | ItemSelect alpha True", Rig.Events(), "the events of adding the first item"
+        f.ListView1.ListItems.Add , , "beta"
+        Expect.AreEqual "ItemFocus alpha | ItemSelect alpha True", Rig.Events(), "the events after adding a second item"
+        Expect.IsTrue f.ListView1.ListItems(1).Selected, "Selected of the first item"
+        Expect.AreEqual "alpha", f.ListView1.SelectedItem.Text, "SelectedItem after adding two items"
+        Set sink.LV = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoSelectFirstItem_False_FocusesTheFirstItemOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.AutoSelectFirstItem = False
+        f.ListView1.ListItems.Add , , "one"
+        Expect.AreEqual "one", f.ListView1.SelectedItem.Text, "SelectedItem after adding an item with AutoSelectFirstItem False"
+        Expect.IsFalse f.ListView1.ListItems(1).Selected, "Selected of the item with AutoSelectFirstItem False"
+        Expect.AreEqual 0, f.ListView1.GetSelectedCount, "GetSelectedCount with AutoSelectFirstItem False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_Assigned_RaisesItemSelectAndItemFocus()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "alpha"
+        f.ListView1.ListItems.Add , , "beta"
+        Dim sink As New ListViewItemSink
+        Set sink.LV = f.ListView1
+        Rig.ClearLog
+        f.ListView1.ListItems(2).Selected = True
+        Expect.AreEqual "ItemSelect alpha False | ItemFocus beta | ItemSelect beta True", Rig.Events(), "the events of Selected = True on the second item"
+        Expect.AreEqual 1, f.ListView1.GetSelectedCount, "GetSelectedCount after selecting the second item, MultiSelect False"
+        Set sink.LV = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedItem_IsTheFocusedItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "alpha"
+        f.ListView1.ListItems(1).Selected = False
+        Expect.AreEqual 0, f.ListView1.GetSelectedCount, "GetSelectedCount after Selected = False"
+        Expect.IsFalse f.ListView1.SelectedItem Is Nothing, "SelectedItem is Nothing after Selected = False"
+        Expect.AreEqual "alpha", f.ListView1.SelectedItem.Text, "SelectedItem after Selected = False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedItem_Nothing_KeepsTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "alpha"
+        Set f.ListView1.SelectedItem = Nothing
+        Expect.IsTrue f.ListView1.SelectedItem Is Nothing, "SelectedItem after Set SelectedItem = Nothing"
+        Expect.AreEqual 1, f.ListView1.GetSelectedCount, "GetSelectedCount after Set SelectedItem = Nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Checked_Assigned_RaisesItemCheckOnce()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.Checkboxes = True
+        f.ListView1.ListItems.Add , , "alpha"
+        f.ListView1.ListItems.Add , , "beta"
+        Dim sink As New ListViewItemSink
+        Set sink.LV = f.ListView1
+        Rig.ClearLog
+        f.ListView1.ListItems(2).Checked = True
+        f.ListView1.ListItems(2).Checked = True
+        Expect.AreEqual "ItemCheck beta True", Rig.Events(), "the events of Checked = True twice"
+        Expect.AreEqual 1, f.ListView1.CheckedIndices.Count, "CheckedIndices.Count"
+        Expect.AreEqual 2, f.ListView1.CheckedIndices(1), "CheckedIndices(1)"
+        Set sink.LV = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Checkboxes_True_UnchecksEveryItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "alpha"
+        f.ListView1.ListItems(1).Checked = True
+        f.ListView1.Checkboxes = True
+        Expect.IsFalse f.ListView1.ListItems(1).Checked, "Checked of an item checked before Checkboxes = True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GhostedIndices_HoldsTheGhostedItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "alpha"
+        f.ListView1.ListItems.Add , , "beta"
+        f.ListView1.ListItems(2).Ghosted = True
+        Expect.IsTrue f.ListView1.ListItems(2).Ghosted, "Ghosted after Ghosted = True"
+        Expect.AreEqual 1, f.ListView1.GhostedIndices.Count, "GhostedIndices.Count"
+        Expect.AreEqual 2, f.ListView1.GhostedIndices(1), "GhostedIndices(1)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HoverSelectionTime_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.HoverSelectionTime = 0
+        Expect.AreEqual 380, Err.Number, "HoverSelectionTime = 0"
+        Err.Clear
+        f.ListView1.HoverSelectionTime = -2
+        Expect.AreEqual 380, Err.Number, "HoverSelectionTime = -2"
+        On Error GoTo 0
+        f.ListView1.HoverSelectionTime = 500
+        Expect.AreEqual 500, f.ListView1.HoverSelectionTime, "HoverSelectionTime after HoverSelectionTime = 500"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The item events of a ListView, written to Rig.Log.
+Class ListViewItemSink
+
+    Public WithEvents LV As VBCCR18.ListView
+
+    Private Sub LV_ItemSelect(ByVal Item As LvwListItem, ByVal Selected As Boolean) Handles LV.ItemSelect
+        Rig.Ev "ItemSelect " & Item.Text & " " & Selected
+    End Sub
+
+    Private Sub LV_ItemFocus(ByVal Item As LvwListItem) Handles LV.ItemFocus
+        Rig.Ev "ItemFocus " & Item.Text
+    End Sub
+
+    Private Sub LV_ItemCheck(ByVal Item As LvwListItem, ByVal Checked As Boolean) Handles LV.ItemCheck
+        Rig.Ev "ItemCheck " & Item.Text & " " & Checked
+    End Sub
+
+End Class

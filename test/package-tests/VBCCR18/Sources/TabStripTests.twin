@@ -1,0 +1,609 @@
+' TabStripTests: the TabStrip control, its TbsTabs collection and its TbsTab items. A click of the
+' user is a mouse message sent to the control's window, a turn of the wheel a WM_MOUSEWHEEL.
+[TestFixture]
+Module TabStripTests
+
+    Private Type PictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+
+    Private Type PictGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal X As Long, ByVal Y As Long, ByVal W As Long, ByVal H As Long, ByVal Rop As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PictDesc, ByRef IID As PictGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+    Private Const WM_MOUSEWHEEL As Long = &H20A
+    Private Const TCM_GETITEMCOUNT As Long = &H1304
+    Private Const PATCOPY As Long = &HF00021
+
+    ' A bitmap of one color.
+    Private Function ColorSquare(ByVal Color As Long, Optional ByVal Width As Long = 16, Optional ByVal Height As Long = 16) As StdPicture
+        Dim screenDC As LongPtr, memDC As LongPtr, bmp As LongPtr, brush As LongPtr, oldBmp As LongPtr, oldBrush As LongPtr
+        screenDC = GetDC(0)
+        memDC = CreateCompatibleDC(screenDC)
+        bmp = CreateCompatibleBitmap(screenDC, Width, Height)
+        brush = CreateSolidBrush(Color)
+        oldBmp = SelectObject(memDC, bmp)
+        oldBrush = SelectObject(memDC, brush)
+        PatBlt memDC, 0, 0, Width, Height, PATCOPY
+        SelectObject memDC, oldBrush
+        SelectObject memDC, oldBmp
+        DeleteObject brush
+        DeleteDC memDC
+        ReleaseDC 0, screenDC
+        Dim desc As PictDesc, iid As PictGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = bmp
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set ColorSquare = pic
+    End Function
+
+    ' The keys of a strip's tabs in order, "-" for a tab without one.
+    Private Function Keys(ByVal Strip As VBCCR18.TabStrip) As String
+        Dim t As TbsTab
+        For Each t In Strip.Tabs
+            Keys = Keys & IIf(Len(Keys) > 0, ",", "") & IIf(Len(t.Key) > 0, t.Key, "-")
+        Next
+    End Function
+
+    ' The caption of the selected tab, "Nothing" for none.
+    Private Function SelectedCaption(ByVal Strip As VBCCR18.TabStrip) As String
+        Dim t As TbsTab
+        Set t = Strip.SelectedItem
+        If t Is Nothing Then SelectedCaption = "Nothing" Else SelectedCaption = t.Caption
+    End Function
+
+    ' A strip with the tabs A, B and C, A selected.
+    Private Sub ThreeTabs(ByVal f As HostForm)
+        f.TabStrip1.Tabs(1).Caption = "A"
+        f.TabStrip1.Tabs.Add , "b", "B"
+        f.TabStrip1.Tabs.Add , "c", "C"
+        f.TabStrip1.Tabs(1).Selected = True
+    End Sub
+
+    ' The pixels of a place given in the form's twips, inside the tab.
+    Private Function InTab(ByVal f As HostForm, ByVal Index As Long) As Long
+        Dim x As Long, y As Long
+        x = CLng(f.ScaleX(f.TabStrip1.Tabs(Index).Left + f.TabStrip1.Tabs(Index).Width / 2, vbTwips, vbPixels))
+        y = CLng(f.ScaleY(f.TabStrip1.Tabs(Index).Top + f.TabStrip1.Tabs(Index).Height / 2, vbTwips, vbPixels))
+        InTab = x + y * 65536
+    End Function
+
+    ' One notch of the wheel: -120 turns toward the next tab, 120 toward the previous.
+    Private Sub Wheel(ByVal f As HostForm, ByVal Delta As Long)
+        SendMessageW f.TabStrip1.hWnd, WM_MOUSEWHEEL, Delta * 65536, 0
+    End Sub
+
+    [TestCase]
+    Public Sub Tabs_NewStrip_HasOneSelectedTab()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 1, f.TabStrip1.Tabs.Count, "Tabs.Count of a new tab strip"
+        Expect.AreEqual "", f.TabStrip1.Tabs(1).Caption, "Caption of its tab"
+        Expect.IsTrue f.TabStrip1.Tabs(1).Selected, "Selected of its tab"
+        Expect.AreEqual 1, f.TabStrip1.SelectedItem.Index, "SelectedItem.Index"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_AtAnIndex_MovesTheLaterTabsUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.Tabs.Add , "a", "Alpha"
+        f.TabStrip1.Tabs.Add 1, "z", "Zed"
+        Expect.AreEqual "z,-,a", Keys(f.TabStrip1), "the keys after Add 1"
+        Expect.AreEqual 3, f.TabStrip1.Tabs("a").Index, "Index of the tab a"
+        Expect.AreEqual "Zed", f.TabStrip1.Tabs(1).Caption, "Caption of the tab at 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TabStrip1.Tabs.Add 9
+        Expect.AreEqual 35600, Err.Number, "Add 9 in a list of one tab"
+        Err.Clear
+        f.TabStrip1.Tabs.Add -1
+        Expect.AreEqual 35600, Err.Number, "Add -1"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.TabStrip1.Tabs.Count, "Count after the refused calls"
+        Expect.AreEqual 1, CLng(SendMessageW(f.TabStrip1.hWnd, TCM_GETITEMCOUNT, 0, 0)), "the tabs of the window after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.Tabs.Add , "k", "K"
+        On Error Resume Next
+        Err.Clear
+        f.TabStrip1.Tabs.Add , "k", "again"
+        Expect.AreEqual 457, Err.Number, "Add with the key of another tab"
+        On Error GoTo 0
+        Expect.AreEqual 2, f.TabStrip1.Tabs.Count, "Count after the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_LeavesNoTabInTheWindow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.Tabs.Add , "k", "K"
+        On Error Resume Next
+        f.TabStrip1.Tabs.Add , "k", "again"
+        On Error GoTo 0
+        Expect.AreEqual f.TabStrip1.Tabs.Count, CLng(SendMessageW(f.TabStrip1.hWnd, TCM_GETITEMCOUNT, 0, 0)), "the tabs of the window against Tabs.Count after the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumberOutOfRange_Raises9AndUnknownKeyRaises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim t As TbsTab
+        On Error Resume Next
+        Err.Clear
+        Set t = f.TabStrip1.Tabs(50)
+        Expect.AreEqual 9, Err.Number, "Tabs(50)"
+        Err.Clear
+        Set t = f.TabStrip1.Tabs("q")
+        Expect.AreEqual 5, Err.Number, "Tabs(""q"")"
+        On Error GoTo 0
+        Expect.IsFalse f.TabStrip1.Tabs.Exists(50), "Exists(50)"
+        Expect.IsFalse f.TabStrip1.Tabs.Exists("q"), "Exists(""q"")"
+        Expect.IsTrue f.TabStrip1.Tabs.Exists(1), "Exists(1)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_RenumbersTheLaterTabs()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        f.TabStrip1.Tabs.Remove 1
+        Expect.AreEqual "b,c", Keys(f.TabStrip1), "the keys after Remove 1"
+        Expect.AreEqual 2, f.TabStrip1.Tabs("c").Index, "Index of the tab c"
+        f.TabStrip1.Tabs.Remove "b"
+        Expect.AreEqual 1, f.TabStrip1.Tabs("c").Index, "Index of the tab c after Remove ""b"""
+        On Error Resume Next
+        Err.Clear
+        f.TabStrip1.Tabs.Remove 50
+        Expect.AreEqual 9, Err.Number, "Remove 50"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_RemovesEveryTabAndTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        f.TabStrip1.Tabs.Clear
+        Expect.AreEqual 0, f.TabStrip1.Tabs.Count, "Count after Clear"
+        Expect.AreEqual "Nothing", SelectedCaption(f.TabStrip1), "SelectedItem after Clear"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Assigned_RenamesTheTab()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        f.TabStrip1.Tabs("b").Key = "x"
+        Expect.IsFalse f.TabStrip1.Tabs.Exists("b"), "Exists(""b"") after Key = ""x"""
+        Expect.AreEqual 2, f.TabStrip1.Tabs("x").Index, "Index of the tab x"
+        f.TabStrip1.Tabs("x").Key = ""
+        Expect.AreEqual "-,-,c", Keys(f.TabStrip1), "the keys after Key = """""
+        On Error Resume Next
+        Err.Clear
+        f.TabStrip1.Tabs(2).Key = "c"
+        Expect.AreEqual 457, Err.Number, "Key = ""c"" on a tab while another has it"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_ByKeyAndNumber_IsTheNumberInTheList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        f.ImageList1.ListImages.Add , "blue", ColorSquare(vbBlue)
+        Set f.TabStrip1.ImageList = f.ImageList1
+        Dim t As TbsTab
+        Set t = f.TabStrip1.Tabs.Add(, "two", "Two", "blue")
+        Expect.AreEqual 2, t.ImageIndex, "ImageIndex of a tab added with the key blue"
+        Expect.AreEqual "blue", CStr(t.Image), "Image of that tab"
+        t.Image = 1
+        Expect.AreEqual 1, t.ImageIndex, "ImageIndex after Image = 1"
+        t.Image = 0
+        Expect.AreEqual 0, t.ImageIndex, "ImageIndex after Image = 0"
+        On Error Resume Next
+        Err.Clear
+        t.Image = "zzz"
+        Expect.AreEqual 35601, Err.Number, "Image = ""zzz"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_NotAnImageList_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.TabStrip1.ImageList = f.StatusBar1
+        Expect.AreEqual 35610, Err.Number, "ImageList = a StatusBar"
+        Err.Clear
+        f.TabStrip1.ImageList = 1.5
+        Expect.AreEqual 13, Err.Number, "ImageList = 1.5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_Assigned_RaisesTabBeforeClickThenTabClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        Dim sink As New TabStripSink
+        Set sink.Strip = f.TabStrip1
+        Rig.ClearLog
+        f.TabStrip1.Tabs(2).Selected = True
+        Expect.AreEqual "TabBeforeClick B | TabClick B", Rig.Events(), "the events of Selected = True on the tab B"
+        Expect.AreEqual "B", SelectedCaption(f.TabStrip1), "the selected tab"
+        Expect.IsFalse f.TabStrip1.Tabs(1).Selected, "Selected of the tab A"
+        Rig.ClearLog
+        f.TabStrip1.Tabs(2).Selected = True
+        Expect.AreEqual "TabBeforeClick B | TabClick B", Rig.Events(), "the events of Selected = True on the tab that is selected"
+        Set sink.Strip = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabBeforeClick_Cancel_KeepsTheSelectedTab()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        Dim sink As New TabStripSink
+        Set sink.Strip = f.TabStrip1
+        sink.Cancel = True
+        Rig.ClearLog
+        f.TabStrip1.Tabs(3).Selected = True
+        Expect.AreEqual "TabBeforeClick C", Rig.Events(), "the events of Selected = True with Cancel set"
+        Expect.AreEqual "A", SelectedCaption(f.TabStrip1), "the selected tab"
+        Set sink.Strip = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_ByTheUser_RaisesTabBeforeClickThenTabClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        Dim sink As New TabStripSink
+        Set sink.Strip = f.TabStrip1
+        Rig.ClearLog
+        Dim at As Long
+        at = InTab(f, 3)
+        SendMessageW f.TabStrip1.hWnd, WM_LBUTTONDOWN, 1, at
+        SendMessageW f.TabStrip1.hWnd, WM_LBUTTONUP, 0, at
+        Expect.AreEqual "TabBeforeClick A | TabClick C | MouseDown | MouseUp", Rig.Events(), "the events of a click on the tab C"
+        Expect.AreEqual "C", SelectedCaption(f.TabStrip1), "the selected tab"
+        sink.Cancel = True
+        Rig.ClearLog
+        at = InTab(f, 1)
+        SendMessageW f.TabStrip1.hWnd, WM_LBUTTONDOWN, 1, at
+        SendMessageW f.TabStrip1.hWnd, WM_LBUTTONUP, 0, at
+        Expect.AreEqual "TabBeforeClick C | MouseDown | MouseUp", Rig.Events(), "the events of a click on the tab A with Cancel set"
+        Expect.AreEqual "C", SelectedCaption(f.TabStrip1), "the selected tab after the cancelled click"
+        Set sink.Strip = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_False_LeavesNoTabSelected()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        f.TabStrip1.Tabs(2).Selected = True
+        f.TabStrip1.Tabs(1).Selected = False
+        Expect.AreEqual "B", SelectedCaption(f.TabStrip1), "the selected tab after Selected = False on another tab"
+        f.TabStrip1.Tabs(2).Selected = False
+        Expect.AreEqual "Nothing", SelectedCaption(f.TabStrip1), "the selected tab after Selected = False on the tab B"
+        Set f.TabStrip1.SelectedItem = f.TabStrip1.Tabs(3)
+        Expect.AreEqual "C", SelectedCaption(f.TabStrip1), "the selected tab after Set SelectedItem"
+        Set f.TabStrip1.SelectedItem = Nothing
+        Expect.AreEqual "Nothing", SelectedCaption(f.TabStrip1), "the selected tab after Set SelectedItem = Nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabScrollWheel_TurnsToTheNextAndThePreviousTab()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        Wheel f, -120
+        Expect.AreEqual "B", SelectedCaption(f.TabStrip1), "the selected tab after a notch toward the next"
+        Wheel f, -120
+        Wheel f, -120
+        Expect.AreEqual "C", SelectedCaption(f.TabStrip1), "the selected tab after two more notches"
+        Wheel f, 120
+        Expect.AreEqual "B", SelectedCaption(f.TabStrip1), "the selected tab after a notch toward the previous"
+        f.TabStrip1.TabScrollWheel = False
+        Wheel f, 120
+        Expect.AreEqual "B", SelectedCaption(f.TabStrip1), "the selected tab after a notch with TabScrollWheel False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabScrollWheel_RaisesTheTabEvents()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        Dim sink As New TabStripSink
+        Set sink.Strip = f.TabStrip1
+        Rig.ClearLog
+        Wheel f, -120
+        Expect.AreEqual "TabBeforeClick B | TabClick B", Rig.Events(), "the events of a notch of the wheel"
+        Set sink.Strip = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Properties_ValuesOutsideTheEnumerations_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear: f.TabStrip1.Style = 7
+        Expect.AreEqual 380, Err.Number, "Style = 7"
+        Err.Clear: f.TabStrip1.TabStyle = 7
+        Expect.AreEqual 380, Err.Number, "TabStyle = 7"
+        Err.Clear: f.TabStrip1.Placement = 7
+        Expect.AreEqual 380, Err.Number, "Placement = 7"
+        Err.Clear: f.TabStrip1.TabWidthStyle = 7
+        Expect.AreEqual 380, Err.Number, "TabWidthStyle = 7"
+        Err.Clear: f.TabStrip1.TabAlignment = 7
+        Expect.AreEqual 380, Err.Number, "TabAlignment = 7"
+        Err.Clear: f.TabStrip1.DrawMode = 5
+        Expect.AreEqual 380, Err.Number, "DrawMode = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabSizes_Negative_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear: f.TabStrip1.TabFixedWidth = -1
+        Expect.AreEqual 380, Err.Number, "TabFixedWidth = -1"
+        Err.Clear: f.TabStrip1.TabFixedHeight = -1
+        Expect.AreEqual 380, Err.Number, "TabFixedHeight = -1"
+        Err.Clear: f.TabStrip1.TabMinWidth = -2
+        Expect.AreEqual 380, Err.Number, "TabMinWidth = -2"
+        On Error GoTo 0
+        f.TabStrip1.TabMinWidth = -1
+        Expect.AreEqual -1, CLng(f.TabStrip1.TabMinWidth), "TabMinWidth after TabMinWidth = -1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawMode_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear: f.TabStrip1.DrawMode = TbsDrawModeOwnerDrawFixed
+        Expect.AreEqual 382, Err.Number, "DrawMode = TbsDrawModeOwnerDrawFixed"
+        Err.Clear: f.TabStrip1.DrawMode = TbsDrawModeNormal
+        Expect.AreEqual 382, Err.Number, "DrawMode = TbsDrawModeNormal"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabGeometry_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear: f.TabStrip1.Tabs(1).Left = 5
+        Expect.AreEqual 383, Err.Number, "Left = 5"
+        Err.Clear: f.TabStrip1.Tabs(1).Top = 5
+        Expect.AreEqual 383, Err.Number, "Top = 5"
+        Err.Clear: f.TabStrip1.Tabs(1).Width = 5
+        Expect.AreEqual 383, Err.Number, "Width = 5"
+        Err.Clear: f.TabStrip1.Tabs(1).Height = 5
+        Expect.AreEqual 383, Err.Number, "Height = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabStyleOpposite_ForcesTheTabsStyleAndMultipleRows()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.Style = TbsStyleFlatButtons
+        f.TabStrip1.MultiRow = False
+        f.TabStrip1.TabStyle = TbsTabStyleOpposite
+        Expect.AreEqual TbsStyleTabs, f.TabStrip1.Style, "Style after TabStyle = TbsTabStyleOpposite"
+        Expect.IsTrue f.TabStrip1.MultiRow, "MultiRow after TabStyle = TbsTabStyleOpposite"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TabAlignment_WithoutFixedWidth_IsStandard()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.TabWidthStyle = TbsTabWidthStyleFixed
+        f.TabStrip1.TabAlignment = TbsTabAlignmentImageLeft
+        Expect.AreEqual TbsTabAlignmentImageLeft, f.TabStrip1.TabAlignment, "TabAlignment with fixed widths"
+        f.TabStrip1.TabWidthStyle = TbsTabWidthStyleNonJustified
+        Expect.AreEqual TbsTabAlignmentStandard, f.TabStrip1.TabAlignment, "TabAlignment after TabWidthStyle = TbsTabWidthStyleNonJustified"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_Changed_KeepsTheTabsAndTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        f.TabStrip1.Tabs("b").Tag = "keep"
+        f.TabStrip1.Tabs("b").ToolTipText = "tip"
+        f.TabStrip1.Tabs(3).Selected = True
+        f.TabStrip1.Style = TbsStyleButtons
+        Expect.AreEqual "-,b,c", Keys(f.TabStrip1), "the keys after Style = TbsStyleButtons"
+        Expect.AreEqual "keep", CStr(f.TabStrip1.Tabs("b").Tag), "the Tag of the tab b"
+        Expect.AreEqual "tip", f.TabStrip1.Tabs("b").ToolTipText, "the ToolTipText of the tab b"
+        Expect.AreEqual "C", SelectedCaption(f.TabStrip1), "the selected tab"
+        Expect.AreEqual 3, CLng(SendMessageW(f.TabStrip1.hWnd, TCM_GETITEMCOUNT, 0, 0)), "the tabs of the window"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Placement_WithVisualStyles_LeavesTheTabsOnTop()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.Placement = TbsPlacementBottom
+        Expect.AreEqual TbsPlacementBottom, f.TabStrip1.Placement, "Placement after TbsPlacementBottom"
+        Expect.IsTrue f.TabStrip1.Tabs(1).Top < f.TabStrip1.Height / 2, "the top of the tab 1: " & f.TabStrip1.Tabs(1).Top & " in a control of height " & f.TabStrip1.Height
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClientWidth_Assigned_ResizesTheControl()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.TabStrip1.ClientWidth = 3000
+        Expect.IsTrue Abs(f.TabStrip1.ClientWidth - 3000) < 30, "ClientWidth after ClientWidth = 3000, got " & f.TabStrip1.ClientWidth
+        Expect.IsTrue f.TabStrip1.Width > 3000, "Width after ClientWidth = 3000, got " & f.TabStrip1.Width
+        f.TabStrip1.ClientHeight = 2000
+        Expect.IsTrue Abs(f.TabStrip1.ClientHeight - 2000) < 30, "ClientHeight after ClientHeight = 2000, got " & f.TabStrip1.ClientHeight
+        Expect.IsTrue f.TabStrip1.Height > 2000, "Height after ClientHeight = 2000, got " & f.TabStrip1.Height
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTest_ReturnsTheTabAtThePoint()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        ThreeTabs f
+        Dim t As TbsTab, result As TbsHitResultConstants
+        Set t = f.TabStrip1.HitTest(f.TabStrip1.Tabs(2).Left + 100, f.TabStrip1.Tabs(2).Top + 100, result)
+        Expect.AreEqual 2, t.Index, "the tab at 100 twips inside the tab 2"
+        Expect.IsTrue result <> TbsHitResultNoWhere, "the HitResult of that point: " & result
+        Expect.IsTrue f.TabStrip1.HitTest(f.TabStrip1.Width - 10, f.TabStrip1.Height - 10) Is Nothing, "the tab at the bottom right corner"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a TabStrip, written to Rig.Log. Cancel is what the handler of TabBeforeClick sets.
+Class TabStripSink
+
+    Public WithEvents Strip As VBCCR18.TabStrip
+    Public Cancel As Boolean
+
+    Private Sub Strip_TabBeforeClick(ByVal TabItem As TbsTab, ByRef Cancel As Boolean) Handles Strip.TabBeforeClick
+        Rig.Ev "TabBeforeClick " & TabItem.Caption
+        Cancel = Me.Cancel
+    End Sub
+
+    Private Sub Strip_TabClick(ByVal TabItem As TbsTab) Handles Strip.TabClick
+        Rig.Ev "TabClick " & TabItem.Caption
+    End Sub
+
+    Private Sub Strip_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Strip.MouseDown
+        Rig.Ev "MouseDown"
+    End Sub
+
+    Private Sub Strip_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Strip.MouseUp
+        Rig.Ev "MouseUp"
+    End Sub
+
+End Class

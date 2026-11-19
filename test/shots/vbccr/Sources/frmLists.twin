@@ -1,0 +1,18 @@
+' The sheet Lists of VBCCRShots: ListBoxW, VListBox, ComboBoxW, VirtualCombo.
+' Written by a generator, with its designer file.
+
+[Description("")]
+[FormDesignerId("9E3C51B2-6A47-4F0D-B8E2-3D71C0A5EA18")]
+[PredeclaredId]
+Class frmLists
+
+    ' The texts of the two virtual lists, which keep none.
+    Private Sub VListBox1_GetVirtualItem(ByVal Item As Long, Text As String) Handles VListBox1.GetVirtualItem
+        Text = "Row " & Format$(Item + 1, "#,##0")
+    End Sub
+
+    Private Sub VirtualCombo1_GetVirtualItem(ByVal Item As Long, Text As String) Handles VirtualCombo1.GetVirtualItem
+        Text = "Row " & Format$(Item + 1, "#,##0")
+    End Sub
+
+End Class

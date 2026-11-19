@@ -863,6 +863,35 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   form (`AutoRedraw`): the annotation layer draws on the IDE's page only, and a line ends at the
   control's edge, since the form draws nothing over a child window. The heights it labels are
   worked out as the control does (a line of the font plus the margins).
+- **Setup `vbccr`**: `test/shots/vbccr`, VBCCRShots, the VBCCR18 section's picture of each
+  control, the package embedded by `startWithPackages`. **A picture of one control has no form
+  round it** (owner, 2026-11-19): a scene is a *sheet*, a form with several controls on it, each
+  as a program would use it, and `clipShot` cuts each control's picture out of the sheet's one
+  capture, with `CLIP_MARGIN` pixels of the form's ground round it. The program writes the
+  rectangles to the file `clips` in the folder of the signals before `shown`: a line for each
+  picture, its name and its left, top, width and height in pixels of the client area at 96 DPI
+  (`Place` writes a control's, `Clip` any other, such as two option buttons together).
+  `sheetOf` takes a sheet once for a setup's run and keeps it by the setup's `ctx`, so a sheet
+  of five controls is one program start. A control whose picture needs a pop-up (a dropped list,
+  a calendar) gets a scene of its own, taken by `sceneShot`: on a sheet the pop-up would cover
+  its neighbours. Any program setup can use `clipShot`. The sheets' forms (`frm<Sheet>`) and
+  Settings are written by `kit/vbccr/make-shots.mjs`; `MainModule.twin` is written by hand. A
+  control's own designer properties, such as a Style that raises 382 at run time, go in its
+  property bag (`_IPersistStreamData`), which make-shots writes from a `bag`
+  ([WIP.VBCCR18.md](WIP.VBCCR18.md), *The package*).
+  **A picture of states, styles or an enumeration's values is a whole form** (owner), taken by
+  `sceneShot`: one control per value side by side, each labelled by the program with its
+  setting. A folder control's pictures go in `<Control>/Images/`, as VBFlexGrid's do. A tree
+  draws its selection in the highlight colour only with the focus: `FocusOn` gives it the focus
+  once the form is shown. No fixed wait stills a progress bar: at 0.6 s a bar at 60 was
+  once taken at 48, at 1.5 s with its light running along it. `StillBars` gives each bar one
+  more than its value and then its value (a themed bar shrinks without an animation), and stops
+  its timers at once.
+  **The fixture has the visual-styles manifest** (`Resources/MANIFEST/#1.xml`): without it the
+  package finds version 5 of the common controls, and LinkLabel and CommandLink make no window
+  (LinkLabel draws a hatch in its place). The sheet's controls are reached through
+  `f.Controls(name)`, late bound, so a wrong member name is a run-time error, which the tool
+  prints with the control's name. Progress bars are stilled as `commonctls`'s are.
 - **Setup `dialogs`**: `test/shots/dialogs`, DialogShots, the pictures of the VBComDlg and
   AutoCompleteLib sections, both packages embedded by `startWithPackages`. A CommonDialog's dialog
   is taken as the `vb` setup's MsgBox is (`programDialogShot`, which `vbDialogShot` calls too): a
@@ -873,8 +902,16 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   with the focus, so the fading is switched off (`TVS_EX_FADEINOUTEXPANDOS`). **The Font dialog
   lists the machine's fonts**: its list is scrolled to start at Microsoft Himalaya
   (`CB_SETTOPINDEX`), so that the rows around Microsoft Sans Serif hold only fonts that come with
-  Windows or Office, and none of the novelty fonts this machine has. File Open and File Save are
-  not taken: their navigation pane shows the user's own folders. The AutoComplete scenes type
+  Windows or Office, and none of the novelty fonts this machine has. **File Open and File Save are
+  taken hooked** (`HookEvents` True with `CdlOFNExplorer`): a hooked dialog is Windows' older one,
+  whose places bar names no folder of the user's, while the newer one (no hook) has a navigation
+  pane of the user's own folders and a breadcrumb of the real path, user name included: not
+  taken (owner's idea, not started: intercept, in the program, the shell calls that fill both).
+  Their folder Reports is the program's, its files' times set to 15 March 2026 10:30
+  (`TheTime`), and the dialogs show their access keys again after the first `WM_CHANGEUISTATE`,
+  so it is sent at every tick and the picture waits ten. **Page Setup** uses Microsoft Print to
+  PDF (`PrinterDefaultInit` False), not the machine's default printer. **The Print dialog is not
+  taken** (owner): it lists the machine's printers by name. The AutoComplete scenes type
   `Ap` into a text box (`WM_CHAR`, as the package's test cases do) and lay the suggestion list
   (`Auto-Suggest Dropdown`) over the form, three runs in a row (`sceneRuns`); the caret is hidden,
   since it blinks.

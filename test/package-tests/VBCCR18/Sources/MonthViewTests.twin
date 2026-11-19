@@ -1,0 +1,435 @@
+' MonthViewTests: the selected date, the range, the months shown and the events of the MonthView.
+[TestFixture]
+Module MonthViewTests
+
+    Private Declare PtrSafe Function MvwMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Function D(ByVal v As Variant) As String
+        D = Format$(v, "yyyy-mm-dd")
+    End Function
+
+    [TestCase]
+    Public Sub Value_Assigned_DropsTheTimeOfDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.MonthView1.Value = DateSerial(2026, 3, 15) + TimeSerial(10, 20, 30)
+        Expect.AreEqual "2026-03-15 00:00:00", Format$(f.MonthView1.Value, "yyyy-mm-dd hh:nn:ss"), "Value after assigning a date with a time"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_OutsideTheRange_Raises35773()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.MonthView1
+            .MinDate = DateSerial(2026, 1, 1)
+            .MaxDate = DateSerial(2026, 12, 31)
+            .Value = DateSerial(2026, 3, 15)
+            On Error Resume Next
+            Err.Clear
+            .Value = DateSerial(2027, 1, 1)
+            Expect.AreEqual 35773, Err.Number, "Value after MaxDate"
+            On Error GoTo 0
+            Expect.AreEqual "2026-03-15", D(.Value), "Value after the refused assignment"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinDate_AboveMaxDate_Raises35775()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.MonthView1.MaxDate = DateSerial(2026, 6, 1)
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.MinDate = DateSerial(2026, 7, 1)
+        Expect.AreEqual 35775, Err.Number, "MinDate after MaxDate"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDate_BelowMinDate_Raises35774()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.MonthView1.MinDate = DateSerial(2026, 6, 1)
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.MaxDate = DateSerial(2026, 5, 1)
+        Expect.AreEqual 35774, Err.Number, "MaxDate before MinDate"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinDate_BeforeTheYear1900_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.MinDate = DateSerial(1899, 12, 31)
+        Expect.AreEqual 380, Err.Number, "MinDate = 31 December 1899"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parts_OutOfRange_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.MonthView1.Value = DateSerial(2026, 2, 10)
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.Month = 13
+        Expect.AreEqual 380, Err.Number, "Month = 13"
+        Err.Clear
+        f.MonthView1.Day = 29
+        Expect.AreEqual 380, Err.Number, "Day = 29 in February 2026"
+        Err.Clear
+        f.MonthView1.Week = 54
+        Expect.AreEqual 380, Err.Number, "Week = 54"
+        On Error GoTo 0
+        Expect.AreEqual "2026-02-10", D(f.MonthView1.Value), "Value after the refused assignments"
+        f.MonthView1.Month = 11
+        f.MonthView1.Day = 30
+        f.MonthView1.Year = 2030
+        Expect.AreEqual "2030-11-30", D(f.MonthView1.Value), "Value after Month, Day and Year"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetSelRange_MultiSelect_SelectsTheRange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.MonthView1
+            .MultiSelect = True
+            .SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 14)
+            Expect.AreEqual "2026-03-10", D(.SelStart), "SelStart"
+            Expect.AreEqual "2026-03-14", D(.SelEnd), "SelEnd"
+            Expect.AreEqual "2026-03-10", D(.Value), "Value"
+            .SelEnd = DateSerial(2026, 3, 16)
+            Expect.AreEqual "2026-03-16", D(.SelEnd), "SelEnd after SelEnd = 16 March"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetSelRange_LongerThanMaxSelCount_Raises35770()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.MonthView1
+            .MultiSelect = True
+            .SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 16)
+            Expect.AreEqual "2026-03-16", D(.SelEnd), "SelEnd after a range of 7 days"
+            On Error Resume Next
+            Err.Clear
+            .SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 17)
+            Expect.AreEqual 35770, Err.Number, "SetSelRange of 8 days"
+            On Error GoTo 0
+            .MaxSelCount = 3
+            Expect.AreEqual 3, CLng(.MaxSelCount), "MaxSelCount"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetSelRange_OutsideTheRange_Raises35770()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.MonthView1
+            .MultiSelect = True
+            .MinDate = DateSerial(2026, 3, 1)
+            On Error Resume Next
+            Err.Clear
+            .SetSelRange DateSerial(2026, 2, 27), DateSerial(2026, 3, 2)
+            Expect.AreEqual 35770, Err.Number, "SetSelRange from before MinDate"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetSelRange_WithoutMultiSelect_SelectsTheFirstDate()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.MonthView1
+            .SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 14)
+            Expect.AreEqual "2026-03-10", D(.Value), "Value"
+            Expect.AreEqual "2026-03-10", D(.SelStart), "SelStart"
+            Expect.AreEqual "2026-03-10", D(.SelEnd), "SelEnd"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiSelect_Changed_SelectsTheFirstDateOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.MonthView1
+            .MultiSelect = True
+            .SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 14)
+            .DayState = True
+            Expect.AreEqual "2026-03-10", D(.SelStart), "SelStart after DayState = True"
+            Expect.AreEqual "2026-03-10", D(.SelEnd), "SelEnd after DayState = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthColumns_Changed_ResizesTheControl()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w1 As Single, h1 As Single
+        With f.MonthView1
+            w1 = .Width: h1 = .Height
+            .MonthRows = 3
+            Expect.AreEqual 3, CLng(.CalendarCount), "CalendarCount of 1 by 3"
+            Expect.IsTrue .Height > h1, "Height after MonthRows = 3"
+            .MonthColumns = 4
+            Expect.IsTrue .Width > w1, "Width after MonthColumns = 4"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthColumns_Three_ShowsThreeMonths()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.MonthView1.MonthColumns = 3
+        Expect.AreEqual 3, CLng(f.MonthView1.CalendarCount), "CalendarCount of 3 by 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Width_Assigned_HasNoLastingEffect()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w1 As Single
+        w1 = f.MonthView1.Width
+        f.MonthView1.Width = 100
+        Expect.AreEqual CLng(w1), CLng(f.MonthView1.Width), "Width after Width = 100"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthColumns_OutOfRange_Raises35776()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single, h As Single
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.MonthColumns = 13
+        Expect.AreEqual 35776, Err.Number, "MonthColumns = 13"
+        Err.Clear
+        f.MonthView1.ComputeControlSize 13, 1, w, h
+        Expect.AreEqual 35776, Err.Number, "ComputeControlSize of 13 columns"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthColumnsTimesRows_OverTwelve_Raises35777()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim w As Single, h As Single
+        f.MonthView1.MonthColumns = 5
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.MonthRows = 3
+        Expect.AreEqual 35777, Err.Number, "MonthRows = 3 with 5 columns"
+        Err.Clear
+        f.MonthView1.ComputeControlSize 5, 3, w, h
+        Expect.AreEqual 35777, Err.Number, "ComputeControlSize of 5 by 3"
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(f.MonthView1.MonthRows), "MonthRows after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthColumns_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.MonthView1.MonthColumns = 0
+        Expect.AreEqual 380, Err.Number, "MonthColumns = 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' Looks for the place, in twips, of the day D in the calendar; found is False if there is none.
+    Private Function FindDay(ByVal v As VBCCR18.MonthView, ByVal day As Date, ByRef x As Single, ByRef y As Single) As Boolean
+        Dim hit As Date, r As MvwHitResultConstants
+        For y = 0 To v.Height Step 30
+            For x = 0 To v.Width Step 30
+                r = v.HitTest(x, y, hit)
+                If r = MvwHitResultCalendarDate Then
+                    If D(hit) = D(day) Then FindDay = True: Exit Function
+                End If
+            Next
+        Next
+    End Function
+
+    [TestCase]
+    Public Sub HitTest_OutsideTheControl_IsNoWhere()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual CLng(MvwHitResultNoWhere), CLng(f.MonthView1.HitTest(-100, -100)), "HitTest above and left of the control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTest_OnADay_GivesTheDate()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim x As Single, y As Single, hit As Date
+        f.MonthView1.Value = DateSerial(2026, 3, 15)
+        Expect.IsTrue FindDay(f.MonthView1, DateSerial(2026, 3, 20), x, y), "a place with 20 March"
+        Expect.AreEqual CLng(MvwHitResultCalendarDate), CLng(f.MonthView1.HitTest(x, y, hit)), "HitTest on 20 March"
+        Expect.AreEqual "2026-03-20", D(hit), "HitDate"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_OnADay_RaisesClickSelChangeAndDateClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New MonthViewSink
+        Set sink.Ctl = f.MonthView1
+        Dim x As Single, y As Single, lp As Long
+        f.MonthView1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Expect.IsTrue FindDay(f.MonthView1, DateSerial(2026, 3, 20), x, y), "a place with 20 March"
+        lp = CLng(x / Screen.TwipsPerPixelX) + CLng(y / Screen.TwipsPerPixelY) * 65536
+        Rig.ClearLog
+        MvwMessage f.MonthView1.hWnd, &H201, 1, lp
+        MvwMessage f.MonthView1.hWnd, &H202, 0, lp
+        Expect.AreEqual "Click", Rig.Events(), "the events before the messages are processed"
+        DoEvents
+        Expect.AreEqual "Click | SelChange 2026-03-20 2026-03-20 | DateClick 2026-03-20", Rig.Events(), "the events of the click"
+        Expect.AreEqual "2026-03-20", D(f.MonthView1.Value), "Value after the click"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DayState_Set_RaisesGetDayBold()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New MonthViewSink
+        Set sink.Ctl = f.MonthView1
+        f.MonthView1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        f.MonthView1.DayState = True
+        DoEvents
+        Expect.IsTrue InStr(Rig.Events(), "GetDayBold") > 0, "the events of DayState = True"
+        Expect.IsTrue InStr(Rig.Log, "GetDayBold 1 ") > 0, "State starts at 1"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelChange_ForEachChangeOfTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New MonthViewSink
+        Set sink.Ctl = f.MonthView1
+        f.MonthView1.Value = DateSerial(2026, 3, 15)
+        DoEvents
+        Rig.ClearLog
+        With f.MonthView1
+            .Value = DateSerial(2026, 3, 15)
+            .Value = DateSerial(2026, 3, 20) + 0.5
+            .Value = DateSerial(2026, 3, 20)
+        End With
+        DoEvents
+        Expect.AreEqual "SelChange 2026-03-20 2026-03-20", Rig.Events(), "the events of three assignments"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub View_Changed_RaisesViewChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New MonthViewSink
+        Set sink.Ctl = f.MonthView1
+        DoEvents
+        Rig.ClearLog
+        f.MonthView1.View = MvwViewYear
+        DoEvents
+        Expect.AreEqual 1, CLng(f.MonthView1.View), "View after View = MvwViewYear"
+        Expect.AreEqual "ViewChange 0 1", Rig.Events(), "the events of the change of view"
+        Set sink.Ctl = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a MonthView, written to Rig.Log.
+Class MonthViewSink
+
+    Public WithEvents Ctl As VBCCR18.MonthView
+
+    Private Sub Ctl_Click() Handles Ctl.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Ctl_SelChange(ByVal StartDate As Date, ByVal EndDate As Date) Handles Ctl.SelChange
+        Rig.Ev "SelChange " & Format$(StartDate, "yyyy-mm-dd") & " " & Format$(EndDate, "yyyy-mm-dd")
+    End Sub
+
+    Private Sub Ctl_DateClick(ByVal DateClicked As Date) Handles Ctl.DateClick
+        Rig.Ev "DateClick " & Format$(DateClicked, "yyyy-mm-dd")
+    End Sub
+
+    Private Sub Ctl_ViewChange(ByVal OldView As MvwViewConstants, ByVal NewView As MvwViewConstants) Handles Ctl.ViewChange
+        Rig.Ev "ViewChange " & OldView & " " & NewView
+    End Sub
+
+    Private Sub Ctl_GetDayBold(ByVal StartDate As Date, ByVal Count As Long, State() As Boolean) Handles Ctl.GetDayBold
+        Rig.Ev "GetDayBold " & LBound(State) & " " & UBound(State)
+    End Sub
+
+End Class

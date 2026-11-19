@@ -158,6 +158,10 @@ until it ends, so `tbrun` reports the cases after it `not run` and the run sends
 new IDE. A slow case that is meant to return is kept well under the limit. The run writes `RunAll.twin` again
 whenever the cases or `expect.json` change.
 
+A package in `CASES_PER_IDE` (`lib/package-tests.mjs`) gets a new IDE every so many cases:
+VBCCR18, whose controls a process can load only about ten thousand times
+([WIP.VBCCR18.md](../../WIP.VBCCR18.md), *Samples and test cases*).
+
 A fault of the harness can end a whole run: the IDE's page shows `chrome-error://` in place of the
 IDE, and every case after it fails or is not run. Run it again before believing such a run, and
 before `--update` writes anything from it.

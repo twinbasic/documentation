@@ -1,0 +1,329 @@
+' VirtualComboTests: the events through which a VirtualCombo asks for its items and has them
+' searched, and the selection and the text that depend on them.
+[TestFixture]
+Module VirtualComboTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_MOUSEMOVE As Long = &H200
+
+    [TestCase]
+    Public Sub List_RaisesGetVirtualItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 100
+        sink.LogItems = True
+        Rig.ClearLog
+        Expect.AreEqual "Item 5", f.VirtualCombo1.List(5), "List(5), with a handler that gives ""Item "" and the index"
+        Expect.AreEqual "GetVirtualItem 5", Rig.Events(), "the events of reading List(5)"
+        sink.LogItems = False
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_NoHandler_IsEmpty()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.VirtualCombo1.ListCount = 3
+        Expect.AreEqual "", f.VirtualCombo1.List(1), "List(1) with no handler of GetVirtualItem"
+        f.VirtualCombo1.ListIndex = 1
+        Expect.AreEqual "", f.VirtualCombo1.Text, "Text after ListIndex = 1 with no handler of GetVirtualItem"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_NoSuchItem_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        f.VirtualCombo1.ListCount = 10
+        On Error Resume Next
+        Err.Clear
+        s = f.VirtualCombo1.List(-1)
+        Expect.AreEqual 5, Err.Number, "reading List(-1)"
+        Err.Clear
+        s = f.VirtualCombo1.List(10)
+        Expect.AreEqual 5, Err.Number, "reading List(10) of a list of ten"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListCount_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.VirtualCombo1.ListCount = 10
+        On Error Resume Next
+        Err.Clear
+        f.VirtualCombo1.ListCount = -1
+        Expect.AreEqual 380, Err.Number, "ListCount = -1"
+        On Error GoTo 0
+        Expect.AreEqual 10, f.VirtualCombo1.ListCount, "ListCount after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListCount_Assigned_RemovesTheSelectionAndKeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 10
+        f.VirtualCombo1.ListIndex = 3
+        Rig.ClearLog
+        f.VirtualCombo1.ListCount = 20
+        Expect.AreEqual -1, f.VirtualCombo1.ListIndex, "ListIndex after ListCount = 20 with item 3 selected"
+        Expect.AreEqual "Item 3", f.VirtualCombo1.Text, "Text after ListCount = 20 with item 3 selected"
+        Expect.AreEqual "", Rig.Events(), "the events of ListCount = 20"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_Assigned_SetsTextAndRaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 100
+        Rig.ClearLog
+        f.VirtualCombo1.ListIndex = 4
+        Expect.AreEqual "Click 4", Rig.Events(), "the events of ListIndex = 4"
+        Expect.AreEqual "Item 4", f.VirtualCombo1.Text, "Text after ListIndex = 4"
+        Rig.ClearLog
+        f.VirtualCombo1.ListIndex = -1
+        Expect.AreEqual "Click -1", Rig.Events(), "the events of ListIndex = -1"
+        Expect.AreEqual "", f.VirtualCombo1.Text, "Text after ListIndex = -1"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_SameValue_RaisesNoClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 100
+        f.VirtualCombo1.ListIndex = 4
+        f.VirtualCombo1.Text = "other"
+        Rig.ClearLog
+        f.VirtualCombo1.ListIndex = 4
+        Expect.AreEqual "", Rig.Events(), "the events of ListIndex = 4 with item 4 selected"
+        Expect.AreEqual "Item 4", f.VirtualCombo1.Text, "Text after ListIndex = 4 with item 4 selected and another text in the box"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_NoSuchItem_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.VirtualCombo1.ListCount = 10
+        On Error Resume Next
+        Err.Clear
+        f.VirtualCombo1.ListIndex = 10
+        Expect.AreEqual 380, Err.Number, "ListIndex = 10 in a list of ten"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_RaisesChangeAndKeepsListIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 100
+        f.VirtualCombo1.ListIndex = 4
+        Rig.ClearLog
+        f.VirtualCombo1.Text = "Item 9"
+        f.VirtualCombo1.Text = "Item 9"
+        Expect.AreEqual "Change Item 9", Rig.Events(), "the events of Text = ""Item 9"", twice"
+        Expect.AreEqual 4, f.VirtualCombo1.ListIndex, "ListIndex after Text = ""Item 9"" with item 4 selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_RaisesFindVirtualItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 100
+        Rig.ClearLog
+        Expect.AreEqual 9, f.VirtualCombo1.FindItem("item 9"), "FindItem(""item 9""), with a handler that searches ""Item "" and the index"
+        Expect.AreEqual 90, f.VirtualCombo1.FindItem("item 9", 20, True), "FindItem(""item 9"", 20, True)"
+        Expect.AreEqual -1, f.VirtualCombo1.FindItem("zz"), "FindItem(""zz"")"
+        Expect.AreEqual "FindVirtualItem -1 [item 9] False | FindVirtualItem 20 [item 9] True | FindVirtualItem -1 [zz] False", Rig.Events(), "the events of the three calls"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_SelectsWhatTheHandlerFound()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.VirtualCombo1.ListCount = 100
+        f.VirtualCombo1.Text = ""
+        Rig.ClearLog
+        Expect.AreEqual 12, f.VirtualCombo1.SelectItem("item 12"), "SelectItem(""item 12"")"
+        Expect.AreEqual "FindVirtualItem -1 [item 12] True | Change item 12 | Click 12", Rig.Events(), "the events of SelectItem(""item 12"")"
+        Expect.AreEqual 12, f.VirtualCombo1.ListIndex, "ListIndex after SelectItem(""item 12"")"
+        Expect.AreEqual "Item 12", f.VirtualCombo1.Text, "Text after SelectItem(""item 12"")"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawMode_AssignedAtRunTime()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.VirtualCombo1.DrawMode = VcbDrawModeOwnerDrawFixed
+        Expect.AreEqual 1, CLng(f.VirtualCombo1.DrawMode), "DrawMode after DrawMode = VcbDrawModeOwnerDrawFixed"
+        On Error Resume Next
+        Err.Clear
+        f.VirtualCombo1.DrawMode = 2
+        Expect.AreEqual 380, Err.Number, "DrawMode = 2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.VirtualCombo1.Style = VcbStyleDropDownList
+        Expect.AreEqual 382, Err.Number, "Style = VcbStyleDropDownList at run time"
+        Err.Clear
+        f.VirtualCombo1.Style = 3
+        Expect.AreEqual 380, Err.Number, "Style = 3"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.VirtualCombo1.Style), "Style after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntegralHeight_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.VirtualCombo1.IntegralHeight = False
+        Expect.AreEqual 382, Err.Number, "IntegralHeight = False at run time"
+        On Error GoTo 0
+        Expect.IsTrue f.VirtualCombo1.IntegralHeight, "IntegralHeight after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDropDownItems_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.VirtualCombo1.MaxDropDownItems = 0
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 0"
+        Err.Clear
+        f.VirtualCombo1.MaxDropDownItems = 31
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 31"
+        On Error GoTo 0
+        Expect.AreEqual 9, CLng(f.VirtualCombo1.MaxDropDownItems), "MaxDropDownItems after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New VirtualComboSink
+        Set sink.Combo = f.VirtualCombo1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the control.
+        SendMessageW f.VirtualCombo1.hWnd, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' A program's side of a VirtualCombo: item n has the text "Item n". The events are written to
+' Rig.Log, GetVirtualItem only while LogItems is True.
+Class VirtualComboSink
+
+    Public WithEvents Combo As VBCCR18.VirtualCombo
+    Public LogItems As Boolean
+
+    Private Sub Combo_GetVirtualItem(ByVal Item As Long, Text As String) Handles Combo.GetVirtualItem
+        If LogItems Then Rig.Ev "GetVirtualItem " & Item
+        Text = "Item " & Item
+    End Sub
+
+    Private Sub Combo_FindVirtualItem(ByVal StartIndex As Long, ByVal SearchText As String, ByVal Partial As Boolean, FoundIndex As Long) Handles Combo.FindVirtualItem
+        Rig.Ev "FindVirtualItem " & StartIndex & " [" & SearchText & "] " & Partial
+        Dim i As Long, candidate As String
+        For i = StartIndex + 1 To Combo.ListCount - 1
+            candidate = "Item " & i
+            If Partial Then candidate = Left$(candidate, Len(SearchText))
+            If StrComp(candidate, SearchText, vbTextCompare) = 0 Then
+                FoundIndex = i
+                Exit Sub
+            End If
+        Next
+    End Sub
+
+    Private Sub Combo_Click() Handles Combo.Click
+        Rig.Ev "Click " & Combo.ListIndex
+    End Sub
+
+    Private Sub Combo_Change() Handles Combo.Change
+        Rig.Ev "Change " & Combo.Text
+    End Sub
+
+    Private Sub Combo_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Combo.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class

@@ -1,0 +1,195 @@
+' The stage set for the VBCCR18 section: the control instances its samples assume.
+'
+' A sample on a control's page says `ProgressBar1.Value = 50`, which is form code-behind:
+' the reader has a form with the control on it, named by the designer. This template has a
+' form for each control of the package, frm<Class>, with that one control on it, and each
+' property here loads the control's form and returns the control, so that a sample that is
+' run works on a real control. The Load is explicit, as contributed-VBFLXGRD18's is. A sample
+' that names two controls gets them from two forms.
+'
+' A type is written `VBCCR18.<Class>`, the project's name and then the class's: several of
+' the classes have the names of controls of other packages (ListView, ProgressBar).
+
+Module tbxStageVBCCR18
+
+    Public Property Get Animation1() As VBCCR18.Animation
+        Load frmAnimation
+        Return frmAnimation.Animation1
+    End Property
+
+    Public Property Get CheckBoxW1() As VBCCR18.CheckBoxW
+        Load frmCheckBoxW
+        Return frmCheckBoxW.CheckBoxW1
+    End Property
+
+    Public Property Get ComboBoxW1() As VBCCR18.ComboBoxW
+        Load frmComboBoxW
+        Return frmComboBoxW.ComboBoxW1
+    End Property
+
+    Public Property Get CommandButtonW1() As VBCCR18.CommandButtonW
+        Load frmCommandButtonW
+        Return frmCommandButtonW.CommandButtonW1
+    End Property
+
+    Public Property Get CommandLink1() As VBCCR18.CommandLink
+        Load frmCommandLink
+        Return frmCommandLink.CommandLink1
+    End Property
+
+    Public Property Get CoolBar1() As VBCCR18.CoolBar
+        Load frmCoolBar
+        Return frmCoolBar.CoolBar1
+    End Property
+
+    Public Property Get DTPicker1() As VBCCR18.DTPicker
+        Load frmDTPicker
+        Return frmDTPicker.DTPicker1
+    End Property
+
+    Public Property Get FontCombo1() As VBCCR18.FontCombo
+        Load frmFontCombo
+        Return frmFontCombo.FontCombo1
+    End Property
+
+    Public Property Get FrameW1() As VBCCR18.FrameW
+        Load frmFrameW
+        Return frmFrameW.FrameW1
+    End Property
+
+    Public Property Get HotKey1() As VBCCR18.HotKey
+        Load frmHotKey
+        Return frmHotKey.HotKey1
+    End Property
+
+    Public Property Get ImageCombo1() As VBCCR18.ImageCombo
+        Load frmImageCombo
+        Return frmImageCombo.ImageCombo1
+    End Property
+
+    Public Property Get ImageList1() As VBCCR18.ImageList
+        Load frmImageList
+        Return frmImageList.ImageList1
+    End Property
+
+    Public Property Get IPAddress1() As VBCCR18.IPAddress
+        Load frmIPAddress
+        Return frmIPAddress.IPAddress1
+    End Property
+
+    Public Property Get LabelW1() As VBCCR18.LabelW
+        Load frmLabelW
+        Return frmLabelW.LabelW1
+    End Property
+
+    Public Property Get LinkLabel1() As VBCCR18.LinkLabel
+        Load frmLinkLabel
+        Return frmLinkLabel.LinkLabel1
+    End Property
+
+    Public Property Get ListBoxW1() As VBCCR18.ListBoxW
+        Load frmListBoxW
+        Return frmListBoxW.ListBoxW1
+    End Property
+
+    Public Property Get ListView1() As VBCCR18.ListView
+        Load frmListView
+        Return frmListView.ListView1
+    End Property
+
+    Public Property Get MCIWnd1() As VBCCR18.MCIWnd
+        Load frmMCIWnd
+        Return frmMCIWnd.MCIWnd1
+    End Property
+
+    Public Property Get MonthView1() As VBCCR18.MonthView
+        Load frmMonthView
+        Return frmMonthView.MonthView1
+    End Property
+
+    Public Property Get OptionButtonW1() As VBCCR18.OptionButtonW
+        Load frmOptionButtonW
+        Return frmOptionButtonW.OptionButtonW1
+    End Property
+
+    Public Property Get Pager1() As VBCCR18.Pager
+        Load frmPager
+        Return frmPager.Pager1
+    End Property
+
+    Public Property Get ProgressBar1() As VBCCR18.ProgressBar
+        Load frmProgressBar
+        Return frmProgressBar.ProgressBar1
+    End Property
+
+    Public Property Get RichTextBox1() As VBCCR18.RichTextBox
+        Load frmRichTextBox
+        Return frmRichTextBox.RichTextBox1
+    End Property
+
+    Public Property Get Slider1() As VBCCR18.Slider
+        Load frmSlider
+        Return frmSlider.Slider1
+    End Property
+
+    Public Property Get SpinBox1() As VBCCR18.SpinBox
+        Load frmSpinBox
+        Return frmSpinBox.SpinBox1
+    End Property
+
+    Public Property Get StatusBar1() As VBCCR18.StatusBar
+        Load frmStatusBar
+        Return frmStatusBar.StatusBar1
+    End Property
+
+    Public Property Get SysInfo1() As VBCCR18.SysInfo
+        Load frmSysInfo
+        Return frmSysInfo.SysInfo1
+    End Property
+
+    Public Property Get TabStrip1() As VBCCR18.TabStrip
+        Load frmTabStrip
+        Return frmTabStrip.TabStrip1
+    End Property
+
+    Public Property Get TextBoxW1() As VBCCR18.TextBoxW
+        Load frmTextBoxW
+        Return frmTextBoxW.TextBoxW1
+    End Property
+
+    Public Property Get ToolBar1() As VBCCR18.ToolBar
+        Load frmToolBar
+        Return frmToolBar.ToolBar1
+    End Property
+
+    Public Property Get TreeView1() As VBCCR18.TreeView
+        Load frmTreeView
+        Return frmTreeView.TreeView1
+    End Property
+
+    Public Property Get UpDown1() As VBCCR18.UpDown
+        Load frmUpDown
+        Return frmUpDown.UpDown1
+    End Property
+
+    Public Property Get VirtualCombo1() As VBCCR18.VirtualCombo
+        Load frmVirtualCombo
+        Return frmVirtualCombo.VirtualCombo1
+    End Property
+
+    Public Property Get VListBox1() As VBCCR18.VListBox
+        Load frmVListBox
+        Return frmVListBox.VListBox1
+    End Property
+
+    Public Property Get WindowedLabel1() As VBCCR18.WindowedLabel
+        Load frmWindowedLabel
+        Return frmWindowedLabel.WindowedLabel1
+    End Property
+
+    Public Property Get OptionButtonW2() As VBCCR18.OptionButtonW
+        Load frmOptionButtonW
+        Return frmOptionButtonW.OptionButtonW2
+    End Property
+
+End Module

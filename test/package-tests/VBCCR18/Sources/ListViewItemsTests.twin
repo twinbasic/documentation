@@ -1,0 +1,403 @@
+' ListViewItemsTests: the items and the subitems of the ListView, their numbers, keys and texts.
+[TestFixture]
+Module ListViewItemsTests
+
+    Private Declare PtrSafe Function LvSend Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    ' A loaded form whose ListView1 is in the report view with the columns given.
+    Private Function ReportForm(ParamArray Columns() As Variant) As HostForm
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.View = LvwViewReport
+        Dim i As Long
+        For i = 0 To UBound(Columns)
+            f.ListView1.ColumnHeaders.Add , , CStr(Columns(i))
+        Next
+        Set ReportForm = f
+    End Function
+
+    [TestCase]
+    Public Sub Add_AtAnIndex_MovesTheLaterItemsDown()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListView1.ListItems
+            .Add , "a", "alpha"
+            .Add , "b", "beta"
+            .Add 1, "c", "gamma"
+            Expect.AreEqual "gamma alpha beta", .Item(1).Text & " " & .Item(2).Text & " " & .Item(3).Text, "the texts of items 1 to 3 after Add at Index 1"
+            Expect.AreEqual 2, .Item("a").Index, "Index of alpha after Add at Index 1"
+            Dim it As LvwListItem, order As String
+            For Each it In f.ListView1.ListItems
+                order = order & it.Key
+            Next
+            Expect.AreEqual "cab", order, "the keys in the order of For Each"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_RenumbersTheLaterItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim kept As LvwListItem
+        With f.ListView1.ListItems
+            .Add , "a", "alpha"
+            .Add , "b", "beta"
+            Set kept = .Item("a")
+            .Remove 1
+            Expect.AreEqual 1, .Item("b").Index, "Index of beta after Remove 1"
+            Expect.AreEqual 0, kept.Index, "Index of a kept LvwListItem after its item is removed"
+            Expect.AreEqual "alpha", kept.Text, "Text of a kept LvwListItem after its item is removed"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByKey_IgnoresCase()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , "Open", "open"
+        Expect.AreEqual "open", f.ListView1.ListItems("OPEN").Text, "ListItems(""OPEN"") of the key ""Open"""
+        Expect.IsTrue f.ListView1.ListItems.Exists("open"), "ListItems.Exists(""open"") of the key ""Open"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumberOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "one"
+        Dim it As LvwListItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ListView1.ListItems(2)
+        Expect.AreEqual 35600, Err.Number, "ListItems(2) of one item"
+        Err.Clear
+        Set it = f.ListView1.ListItems(0)
+        Expect.AreEqual 35600, Err.Number, "ListItems(0)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_UnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , "a", "one"
+        Dim it As LvwListItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ListView1.ListItems("zz")
+        Expect.AreEqual 5, Err.Number, "ListItems(""zz"")"
+        Err.Clear
+        f.ListView1.ListItems.Remove "zz"
+        Expect.AreEqual 5, Err.Number, "ListItems.Remove ""zz"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As LvwListItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ListView1.ListItems.Add(2, , "one")
+        Expect.AreEqual 35600, Err.Number, "ListItems.Add at Index 2 of an empty list"
+        Err.Clear
+        Set it = f.ListView1.ListItems.Add(-1, , "one")
+        Expect.AreEqual 35600, Err.Number, "ListItems.Add at Index -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListView1.ListItems.Count, "ListItems.Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As LvwListItem
+        f.ListView1.ListItems.Add , "a", "one"
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ListView1.ListItems.Add(, "A", "two")
+        Expect.AreEqual 457, Err.Number, "ListItems.Add with the key ""A"" next to ""a"""
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.ListItems.Count, "ListItems.Count after the refused Add"
+        Expect.AreEqual 1, CLng(LvSend(f.ListView1.hWnd, &H1004&, 0, 0)), "the items of the window after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IconKeyWithoutImageList_Raises35601()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As LvwListItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ListView1.ListItems.Add(, , "one", "open")
+        Expect.AreEqual 35601, Err.Number, "ListItems.Add with an icon key and no image list"
+        Err.Clear
+        Set it = f.ListView1.ListItems.Add(, , "one", -1)
+        Expect.AreEqual 35600, Err.Number, "ListItems.Add with the icon -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListView1.ListItems.Count, "ListItems.Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Exists_SaysWhetherTheItemIsThere()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , "a", "one"
+        f.ListView1.ListItems.Add , , "two"
+        With f.ListView1.ListItems
+            Expect.IsTrue .Exists("a"), "Exists(""a"")"
+            Expect.IsFalse .Exists("zz"), "Exists(""zz"")"
+            Expect.IsTrue .Exists(2), "Exists(2) of two items"
+            Expect.IsFalse .Exists(3), "Exists(3) of two items"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_OfAnotherItem_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , "a", "one"
+        f.ListView1.ListItems.Add , "b", "two"
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ListItems("b").Key = "a"
+        Expect.AreEqual 457, Err.Number, "Key = ""a"" on the item ""b"""
+        On Error GoTo 0
+        Expect.AreEqual "b", f.ListView1.ListItems(2).Key, "Key of the second item after the refused assignment"
+        f.ListView1.ListItems("b").Key = "c"
+        Expect.IsFalse f.ListView1.ListItems.Exists("b"), "Exists(""b"") after Key = ""c"""
+        Expect.AreEqual "two", f.ListView1.ListItems("c").Text, "ListItems(""c"") after Key = ""c"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Width_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "one"
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ListItems(1).Width = 5
+        Expect.AreEqual 383, Err.Number, "Width = 5 on an item"
+        Err.Clear
+        f.ListView1.ListItems(1).Height = 5
+        Expect.AreEqual 383, Err.Number, "Height = 5 on an item"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tag_NewItem_IsAnEmptyString()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "one"
+        Expect.AreEqual "", f.ListView1.ListItems(1).Tag, "Tag of a new item"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ForeColor_New_IsTheControlsForeColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.ListItems.Add , , "one"
+        f.ListView1.ForeColor = vbBlue
+        Expect.AreEqual CLng(vbBlue), CLng(f.ListView1.ListItems(1).ForeColor), "ForeColor of an item after the control's ForeColor = vbBlue"
+        f.ListView1.ListItems(1).ForeColor = vbRed
+        f.ListView1.ForeColor = vbGreen
+        Expect.AreEqual CLng(vbRed), CLng(f.ListView1.ListItems(1).ForeColor), "ForeColor of an item given vbRed after the control's ForeColor = vbGreen"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ResetForeColors_GivesBackTheControlsForeColor()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size")
+        Dim it As LvwListItem
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        it.ListSubItems.Add , , "1 KB"
+        it.ForeColor = vbRed
+        it.ListSubItems(1).ForeColor = vbBlue
+        f.ListView1.ResetForeColors
+        Expect.AreEqual CLng(f.ListView1.ForeColor), CLng(it.ForeColor), "the item's ForeColor after ResetForeColors"
+        Expect.AreEqual CLng(f.ListView1.ForeColor), CLng(it.ListSubItems(1).ForeColor), "the subitem's ForeColor after ResetForeColors"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SubItems_NoColumnForIt_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size")
+        Dim it As LvwListItem, s As String
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        On Error Resume Next
+        Err.Clear
+        s = it.SubItems(2)
+        Expect.AreEqual 380, Err.Number, "reading SubItems(2) with two columns"
+        Err.Clear
+        it.SubItems(2) = "x"
+        Expect.AreEqual 380, Err.Number, "SubItems(2) = ""x"" with two columns"
+        Err.Clear
+        it.SubItems(0) = "x"
+        Expect.AreEqual 380, Err.Number, "SubItems(0) = ""x"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SubItems_Assigned_AddsTheSubitemsBefore()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size", "Type")
+        Dim it As LvwListItem
+        Set it = f.ListView1.ListItems.Add(, , "readme")
+        it.SubItems(2) = "Text"
+        Expect.AreEqual 2, it.ListSubItems.Count, "ListSubItems.Count after SubItems(2) = ""Text"""
+        Expect.AreEqual "", it.SubItems(1), "SubItems(1) after SubItems(2) = ""Text"""
+        Expect.AreEqual "Text", it.ListSubItems(2).Text, "ListSubItems(2).Text after SubItems(2) = ""Text"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SubItems_LongText_IsReturnedWhole()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Note")
+        Dim it As LvwListItem
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        it.SubItems(1) = String$(300, "b")
+        Expect.AreEqual 300, Len(it.ListSubItems(1).Text), "Len(ListSubItems(1).Text) of a subitem of 300 characters"
+        Expect.AreEqual 300, Len(it.SubItems(1)), "Len(SubItems(1)) of a subitem of 300 characters"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TileViewIndices_ZeroIndex_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size", "Type")
+        f.ListView1.View = LvwViewTile
+        Dim it As LvwListItem
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        it.TileViewIndices = Array(2, 1)
+        Dim v As Variant
+        v = it.TileViewIndices
+        Expect.AreEqual "2 1", v(0) & " " & v(1), "TileViewIndices after TileViewIndices = Array(2, 1)"
+        On Error Resume Next
+        Err.Clear
+        it.TileViewIndices = Array(0)
+        Expect.AreEqual 381, Err.Number, "TileViewIndices = Array(0)"
+        Err.Clear
+        it.TileViewIndices = 5
+        Expect.AreEqual 380, Err.Number, "TileViewIndices = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListSubItems_Item_OutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size")
+        Dim it As LvwListItem, si As LvwListSubItem
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        it.ListSubItems.Add , "size", "1 KB"
+        Expect.AreEqual 1, it.ListSubItems("SIZE").Index, "ListSubItems(""SIZE"") of the key ""size"""
+        On Error Resume Next
+        Err.Clear
+        Set si = it.ListSubItems(2)
+        Expect.AreEqual 9, Err.Number, "ListSubItems(2) of one subitem"
+        Err.Clear
+        Set si = it.ListSubItems("zz")
+        Expect.AreEqual 9, Err.Number, "ListSubItems(""zz"")"
+        Err.Clear
+        it.ListSubItems.Remove 5
+        Expect.AreEqual 9, Err.Number, "ListSubItems.Remove 5 of one subitem"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListSubItems_Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size", "Type")
+        Dim it As LvwListItem, si As LvwListSubItem
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        it.ListSubItems.Add , "k", "first"
+        On Error Resume Next
+        Err.Clear
+        Set si = it.ListSubItems.Add(, "K", "second")
+        Expect.AreEqual 457, Err.Number, "ListSubItems.Add with the key ""K"" next to ""k"""
+        Err.Clear
+        Set si = it.ListSubItems.Add(5, , "far")
+        Expect.AreEqual 35600, Err.Number, "ListSubItems.Add at Index 5 of one subitem"
+        On Error GoTo 0
+        Expect.AreEqual 1, it.ListSubItems.Count, "ListSubItems.Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListSubItem_Width_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size")
+        Dim it As LvwListItem
+        Set it = f.ListView1.ListItems.Add(, , "one")
+        it.ListSubItems.Add , , "1 KB"
+        On Error Resume Next
+        Err.Clear
+        it.ListSubItems(1).Width = 1
+        Expect.AreEqual 383, Err.Number, "Width = 1 on a subitem"
+        Err.Clear
+        it.ListSubItems(1).Left = 1
+        Expect.AreEqual 383, Err.Number, "Left = 1 on a subitem"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

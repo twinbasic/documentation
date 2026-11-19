@@ -1,0 +1,1386 @@
+' ImageComboTests: the ImageCombo control, its ImcComboItems collection and its ImcComboItem items.
+' The user's keyboard is made by messages to the text box of the control; the pictures are bitmaps
+' of one color made here, so that no case needs a file.
+[TestFixture]
+Module ImageComboTests
+
+    Private Type PictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+
+    Private Type PictGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal X As Long, ByVal Y As Long, ByVal W As Long, ByVal H As Long, ByVal Rop As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PictDesc, ByRef IID As PictGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+
+    Private Const PATCOPY As Long = &HF00021
+    Private Const WM_SETFOCUS As Long = &H7
+    Private Const WM_KILLFOCUS As Long = &H8
+    Private Const WM_KEYDOWN As Long = &H100
+    Private Const WM_CHAR As Long = &H102
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const VK_RETURN As Long = 13
+    Private Const VK_ESCAPE As Long = 27
+    Private Const VK_DOWN As Long = &H28
+
+    ' A bitmap of one color.
+    Private Function ColorSquare(ByVal Color As Long, Optional ByVal Width As Long = 16, Optional ByVal Height As Long = 16) As StdPicture
+        Dim screenDC As LongPtr, memDC As LongPtr, bmp As LongPtr, brush As LongPtr, oldBmp As LongPtr, oldBrush As LongPtr
+        screenDC = GetDC(0)
+        memDC = CreateCompatibleDC(screenDC)
+        bmp = CreateCompatibleBitmap(screenDC, Width, Height)
+        brush = CreateSolidBrush(Color)
+        oldBmp = SelectObject(memDC, bmp)
+        oldBrush = SelectObject(memDC, brush)
+        PatBlt memDC, 0, 0, Width, Height, PATCOPY
+        SelectObject memDC, oldBrush
+        SelectObject memDC, oldBmp
+        DeleteObject brush
+        DeleteDC memDC
+        ReleaseDC 0, screenDC
+        Dim desc As PictDesc, iid As PictGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = bmp
+        ' IID_IPictureDisp, {7BF80981-BF32-101A-8BBB-00AA00300CAB}
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set ColorSquare = pic
+    End Function
+
+    ' Three pictures in the list of the form, red, green and blue, keys "red", "green" and "blue".
+    Private Sub FillImageList(ByVal f As HostForm)
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        f.ImageList1.ListImages.Add , "green", ColorSquare(vbGreen)
+        f.ImageList1.ListImages.Add , "blue", ColorSquare(vbBlue)
+    End Sub
+
+    Private Sub AddItems(ByVal Combo As VBCCR18.ImageCombo)
+        Combo.ComboItems.Add , "a", "Alpha"
+        Combo.ComboItems.Add , "b", "Beta"
+        Combo.ComboItems.Add , "c", "Gamma"
+    End Sub
+
+    ' The number of times an event is in the log.
+    Private Function CountOf(ByVal EventName As String) As Long
+        Dim parts() As String = Split(Rig.Events(), " | ")
+        Dim i As Long
+        For i = 0 To UBound(parts)
+            If parts(i) = EventName Then CountOf = CountOf + 1
+        Next
+    End Function
+
+    ' The first event of the log.
+    Private Function FirstEvent() As String
+        Dim parts() As String = Split(Rig.Events(), " | ")
+        FirstEvent = parts(0)
+    End Function
+
+    ' The last event of the log.
+    Private Function LastEvent() As String
+        Dim parts() As String = Split(Rig.Events(), " | ")
+        LastEvent = parts(UBound(parts))
+    End Function
+
+    ' ---- the control ----
+
+    [TestCase]
+    Public Sub Defaults_OfANewControl()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageCombo1
+            Expect.AreEqual 0, CLng(.Style), "Style of a new control"
+            Expect.AreEqual 0, CLng(.Indentation), "Indentation of a new control"
+            Expect.IsFalse .ExtendedUI, "ExtendedUI of a new control"
+            Expect.AreEqual 9, CLng(.MaxDropDownItems), "MaxDropDownItems of a new control"
+            Expect.IsTrue .ShowImages, "ShowImages of a new control"
+            Expect.AreEqual 0, CLng(.MaxLength), "MaxLength of a new control"
+            Expect.AreEqual 0, CLng(.EllipsisFormat), "EllipsisFormat of a new control"
+            Expect.AreEqual 0, CLng(.AllowImageHighlight), "AllowImageHighlight of a new control"
+            Expect.IsFalse .Locked, "Locked of a new control"
+            Expect.IsTrue .ScrollTrack, "ScrollTrack of a new control"
+            Expect.AreEqual 0, .ComboItems.Count, "ComboItems.Count of a new control"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.Style = ImcStyleSimpleCombo
+        Expect.AreEqual 382, Err.Number, "Style = ImcStyleSimpleCombo at run time"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ImageCombo1.Style), "Style after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.Style = 9
+        Expect.AreEqual 380, Err.Number, "Style = 9"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AllowImageHighlight_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.AllowImageHighlight = 5
+        Expect.AreEqual 380, Err.Number, "AllowImageHighlight = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EllipsisFormat_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.EllipsisFormat = 5
+        Expect.AreEqual 380, Err.Number, "EllipsisFormat = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Indentation_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.Indentation = -1
+        Expect.AreEqual 380, Err.Number, "Indentation = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.ImageCombo1.Indentation), "Indentation after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Indentation_OfTheControl_IsTheIndentationOfNewItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageCombo1
+            .Indentation = 2
+            .ComboItems.Add , "a", "A"
+            .Indentation = 0
+            .ComboItems.Add , "b", "B"
+            Expect.AreEqual 2, .ComboItems("a").Indentation, "Indentation of an item added while the control had 2"
+            Expect.AreEqual 0, .ComboItems("b").Indentation, "Indentation of an item added while the control had 0"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_WithAnIndentation_OverridesTheControls()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageCombo1
+            .Indentation = 1
+            .ComboItems.Add , "a", "A", , , 3
+            Expect.AreEqual 3, .ComboItems("a").Indentation, "Indentation of an item added with an Indentation of 3 while the control had 1"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDropDownItems_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.MaxDropDownItems = 0
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 0"
+        Err.Clear
+        f.ImageCombo1.MaxDropDownItems = 31
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 31"
+        On Error GoTo 0
+        Expect.AreEqual 9, CLng(f.ImageCombo1.MaxDropDownItems), "MaxDropDownItems after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.MaxLength = -1
+        Expect.AreEqual 380, Err.Number, "MaxLength = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Zero_LimitsTheTextTo259()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        With f.ImageCombo1
+            .Text = ""
+            For i = 1 To 300
+                SendMessageW .hWndEdit, WM_CHAR, 65, 0
+            Next
+            Expect.AreEqual 259, Len(.Text), "the length of the text after 300 characters were typed with MaxLength 0"
+            .Text = String$(300, "y")
+            Expect.AreEqual 259, Len(.Text), "the length of a text of 300 characters assigned with MaxLength 0"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_LongerThanMaxLength_IsCut()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageCombo1
+            .MaxLength = 3
+            .Text = "abcdef"
+            Expect.AreEqual "abc", .Text, "Text after ""abcdef"" is assigned with MaxLength 3"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Locked_TextCanStillBeAssigned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageCombo1
+            AddItems f.ImageCombo1
+            .Locked = True
+            .Text = "xyz"
+            Expect.AreEqual "xyz", .Text, "Text after an assignment with Locked"
+            .ComboItems("b").Selected = True
+            Expect.AreEqual "Beta", .Text, "Text after an item is selected with Locked"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetItemHeight_PicturesHigherThanTheText_IsAtLeastThePictureHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h0 As Single, h1 As Single
+        h0 = f.ImageCombo1.GetItemHeight
+        f.ImageList1.ImageWidth = 40
+        f.ImageList1.ImageHeight = 40
+        f.ImageList1.ListImages.Add , "big", ColorSquare(vbRed, 40, 40)
+        f.ImageCombo1.ImageList = f.ImageList1
+        h1 = f.ImageCombo1.GetItemHeight
+        Expect.IsTrue h1 > h0, "GetItemHeight with pictures 40 pixels high is more than without a list"
+        Expect.IsTrue h1 >= f.ScaleY(40, vbPixels, f.ScaleMode), "GetItemHeight with pictures 40 pixels high is at least 40 pixels"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the pictures ----
+
+    [TestCase]
+    Public Sub ImageList_Object_IsReturned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        Expect.AreEqual "Nothing", TypeName(f.ImageCombo1.ImageList), "ImageList of a new control"
+        f.ImageCombo1.ImageList = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(f.ImageCombo1.ImageList), "ImageList after the ImageList control is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_Handle_IsReturned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1.hImageList
+        Expect.IsTrue CLngPtr(f.ImageCombo1.ImageList) = f.ImageList1.hImageList, "ImageList after the handle of the ImageList control is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_EmptyList_IsNotTaken()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageCombo1.ImageList = f.ImageList1
+        Expect.AreEqual "Nothing", TypeName(f.ImageCombo1.ImageList), "ImageList after an ImageList control with no picture is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_NotAnImageList_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ImageList = f.ImageCombo1
+        Expect.AreEqual 35610, Err.Number, "ImageList = the ImageCombo itself"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_AnotherType_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ImageList = 3.5
+        Expect.AreEqual 13, Err.Number, "ImageList = 3.5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_ImageKey_WithAHandleAsImageList_Raises35601()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1.hImageList
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, , "Blue", 2)
+        Expect.AreEqual 2, it.ImageIndex, "ImageIndex of an item added with the number 2 and a handle as the image list"
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add , , "Red", "red"
+        Expect.AreEqual 35601, Err.Number, "Add with the key ""red"" and a handle as the image list"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_ImageKey_WithoutAnImageList_Raises35601()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add , , "Red", "red"
+        Expect.AreEqual 35601, Err.Number, "Add with the key ""red"" and no image list"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ImageCombo1.ComboItems.Count, "ComboItems.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_ImageNumber_IsNotCheckedAgainstTheImageList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, , "X", 99)
+        Expect.AreEqual 99, it.ImageIndex, "ImageIndex of an item added with the number 99 and no image list"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_ImageNegative_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add , , "X", -1
+        Expect.AreEqual 35600, Err.Number, "Add with the image number -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ImageCombo1.ComboItems.Count, "ComboItems.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the collection ----
+
+    [TestCase]
+    Public Sub Add_AtAnIndex_MovesTheLaterItemsUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ImageCombo1.ComboItems
+            .Add , "open", "Open"
+            .Add , "save", "Save"
+            .Add 1, "new", "New"
+            Expect.AreEqual "new open save", .Item(1).Key & " " & .Item(2).Key & " " & .Item(3).Key, "the keys of the items after Add 1, ""new"" to a list of two"
+            Expect.AreEqual 3, .Item("save").Index, "Index of the item ""save"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add 5, , "X"
+        Expect.AreEqual 35600, Err.Number, "Add with the index 5 to an empty list"
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add -1, , "X"
+        Expect.AreEqual 35600, Err.Number, "Add with the index -1"
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add 2, , "X"
+        Expect.AreEqual 35600, Err.Number, "Add with the index 2 to an empty list"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ImageCombo1.ComboItems.Count, "ComboItems.Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageCombo1.ComboItems.Add , "a", "Alpha"
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add , "A", "Again"
+        Expect.AreEqual 457, Err.Number, "Add with the key ""A"" to a list that has the key ""a"""
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ImageCombo1.ComboItems.Count, "ComboItems.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_NegativeIndentation_AddsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Add , "m", "Mu", , , -1
+        Expect.AreEqual 380, Err.Number, "Add with an Indentation of -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ImageCombo1.ComboItems.Count, "ComboItems.Count after the refused Add"
+        Expect.AreEqual 0, CLng(SendMessageW(f.ImageCombo1.hWndCombo, &H146, 0, 0)), "the items in the combo box after the refused Add (CB_GETCOUNT)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumberOutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        Dim it As VBCCR18.ImcComboItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ImageCombo1.ComboItems(9)
+        Expect.AreEqual 9, Err.Number, "ComboItems(9) in a list of three"
+        Err.Clear
+        Set it = f.ImageCombo1.ComboItems(0)
+        Expect.AreEqual 9, Err.Number, "ComboItems(0)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_UnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        Dim it As VBCCR18.ImcComboItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ImageCombo1.ComboItems("zz")
+        Expect.AreEqual 5, Err.Number, "ComboItems(""zz"")"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByKey_IgnoresCase()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        Expect.AreEqual "Beta", f.ImageCombo1.ComboItems("B").Text, "the text of ComboItems(""B"") for the key ""b"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Exists_SaysWhetherTheListHasTheNumberOrKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        With f.ImageCombo1.ComboItems
+            Expect.IsTrue .Exists("b"), "Exists(""b"") in a list with that key"
+            Expect.IsTrue .Exists("B"), "Exists(""B"") in a list with the key ""b"""
+            Expect.IsFalse .Exists("zz"), "Exists(""zz"") in a list without that key"
+            Expect.IsTrue .Exists(3), "Exists(3) in a list of three"
+            Expect.IsFalse .Exists(4), "Exists(4) in a list of three"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_RenumbersTheLaterItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        With f.ImageCombo1.ComboItems
+            .Remove "a"
+            Expect.AreEqual 2, .Count, "Count after one of three items is removed"
+            Expect.AreEqual 1, .Item("b").Index, "Index of the item ""b"" after the item before it was removed"
+            Expect.AreEqual 2, .Item("c").Index, "Index of the item ""c"" after the first item was removed"
+            .Add 1, "n", "New"
+            Expect.AreEqual 3, .Item("c").Index, "Index of the item ""c"" after an item was added before it"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_NoSuchItem_RaisesTheErrorOfItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems.Remove 9
+        Expect.AreEqual 9, Err.Number, "Remove 9 in a list of three"
+        Err.Clear
+        f.ImageCombo1.ComboItems.Remove "zz"
+        Expect.AreEqual 5, Err.Number, "Remove ""zz"""
+        On Error GoTo 0
+        Expect.AreEqual 3, f.ImageCombo1.ComboItems.Count, "Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_LeavesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("a").Selected = True
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems.Clear
+        Expect.AreEqual "", Rig.Events(), "the events of Clear"
+        Expect.AreEqual 0, f.ImageCombo1.ComboItems.Count, "Count after Clear"
+        Expect.AreEqual "Alpha", f.ImageCombo1.Text, "Text after Clear with the first item selected"
+        Expect.IsTrue f.ImageCombo1.SelectedItem Is Nothing, "SelectedItem after Clear"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_SelectedItem_LeavesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("b").Selected = True
+        f.ImageCombo1.ComboItems.Remove "b"
+        Expect.AreEqual "Beta", f.ImageCombo1.Text, "Text after the selected item is removed"
+        Expect.IsTrue f.ImageCombo1.SelectedItem Is Nothing, "SelectedItem after the selected item is removed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the selection and the text ----
+
+    [TestCase]
+    Public Sub Text_Assigned_SelectsNoItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        f.ImageCombo1.Text = "Beta"
+        Expect.IsTrue f.ImageCombo1.SelectedItem Is Nothing, "SelectedItem after Text = ""Beta"", the text of the second item"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_True_PutsTheTextInTheTextBox()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("b").Selected = True
+        Expect.AreEqual "Beta", f.ImageCombo1.Text, "Text after the second item is selected"
+        Expect.AreEqual "b", f.ImageCombo1.SelectedItem.Key, "the key of SelectedItem"
+        Expect.IsTrue f.ImageCombo1.ComboItems("b").Selected, "Selected of the second item"
+        Expect.IsFalse f.ImageCombo1.ComboItems("a").Selected, "Selected of the first item"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_True_RaisesChangeThenClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems("c").Selected = True
+        Expect.AreEqual "Change", FirstEvent(), "the first event of Selected = True"
+        Expect.AreEqual "Click", LastEvent(), "the last event of Selected = True"
+        Expect.AreEqual 1, CountOf("Click"), "the number of Click events of Selected = True"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_AlreadySelected_RaisesNoClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("c").Selected = True
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems("c").Selected = True
+        Expect.AreEqual 0, CountOf("Click"), "the number of Click events of Selected = True for the selected item"
+        Expect.IsTrue CountOf("Change") > 0, "Change is raised by Selected = True for the selected item"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_False_RemovesTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("b").Selected = True
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems("b").Selected = False
+        Expect.AreEqual "", f.ImageCombo1.Text, "Text after the selected item gets Selected = False"
+        Expect.IsTrue f.ImageCombo1.SelectedItem Is Nothing, "SelectedItem after the selected item gets Selected = False"
+        Expect.AreEqual "Change | Click", Rig.Events(), "the events of Selected = False for the selected item"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Selected_FalseOnAnotherItem_ChangesNothingAndRaisesNoClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("b").Selected = True
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems("a").Selected = False
+        Expect.AreEqual "b", f.ImageCombo1.SelectedItem.Key, "the key of SelectedItem after Selected = False for another item"
+        Expect.AreEqual 0, CountOf("Click"), "the number of Click events of Selected = False for an item that is not selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedItem_Nothing_RaisesChangeAndClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("a").Selected = True
+        Rig.ClearLog
+        Set f.ImageCombo1.SelectedItem = Nothing
+        Expect.AreEqual "Change | Click", Rig.Events(), "the events of Set SelectedItem = Nothing with an item selected"
+        Expect.AreEqual "", f.ImageCombo1.Text, "Text after Set SelectedItem = Nothing"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_RaisesChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        Rig.ClearLog
+        f.ImageCombo1.Text = "free text"
+        Expect.AreEqual "Change", Rig.Events(), "the events of Text = ""free text"""
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Down_SelectsTheNextItemAndRaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.Text = "Alpha"
+        Rig.ClearLog
+        SendMessageW f.ImageCombo1.hWndEdit, WM_KEYDOWN, VK_DOWN, 0
+        Expect.AreEqual "Change | Click", Rig.Events(), "the events of the Down Arrow key with no item selected"
+        Expect.AreEqual "a", f.ImageCombo1.SelectedItem.Key, "the key of SelectedItem after the Down Arrow key"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- ending an edit ----
+
+    [TestCase]
+    Public Sub BeginEdit_FocusToTheTextBox_IsRaised()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        Rig.ClearLog
+        SendMessageW f.ImageCombo1.hWndEdit, WM_SETFOCUS, f.ImageCombo1.hWnd, 0
+        Expect.IsTrue CountOf("BeginEdit") > 0, "BeginEdit is raised when the text box gets the focus"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EndEdit_Return_GivesTheSelectedItemAndTheReason()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("a").Selected = True
+        Rig.ClearLog
+        SendMessageW f.ImageCombo1.hWndEdit, WM_KEYDOWN, VK_RETURN, 0
+        Expect.AreEqual "EndEdit False 0 Alpha 2", FirstEvent(), "the EndEdit of the Enter key with the first item selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EndEdit_Escape_GivesReason3()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("b").Selected = True
+        Rig.ClearLog
+        SendMessageW f.ImageCombo1.hWndEdit, WM_KEYDOWN, VK_ESCAPE, 0
+        Expect.AreEqual "EndEdit False 1 Beta 3", FirstEvent(), "the EndEdit of the Esc key with the second item selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EndEdit_LostFocus_GivesReason1()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("a").Selected = True
+        Rig.ClearLog
+        SendMessageW f.ImageCombo1.hWndEdit, WM_KILLFOCUS, 0, 0
+        Expect.AreEqual "EndEdit False 0 Alpha 1", FirstEvent(), "the EndEdit of the loss of the focus with the first item selected"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_True_RaisesDropDownThenEndEdit()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("a").Selected = True
+        Rig.ClearLog
+        f.ImageCombo1.DroppedDown = True
+        Dim parts() As String = Split(Rig.Events(), " | ")
+        Expect.AreEqual "DropDown", parts(0), "the first event of DroppedDown = True"
+        Expect.AreEqual "EndEdit False 0 Alpha 4", parts(1), "the second event of DroppedDown = True"
+        Expect.IsTrue f.ImageCombo1.DroppedDown, "DroppedDown after DroppedDown = True"
+        f.ImageCombo1.DroppedDown = False
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_False_RaisesCloseUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.DroppedDown = True
+        Rig.ClearLog
+        f.ImageCombo1.DroppedDown = False
+        Expect.AreEqual "CloseUp", FirstEvent(), "the first event of DroppedDown = False"
+        Expect.IsFalse f.ImageCombo1.DroppedDown, "DroppedDown after DroppedDown = False"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the list ----
+
+    [TestCase]
+    Public Sub TopItem_NoItems_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ImageCombo1.TopItem
+        Expect.AreEqual 9, Err.Number, "reading TopItem of a control with no item"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TopItem_Nothing_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        On Error Resume Next
+        Err.Clear
+        Set f.ImageCombo1.TopItem = Nothing
+        Expect.AreEqual 380, Err.Number, "Set TopItem = Nothing"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TopItem_Assigned_ScrollsAndRaisesScroll()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Dim i As Long
+        For i = 1 To 40
+            f.ImageCombo1.ComboItems.Add , , "Item " & i
+        Next
+        Set sink.Combo = f.ImageCombo1
+        Rig.ClearLog
+        Set f.ImageCombo1.TopItem = f.ImageCombo1.ComboItems(10)
+        Expect.AreEqual 10, f.ImageCombo1.TopItem.Index, "the Index of TopItem after the tenth item is assigned"
+        Expect.AreEqual "Scroll", Rig.Events(), "the events of Set TopItem to the tenth item"
+        Rig.ClearLog
+        Set f.ImageCombo1.TopItem = f.ImageCombo1.ComboItems(10)
+        Expect.AreEqual "", Rig.Events(), "the events of Set TopItem to the item that is at the top"
+        Rig.ClearLog
+        Set f.ImageCombo1.TopItem = f.ImageCombo1.ComboItems(11)
+        Expect.AreEqual "Scroll", Rig.Events(), "the events of Set TopItem to the eleventh item"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_WholeTextOrPartOfIt()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        For i = 1 To 40
+            f.ImageCombo1.ComboItems.Add , , "Item " & i
+        Next
+        With f.ImageCombo1
+            Expect.AreEqual 5, .FindItem("item 5").Index, "FindItem(""item 5"")"
+            Expect.AreEqual 5, .FindItem("ITEM 5").Index, "FindItem(""ITEM 5"")"
+            Expect.AreEqual 5, .FindItem("item 5", , True).Index, "FindItem(""item 5"", , True)"
+            Expect.AreEqual 5, .FindItem("5", , True).Index, "FindItem(""5"", , True)"
+            Expect.IsTrue .FindItem("5") Is Nothing, "FindItem(""5"") for a text that is no whole text"
+            Expect.IsTrue .FindItem("zzz") Is Nothing, "FindItem(""zzz"")"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_StartsAtIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        For i = 1 To 40
+            f.ImageCombo1.ComboItems.Add , , "Item " & i
+        Next
+        With f.ImageCombo1
+            Expect.AreEqual 11, .FindItem("item 1", 11, True).Index, "FindItem(""item 1"", 11, True)"
+            Expect.IsTrue .FindItem("item 1", 20, True) Is Nothing, "FindItem(""item 1"", 20, True)"
+            Expect.AreEqual 5, .FindItem("item 5", 5).Index, "FindItem(""item 5"", 5)"
+            Expect.IsTrue .FindItem("item 5", 6) Is Nothing, "FindItem(""item 5"", 6)"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_Wrap_GoesOnFromTheTop()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        For i = 1 To 40
+            f.ImageCombo1.ComboItems.Add , , "Item " & i
+        Next
+        With f.ImageCombo1
+            Expect.AreEqual 1, .FindItem("item 1", 20, True, True).Index, "FindItem(""item 1"", 20, True, True)"
+            Expect.AreEqual 5, .FindItem("item 5", 6, , True).Index, "FindItem(""item 5"", 6, , True)"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_IndexOutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        Dim it As VBCCR18.ImcComboItem
+        On Error Resume Next
+        Err.Clear
+        Set it = f.ImageCombo1.FindItem("a", 4, True)
+        Expect.AreEqual 380, Err.Number, "FindItem with the index 4 in a list of three"
+        Err.Clear
+        Set it = f.ImageCombo1.FindItem("a", -1, True)
+        Expect.AreEqual 380, Err.Number, "FindItem with the index -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the combo box.
+        SendMessageW f.ImageCombo1.hWndCombo, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- one item ----
+
+    [TestCase]
+    Public Sub Image_Assigned_ChangesImageAndImageIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha", 1)
+        Expect.AreEqual 1, CLng(it.Image), "Image of an item added with the number 1"
+        it.Image = "green"
+        Expect.AreEqual "green", CStr(it.Image), "Image after the key ""green"" is assigned"
+        Expect.AreEqual 2, it.ImageIndex, "ImageIndex after the key ""green"" is assigned"
+        it.Image = 3
+        Expect.AreEqual 3, it.ImageIndex, "ImageIndex after the number 3 is assigned"
+        it.Image = 0
+        Expect.AreEqual 0, it.ImageIndex, "ImageIndex after 0 is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_UnknownKey_Raises35601()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha", 1)
+        On Error Resume Next
+        Err.Clear
+        it.Image = "nope"
+        Expect.AreEqual 35601, Err.Number, "Image = ""nope"""
+        On Error GoTo 0
+        Expect.AreEqual 1, it.ImageIndex, "ImageIndex after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_Negative_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        On Error Resume Next
+        Err.Clear
+        it.Image = -1
+        Expect.AreEqual 35600, Err.Number, "Image = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Image_Number_IsNotCheckedAgainstTheImageList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        it.Image = 99
+        Expect.AreEqual 99, it.ImageIndex, "ImageIndex after the number 99 is assigned in a list of three pictures"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelImage_Assigned_ChangesSelImageIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        Expect.AreEqual 0, CLng(it.SelImage), "SelImage of a new item"
+        it.SelImage = 2
+        Expect.AreEqual 2, CLng(it.SelImage), "SelImage after 2 is assigned"
+        Expect.AreEqual 2, it.SelImageIndex, "SelImageIndex after 2 is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelImage_Negative_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        On Error Resume Next
+        Err.Clear
+        it.SelImage = -1
+        Expect.AreEqual 35600, Err.Number, "SelImage = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelImage_Key_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        On Error Resume Next
+        Err.Clear
+        it.SelImage = "red"
+        Expect.AreEqual 13, Err.Number, "SelImage = ""red"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelImage_KeyGivenToAdd_CanBeRead()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        FillImageList f
+        f.ImageCombo1.ImageList = f.ImageList1
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "d", "Delta", , "blue")
+        Expect.AreEqual 3, it.SelImageIndex, "SelImageIndex of an item added with the SelImage key ""blue"""
+        Dim n As Long
+        On Error Resume Next
+        Err.Clear
+        n = it.SelImage
+        Expect.AreEqual 0, Err.Number, "reading SelImage of an item added with the SelImage key ""blue"""
+        On Error GoTo 0
+        Expect.AreEqual 3, n, "SelImage of an item added with the SelImage key ""blue"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Assigned_RenamesTheItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("a").Key = "z"
+        Expect.IsFalse f.ImageCombo1.ComboItems.Exists("a"), "Exists(""a"") after the key is changed to ""z"""
+        Expect.AreEqual 1, f.ImageCombo1.ComboItems("z").Index, "Index of the item with the key ""z"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Empty_TakesTheKeyAway()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("c").Key = ""
+        Expect.AreEqual "", f.ImageCombo1.ComboItems(3).Key, "Key after an empty string is assigned"
+        Expect.AreEqual "Gamma", f.ImageCombo1.ComboItems(3).Text, "Text of the item after its key is taken away"
+        Expect.IsFalse f.ImageCombo1.ComboItems.Exists("c"), "Exists(""c"") after the key is taken away"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_OfAnotherItem_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        AddItems f.ImageCombo1
+        On Error Resume Next
+        Err.Clear
+        f.ImageCombo1.ComboItems("c").Key = "a"
+        Expect.AreEqual 457, Err.Number, "Key = ""a"" for the item ""c"""
+        On Error GoTo 0
+        Expect.AreEqual "c", f.ImageCombo1.ComboItems(3).Key, "Key after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tag_NewItem_IsAnEmptyString()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        Expect.AreEqual "", it.Tag, "Tag of a new item"
+        it.Tag = "x"
+        Expect.AreEqual "x", it.Tag, "Tag after ""x"" is assigned"
+        Set it.Tag = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(it.Tag), "TypeName of Tag after an object is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_OfAnItem_IsCutTo259()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "long", String$(300, "x"))
+        Expect.AreEqual 259, Len(it.Text), "the length of the text of an item added with 300 characters"
+        it.Text = String$(280, "y")
+        Expect.AreEqual 259, Len(it.Text), "the length of the text of an item after 280 characters are assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_OfTheSelectedItem_Assigned_ChangesTheTextBox()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ImageComboSink
+        Set sink.Combo = f.ImageCombo1
+        AddItems f.ImageCombo1
+        f.ImageCombo1.ComboItems("b").Selected = True
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems("b").Text = "Bravo"
+        Expect.AreEqual "Bravo", f.ImageCombo1.Text, "Text after the text of the selected item is changed"
+        Expect.AreEqual "Change", Rig.Events(), "the events of a change of the text of the selected item"
+        Rig.ClearLog
+        f.ImageCombo1.ComboItems("c").Text = "Gimel"
+        Expect.AreEqual "Bravo", f.ImageCombo1.Text, "Text after the text of another item is changed"
+        Expect.AreEqual "", Rig.Events(), "the events of a change of the text of another item"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_AfterRemove_KeepsItsOldNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As VBCCR18.ImcComboItem
+        Set a = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        f.ImageCombo1.ComboItems.Add , "b", "Beta"
+        f.ImageCombo1.ComboItems.Remove "a"
+        Expect.AreEqual 1, a.Index, "Index of an item kept in a variable after it was removed"
+        Expect.AreEqual "Beta", a.Text, "Text of an item kept in a variable after it was removed, with another item at its number"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Data_NewItem_IsZeroAndAssignedIsKept()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim it As VBCCR18.ImcComboItem
+        Set it = f.ImageCombo1.ComboItems.Add(, "a", "Alpha")
+        Expect.AreEqual 0, CLng(it.Data), "Data of a new item"
+        it.Data = 1234
+        Expect.AreEqual 1234, CLng(it.Data), "Data after 1234 is assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of an ImageCombo, written to Rig.Log.
+Class ImageComboSink
+
+    Public WithEvents Combo As VBCCR18.ImageCombo
+
+    Private Sub Combo_Click() Handles Combo.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Combo_Change() Handles Combo.Change
+        Rig.Ev "Change"
+    End Sub
+
+    Private Sub Combo_DropDown() Handles Combo.DropDown
+        Rig.Ev "DropDown"
+    End Sub
+
+    Private Sub Combo_CloseUp() Handles Combo.CloseUp
+        Rig.Ev "CloseUp"
+    End Sub
+
+    Private Sub Combo_Scroll() Handles Combo.Scroll
+        Rig.Ev "Scroll"
+    End Sub
+
+    Private Sub Combo_BeginEdit() Handles Combo.BeginEdit
+        Rig.Ev "BeginEdit"
+    End Sub
+
+    Private Sub Combo_EndEdit(ByVal Changed As Boolean, ByVal NewIndex As Long, ByVal NewText As String, ByVal Reason As ImcEndEditReasonConstants) Handles Combo.EndEdit
+        Rig.Ev "EndEdit " & CStr(Changed) & " " & NewIndex & " " & NewText & " " & CLng(Reason)
+    End Sub
+
+    Private Sub Combo_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Combo.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class

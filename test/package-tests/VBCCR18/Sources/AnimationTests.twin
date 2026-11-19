@@ -1,0 +1,228 @@
+' AnimationTests: loading a clip, playing it, and the events of the Animation. The clip is a small
+' silent AVI that each case writes under %TEMP%\tbdocs-package-tests\VBCCR18 and deletes.
+[TestFixture]
+Module AnimationTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_MOUSEMOVE As Long = &H200
+
+    Private Sub Put32(b() As Byte, ByRef p As Long, ByVal v As Long)
+        b(p) = v And &HFF&
+        b(p + 1) = (v \ &H100&) And &HFF&
+        b(p + 2) = (v \ &H10000) And &HFF&
+        b(p + 3) = (v \ &H1000000) And &HFF&
+        p = p + 4
+    End Sub
+
+    Private Sub Put16(b() As Byte, ByRef p As Long, ByVal v As Long)
+        b(p) = v And &HFF&
+        b(p + 1) = (v \ &H100&) And &HFF&
+        p = p + 2
+    End Sub
+
+    Private Sub PutTag(b() As Byte, ByRef p As Long, ByVal tag As String)
+        Dim i As Long
+        For i = 1 To 4
+            b(p) = Asc(Mid$(tag, i, 1))
+            p = p + 1
+        Next
+    End Sub
+
+    ' Writes a silent AVI of three frames of 16 by 16 pixels, uncompressed, and returns its path.
+    Private Function WriteClip() As String
+        Const Frames As Long = 3, FrameBytes As Long = 768
+        Dim b(0 To 2607) As Byte
+        Dim p As Long, i As Long, j As Long
+        PutTag b, p, "RIFF": Put32 b, p, 2600: PutTag b, p, "AVI "
+        PutTag b, p, "LIST": Put32 b, p, 192: PutTag b, p, "hdrl"
+        PutTag b, p, "avih": Put32 b, p, 56
+        Put32 b, p, 100000: Put32 b, p, 7800: Put32 b, p, 0: Put32 b, p, &H10&
+        Put32 b, p, Frames: Put32 b, p, 0: Put32 b, p, 1: Put32 b, p, FrameBytes
+        Put32 b, p, 16: Put32 b, p, 16
+        For i = 1 To 4: Put32 b, p, 0: Next
+        PutTag b, p, "LIST": Put32 b, p, 116: PutTag b, p, "strl"
+        PutTag b, p, "strh": Put32 b, p, 56
+        PutTag b, p, "vids": PutTag b, p, "DIB "
+        Put32 b, p, 0: Put16 b, p, 0: Put16 b, p, 0: Put32 b, p, 0
+        Put32 b, p, 1: Put32 b, p, 10: Put32 b, p, 0: Put32 b, p, Frames
+        Put32 b, p, FrameBytes: Put32 b, p, -1: Put32 b, p, 0
+        Put16 b, p, 0: Put16 b, p, 0: Put16 b, p, 16: Put16 b, p, 16
+        PutTag b, p, "strf": Put32 b, p, 40
+        Put32 b, p, 40: Put32 b, p, 16: Put32 b, p, 16
+        Put16 b, p, 1: Put16 b, p, 24: Put32 b, p, 0: Put32 b, p, FrameBytes
+        For i = 1 To 4: Put32 b, p, 0: Next
+        PutTag b, p, "LIST": Put32 b, p, 2332: PutTag b, p, "movi"
+        For i = 0 To Frames - 1
+            PutTag b, p, "00db": Put32 b, p, FrameBytes
+            For j = 0 To FrameBytes - 1
+                b(p) = (i * 100 + 50) And &HFF&
+                p = p + 1
+            Next
+        Next
+        PutTag b, p, "idx1": Put32 b, p, 48
+        For i = 0 To Frames - 1
+            PutTag b, p, "00db": Put32 b, p, &H10&
+            Put32 b, p, 4 + i * 776: Put32 b, p, FrameBytes
+        Next
+        Dim folder As String
+        folder = Environ$("TEMP") & "\tbdocs-package-tests"
+        If Len(Dir$(folder, vbDirectory)) = 0 Then MkDir folder
+        folder = folder & "\VBCCR18"
+        If Len(Dir$(folder, vbDirectory)) = 0 Then MkDir folder
+        Dim path As String
+        path = folder & "\animation-test.avi"
+        Dim n As Long
+        n = FreeFile
+        Open path For Binary Access Write As #n
+        Put #n, , b
+        Close #n
+        WriteClip = path
+    End Function
+
+    [TestCase]
+    Public Sub Defaults_OfANewControl()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsFalse f.Animation1.AutoPlay, "AutoPlay of a new control"
+        Expect.IsFalse f.Animation1.Center, "Center of a new control"
+        Expect.AreEqual CLng(CCBackStyleTransparent), CLng(f.Animation1.BackStyle), "BackStyle of a new control"
+        Expect.IsFalse f.Animation1.Playing, "Playing of a new control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BackStyle_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.Animation1.BackStyle = 2
+        Expect.AreEqual 380, Err.Number, "BackStyle = 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFile_MissingFile_Raises53()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.Animation1.LoadFile Environ$("TEMP") & "\tbdocs-package-tests\VBCCR18\no-such-clip.avi"
+        Expect.AreEqual 53, Err.Number, "LoadFile of a file that is not there"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadRes_MissingResource_Raises326()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.Animation1.LoadRes 9999
+        Expect.AreEqual 326, Err.Number, "LoadRes of a resource that is not in the program"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadRes_MissingFile_Raises53()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.Animation1.LoadRes 1, Environ$("TEMP") & "\tbdocs-package-tests\VBCCR18\no-such-library.dll"
+        Expect.AreEqual 53, Err.Number, "LoadRes from a library that is not there"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Play_AndStopPlay_ChangeTheStateAndRaiseChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim path As String
+        path = WriteClip()
+        Dim sink As New AnimationSink
+        Set sink.Clip = f.Animation1
+        f.Animation1.LoadFile path
+        Expect.IsFalse f.Animation1.Playing, "Playing after LoadFile"
+        Rig.ClearLog
+        f.Animation1.Play
+        Expect.IsTrue f.Animation1.Playing, "Playing after Play"
+        Expect.AreEqual "Change True", Rig.Events(), "the events of Play"
+        Rig.ClearLog
+        f.Animation1.StopPlay
+        Expect.IsFalse f.Animation1.Playing, "Playing after StopPlay"
+        Expect.AreEqual "Change False", Rig.Events(), "the events of StopPlay"
+        Set sink.Clip = Nothing
+        f.Animation1.Unload
+        Kill path
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unload_ReleasesTheFile()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim path As String
+        path = WriteClip()
+        f.Animation1.LoadFile path
+        On Error Resume Next
+        Err.Clear
+        Kill path
+        Expect.IsTrue Err.Number <> 0, "Kill of the file while the clip is loaded raises an error"
+        On Error GoTo 0
+        f.Animation1.Unload
+        Err.Clear
+        On Error Resume Next
+        Kill path
+        Expect.AreEqual 0, Err.Number, "Kill of the file after Unload"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New AnimationSink
+        Set sink.Clip = f.Animation1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the control.
+        SendMessageW f.Animation1.hWndUserControl, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.Clip = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of an Animation, written to Rig.Log.
+Class AnimationSink
+
+    Public WithEvents Clip As VBCCR18.Animation
+
+    Private Sub Clip_Change() Handles Clip.Change
+        Rig.Ev "Change " & Clip.Playing
+    End Sub
+
+    Private Sub Clip_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Clip.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class

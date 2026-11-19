@@ -1,0 +1,75 @@
+' SysInfoTests: the read-only properties and the events of the SysInfo. An event is raised by
+' sending its window message to hMain alone, which changes nothing on the system; only the
+' clock and settings messages are sent, since hMain may be a window of the IDE's process.
+[TestFixture]
+Module SysInfoTests
+
+    Private Declare PtrSafe Function SysTestSendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_TIMECHANGE As Long = &H1E
+    Private Const WM_SETTINGCHANGE As Long = &H1A
+
+    [TestCase]
+    Public Sub ACStatus_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.SysInfo1.ACStatus = SysACStatusOnline
+        Expect.AreEqual 383, Err.Number, "ACStatus = SysACStatusOnline"
+        Err.Clear
+        f.SysInfo1.WorkAreaWidth = 100
+        Expect.AreEqual 383, Err.Number, "WorkAreaWidth = 100"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TimeChanged_RaisedByWmTimeChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Sink As New SysInfoSink
+        Set Sink.Info = f.SysInfo1
+        Expect.IsTrue f.SysInfo1.hMain <> 0, "hMain of a loaded SysInfo"
+        Rig.ClearLog
+        SysTestSendMessage f.SysInfo1.hMain, WM_TIMECHANGE, 0, 0
+        Expect.AreEqual "TimeChanged", Rig.Events(), "the events of WM_TIMECHANGE sent to hMain"
+        Set Sink.Info = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SettingChanged_GivesTheItemAndTheSection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Sink As New SysInfoSink
+        Set Sink.Info = f.SysInfo1
+        Dim Section As String = "tbdocs-package-test"
+        Rig.ClearLog
+        SysTestSendMessage f.SysInfo1.hMain, WM_SETTINGCHANGE, 0, StrPtr(Section)
+        Expect.AreEqual "SettingChanged 0 tbdocs-package-test", Rig.Events(), "the events of WM_SETTINGCHANGE sent to hMain"
+        Set Sink.Info = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The TimeChanged and SettingChanged events of a SysInfo, written to Rig.Log.
+Class SysInfoSink
+
+    Public WithEvents Info As VBCCR18.SysInfo
+
+    Private Sub Info_TimeChanged() Handles Info.TimeChanged
+        Rig.Ev "TimeChanged"
+    End Sub
+
+    Private Sub Info_SettingChanged(ByVal Item As Long, ByVal Section As String) Handles Info.SettingChanged
+        Rig.Ev "SettingChanged " & Item & " " & Section
+    End Sub
+
+End Class

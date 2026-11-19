@@ -1,0 +1,134 @@
+' ProgressBarTests: the range, the steps and the Change event of the ProgressBar.
+[TestFixture]
+Module ProgressBarTests
+
+    [TestCase]
+    Public Sub Value_OutsideTheRange_IsTheNearestEnd()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ProgressBar1
+            .Min = 10: .Max = 100
+            .Value = 500
+            Expect.AreEqual 100, .Value, "Value after Value = 500 in a range of 10 to 100"
+            .Value = -3
+            Expect.AreEqual 10, .Value, "Value after Value = -3 in a range of 10 to 100"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StepIt_PastMax_StartsAgainFromMin()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ProgressBar1
+            .Min = 0: .Max = 100: .Step = 30
+            .Value = 90
+            .StepIt
+            Expect.AreEqual 20, .Value, "Value after StepIt at 90 with Step 30 in a range of 0 to 100"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StepIt_StepAutoResetFalse_StopsAtMax()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ProgressBar1
+            .Min = 0: .Max = 100: .Step = 30
+            .StepAutoReset = False
+            .Value = 90
+            .StepIt
+            Expect.AreEqual 100, .Value, "Value after StepIt at 90 with Step 30, StepAutoReset False"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Max_NotAboveMin_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ProgressBar1.Min = 0: f.ProgressBar1.Max = 100
+        On Error Resume Next
+        Err.Clear
+        f.ProgressBar1.Max = 0
+        Expect.AreEqual 380, Err.Number, "Max = 0 with Min 0"
+        On Error GoTo 0
+        Expect.AreEqual 100, f.ProgressBar1.Max, "Max after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Min_NotBelowMax_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ProgressBar1.Min = 0: f.ProgressBar1.Max = 100
+        On Error Resume Next
+        Err.Clear
+        f.ProgressBar1.Min = 500
+        Expect.AreEqual 380, Err.Number, "Min = 500 with Max 100"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ProgressBar1.Min, "Min after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MarqueeSpeed_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ProgressBar1.MarqueeSpeed = 0
+        Expect.AreEqual 380, Err.Number, "MarqueeSpeed = 0"
+        On Error GoTo 0
+        f.ProgressBar1.MarqueeSpeed = 1
+        Expect.AreEqual 1, CLng(f.ProgressBar1.MarqueeSpeed), "MarqueeSpeed after MarqueeSpeed = 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Change_RaisedOnceForEachChangeOfValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ProgressBarSink
+        Set sink.Bar = f.ProgressBar1
+        With f.ProgressBar1
+            .Min = 0: .Max = 100: .Step = 10
+            .Value = 0
+            Rig.ClearLog
+            .Value = 40
+            .Value = 40
+            .StepIt
+            .Increment 5
+            .Increment 0
+        End With
+        Expect.AreEqual "Change 40 | Change 50 | Change 55", Rig.Events(), "the events of Value = 40, Value = 40, StepIt, Increment 5, Increment 0"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a ProgressBar, written to Rig.Log.
+Class ProgressBarSink
+
+    Public WithEvents Bar As VBCCR18.ProgressBar
+
+    Private Sub Bar_Change() Handles Bar.Change
+        Rig.Ev "Change " & Bar.Value
+    End Sub
+
+End Class

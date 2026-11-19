@@ -1,0 +1,2438 @@
+Module MainModule
+
+    ' The program behind the VBCCR18 section's pictures of its controls (scripts/shoot_docs.mjs,
+    ' setup vbccr). Its command line names the sheet: a form with several controls on it, each
+    ' as a program would use it. The tool takes the form once and cuts each control's picture out
+    ' of it, by the rectangles the program writes to the file "clips": a line for each picture,
+    ' its name and its left, top, width and height in pixels of the form's client area at 96 DPI.
+    ' TB_SHOT_SIGNALS, when it is set, names the folder of that file, through which the tool and
+    ' the program also take turns: the program writes "shown" once its form is drawn and in the
+    ' state the pictures show, and ends when "end" appears or the form is closed. The texts are
+    ' the fixture's own: nothing is read from the machine.
+    '
+    ' A sheet's form (frm<Sheet>, written by a generator) holds its controls, named as the
+    ' designer names them. Every sheet lays its form out in pixels at 96 DPI (FitClient), with
+    ' at least MARGIN pixels of the form's ground round each control, which the tool keeps
+    ' round a picture. No control takes the focus, since a focused one draws a caret or a focus
+    ' rectangle, but a tree or a list whose selected items a picture shows (FocusOn): it draws
+    ' them in the highlight color only while it has the focus, and in a mouse user's state it
+    ' draws no focus rectangle.
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function SetFocusAPI Lib "user32" Alias "SetFocus" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function HideCaret Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Const WM_NCACTIVATE As Long = &H86
+    Private Const WM_CHANGEUISTATE As Long = &H127
+    ' UIS_SET with UISF_HIDEFOCUS and UISF_HIDEACCEL: a mouse user's state.
+    Private Const UI_MOUSE As Long = &H30001
+    Private Declare PtrSafe Function SetCursor Lib "user32" (ByVal hCursor As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetCursor Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function DrawIconEx Lib "user32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long, _
+        ByVal hIcon As LongPtr, ByVal cx As Long, ByVal cy As Long, ByVal istepIfAniCur As Long, _
+        ByVal hbrFlickerFreeDraw As LongPtr, ByVal diFlags As Long) As Long
+    Private Const WM_SETCURSOR As Long = &H20
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const HTCLIENT As Long = 1
+    Private Const DI_NORMAL As Long = 3
+
+    ' What the pictures of the trees are drawn with.
+    Private Type PICTDESC
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+    Private Type PicGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function CreatePen Lib "gdi32" (ByVal Style As Long, ByVal W As Long, ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function Rectangle Lib "gdi32" (ByVal hDC As LongPtr, ByVal l As Long, ByVal t As Long, ByVal r As Long, ByVal b As Long) As Long
+    Private Declare PtrSafe Function Polygon Lib "gdi32" (ByVal hDC As LongPtr, ByRef Points As Any, ByVal Count As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PICTDESC, ByRef IID As PicGuid, _
+        ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+    ' The ground of a tree's picture, which the ImageList leaves out.
+    Private Const MASK As Long = &HFF00FF
+
+    ' The ground between two controls, and round the outermost.
+    Private Const MARGIN As Single = 16
+    ' A tree of the TreeView page's settings pictures is TREE_W pixels wide, in a column TREE_COLUMN wide.
+    Private Const TREE_COLUMN As Single = 260
+    Private Const TREE_W As Single = 200
+
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+    Private Type POINTAPI
+        x As Long
+        y As Long
+    End Type
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef r As RECT) As Long
+    Private Declare PtrSafe Function ClientToScreen Lib "user32" (ByVal hWnd As LongPtr, ByRef p As POINTAPI) As Long
+
+    ' The lines of "clips".
+    Private Clips As String
+    ' What Place asked for each control, Array(x, y, w, h) by the control's name.
+    Private Asked As New Collection
+    ' The progress bars' timers that StillBars stopped, each Array(hWnd, id).
+    Private BarTimers As New Collection
+    Private Doing As String
+    ' The control given the focus once the form is shown, or Nothing: a tree draws its selected
+    ' nodes in the highlight color only while it has the focus.
+    Private FocusOn As Object
+    ' The combo box whose list is kept dropped down while the form waits, or Nothing: the list
+    ' closes when the form is made the active window.
+    Private Dropped As Object
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        Dim f As Form
+        Select Case scene
+            Case "text": Set f = frmText
+            Case "lists": Set f = frmLists
+            Case "bars": Set f = frmBars
+            Case "appearance": Set f = frmAppearance
+            Case "borderstyle": Set f = frmBorderStyle
+            Case "backstyle": Set f = frmBackStyle
+            Case "alignment": Set f = frmAlignment
+            Case "valignment": Set f = frmVAlignment
+            Case "mousepointer": Set f = frmMousePointer
+            Case "views": Set f = frmViews
+            Case "tvlinestyle": Set f = frmTvLineStyle
+            Case "tvtheme": Set f = frmTvTheme
+            Case "tvcheckboxes": Set f = frmTvCheckboxes
+            Case "tvmultiselect": Set f = frmTvMultiSelect
+            Case "items": Set f = frmItems
+            Case "imcdropped": Set f = frmImcDropped
+            Case "ftcrecent": Set f = frmFtcRecent
+            Case "lvviews": Set f = frmLvViews
+            Case "lvgroups": Set f = frmLvGroups
+            Case "strips": Set f = frmStrips
+            Case "tbrtextalign": Set f = frmTbrTextAlign
+            Case "tbsstyle": Set f = frmTbsStyle
+            Case "dates": Set f = frmDates
+            Case "spins": Set f = frmSpins
+            Case "media": Set f = frmMedia
+            Case "dtpcheckbox": Set f = frmDtpCheckBox
+            Case "dtpformats": Set f = frmDtpFormats
+            Case "dtpdropped": Set f = frmDtpDropped
+            Case "mvmonths": Set f = frmMvMonths
+            Case "mvmultiselect": Set f = frmMvMultiSelect
+            Case "mvviews": Set f = frmMvViews
+            Case "udorientation": Set f = frmUdOrientation
+            Case "spbstyles": Set f = frmSpbStyles
+            Case "sldticks": Set f = frmSldTicks
+            Case "sldselect": Set f = frmSldSelect
+            Case "hkstates": Set f = frmHkStates
+            Case "ipastates": Set f = frmIpaStates
+            Case "anilook": Set f = frmAniLook
+            Case "mcilook": Set f = frmMciLook
+            Case "chkvalue": Set f = frmChkValue
+            Case "chkstyles": Set f = frmChkStyles
+            Case "optstyles": Set f = frmOptStyles
+            Case "cmdimlalign": Set f = frmCmdImlAlign
+            Case "cmdsplit": Set f = frmCmdSplit
+            Case "cllooks": Set f = frmClLooks
+            Case "cbodropped": Set f = frmCboDropped
+            Case "lstmulti": Set f = frmLstMulti
+            Case "lstcolumns": Set f = frmLstColumns
+            Case "vcbdropped": Set f = frmVcbDropped
+            Case "txtpassword": Set f = frmTxtPassword
+            Case "txtmultiline": Set f = frmTxtMultiLine
+            Case "txtcue": Set f = frmTxtCue
+            Case "lblellipsis": Set f = frmLblEllipsis
+            Case "lbllines": Set f = frmLblLines
+            Case "wlbtransparent": Set f = frmWlbTransparent
+            Case "fralooks": Set f = frmFraLooks
+            Case "llblooks": Set f = frmLlbLooks
+            Case "prbstate": Set f = frmPrbState
+            Case "prbtext": Set f = frmPrbText
+            Case "imldraw": Set f = frmImlDraw
+            Case "imloverlay": Set f = frmImlOverlay
+            Case "imcstyle": Set f = frmImcStyle
+            Case "cbostyle": Set f = frmCboStyle
+            Case "lststyle": Set f = frmLstStyle
+            Case Else: Set f = frmButtons
+        End Select
+        Load f
+        On Error GoTo Failed
+        Doing = "set up"
+        Select Case scene
+            Case "buttons": Buttons f
+            Case "text": Texts f
+            Case "lists": Lists f
+            Case "bars": Bars f
+            Case "appearance": Appearances f
+            Case "borderstyle": BorderStyles f
+            Case "backstyle": BackStyles f
+            Case "alignment": Alignments f
+            Case "valignment": VerticalAlignments f
+            Case "mousepointer": MousePointers f
+            Case "views": Views f
+            Case "tvlinestyle": TreeLineStyles f
+            Case "tvtheme": TreeThemes f
+            Case "tvcheckboxes": TreeCheckboxes f
+            Case "tvmultiselect": TreeMultiSelect f
+            Case "items": Items f
+            Case "imcdropped": ImageComboDropped f
+            Case "ftcrecent": FontComboRecent f
+            Case "lvviews": ListViews f
+            Case "lvgroups": ListGroups f
+            Case "strips": Strips f
+            Case "tbrtextalign": ToolBarTextAlignments f
+            Case "tbsstyle": TabStripStyles f
+            Case "dates": Dates f
+            Case "spins": Spins f
+            Case "media": Media f
+            Case "dtpcheckbox": PickerCheckBoxes f
+            Case "dtpformats": PickerFormats f
+            Case "dtpdropped": PickerDropped f
+            Case "mvmonths": MonthViewMonths f
+            Case "mvmultiselect": MonthViewMultiSelect f
+            Case "mvviews": MonthViewViews f
+            Case "udorientation": UpDownOrientations f
+            Case "spbstyles": SpinBoxStyles f
+            Case "sldticks": SliderTicks f
+            Case "sldselect": SliderSelection f
+            Case "hkstates": HotKeyStates f
+            Case "ipastates": AddressStates f
+            Case "anilook": AnimationLooks f
+            Case "mcilook": MCIWndLooks f
+            Case "chkvalue": CheckBoxValues f
+            Case "chkstyles": CheckBoxStyles f
+            Case "optstyles": OptionButtonStyles f
+            Case "cmdimlalign": ButtonImageListAlignments f
+            Case "cmdsplit": SplitButtons f
+            Case "cllooks": CommandLinkLooks f
+            Case "cbodropped": ComboBoxDropped f
+            Case "lstmulti": ListBoxMultiSelect f
+            Case "lstcolumns": ListBoxColumns f
+            Case "vcbdropped": VirtualComboDropped f
+            Case "txtpassword": TextBoxPasswords f
+            Case "txtmultiline": TextBoxMultiLine f
+            Case "txtcue": TextBoxCueBanner f
+            Case "lblellipsis": LabelEllipsisFormats f
+            Case "lbllines": LabelLines f
+            Case "wlbtransparent": WindowedLabelTransparent f
+            Case "fralooks": FrameLooks f
+            Case "llblooks": LinkLabelLooks f
+            Case "prbstate": ProgressBarStates f
+            Case "prbtext": ProgressBarTexts f
+            Case "imldraw": ImageListDrawStyles f
+            Case "imloverlay": ImageListOverlay f
+            Case "imcstyle": ImageComboStyles f
+            Case "cbostyle": ComboBoxStyles f
+            Case "lststyle": ListBoxStyles f
+            Case Else: Err.Raise 5, , "no sheet named " & scene
+        End Select
+        f.Show
+        Activate f
+        ' the state of a window a mouse user works in: no focus rectangle, no underlined access keys
+        SendMessageW f.hWnd, WM_CHANGEUISTATE, UI_MOUSE, 0
+        SetFocusAPI f.hWnd
+        If Not FocusOn Is Nothing Then
+            Doing = "focus"
+            SetFocusAPI FocusOn.hWnd
+            SendMessageW f.hWnd, WM_CHANGEUISTATE, UI_MOUSE, 0
+        End If
+        f.Refresh
+        DoEvents
+        Doing = "after show"
+        If scene = "bars" Or scene = "prbstate" Or scene = "prbtext" Then StillBars f
+        If scene = "prbstate" Then BarStates f
+        f.Refresh
+        DoEvents
+        Doing = "drop down"
+        KeepDropped
+        Sleep 200
+        DoEvents
+        KeepDropped
+        ' the virtual combo box's list scrolled far down once it is open
+        If scene = "vcbdropped" Then
+            Doing = "TopIndex"
+            Dropped.TopIndex = 50000
+            DoEvents
+        End If
+    Shown:
+        On Error GoTo 0
+        Dump f
+        Signal "clips", Clips
+        Signal "shown"
+        If WaitFor("end", f) Then Unload f
+        Exit Sub
+    Failed:
+        ' The tool fails the pictures with this text, rather than wait for a form that never shows.
+        Signal "error", "error " & Err.Number & " in " & scene & " (" & Doing & "): " & Err.Description
+        f.Show
+        Resume Shown
+    End Sub
+
+    ' ---------------------------------------------------------------- the sheets
+
+    ' A check box, two option buttons, a command button and a command link.
+    Private Sub Buttons(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 300, 400
+        Dim y As Single = MARGIN
+        With Place(f, "CheckBoxW1", MARGIN, y, 150, 20)
+            .Caption = "Remember me"
+            .Value = vbChecked
+        End With
+        y += 20 + MARGIN
+        With Place(f, "OptionButtonW1", MARGIN, y, 150, 20, "")
+            .Caption = "Portrait"
+            .Value = True
+        End With
+        Place(f, "OptionButtonW2", MARGIN, y + 24, 150, 20, "").Caption = "Landscape"
+        Clip "OptionButtonW", MARGIN, y, 150, 44
+        y += 44 + MARGIN
+        ' with the shield of an action that needs an administrator, which a VB CommandButton lacks
+        With Place(f, "CommandButtonW1", MARGIN, y, 96, 28)
+            .Caption = "Install"
+            .SetShield True
+        End With
+        y += 28 + MARGIN
+        ' the height of a caption and a hint of two lines: GetIdealHeight gives that of a hint
+        ' on one line, whatever the control's width
+        With Place(f, "CommandLink1", MARGIN, y, 300, 78)
+            .Caption = "Install the update now"
+            .Hint = "The program closes, installs the update and starts again."
+        End With
+        FitClient f, 2 * MARGIN + 300, y + 78 + MARGIN
+    End Sub
+
+    ' A text box, the two labels, a link label and a frame.
+    ' The form gets its size once, before anything is placed: LabelW is a windowless control,
+    ' and one placed before the form's scale changes is drawn about a pixel high (BETA 1042).
+    Private Sub Texts(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 280, 6 * MARGIN + 24 + 18 + 18 + 18 + 80
+        Dim y As Single = MARGIN
+        Place(f, "TextBoxW1", MARGIN, y, 200, 24).Text = "Ada Lovelace"
+        y += 24 + MARGIN
+        Place(f, "LabelW1", MARGIN, y, 200, 18, , True).Caption = "Name of the author:"
+        y += 18 + MARGIN
+        Place(f, "WindowedLabel1", MARGIN, y, 200, 18).Caption = "Ready to print"
+        y += 18 + MARGIN
+        Place(f, "LinkLabel1", MARGIN, y, 280, 18).Caption = "Read the <A>documentation</A> or <A>ask a question</A>."
+        y += 18 + MARGIN
+        Place(f, "FrameW1", MARGIN, y, 200, 80).Caption = "Paper"
+    End Sub
+
+    ' A list box, a virtual list box, a combo box and a virtual combo box.
+    Private Sub Lists(ByVal f As Form)
+        Const W As Single = 160
+        FitClient f, 3 * MARGIN + 2 * W, 400
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+        Dim i As Long
+        Dim lb As Object = Place(f, "ListBoxW1", MARGIN, MARGIN, W, 100, "")
+        For i = 0 To UBound(cities)
+            lb.AddItem cities(i)
+        Next
+        lb.ListIndex = 1
+        Clip "ListBoxW", MARGIN, MARGIN, W, lb.Height
+        Dim vl As Object = Place(f, "VListBox1", 2 * MARGIN + W, MARGIN, W, 100, "")
+        vl.ListCount = 100000
+        vl.TopIndex = 50000
+        vl.ListIndex = 50002
+        Clip "VListBox", 2 * MARGIN + W, MARGIN, W, vl.Height
+        Dim y As Single = MARGIN + IIf(lb.Height > vl.Height, lb.Height, vl.Height) + MARGIN
+        Dim cb As Object = Place(f, "ComboBoxW1", MARGIN, y, W, 24, "")
+        For i = 0 To UBound(cities)
+            cb.AddItem cities(i)
+        Next
+        cb.ListIndex = 2
+        Clip "ComboBoxW", MARGIN, y, W, cb.Height
+        Dim vc As Object = Place(f, "VirtualCombo1", 2 * MARGIN + W, y, W, 24, "")
+        vc.ListCount = 100000
+        vc.ListIndex = 4
+        Clip "VirtualCombo", 2 * MARGIN + W, y, W, vc.Height
+        y += IIf(cb.Height > vc.Height, cb.Height, vc.Height) + MARGIN
+        FitClient f, 3 * MARGIN + 2 * W, y
+    End Sub
+
+    ' A progress bar.
+    Private Sub Bars(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 240, 2 * MARGIN + 20
+        Place(f, "ProgressBar1", MARGIN, MARGIN, 240, 20).Value = 60
+    End Sub
+
+    ' The bars still: a progress bar drawn with visual styles animates its bar (its growth to a
+    ' new value, and a light that runs along a bar in the normal state) with timers of its own
+    ' window, and a picture needs a still frame. No wait is right for both: at 0.6 s a bar at 60
+    ' was once drawn at 48, and at 1.5 s the light was running along it. So each bar is given one
+    ' more than its value and then its value again: a bar drawn with visual styles grows with an
+    ' animation and shrinks at once, so it stands at its value straight away. Then, before the
+    ' light first runs, every timer is stopped.
+    Private Sub StillBars(ByVal f As Form)
+        Dim c As Object
+        For Each c In f.Controls
+            If TypeName(c) = "ProgressBar" Then
+                Dim v As Long = c.Value
+                If v < c.Max Then
+                    c.Value = v + 1
+                    c.Value = v
+                End If
+            End If
+        Next
+        Dim t As Single = Timer
+        Do While Timer - t < 0.1
+            DoEvents
+            Sleep 20
+        Loop
+        For Each c In f.Controls
+            If TypeName(c) = "ProgressBar" Then
+                Dim id As Long
+                For id = 0 To 1000
+                    If KillTimer(c.hWnd, id) Then BarTimers.Add Array(c.hWnd, id)
+                Next
+            End If
+        Next
+    End Sub
+
+    ' A tree view with pictures: Documents open, with two closed folders and three files, one
+    ' bold and one drawn gray, and Reports selected, in a tree that has the focus.
+    Private Sub Views(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 200, 2 * MARGIN + 118
+        TreeImages f
+        Dim tv As Object = Place(f, "TreeView1", MARGIN, MARGIN, 200, 118)
+        Set tv.ImageList = f.Controls("ImageList1")
+        Documents tv
+        tv.Nodes("notes").Bold = True
+        tv.Nodes("old").Enabled = False
+        tv.Nodes("reports").Selected = True
+        Set FocusOn = tv
+    End Sub
+
+    ' An image combo with Letters selected, a font combo with Segoe UI selected, and a list view
+    ' in the report view, which has the focus, so that it draws its selected row in the
+    ' highlight color.
+    Private Sub Items(ByVal f As Form)
+        Const W As Single = 200
+        Const LIST_W As Single = 320
+        Const LIST_H As Single = 122
+        FitClient f, 3 * MARGIN + W + LIST_W, 2 * MARGIN + LIST_H
+        TreeImages f
+        Dim ic As Object = Place(f, "ImageCombo1", MARGIN, MARGIN, W, 24, "")
+        Set ic.ImageList = f.Controls("ImageList1")
+        FolderItems ic
+        Set ic.SelectedItem = ic.ComboItems("letters")
+        Clip "ImageCombo", MARGIN, MARGIN, W, ic.Height
+        Dim y As Single = MARGIN + ic.Height + MARGIN
+        Dim fc As Object = Place(f, "FontCombo1", MARGIN, y, W, 24, "")
+        ' by its name: the fonts of the list are the machine's
+        fc.Text = "Segoe UI"
+        Clip "FontCombo", MARGIN, y, W, fc.Height
+        Dim lv As Object = Place(f, "ListView1", 2 * MARGIN + W, MARGIN, LIST_W, LIST_H)
+        ReportList lv, f.Controls("ImageList1")
+        Set FocusOn = lv
+    End Sub
+
+    ' A toolbar, a cool bar, a tab strip and a rich text box in a column, a pager beside them,
+    ' and a status bar along the bottom of the form. The toolbar, the cool bar and the status
+    ' bar set their own heights, so each picture is clipped at the height the control reports.
+    Private Sub Strips(ByVal f As Form)
+        Const W As Single = 320
+        Const PAGER_W As Single = 160
+        Const FORM_W As Single = 3 * MARGIN + W + PAGER_W
+        FitClient f, FORM_W, 600
+        ToolImages f
+        Dim y As Single = MARGIN
+        Dim tb As Object = Place(f, "ToolBar1", MARGIN, y, W, 40, "")
+        ToolButtons tb, f.Controls("ImageList1")
+        tb.Buttons("bold").Value = TbrButtonValuePressed
+        Dim last As Object = tb.Buttons(tb.Buttons.Count)
+        tb.Width = last.Left + last.Width
+        Clip "ToolBar", MARGIN, y, tb.Width, tb.Height
+        y += tb.Height + MARGIN
+        Dim cb As Object = Place(f, "CoolBar1", MARGIN, y, W, 50, "")
+        cb.Bands.Clear
+        cb.Bands.Add , "file", "File"
+        cb.Bands.Add , "edit", "Edit"
+        cb.Bands.Add , "find", "Find", , True
+        ' File and Edit share their row: the first band would otherwise take it all
+        ' (the Width of a band without a child changes nothing; Maximize does)
+        cb.Bands("edit").IdealWidth = W / 2
+        cb.Bands("edit").Maximize
+        Clip "CoolBar", MARGIN, y, W, cb.Height
+        y += cb.Height + MARGIN
+        Dim ts As Object = Place(f, "TabStrip1", MARGIN, y, W, 100)
+        Set ts.ImageList = f.Controls("ImageList1")
+        ts.Tabs(1).Caption = "General"
+        ts.Tabs.Add , "folders", "Folders", "folder"
+        ts.Tabs.Add , "pictures", "Pictures", "photo"
+        ts.Tabs("folders").Selected = True
+        y += 100 + MARGIN
+        Dim rt As Object = Place(f, "RichTextBox1", MARGIN, y, W, 120)
+        TripReport rt
+        y += 120 + MARGIN
+        ' the pager: a list box three times as high as the pager, scrolled to its middle, with
+        ' rows that all fit in it, so that it has no scroll bar of its own
+        Dim lb As Object = Place(f, "ListBoxW1", 2 * MARGIN + W, MARGIN, PAGER_W, 300, "")
+        Dim i As Long
+        For i = 1 To 15
+            lb.AddItem "Row " & i
+        Next
+        Dim pg As Object = Place(f, "Pager1", 2 * MARGIN + W, MARGIN, PAGER_W, 100)
+        Set pg.BuddyControl = lb
+        pg.ReCalcSize
+        pg.Value = 100
+        ' the status bar along the bottom: its Align does nothing in twinBASIC
+        Dim sb As Object = Place(f, "StatusBar1", 0, y, FORM_W, 24, "")
+        With sb.Panels(1)
+            .Text = "Ready"
+            .AutoSize = SbrPanelAutoSizeSpring
+        End With
+        sb.Panels.Add(, "pos", "Ln 12, Col 5").AutoSize = SbrPanelAutoSizeContent
+        sb.Panels.Add(, "enc", "UTF-8").AutoSize = SbrPanelAutoSizeContent
+        With sb.Panels.Add(, "zoom", "100%")
+            .Alignment = SbrPanelAlignmentCenter
+            .Width = 50
+        End With
+        Clip "StatusBar", 0, y, FORM_W, sb.Height
+        FitClient f, FORM_W, y + sb.Height
+        sb.Move 0, y, FORM_W, sb.Height
+    End Sub
+
+    ' The buttons New, Open and Save, a separator, the check button Bold and the drop-down
+    ' button Paste, on a flat toolbar with pictures of 16 pixels.
+    Private Sub ToolButtons(ByVal tb As Object, ByVal il As Object)
+        tb.Style = TbrStyleFlat
+        Set tb.ImageList = il
+        With tb.Buttons
+            .Add , "new", "New", , "file"
+            .Add , "open", "Open", , "open"
+            .Add , "save", "Save", , "save"
+            .Add , , , TbrButtonStyleSeparator
+            .Add , "bold", "Bold", TbrButtonStyleCheck, "bold"
+            .Add , "paste", "Paste", TbrButtonStyleDropDown, "paste"
+        End With
+    End Sub
+
+    ' A short report in a rich text box: a heading in a larger bold font, a sentence with a
+    ' word in bold and a phrase in red italics, and a list of three bullets.
+    Private Sub TripReport(ByVal rt As Object)
+        Const HEAD As String = "Trip report"
+        Const LINE1 As String = "We reached the hut at noon. The view was worth the climb."
+        rt.Text = HEAD & vbCrLf & LINE1 & vbCrLf & "Water" & vbCrLf & "Map" & vbCrLf & "Rain coat"
+        Dim at As Long = Len(HEAD) + 1
+        Mark rt, 0, Len(HEAD)
+        rt.SelBold = True
+        rt.SelFontSize = 12
+        Mark rt, at + InStr(LINE1, "noon") - 1, 4
+        rt.SelBold = True
+        Mark rt, at + InStr(LINE1, "worth the climb") - 1, Len("worth the climb")
+        rt.SelItalic = True
+        rt.SelColor = RGB(192, 0, 0)
+        ' the bullets indented by about 200 twips, and their text as far again after them, in
+        ' the form's scale, which is pixels at 96 DPI
+        Mark rt, at + Len(LINE1) + 1, Len(rt.Text)
+        rt.BulletIndent = 13
+        rt.SelBullet = True
+        rt.SelIndent = 13
+        Mark rt, 0, 0
+    End Sub
+
+    Private Sub Mark(ByVal rt As Object, ByVal Start As Long, ByVal Length As Long)
+        rt.SelStart = Start
+        rt.SelLength = Length
+    End Sub
+
+    ' The two TextAlignment values of a toolbar, one above the other: the captions under the
+    ' pictures, and beside them.
+    Private Sub ToolBarTextAlignments(ByVal f As Form)
+        Settings f, "TextAlignment", 600, 300
+        ToolImages f
+        Dim tbs(1) As Object, ws(1) As Single, ys(1) As Single
+        Dim y As Single = 16, widest As Single
+        Dim i As Long
+        For i = 0 To 1
+            Set tbs(i) = Place(f, "ToolBar" & (i + 1), 20, y, 560, 40, "")
+            tbs(i).TextAlignment = i
+            ToolButtons tbs(i), f.Controls("ImageList1")
+            tbs(i).Buttons("bold").Value = TbrButtonValuePressed
+            Dim last As Object = tbs(i).Buttons(tbs(i).Buttons.Count)
+            ws(i) = last.Left + last.Width
+            If ws(i) > widest Then widest = ws(i)
+            ys(i) = y
+            y += tbs(i).Height + 8 + 20 + 16
+        Next
+        Dim formW As Single = widest + 40
+        FitClient f, formW, y - 16 + 8
+        For i = 0 To 1
+            tbs(i).Move (formW - ws(i)) / 2, ys(i), ws(i), tbs(i).Height
+            Text f, Choose(i + 1, "TbrTextAlignBottom", "TbrTextAlignRight") & " (" & i & ")", 0, ys(i) + tbs(i).Height + 8, formW
+        Next
+    End Sub
+
+    ' The three Style values of a tab strip of three tabs, Folders selected.
+    Private Sub TabStripStyles(ByVal f As Form)
+        Const COLUMN As Single = 210
+        Const H As Single = 70
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim ts As Object = Place(f, "TabStrip" & (i + 1), x + 10, 16, COLUMN - 20, H, "")
+            ts.Style = i
+            ts.Tabs(1).Caption = "General"
+            ts.Tabs.Add , "folders", "Folders"
+            ts.Tabs.Add , "pictures", "Pictures"
+            ts.Tabs("folders").Selected = True
+            Text f, Choose(i + 1, "TbsStyleTabs", "TbsStyleButtons", "TbsStyleFlatButtons") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- dates, numbers and media
+
+    ' Every date and time of these pictures is set here: none is read from the clock. A month
+    ' view and the calendar of a date picker mark the current day, with a circle and a line at
+    ' their bottom, so both are switched off, and the control's own today is this date too.
+    Private Function TheDay() As Date
+        Return DateSerial(2026, 3, 15) + TimeSerial(10, 30, 0)
+    End Function
+
+    Private Sub NoToday(ByVal mv As Object)
+        mv.Today = DateSerial(2026, 3, 15)
+        mv.ShowToday = False
+        mv.ShowTodayCircle = False
+    End Sub
+
+    ' A date picker with its date in ISO order, which no language changes, and its calendar
+    ' without the current day.
+    Private Sub PickerDate(ByVal dp As Object, Optional ByVal Format As String = "yyyy-MM-dd")
+        dp.CalendarShowToday = False
+        dp.CalendarShowTodayCircle = False
+        dp.Format = DtpFormatCustom
+        dp.CustomFormat = Format
+        dp.Value = TheDay()
+    End Sub
+
+    ' A date picker above a month view, both on 15 March 2026.
+    Private Sub Dates(ByVal f As Form)
+        FitClient f, 400, 400
+        Dim dp As Object = Place(f, "DTPicker1", MARGIN, MARGIN, 160, 24)
+        PickerDate dp
+        Dim y As Single = MARGIN + 24 + MARGIN
+        Dim mv As Object = Place(f, "MonthView1", MARGIN, y, 200, 160, "")
+        NoToday mv
+        mv.Value = TheDay()
+        Clip "MonthView", MARGIN, y, mv.Width, mv.Height
+        FitClient f, 2 * MARGIN + IIf(mv.Width > 160, mv.Width, 160), y + mv.Height + MARGIN
+    End Sub
+
+    ' An up-down control beside the text box whose number it changes, a spin box, a slider, a
+    ' hot key box and an IP address box.
+    Private Sub Spins(ByVal f As Form)
+        Const W As Single = 200
+        FitClient f, 2 * MARGIN + W, 400
+        Dim y As Single = MARGIN
+        Place(f, "TextBoxW1", MARGIN, y, 60, 24, "").Text = "5"
+        Dim ud As Object = Place(f, "UpDown1", MARGIN + 60, y, 17, 24, "")
+        ud.Value = 5
+        Clip "UpDown", MARGIN, y, 60 + ud.Width, 24
+        y += 24 + MARGIN
+        Place(f, "SpinBox1", MARGIN, y, 80, 24).Value = 40
+        y += 24 + MARGIN
+        Dim sl As Object = Place(f, "Slider1", MARGIN, y, W, 32, "")
+        sl.Min = 0
+        sl.Max = 10
+        sl.TickFrequency = 1
+        sl.Value = 4
+        Clip "Slider", MARGIN, y, W, sl.Height
+        y += sl.Height + MARGIN
+        Dim hk As Object = Place(f, "HotKey1", MARGIN, y, 160, 24)
+        hk.Value(vbCtrlMask Or vbAltMask) = vbKeyF5
+        y += 24 + MARGIN
+        Place(f, "IPAddress1", MARGIN, y, 140, 24).Text = "192.168.0.1"
+        y += 24 + MARGIN
+        FitClient f, 2 * MARGIN + W, y
+    End Sub
+
+    ' The folder of the files the program writes: that of the signals, or the temporary folder
+    ' when no tool runs the program.
+    Private Function MediaFolder() As String
+        If Len(Signals()) Then Return Signals()
+        Return Environ$("TEMP")
+    End Function
+
+    ' An animation with the first frame of a small silent clip, and a player with a silent
+    ' sound file open. Nothing plays.
+    Private Sub Media(ByVal f As Form)
+        FitClient f, 400, 400
+        Dim an As Object = Place(f, "Animation1", MARGIN, MARGIN, 48, 48, "")
+        an.Center = True
+        an.BackStyle = CCBackStyleOpaque
+        an.LoadFile WriteSampleClip(MediaFolder() & "\clip.avi")
+        Clip "Animation", MARGIN, MARGIN, an.Width, an.Height
+        Dim y As Single = MARGIN + an.Height + MARGIN
+        Dim mw As Object = Place(f, "MCIWnd1", MARGIN, y, 240, 60, "")
+        Dim wav As String = MediaFolder() & "\silence.wav"
+        WriteSilentWav wav
+        mw.FileName = wav
+        Clip "MCIWnd", MARGIN, y, mw.Width, mw.Height
+        FitClient f, 2 * MARGIN + IIf(mw.Width > an.Width, mw.Width, an.Width), y + mw.Height + MARGIN
+    End Sub
+
+    ' A date picker with a check box, checked and not.
+    Private Sub PickerCheckBoxes(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "CheckBox", 2 * COLUMN + 20, 16 + 24 + 8 + 20
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            Dim dp As Object = Place(f, "DTPicker" & (i + 1), x + 20, 16, COLUMN - 40, 24, "")
+            dp.CheckBox = True
+            PickerDate dp
+            If i = 1 Then dp.Value = Null
+            Text f, Choose(i + 1, "Value = 2026-03-15", "Value = Null"), x, 16 + 24 + 8, COLUMN
+        Next
+    End Sub
+
+    ' Two custom formats: a date and a time, and a time with the arrow buttons.
+    Private Sub PickerFormats(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "CustomFormat", 2 * COLUMN + 20, 16 + 24 + 8 + 20
+        Dim dp As Object = Place(f, "DTPicker1", 10 + 30, 16, COLUMN - 60, 24, "")
+        PickerDate dp, "yyyy-MM-dd HH:mm"
+        Text f, """yyyy-MM-dd HH:mm""", 10, 16 + 24 + 8, COLUMN
+        Set dp = Place(f, "DTPicker2", 10 + COLUMN + 30, 16, COLUMN - 60, 24, "")
+        dp.UpDown = True
+        PickerDate dp, "HH:mm"
+        Text f, """HH:mm"", UpDown = True", 10 + COLUMN, 16 + 24 + 8, COLUMN
+    End Sub
+
+    ' A date picker with its calendar dropped down.
+    Private Sub PickerDropped(ByVal f As Form)
+        Const W As Single = 200
+        Settings f, "DTPicker", W + 40, 30 + 24 + 16
+        Text f, "DroppedDown = True", 0, 8, W + 40
+        Dim dp As Object = Place(f, "DTPicker1", 20, 30, W, 24, "")
+        PickerDate dp
+        Set Dropped = dp
+    End Sub
+
+    ' A month view placed at (20, 16) with a label under it, and the form fitted round it.
+    Private Sub UnderLabel(ByVal f As Form, ByVal mv As Object, ByVal x As Single, ByVal Column As Single, _
+            ByVal Label As String)
+        mv.Move x + (Column - mv.Width) / 2, 16
+        Text f, Label, x, 16 + mv.Height + 8, Column
+    End Sub
+
+    ' Two months down, with week numbers and Monday first. Down, not across: the page warns
+    ' that a MonthColumns of 2 or more shows one month fewer across than it says (1.8.136.0),
+    ' and in this program it showed as many as it says, so a picture of months across would
+    ' disagree with the page either way.
+    Private Sub MonthViewMonths(ByVal f As Form)
+        Settings f, "MonthRows", 400, 600
+        Dim mv As Object = Place(f, "MonthView1", 20, 16, 200, 160, "")
+        NoToday mv
+        mv.MonthRows = 2
+        mv.ShowWeekNumbers = True
+        mv.StartOfWeek = 1
+        mv.Value = TheDay()
+        Dim w As Single = mv.Width + 40
+        If w < 320 Then w = 320
+        FitClient f, w, 16 + mv.Height + 8 + 40
+        UnderLabel f, mv, 0, w, "MonthRows = 2, ShowWeekNumbers = True"
+        Text f, "StartOfWeek = 1", 0, 16 + mv.Height + 8 + 20, w
+    End Sub
+
+    ' Five days selected, from 10 to 14 March.
+    Private Sub MonthViewMultiSelect(ByVal f As Form)
+        Settings f, "MultiSelect", 400, 300
+        Dim mv As Object = Place(f, "MonthView1", 20, 16, 200, 160, "")
+        mv.MultiSelect = True
+        NoToday mv
+        mv.Value = TheDay()
+        mv.SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 14)
+        Dim w As Single = mv.Width + 40
+        If w < 300 Then w = 300
+        FitClient f, w, 16 + mv.Height + 8 + 20
+        UnderLabel f, mv, 0, w, "SetSelRange 2026-03-10, 2026-03-14"
+    End Sub
+
+    ' The months of 2026 and the years of its decade.
+    Private Sub MonthViewViews(ByVal f As Form)
+        Settings f, "View", 500, 300
+        Dim mvs(1) As Object
+        Dim column As Single
+        Dim i As Long
+        For i = 0 To 1
+            Set mvs(i) = Place(f, "MonthView" & (i + 1), 20, 16, 200, 160, "")
+            NoToday mvs(i)
+            mvs(i).Value = TheDay()
+            mvs(i).View = i + 1
+            If mvs(i).Width + 40 > column Then column = mvs(i).Width + 40
+        Next
+        FitClient f, 2 * column + 20, 16 + mvs(0).Height + 8 + 20
+        For i = 0 To 1
+            UnderLabel f, mvs(i), 10 + i * column, column, Choose(i + 1, "MvwViewYear", "MvwViewDecade") & " (" & (i + 1) & ")"
+        Next
+    End Sub
+
+    ' The two Orientation values of an up-down control.
+    Private Sub UpDownOrientations(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "Orientation", 2 * COLUMN + 20, 16 + 40 + 8 + 20
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            Dim ud As Object = Place(f, "UpDown" & (i + 1), x, 16, 17, 40, "")
+            ud.Orientation = i
+            If i = 1 Then ud.Move x, 26, 40, 20
+            ud.Move x + (COLUMN - ud.Width) / 2, 16 + (40 - ud.Height) / 2
+            Text f, Choose(i + 1, "UdnOrientationVertical", "UdnOrientationHorizontal") & " (" & i & ")", x, 16 + 40 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A spin box with its arrows at the left and its number at the right, one in hexadecimal,
+    ' and one that groups its digits by thousands.
+    Private Sub SpinBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 260
+        Settings f, "SpinBox", 3 * COLUMN + 20, 16 + 24 + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim sb As Object = Place(f, "SpinBox" & (i + 1), x + 70, 16, COLUMN - 140, 24, "")
+            Select Case i
+                Case 0
+                    sb.Alignment = CCLeftRightAlignmentLeft
+                    sb.TextAlignment = vbRightJustify
+                    sb.Value = 40
+                    Text f, "Alignment = CCLeftRightAlignmentLeft", x, 16 + 24 + 8, COLUMN
+                    Text f, "TextAlignment = vbRightJustify", x, 16 + 24 + 8 + 20, COLUMN
+                Case 1
+                    sb.Max = 1000
+                    sb.NumberStyle = SpbNumberStyleHexadecimal
+                    sb.Value = 255
+                    Text f, "NumberStyle = SpbNumberStyleHexadecimal", x, 16 + 24 + 8, COLUMN
+                    Text f, "Value = 255", x, 16 + 24 + 8 + 20, COLUMN
+                Case 2
+                    sb.Max = 100000
+                    sb.ThousandsSeparator = True
+                    sb.Value = 12345
+                    Text f, "ThousandsSeparator = True", x, 16 + 24 + 8, COLUMN
+                    Text f, "Value = 12345", x, 16 + 24 + 8 + 20, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' The four TickStyle values of a slider from 0 to 10 at 4.
+    Private Sub SliderTicks(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "TickStyle", 4 * COLUMN + 20, 16 + 45 + 8 + 20
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single = 10 + i * COLUMN
+            Dim sl As Object = Place(f, "Slider" & (i + 1), x + 15, 16, COLUMN - 30, 45, "")
+            sl.Min = 0
+            sl.Max = 10
+            sl.TickFrequency = 1
+            sl.TickStyle = i
+            sl.Value = 4
+            Text f, Choose(i + 1, "SldTickStyleBottomRight", "SldTickStyleTopLeft", "SldTickStyleBoth", "SldTickStyleNone") & _
+                " (" & i & ")", x, 16 + 45 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A slider from 0 to 10 with the part from 3 to 7 selected and the thumb at 5.
+    Private Sub SliderSelection(ByVal f As Form)
+        Const W As Single = 360
+        Settings f, "SelectRange", W, 16 + 32 + 8 + 20
+        Dim sl As Object = Place(f, "Slider1", 20, 16, W - 40, 32, "")
+        sl.Min = 0
+        sl.Max = 10
+        sl.TickFrequency = 1
+        sl.SelectRange = True
+        sl.SelStart = 3
+        sl.SelLength = 4
+        sl.Value = 5
+        Text f, "SelectRange = True, SelStart = 3, SelLength = 4", 0, 16 + sl.Height + 8, W
+        FitClient f, W, 16 + sl.Height + 8 + 20
+    End Sub
+
+    ' A hot key box with no key, one disabled, and one with a single border and a pale yellow
+    ' background.
+    Private Sub HotKeyStates(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "HotKey", 3 * COLUMN + 20, 16 + 24 + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim hk As Object = Place(f, "HotKey" & (i + 1), x + 30, 16, COLUMN - 60, 24, "")
+            Select Case i
+                Case 0
+                    Text f, "Value = 0", x, 16 + 24 + 8, COLUMN
+                Case 1
+                    hk.Value(vbCtrlMask Or vbAltMask) = vbKeyF5
+                    hk.Enabled = False
+                    Text f, "Enabled = False", x, 16 + 24 + 8, COLUMN
+                Case 2
+                    hk.Value(vbCtrlMask Or vbShiftMask) = vbKeyS
+                    hk.BorderStyle = CCBorderStyleSingle
+                    hk.BackColor = RGB(255, 255, 204)
+                    Text f, "BorderStyle = CCBorderStyleSingle", x, 16 + 24 + 8, COLUMN
+                    Text f, "BackColor = RGB(255, 255, 204)", x, 16 + 24 + 8 + 20, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' An IP address box with no address, one locked with a single border, and one disabled.
+    Private Sub AddressStates(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "IPAddress", 3 * COLUMN + 20, 16 + 24 + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim ip As Object = Place(f, "IPAddress" & (i + 1), x + 40, 16, COLUMN - 80, 24, "")
+            Select Case i
+                Case 0
+                    Text f, "Text = """"", x, 16 + 24 + 8, COLUMN
+                Case 1
+                    ip.Text = "10.0.1.2"
+                    ip.Locked = True
+                    ip.BorderStyle = CCBorderStyleSingle
+                    Text f, "Locked = True", x, 16 + 24 + 8, COLUMN
+                    Text f, "BorderStyle = CCBorderStyleSingle", x, 16 + 24 + 8 + 20, COLUMN
+                Case 2
+                    ip.Text = "192.168.0.1"
+                    ip.Enabled = False
+                    Text f, "Enabled = False", x, 16 + 24 + 8, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' The first frame of the clip at the top left corner and in the middle, and with the
+    ' clip's background left out in front of a pale yellow BackColor.
+    Private Sub AnimationLooks(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 48
+        Settings f, "Animation", 3 * COLUMN + 20, 16 + H + 8 + 40
+        Dim clipFile As String = WriteSampleClip(MediaFolder() & "\clip.avi")
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim an As Object = Place(f, "Animation" & (i + 1), x + (COLUMN - 64) / 2, 16, 64, H, "")
+            an.Center = (i > 0)
+            an.BackStyle = IIf(i < 2, CCBackStyleOpaque, CCBackStyleTransparent)
+            an.BackColor = IIf(i < 2, vbButtonFace, RGB(255, 255, 204))
+            an.LoadFile clipFile
+            Select Case i
+                Case 0
+                    Text f, "Center = False", x, 16 + H + 8, COLUMN
+                    Text f, "BackStyle = CCBackStyleOpaque", x, 16 + H + 8 + 20, COLUMN
+                Case 1
+                    Text f, "Center = True", x, 16 + H + 8, COLUMN
+                    Text f, "BackStyle = CCBackStyleOpaque", x, 16 + H + 8 + 20, COLUMN
+                Case 2
+                    Text f, "BackStyle = CCBackStyleTransparent", x, 16 + H + 8, COLUMN
+                    Text f, "BackColor = RGB(255, 255, 204)", x, 16 + H + 8 + 20, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' A player with a record button, one with a title bar, and one without its menu button,
+    ' each with a silent sound file open. Nothing plays.
+    Private Sub MCIWndLooks(ByVal f As Form)
+        Const COLUMN As Single = 280
+        Settings f, "MCIWnd", 3 * COLUMN + 20, 300
+        Dim mws(2) As Object, i As Long, tallest As Single
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Set mws(i) = Place(f, "MCIWnd" & (i + 1), x + 20, 16, COLUMN - 40, 60, "")
+            Select Case i
+                Case 0: mws(i).Record = True
+                Case 1: mws(i).Caption = MciCaptionNamePosMode
+                Case 2: mws(i).Menu = False
+            End Select
+            Dim wav As String = MediaFolder() & "\" & Choose(i + 1, "silence-1.wav", "silence.wav", "silence-3.wav")
+            WriteSilentWav wav
+            mws(i).FileName = wav
+            If mws(i).Height > tallest Then tallest = mws(i).Height
+        Next
+        FitClient f, 3 * COLUMN + 20, 16 + tallest + 8 + 20
+        For i = 0 To 2
+            Text f, Choose(i + 1, "Record = True", "Caption = MciCaptionNamePosMode", "Menu = False"), 10 + i * COLUMN, _
+                16 + tallest + 8, COLUMN
+        Next
+    End Sub
+
+    ' A silent AVI clip of three frames of 16 by 16 pixels, each a single gray, written to Path,
+    ' which it returns: the clip of the Animation page's samples (WriteSampleClip).
+    Private Function WriteSampleClip(ByVal Path As String) As String
+        Const Frames As Long = 3, FrameBytes As Long = 768
+        Dim b(0 To 2607) As Byte
+        Dim p As Long, i As Long, j As Long
+        ClipTag b, p, "RIFF": Clip32 b, p, 2600: ClipTag b, p, "AVI "
+        ClipTag b, p, "LIST": Clip32 b, p, 192: ClipTag b, p, "hdrl"
+        ClipTag b, p, "avih": Clip32 b, p, 56
+        Clip32 b, p, 100000: Clip32 b, p, 7800: Clip32 b, p, 0: Clip32 b, p, &H10&
+        Clip32 b, p, Frames: Clip32 b, p, 0: Clip32 b, p, 1: Clip32 b, p, FrameBytes
+        Clip32 b, p, 16: Clip32 b, p, 16
+        For i = 1 To 4: Clip32 b, p, 0: Next
+        ClipTag b, p, "LIST": Clip32 b, p, 116: ClipTag b, p, "strl"
+        ClipTag b, p, "strh": Clip32 b, p, 56
+        ClipTag b, p, "vids": ClipTag b, p, "DIB "
+        Clip32 b, p, 0: Clip16 b, p, 0: Clip16 b, p, 0: Clip32 b, p, 0
+        Clip32 b, p, 1: Clip32 b, p, 10: Clip32 b, p, 0: Clip32 b, p, Frames
+        Clip32 b, p, FrameBytes: Clip32 b, p, -1: Clip32 b, p, 0
+        Clip16 b, p, 0: Clip16 b, p, 0: Clip16 b, p, 16: Clip16 b, p, 16
+        ClipTag b, p, "strf": Clip32 b, p, 40
+        Clip32 b, p, 40: Clip32 b, p, 16: Clip32 b, p, 16
+        Clip16 b, p, 1: Clip16 b, p, 24: Clip32 b, p, 0: Clip32 b, p, FrameBytes
+        For i = 1 To 4: Clip32 b, p, 0: Next
+        ClipTag b, p, "LIST": Clip32 b, p, 2332: ClipTag b, p, "movi"
+        For i = 0 To Frames - 1
+            ClipTag b, p, "00db": Clip32 b, p, FrameBytes
+            For j = 0 To FrameBytes - 1
+                b(p) = (i * 100 + 50) And &HFF&
+                p = p + 1
+            Next
+        Next
+        ClipTag b, p, "idx1": Clip32 b, p, 48
+        For i = 0 To Frames - 1
+            ClipTag b, p, "00db": Clip32 b, p, &H10&
+            Clip32 b, p, 4 + i * 776: Clip32 b, p, FrameBytes
+        Next
+        If Len(Dir$(Path)) > 0 Then Kill Path
+        Dim n As Integer = FreeFile
+        Open Path For Binary Access Write As #n
+        Put #n, , b
+        Close #n
+        Return Path
+    End Function
+
+    Private Sub Clip32(b() As Byte, ByRef p As Long, ByVal v As Long)
+        b(p) = v And &HFF&
+        b(p + 1) = (v \ &H100&) And &HFF&
+        b(p + 2) = (v \ &H10000) And &HFF&
+        b(p + 3) = (v \ &H1000000) And &HFF&
+        p = p + 4
+    End Sub
+
+    Private Sub Clip16(b() As Byte, ByRef p As Long, ByVal v As Long)
+        b(p) = v And &HFF&
+        b(p + 1) = (v \ &H100&) And &HFF&
+        p = p + 2
+    End Sub
+
+    Private Sub ClipTag(b() As Byte, ByRef p As Long, ByVal tag As String)
+        Dim i As Long
+        For i = 1 To 4
+            b(p) = Asc(Mid$(tag, i, 1))
+            p = p + 1
+        Next
+    End Sub
+
+    ' A WAV file of a tenth of a second of silence, 8-bit mono samples at 8000 Hz, each 128:
+    ' the file of the MCIWnd page's samples (WriteSilentWav).
+    Private Sub WriteSilentWav(ByVal Path As String)
+        Const Samples As Long = 800
+        Dim Header As String = "RIFF" & MkLong(36 + Samples) & "WAVEfmt " & MkLong(16) & _
+            MkWord(1) & MkWord(1) & MkLong(8000) & MkLong(8000) & MkWord(1) & MkWord(8) & _
+            "data" & MkLong(Samples)
+        Dim Bytes() As Byte
+        ReDim Bytes(0 To Len(Header) + Samples - 1)
+        Dim i As Long
+        For i = 1 To Len(Header)
+            Bytes(i - 1) = Asc(Mid$(Header, i, 1))
+        Next
+        For i = Len(Header) To UBound(Bytes)
+            Bytes(i) = 128
+        Next
+        If Len(Dir$(Path)) > 0 Then Kill Path
+        Dim n As Integer = FreeFile
+        Open Path For Binary Access Write As #n
+        Put #n, 1, Bytes
+        Close #n
+    End Sub
+
+    Private Function MkLong(ByVal Value As Long) As String
+        Return MkWord(Value And &HFFFF&) & MkWord((Value \ &H10000) And &HFFFF&)
+    End Function
+
+    Private Function MkWord(ByVal Value As Long) As String
+        Return Chr$(Value And &HFF&) & Chr$((Value \ &H100&) And &HFF&)
+    End Function
+
+    ' The bars' timers stopped again while the form waits.
+    Private Sub KeepStill()
+        Dim t As Variant
+        For Each t In BarTimers
+            KillTimer t(0), t(1)
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- the settings
+
+    ' The pictures of the package's shared enumerations (Common.md): each a whole form, with a
+    ' control for each value, its value's name printed by the form under it.
+
+    ' The two Appearance values of a check box and a frame, without visual styles: with them,
+    ' both draw alike in either value.
+    Private Sub Appearances(ByVal f As Form)
+        Settings f, "Appearance", 2 * 170 + 20, 160
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 170
+            Dim name As String = Choose(i + 1, "CCAppearanceFlat", "CCAppearance3D") & " (" & i & ")"
+            With Place(f, "CheckBoxW" & (i + 1), x + 25, 16, 120, 20, "")
+                .VisualStyles = False
+                .Caption = "Remember me"
+                .Value = vbChecked
+                .Appearance = i
+            End With
+            Text f, name, x, 42, 170
+            With Place(f, "FrameW" & (i + 1), x + 15, 72, 140, 56, "")
+                .VisualStyles = False
+                .Caption = "Paper"
+                .Appearance = i
+            End With
+            Text f, name, x, 134, 170
+        Next
+    End Sub
+
+    ' The five BorderStyle values of a text box.
+    Private Sub BorderStyles(ByVal f As Form)
+        Settings f, "BorderStyle", 5 * 160 + 20, 72
+        Dim names As Variant = Array("CCBorderStyleNone", "CCBorderStyleSingle", "CCBorderStyleThin", _
+            "CCBorderStyleSunken", "CCBorderStyleRaised")
+        Dim i As Long
+        For i = 0 To 4
+            Dim x As Single = 10 + i * 160
+            With Place(f, "TextBoxW" & (i + 1), x + 20, 16, 120, 24, "")
+                .Text = "Ada Lovelace"
+                .BorderStyle = i
+            End With
+            Text f, names(i) & " (" & i & ")", x, 48, 160
+        Next
+    End Sub
+
+    ' The two BackStyle values of a label with a white BackColor, over a hatch the form draws.
+    ' LabelW is not moved (Kr00l/VBCCR#40): the generator of the forms gives each its place, in
+    ' the middle of its hatch.
+    Private Sub BackStyles(ByVal f As Form)
+        Settings f, "BackStyle", 2 * 180 + 20, 104
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 180
+            f.FillStyle = vbDiagonalCross
+            f.FillColor = RGB(150, 150, 150)
+            f.Line (x + 10, 12)-(x + 170, 72), RGB(150, 150, 150), B
+            With Place(f, "LabelW" & (i + 1), x + 25, 27, 130, 30, "", True)
+                .Caption = "Paper size"
+                .BackColor = vbWhite
+                .BackStyle = i
+            End With
+            Text f, Choose(i + 1, "CCBackStyleTransparent", "CCBackStyleOpaque") & " (" & i & ")", x, 80, 180
+        Next
+        f.FillStyle = vbFSTransparent
+    End Sub
+
+    ' The two Alignment values of a check box: its box at the left or the right of its caption.
+    Private Sub Alignments(ByVal f As Form)
+        Settings f, "Alignment", 2 * 180 + 20, 68
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 180
+            With Place(f, "CheckBoxW" & (i + 1), x + 25, 16, 130, 20, "")
+                .Caption = "Remember me"
+                .Value = vbChecked
+                .Alignment = i
+            End With
+            Text f, Choose(i + 1, "CCLeftRightAlignmentLeft", "CCLeftRightAlignmentRight") & " (" & i & ")", x, 44, 180
+        Next
+    End Sub
+
+    ' The three VerticalAlignment values of a tall command button.
+    Private Sub VerticalAlignments(ByVal f As Form)
+        Settings f, "VerticalAlignment", 3 * 170 + 20, 112
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * 170
+            With Place(f, "CommandButtonW" & (i + 1), x + 25, 16, 120, 64, "")
+                .Caption = "Save"
+                .VerticalAlignment = i
+            End With
+            Text f, Choose(i + 1, "CCVerticalAlignmentTop", "CCVerticalAlignmentCenter", "CCVerticalAlignmentBottom") & _
+                " (" & i & ")", x, 88, 170
+        Next
+    End Sub
+
+    ' The MousePointer values, each the cursor a control shows for it: a hidden WindowedLabel
+    ' asked to set its cursor (WM_SETCURSOR, as when the mouse moves over it) with each value in
+    ' turn, and the cursor it set drawn on the form. A picture of the window holds no mouse
+    ' pointer. CCMousePointerCustom (99) is left out: it shows the control's MouseIcon.
+    Private Sub MousePointers(ByVal f As Form)
+        Const PER_ROW As Long = 4
+        Const COLUMN As Single = 210
+        ' a row: the cursor, its value's name close under it, and a wider gap to the next row,
+        ' since the drawn part of most cursors is at the top of their 32 pixels
+        Const ROW As Single = 70
+        ' the rows start 8 pixels below the top, and the last row's names end as far above the
+        ' bottom: 7 pixels below the height of their line, which has a pixel below its letters
+        Settings f, "MousePointer", PER_ROW * COLUMN + 10, 8 * ROW
+        FitClient f, PER_ROW * COLUMN + 10, 8 + 7 * ROW + 36 + f.TextHeight("A") + 7
+        Dim names As Variant = Array("CCMousePointerDefault", "CCMousePointerArrow", "CCMousePointerCrosshair", _
+            "CCMousePointerIbeam", "CCMousePointerHand", "CCMousePointerSizePointer", "CCMousePointerSizeNESW", _
+            "CCMousePointerSizeNS", "CCMousePointerSizeNWSE", "CCMousePointerSizeWE", "CCMousePointerUpArrow", _
+            "CCMousePointerHourglass", "CCMousePointerNoDrop", "CCMousePointerArrowHourglass", _
+            "CCMousePointerArrowQuestion", "CCMousePointerSizeAll", "CCMousePointerArrowCD", "CCMousePointerPin", _
+            "CCMousePointerPerson", "CCMousePointerPen", "CCMousePointerScrollN", "CCMousePointerScrollS", _
+            "CCMousePointerScrollE", "CCMousePointerScrollW", "CCMousePointerScrollNS", "CCMousePointerScrollWE", _
+            "CCMousePointerScrollNW", "CCMousePointerScrollNE", "CCMousePointerScrollSW", "CCMousePointerScrollSE", _
+            "CCMousePointerScrollAll")
+        Dim c As Object = f.Controls("WindowedLabel1")
+        c.Visible = False
+        Dim h As LongPtr = c.hWnd
+        Dim i As Long
+        For i = 0 To 30
+            Doing = names(i)
+            Dim x As Single = 10 + (i Mod PER_ROW) * COLUMN
+            Dim y As Single = 8 + (i \ PER_ROW) * ROW
+            c.MousePointer = i
+            SetCursor 0
+            SendMessageW h, WM_SETCURSOR, h, HTCLIENT Or WM_MOUSEMOVE * &H10000
+            Dim cursor As LongPtr = GetCursor()
+            If cursor = 0 Then Err.Raise 5, , "no cursor for MousePointer " & i
+            DrawIconEx f.hDC, (x + (COLUMN - 32) / 2) * Dpi(), y * Dpi(), cursor, 0, 0, 0, 0, DI_NORMAL
+            Text f, names(i) & " (" & i & ")", x, y + 36, COLUMN
+        Next
+        c.MousePointer = 0
+    End Sub
+
+    ' ---------------------------------------------------------------- the settings of the controls
+
+    ' The settings pictures of the buttons, the lists, the text boxes and labels, the frame, the
+    ' link label, the progress bar and the image list: each a whole form, a control for each
+    ' setting side by side, its settings printed by the form under it.
+
+    ' The three Value states of a check box.
+    Private Sub CheckBoxValues(ByVal f As Form)
+        Const COLUMN As Single = 180
+        Settings f, "Value", 3 * COLUMN + 20, 68
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CheckBoxW" & (i + 1), x + 25, 16, 130, 20, "")
+                .Caption = "Remember me"
+                .Value = i
+            End With
+            Text f, "Value = " & Choose(i + 1, "vbUnchecked", "vbChecked", "vbGrayed") & " (" & i & ")", x, 44, COLUMN
+        Next
+    End Sub
+
+    ' A check box that looks like a push button, up and down, and one in the graphical style
+    ' with an icon, checked.
+    Private Sub CheckBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 64
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 60
+        Dim photo As StdPicture = IconOf(f, 4, CLng(2 * Dpi()))
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CheckBoxW" & (i + 1), x + 40, 16, COLUMN - 80, H, "")
+                .Caption = "Photos"
+                If i < 2 Then
+                    .PushLike = True
+                Else
+                    .Style = vbButtonGraphical
+                    Set .Picture = photo
+                End If
+                .Value = IIf(i = 0, vbUnchecked, vbChecked)
+            End With
+            Dim y As Single = 16 + H + 8
+            If i < 2 Then
+                Text f, "PushLike = True", x, y, COLUMN
+            Else
+                Text f, "Style = vbButtonGraphical", x, y, COLUMN
+                Text f, "Picture = an icon", x, y + 40, COLUMN
+            End If
+            Text f, "Value = " & IIf(i = 0, "vbUnchecked", "vbChecked"), x, y + 20, COLUMN
+        Next
+    End Sub
+
+    ' Option buttons that look like push buttons, up and down, and one in the graphical style
+    ' with an icon, selected. Each Value is set: the form does not clear the others (BETA 1042).
+    Private Sub OptionButtonStyles(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 64
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 60
+        Dim photo As StdPicture = IconOf(f, 4, CLng(2 * Dpi()))
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "OptionButtonW" & (i + 1), x + 40, 16, COLUMN - 80, H, "")
+                .Caption = "Photos"
+                If i < 2 Then
+                    .PushLike = True
+                Else
+                    .Style = vbButtonGraphical
+                    Set .Picture = photo
+                End If
+                .Value = (i > 0)
+            End With
+            Dim y As Single = 16 + H + 8
+            If i < 2 Then
+                Text f, "PushLike = True", x, y, COLUMN
+            Else
+                Text f, "Style = vbButtonGraphical", x, y, COLUMN
+                Text f, "Picture = an icon", x, y + 40, COLUMN
+            End If
+            Text f, "Value = " & IIf(i = 0, "False", "True"), x, y + 20, COLUMN
+        Next
+    End Sub
+
+    ' The five ImageListAlignment values of a tall command button with a picture of a disk.
+    Private Sub ButtonImageListAlignments(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 64
+        Settings f, "ImageListAlignment", 5 * COLUMN + 20, 16 + H + 8 + 20
+        OneImage f, 5, 1
+        Dim i As Long
+        For i = 0 To 4
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CommandButtonW" & (i + 1), x + 40, 16, COLUMN - 80, H, "")
+                .Caption = "Save"
+                .ImageList = "ImageList1"
+                .ImageListAlignment = i
+            End With
+            Text f, Choose(i + 1, "CmdImageListAlignmentLeft", "CmdImageListAlignmentRight", "CmdImageListAlignmentTop", _
+                "CmdImageListAlignmentBottom", "CmdImageListAlignmentCenter") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' A split button, one with its arrow at the left, and one without the line between its parts.
+    Private Sub SplitButtons(ByVal f As Form)
+        Const COLUMN As Single = 300
+        Const H As Single = 28
+        Settings f, "SplitButton", 3 * COLUMN + 20, 16 + H + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CommandButtonW" & (i + 1), x + 80, 16, COLUMN - 160, H, "")
+                .Caption = "Save"
+                .SplitButton = True
+                If i = 1 Then .SplitButtonAlignment = CCLeftRightAlignmentLeft
+                If i = 2 Then .SplitButtonNoSplit = True
+            End With
+            Text f, "SplitButton = True", x, 16 + H + 8, COLUMN
+            If i = 1 Then Text f, "SplitButtonAlignment = CCLeftRightAlignmentLeft", x, 16 + H + 8 + 20, COLUMN
+            If i = 2 Then Text f, "SplitButtonNoSplit = True", x, 16 + H + 8 + 20, COLUMN
+        Next
+    End Sub
+
+    ' A command link with its caption alone, one with a picture of a folder in place of the
+    ' arrow, and one with the shield.
+    Private Sub CommandLinkLooks(ByVal f As Form)
+        Const COLUMN As Single = 320
+        Const H As Single = 52
+        Settings f, "CommandLink", 3 * COLUMN + 20, 16 + H + 8 + 20
+        OneImage f, 1, 1
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "CommandLink" & (i + 1), x + 10, 16, COLUMN - 20, H, "")
+                Select Case i
+                    Case 0
+                        .Caption = "Open the folder"
+                    Case 1
+                        .Caption = "Open the folder"
+                        .Hint = "Shows its files in a new window."
+                        .ImageList = "ImageList1"
+                    Case 2
+                        .Caption = "Install for all users"
+                        .Hint = "Windows asks for permission first."
+                        .SetShield True
+                End Select
+            End With
+            Text f, Choose(i + 1, "Hint = """"", "ImageList = ImageList1", "SetShield True"), x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' A combo box whose dropped-down list has a background color of its own.
+    Private Sub ComboBoxDropped(ByVal f As Form)
+        Const W As Single = 200
+        Const FORM_W As Single = W + 160
+        Settings f, "ComboBoxW", FORM_W, 190
+        Text f, "UseListBackColor = True", 0, 8, FORM_W
+        Text f, "ListBackColor = RGB(255, 255, 204)", 0, 28, FORM_W
+        Dim cb As Object = Place(f, "ComboBoxW1", (FORM_W - W) / 2, 52, W, 24, "")
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+        Dim i As Long
+        For i = 0 To UBound(cities)
+            cb.AddItem cities(i)
+        Next
+        cb.UseListBackColor = True
+        cb.ListBackColor = RGB(255, 255, 204)
+        cb.ListIndex = 2
+        Set Dropped = cb
+    End Sub
+
+    ' A list box in which the user selects several items, three of them selected. The items come
+    ' first: MultiSelect raises error 380 on an empty list (1.8.136.0, the page's WARNING).
+    Private Sub ListBoxMultiSelect(ByVal f As Form)
+        Const FORM_W As Single = 280
+        Settings f, "MultiSelect", FORM_W, 16 + 100 + 8 + 20
+        Dim lb As Object = Place(f, "ListBoxW1", (FORM_W - 160) / 2, 16, 160, 100, "")
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+        Dim i As Long
+        For i = 0 To UBound(cities)
+            lb.AddItem cities(i)
+        Next
+        Doing = "MultiSelect"
+        lb.MultiSelect = vbMultiSelectExtended
+        Doing = "Selected"
+        lb.Selected(0) = True
+        lb.Selected(2) = True
+        lb.Selected(3) = True
+        FitList lb
+        Text f, "MultiSelect = vbMultiSelectExtended", 0, 16 + lb.Height + 8, FORM_W
+        FitClient f, FORM_W, 16 + lb.Height + 8 + 20
+    End Sub
+
+    ' The control of the list box lb made as high as its list, which shows whole items only
+    ' (IntegralHeight). The control sets its Extender.Height to the list's height in its Resize,
+    ' and Height returns that, but its window keeps the height it was given, white below the
+    ' list (1.8.136.0, BETA 1042). A move to that height changes nothing, so the control is
+    ' first made a pixel lower.
+    Private Sub FitList(ByVal lb As Object)
+        Doing = "FitList"
+        Dim h As Single = lb.Height
+        lb.Move lb.Left, lb.Top, lb.Width, h - 1
+        lb.Move lb.Left, lb.Top, lb.Width, h
+    End Sub
+
+    ' A list box whose items go on in columns.
+    Private Sub ListBoxColumns(ByVal f As Form)
+        Const FORM_W As Single = 340
+        Settings f, "MultiColumn", FORM_W, 16 + 100 + 8 + 20
+        Dim lb As Object = Place(f, "ListBoxW1", 20, 16, FORM_W - 40, 100, "")
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth", _
+            "Accra", "Bergen", "Cairo", "Dakar", "Hanoi", "Malmo", "Tunis", "Turku")
+        Dim i As Long
+        For i = 0 To UBound(cities)
+            lb.AddItem cities(i)
+        Next
+        Doing = "MultiColumn"
+        lb.MultiColumn = True
+        FitList lb
+        Text f, "MultiColumn = True", 0, 16 + lb.Height + 8, FORM_W
+        FitClient f, FORM_W, 16 + lb.Height + 8 + 20
+    End Sub
+
+    ' A virtual combo box of 100,000 items, its list dropped down and scrolled to the 50,001st.
+    ' No item is selected: when the list opens and FindVirtualItem finds the text box's text, the
+    ' text box is left with the first two characters of the item (1.8.136.0).
+    Private Sub VirtualComboDropped(ByVal f As Form)
+        Const W As Single = 200
+        Const FORM_W As Single = W + 120
+        Settings f, "VirtualCombo", FORM_W, 240
+        Text f, "ListCount = 100000", 0, 8, FORM_W
+        Text f, "TopIndex = 50000", 0, 28, FORM_W
+        Dim vc As Object = Place(f, "VirtualCombo1", (FORM_W - W) / 2, 52, W, 24, "")
+        vc.ListCount = 100000
+        vc.Text = ""
+        Set Dropped = vc
+    End Sub
+
+    ' The two ways of a text box to hide a password.
+    Private Sub TextBoxPasswords(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "Password", 2 * COLUMN + 20, 16 + 24 + 8 + 20
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "TextBoxW" & (i + 1), x + 40, 16, COLUMN - 80, 24, "")
+                If i = 0 Then .PasswordChar = "*" Else .UseSystemPasswordChar = True
+                .Text = "secret"
+            End With
+            Text f, IIf(i = 0, "PasswordChar = ""*""", "UseSystemPasswordChar = True"), x, 16 + 24 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A text box of several lines with a vertical scroll bar, a long line wrapped.
+    Private Sub TextBoxMultiLine(ByVal f As Form)
+        Const FORM_W As Single = 320
+        Const H As Single = 84
+        Settings f, "MultiLine", FORM_W, 16 + H + 8 + 40
+        With Place(f, "TextBoxW1", 30, 16, FORM_W - 60, H, "")
+            .MultiLine = True
+            .ScrollBars = vbVertical
+            .Text = "Dear Ada," & vbCrLf & vbCrLf & "Thank you for the notes on the engine. The second part came " & _
+                "this morning, and I have read it twice." & vbCrLf & vbCrLf & "Yours," & vbCrLf & "Charles"
+        End With
+        Text f, "MultiLine = True", 0, 16 + H + 8, FORM_W
+        Text f, "ScrollBars = vbVertical", 0, 16 + H + 8 + 20, FORM_W
+    End Sub
+
+    ' An empty text box that shows a prompt.
+    Private Sub TextBoxCueBanner(ByVal f As Form)
+        Const FORM_W As Single = 260
+        Settings f, "CueBanner", FORM_W, 16 + 24 + 8 + 40
+        With Place(f, "TextBoxW1", 30, 16, FORM_W - 60, 24, "")
+            .Text = ""
+            .CueBanner = "Search"
+        End With
+        Text f, "Text = """"", 0, 16 + 24 + 8, FORM_W
+        Text f, "CueBanner = ""Search""", 0, 16 + 24 + 8 + 20, FORM_W
+    End Sub
+
+    ' The four EllipsisFormat values of a label of one line too narrow for its path, each label
+    ' outlined by the form. LabelW is not moved (Kr00l/VBCCR#40): the generator of the forms gives
+    ' each its place.
+    Private Sub LabelEllipsisFormats(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "EllipsisFormat", 4 * COLUMN + 20, 16 + 20 + 8 + 20
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single = 10 + i * COLUMN
+            Outline f, x + 15, 16, COLUMN - 30, 20
+            With Place(f, "LabelW" & (i + 1), x + 15, 16, COLUMN - 30, 20, "", True)
+                .SingleLine = True
+                .EllipsisFormat = i
+                .Caption = "C:\Projects\Annual reports\2026\March\summary of sales.txt"
+            End With
+            Text f, Choose(i + 1, "LblEllipsisFormatNone", "LblEllipsisFormatEnd", "LblEllipsisFormatPath", _
+                "LblEllipsisFormatWord") & " (" & i & ")", x, 16 + 20 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A caption of two lines, the second too long for the label, as it is, wrapped, and on one
+    ' line, each label outlined by the form. LabelW is not moved (Kr00l/VBCCR#40).
+    Private Sub LabelLines(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 54
+        Settings f, "WordWrap", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Outline f, x + 20, 16, COLUMN - 40, H
+            With Place(f, "LabelW" & (i + 1), x + 20, 16, COLUMN - 40, H, "", True)
+                If i = 1 Then .WordWrap = True
+                If i = 2 Then .SingleLine = True
+                .Caption = "Total of the orders" & vbCrLf & "placed by the customers in March and April"
+            End With
+            Text f, Choose(i + 1, "WordWrap = False", "WordWrap = True", "SingleLine = True"), x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' Two windowed labels over a hatch the form draws: the second copies the hatch behind its
+    ' caption.
+    Private Sub WindowedLabelTransparent(ByVal f As Form)
+        Settings f, "Transparent", 2 * 180 + 20, 104
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 180
+            f.FillStyle = vbDiagonalCross
+            f.FillColor = RGB(150, 150, 150)
+            f.Line (x + 10, 12)-(x + 170, 72), RGB(150, 150, 150), B
+            With Place(f, "WindowedLabel" & (i + 1), x + 25, 27, 130, 30, "")
+                .Caption = "Paper size"
+                .Transparent = (i = 1)
+            End With
+            Text f, "Transparent = " & IIf(i = 1, "True", "False"), x, 80, 180
+        Next
+        f.FillStyle = vbFSTransparent
+    End Sub
+
+    ' Frames with the caption in the middle, with a picture before and after the caption, and
+    ' without visual styles: two rows of two.
+    Private Sub FrameLooks(ByVal f As Form)
+        Const COLUMN As Single = 300
+        Const H As Single = 64
+        Const ROW As Single = 16 + H + 8 + 40
+        Settings f, "FrameW", 2 * COLUMN + 20, 2 * ROW
+        Dim folder As StdPicture = IconOf(f, 1, 1)
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single = 10 + (i Mod 2) * COLUMN
+            Dim y As Single = 16 + (i \ 2) * ROW
+            With Place(f, "FrameW" & (i + 1), x + 50, y, COLUMN - 100, H, "")
+                .Caption = "Paper"
+                Select Case i
+                    Case 0: .Alignment = vbCenter
+                    Case 1: Set .Picture = folder
+                    Case 2
+                        Set .Picture = folder
+                        .PictureAlignment = CCLeftRightAlignmentRight
+                    Case 3: .VisualStyles = False
+                End Select
+            End With
+            Select Case i
+                Case 0: Text f, "Alignment = vbCenter", x, y + H + 8, COLUMN
+                Case 1: Text f, "Picture = an icon", x, y + H + 8, COLUMN
+                Case 2
+                    Text f, "Picture = an icon", x, y + H + 8, COLUMN
+                    Text f, "PictureAlignment = CCLeftRightAlignmentRight", x, y + H + 8 + 20, COLUMN
+                Case 3: Text f, "VisualStyles = False", x, y + H + 8, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' A link label as its caption makes it, with its second link disabled, and without the
+    ' underline: a row each, its setting at the right. No visited link: a link whose Visited is
+    ' True is drawn as the others are (1.8.136.0).
+    Private Sub LinkLabelLooks(ByVal f As Form)
+        Const ROW As Single = 34
+        Settings f, "LinkLabel", 520, 16 + 2 * ROW + 18 + 16
+        Dim i As Long
+        For i = 0 To 2
+            Dim y As Single = 16 + i * ROW
+            With Place(f, "LinkLabel" & (i + 1), 20, y, 280, 18, "")
+                .Caption = "Read the <A>documentation</A> or <A>ask a question</A>."
+                Select Case i
+                    Case 1: .Links(2).Enabled = False
+                    Case 2: .UnderlineCold = False
+                End Select
+            End With
+            Text f, Choose(i + 1, "Defaults", "Links(2).Enabled = False", "UnderlineCold = False"), 320, y
+        Next
+    End Sub
+
+    ' The three State values of a progress bar at 60.
+    Private Sub ProgressBarStates(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "State", 3 * COLUMN + 20, 16 + 20 + 8 + 20
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Place(f, "ProgressBar" & (i + 1), x + 20, 16, COLUMN - 40, 20, "").Value = 60
+            Text f, Choose(i + 1, "PrbStateNormal", "PrbStateError", "PrbStatePaused") & " (" & (i + 1) & ")", x, 16 + 20 + 8, COLUMN
+        Next
+    End Sub
+
+    ' The states of ProgressBarStates, given once its bars are still: a bar given its value in
+    ' the error or the paused state is drawn part of the way to it, in the normal state's green.
+    ' Each bar's timers are stopped again.
+    Private Sub BarStates(ByVal f As Form)
+        Doing = "State"
+        Dim i As Long
+        For i = 2 To 3
+            Dim c As Object = f.Controls("ProgressBar" & i)
+            c.State = i
+            DoEvents
+            Dim id As Long
+            For id = 0 To 1000
+                If KillTimer(c.hWnd, id) Then BarTimers.Add Array(c.hWnd, id)
+            Next
+        Next
+    End Sub
+
+    ' Two progress bars with a text, each with its placeholders replaced.
+    Private Sub ProgressBarTexts(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "Text", 2 * COLUMN + 20, 16 + 20 + 8 + 40
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            With Place(f, "ProgressBar" & (i + 1), x + 20, 16, COLUMN - 40, 20, "")
+                If i = 0 Then
+                    .Value = 60
+                    .Text = "{3} %"
+                Else
+                    .Max = 120
+                    .Value = 42
+                    .Text = "{0} of {2} files"
+                End If
+            End With
+            Text f, IIf(i = 0, "Text = ""{3} %""", "Text = ""{0} of {2} files"""), x, 16 + 20 + 8, COLUMN
+            Text f, IIf(i = 0, "Value = 60", "Value = 42, Max = 120"), x, 16 + 20 + 8 + 20, COLUMN
+        Next
+    End Sub
+
+    ' A picture of a folder drawn by ListImages(1).Draw in each of its styles over a chequered
+    ' ground, once as the list is, and once with UseBackColor and a yellow BackColor.
+    Private Sub ImageListDrawStyles(ByVal f As Form)
+        Const LEFT_W As Single = 170
+        Const COLUMN As Single = 150
+        Const CELL As Single = 64
+        Const ROW As Single = CELL + 16
+        Settings f, "Draw", LEFT_W + 5 * COLUMN + 10, 16 + 2 * ROW + 24
+        OneImage f, 1, CLng(2 * Dpi())
+        Dim il As Object = f.Controls("ImageList1")
+        Dim styles As Variant = Array(ImlDrawNormal, ImlDrawTransparent, ImlDrawSelected, ImlDrawFocus, ImlDrawNoMask)
+        Dim r As Long, i As Long
+        For r = 0 To 1
+            Dim y As Single = 16 + r * ROW
+            If r = 1 Then
+                il.BackColor = vbYellow
+                il.UseBackColor = True
+                Text f, "UseBackColor = True", 10, y + 12
+                Text f, "BackColor = vbYellow", 10, y + 32
+            Else
+                Text f, "UseBackColor = False", 10, y + 22
+            End If
+            For i = 0 To 4
+                Dim x As Single = LEFT_W + i * COLUMN + (COLUMN - CELL) / 2
+                Chequer f, x, y, CELL
+                il.ListImages(1).Draw f.hDC, CLng((x + (CELL - 32) / 2) * Dpi()), CLng((y + (CELL - 32) / 2) * Dpi()), styles(i)
+            Next
+        Next
+        For i = 0 To 4
+            Text f, Choose(i + 1, "ImlDrawNormal", "ImlDrawTransparent", "ImlDrawSelected", "ImlDrawFocus", "ImlDrawNoMask") & _
+                " (" & styles(i) & ")", LEFT_W + i * COLUMN, 16 + 2 * ROW, COLUMN
+        Next
+    End Sub
+
+    ' A page and the arrow of a shortcut, each drawn from the list, and the icon that Overlay
+    ' makes of the two.
+    Private Sub ImageListOverlay(ByVal f As Form)
+        Const COLUMN As Single = 180
+        Settings f, "Overlay", 3 * COLUMN + 20, 16 + 32 + 8 + 20
+        Dim s As Long = CLng(2 * Dpi())
+        OneImage f, 3, s, "file"
+        OneImage f, 8, s, "arrow"
+        Dim il As Object = f.Controls("ImageList1")
+        Dim icon As StdPicture = il.Overlay("file", "arrow")
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim px As Long = CLng((x + (COLUMN - 32) / 2) * Dpi())
+            Dim py As Long = CLng(16 * Dpi())
+            Select Case i
+                Case 0: il.ListImages("file").Draw f.hDC, px, py, ImlDrawNormal
+                Case 1: il.ListImages("arrow").Draw f.hDC, px, py, ImlDrawNormal
+                Case 2: DrawIconEx f.hDC, px, py, icon.Handle, 16 * s, 16 * s, 0, 0, DI_NORMAL
+            End Select
+            Text f, Choose(i + 1, "ListImages(""file"")", "ListImages(""arrow"")", "Overlay(""file"", ""arrow"")"), x, 16 + 32 + 8, COLUMN
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- the Style pictures
+
+    ' Style raises 382 at run time, so the three controls of each of these sheets have their
+    ' Style in their property bag (make-shots.mjs): 0, 1 and 2, read back here. The simple combo
+    ' is as high as its open list; the others are a box.
+
+    ' The three styles of an image combo, the folders' items in each, Letters selected.
+    Private Sub ImageComboStyles(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Const W As Single = 180
+        Const H As Single = 120
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        TreeImages f
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim ic As Object = Place(f, "ImageCombo" & (i + 1), x + (COLUMN - W) / 2, 16, W, IIf(i = 1, H, 24), "")
+            If ic.Style <> i Then Err.Raise 5, , ic.Name & " has the Style " & ic.Style & ", not " & i & " from its bag"
+            Set ic.ImageList = f.Controls("ImageList1")
+            FolderItems ic
+            Set ic.SelectedItem = ic.ComboItems("letters")
+            Text f, Choose(i + 1, "ImcStyleDropDownCombo", "ImcStyleSimpleCombo", "ImcStyleDropDownList") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' The three styles of a combo box, the same cities in each, Kyoto selected; the simple one
+    ' high enough to show all six.
+    Private Sub ComboBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Const W As Single = 180
+        Const H As Single = 150
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long, k As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim cb As Object = Place(f, "ComboBoxW" & (i + 1), x + (COLUMN - W) / 2, 16, W, IIf(i = 1, H, 24), "")
+            If cb.Style <> i Then Err.Raise 5, , cb.Name & " has the Style " & cb.Style & ", not " & i & " from its bag"
+            Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+            For k = 0 To UBound(cities)
+                cb.AddItem cities(k)
+            Next
+            cb.ListIndex = 2
+            Text f, Choose(i + 1, "CboStyleDropDownCombo", "CboStyleSimpleCombo", "CboStyleDropDownList") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' The three styles of a list box, the same cities in each: Kyoto selected in the standard
+    ' list, Lima and Nairobi checked in the list of check boxes, Kyoto in the list of options.
+    Private Sub ListBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Const W As Single = 160
+        Const H As Single = 120
+        Settings f, "Style", 3 * COLUMN + 20, 16 + H + 8 + 20
+        Dim i As Long, k As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim lb As Object = Place(f, "ListBoxW" & (i + 1), x + (COLUMN - W) / 2, 16, W, H, "")
+            If lb.Style <> i Then Err.Raise 5, , lb.Name & " has the Style " & lb.Style & ", not " & i & " from its bag"
+            Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+            For k = 0 To UBound(cities)
+                lb.AddItem cities(k)
+            Next
+            Select Case i
+                Case 0: lb.ListIndex = 2
+                Case 1
+                    Doing = "ItemChecked"
+                    lb.ItemChecked(1) = True
+                    lb.ItemChecked(3) = True
+                Case 2
+                    Doing = "OptionIndex"
+                    lb.OptionIndex = 2
+            End Select
+            FitList lb
+            Text f, Choose(i + 1, "LstStyleStandard", "LstStyleCheckbox", "LstStyleOption") & " (" & i & ")", x, 16 + H + 8, COLUMN
+        Next
+    End Sub
+
+    ' The picture Kind of Picture16, Scale times as large, added to ImageList1 of the form under
+    ' Key, its ground MASK left out. The first sets the list's size.
+    Private Sub OneImage(ByVal f As Form, ByVal Kind As Long, ByVal Scale As Long, Optional ByVal Key As String)
+        Doing = "ImageList1"
+        Dim il As Object = f.Controls("ImageList1")
+        If il.ListImages.Count = 0 Then
+            il.ImageWidth = 16 * Scale
+            il.ImageHeight = 16 * Scale
+            il.UseMaskColor = True
+            il.MaskColor = MASK
+        End If
+        If Len(Key) Then
+            il.ListImages.Add , Key, Picture16(Kind, Scale)
+        Else
+            il.ListImages.Add , , Picture16(Kind, Scale)
+        End If
+    End Sub
+
+    ' The picture Kind of Picture16 as an icon, its ground left out: a control's Picture shows a
+    ' bitmap's ground.
+    Private Function IconOf(ByVal f As Form, ByVal Kind As Long, ByVal Scale As Long) As StdPicture
+        OneImage f, Kind, Scale
+        Dim il As Object = f.Controls("ImageList1")
+        Return il.ListImages(il.ListImages.Count).ExtractIcon
+    End Function
+
+    ' A square of Size pixels at (x, y) in squares of 8 pixels, white and light gray.
+    Private Sub Chequer(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal Size As Single)
+        Dim i As Long, j As Long
+        For j = 0 To Size / 8 - 1
+            For i = 0 To Size / 8 - 1
+                f.Line (x + i * 8, y + j * 8)-(x + i * 8 + 8, y + j * 8 + 8), IIf((i + j) Mod 2 = 0, vbWhite, RGB(204, 204, 204)), BF
+            Next
+        Next
+    End Sub
+
+    ' A gray line round the rectangle, a pixel outside it: where a label is.
+    Private Sub Outline(ByVal f As Form, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single)
+        f.Line (x - 1, y - 1)-(x + w, y + h), RGB(160, 160, 160), B
+    End Sub
+
+    ' The TreeView page's settings pictures: each a whole form, a tree for each variant side by
+    ' side, its settings printed by the form under it.
+
+    ' The two LineStyle values of a tree of two roots in the default Style: with
+    ' TvwLineStyleRootLines the roots have lines and buttons too.
+    Private Sub TreeLineStyles(ByVal f As Form)
+        Const H As Single = 80
+        Settings f, "LineStyle", 2 * TREE_COLUMN + 20, 16 + H + 8 + 20
+        TreeImages f
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * TREE_COLUMN
+            Dim tv As Object = Place(f, "TreeView" & (i + 1), x + (TREE_COLUMN - TREE_W) / 2, 16, TREE_W, H, "")
+            Set tv.ImageList = f.Controls("ImageList1")
+            tv.LineStyle = i
+            Dim root As Object = Folder(tv, Nothing, "docs", "Documents", False)
+            Folder tv, root, "letters", "Letters"
+            tv.Nodes.Add root, TvwNodeRelationshipChild, "notes", "Notes.txt", "file"
+            root.Expanded = True
+            Dim pics As Object = Folder(tv, Nothing, "pictures", "Pictures", False)
+            tv.Nodes.Add pics, TvwNodeRelationshipChild, , "Holiday.jpg", "photo"
+            Text f, Choose(i + 1, "TvwLineStyleTreeLines", "TvwLineStyleRootLines") & " (" & i & ")", x, 16 + H + 8, TREE_COLUMN
+        Next
+    End Sub
+
+    ' The two VisualTheme values of a tree without lines whose selected row is highlighted whole.
+    ' Neither tree has the focus, so both draw the selection as a tree without it does.
+    Private Sub TreeThemes(ByVal f As Form)
+        Const H As Single = 118
+        Const TREE_TOP As Single = 16 + 2 * 18 + 8
+        Settings f, "VisualTheme", 2 * TREE_COLUMN + 20, TREE_TOP + H + 8 + 20
+        Text f, "Style = TvwStylePlusMinusPictureText, LineStyle = TvwLineStyleRootLines", 0, 12, 2 * TREE_COLUMN + 20
+        Text f, "FullRowSelect = True, HideSelection = False", 0, 12 + 18, 2 * TREE_COLUMN + 20
+        TreeImages f
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * TREE_COLUMN
+            Dim tv As Object = Place(f, "TreeView" & (i + 1), x + (TREE_COLUMN - TREE_W) / 2, TREE_TOP, TREE_W, H, "")
+            tv.Style = TvwStylePlusMinusPictureText
+            tv.LineStyle = TvwLineStyleRootLines
+            tv.FullRowSelect = True
+            tv.HideSelection = False
+            tv.VisualTheme = i
+            Set tv.ImageList = f.Controls("ImageList1")
+            Documents tv
+            tv.Nodes("reports").Selected = True
+            Text f, Choose(i + 1, "TvwVisualThemeStandard", "TvwVisualThemeExplorer") & " (" & i & ")", x, TREE_TOP + H + 8, TREE_COLUMN
+        Next
+    End Sub
+
+    ' A tree with check boxes: three nodes ticked, and one without a box.
+    Private Sub TreeCheckboxes(ByVal f As Form)
+        Const H As Single = 118
+        Settings f, "Checkboxes", TREE_COLUMN + 20, 16 + H + 8 + 2 * 18 + 4
+        Dim x As Single = 10
+        Dim tv As Object = Place(f, "TreeView1", x + (TREE_COLUMN - TREE_W) / 2, 16, TREE_W, H, "")
+        tv.Style = TvwStyleTreeLinesPlusMinusText
+        tv.Checkboxes = True
+        Dim root As Object = tv.Nodes.Add(, , "trip", "Packing list")
+        Dim item As Variant
+        For Each item In Array("Passport", "Tickets", "Charger", "Sun cream", "Phone numbers")
+            tv.Nodes.Add root, TvwNodeRelationshipChild, item, item
+        Next
+        root.Expanded = True
+        tv.Nodes("Passport").Checked = True
+        tv.Nodes("Tickets").Checked = True
+        tv.Nodes("Sun cream").Checked = True
+        tv.Nodes("Phone numbers").CheckBox = False
+        Text f, "Checkboxes = True", x, 16 + H + 8, TREE_COLUMN
+        Text f, "Style = TvwStyleTreeLinesPlusMinusText", x, 16 + H + 8 + 18, TREE_COLUMN
+    End Sub
+
+    ' A tree that selects several nodes, with three selected, in a tree that has the focus.
+    Private Sub TreeMultiSelect(ByVal f As Form)
+        Const H As Single = 118
+        Settings f, "MultiSelect", TREE_COLUMN + 20, 16 + H + 8 + 20
+        Dim x As Single = 10
+        Dim tv As Object = Place(f, "TreeView1", x + (TREE_COLUMN - TREE_W) / 2, 16, TREE_W, H, "")
+        TreeImages f
+        Set tv.ImageList = f.Controls("ImageList1")
+        tv.MultiSelect = TvwMultiSelectAll
+        Documents tv
+        tv.Nodes("letters").Selected = True
+        tv.Nodes("holiday").Selected = True
+        tv.Nodes("notes").Selected = True
+        Set FocusOn = tv
+        Text f, "MultiSelect = TvwMultiSelectAll", x, 16 + H + 8, TREE_COLUMN
+    End Sub
+
+    ' The pictures of ImageCombo, FontCombo and ListView: each a whole form.
+
+    ' An image combo with its list dropped down: the items indented under Documents.
+    Private Sub ImageComboDropped(ByVal f As Form)
+        Const W As Single = 200
+        Settings f, "ImageCombo", W + 40, 30 + 24 + 96 + 16
+        Text f, "DroppedDown = True", 0, 8, W + 40
+        TreeImages f
+        Dim ic As Object = Place(f, "ImageCombo1", 20, 30, W, 24, "")
+        Set ic.ImageList = f.Controls("ImageList1")
+        FolderItems ic
+        Set ic.SelectedItem = ic.ComboItems("letters")
+        Set Dropped = ic
+    End Sub
+
+    ' A font combo with three recent fonts, its list dropped down. The list shows the recent
+    ' fonts only (MaxDropDownItems): the complete list after them is the machine's, and starts
+    ' with whatever fonts it has.
+    Private Sub FontComboRecent(ByVal f As Form)
+        Const W As Single = 200
+        Settings f, "FontCombo", W + 40, 30 + 24 + 3 * 20 + 24
+        Text f, "RecentMax = 3", 0, 8, W + 40
+        Dim fc As Object = Place(f, "FontCombo1", 20, 30, W, 24, "")
+        fc.RecentMax = 3
+        fc.RestoreRecent Array("Segoe UI", "Arial", "Times New Roman")
+        If fc.RecentCount <> 3 Then Err.Raise 5, , "the font combo has " & fc.RecentCount & " recent fonts, not 3"
+        fc.MaxDropDownItems = 3
+        fc.ListIndex = 0
+        Set Dropped = fc
+    End Sub
+
+    ' The four views besides the report view of a list view, none with the focus: the icon, small
+    ' icon and list views in a row, each as large as what it shows, and the tile view under them.
+    Private Sub ListViews(ByVal f As Form)
+        Const GAP As Single = 20
+        ' the row's widths and heights, and its height with the names under it
+        Dim ws As Variant = Array(290, 240, 130)
+        Dim hs As Variant = Array(64, 50, 96)
+        Const ROW As Single = 16 + 96 + 8 + 20
+        Const ROW_W As Single = 290 + 240 + 130 + 2 * GAP
+        ' two columns of tiles, under the middle of the row
+        Const TILE_W As Single = 500
+        Const TILE_H As Single = 112
+        Settings f, "View", ROW_W + 2 * GAP, ROW + 16 + TILE_H + 8 + 20
+        TreeImages f
+        BigImages f
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single, y As Single, W As Single, H As Single
+            If i < 3 Then
+                x = GAP + IIf(i > 0, ws(0) + GAP, 0) + IIf(i > 1, ws(1) + GAP, 0)
+                y = 0
+                W = ws(i)
+                H = hs(i)
+            Else
+                x = GAP + (ROW_W - TILE_W) / 2
+                y = ROW
+                W = TILE_W
+                H = TILE_H
+            End If
+            Dim v As Long = Choose(i + 1, LvwViewIcon, LvwViewSmallIcon, LvwViewList, LvwViewTile)
+            Dim lv As Object = Place(f, "ListView" & (i + 1), x, y + 16, W, H, "")
+            Set lv.Icons = f.Controls("ImageList2")
+            Set lv.SmallIcons = f.Controls("ImageList1")
+            Columns lv
+            lv.View = v
+            If v = LvwViewTile Then lv.TileViewLines = 2
+            Files lv, True, True
+            lv.Sorted = True
+            If v = LvwViewTile Then
+                Dim it As Object
+                For Each it In lv.ListItems
+                    it.TileViewIndices = Array(2, 1)
+                Next
+            End If
+            ' the list at its top: the tiles were once shown scrolled to the second
+            lv.ListItems(1).EnsureVisible
+            ' the names of the row at one height, under its tallest box
+            Text f, Choose(i + 1, "LvwViewIcon", "LvwViewSmallIcon", "LvwViewList", "LvwViewTile") & " (" & v & ")", _
+                x, y + 16 + IIf(i < 3, 96, H) + 8, W
+        Next
+    End Sub
+
+    ' A list view in the report view with two groups: Folders, which the user can collapse, and
+    ' Files, with a footer. An item joins a group in a 32-bit program only (VBCCR18 1.8.136.0).
+    Private Sub ListGroups(ByVal f As Form)
+        Const W As Single = 320
+        Const H As Single = 210
+        Settings f, "Groups", W + 40, 16 + H + 8 + 20
+        TreeImages f
+        Dim lv As Object = Place(f, "ListView1", 20, 16, W, H, "")
+        lv.View = LvwViewReport
+        Set lv.SmallIcons = f.Controls("ImageList1")
+        Columns lv
+        Dim folders As Object = lv.Groups.Add(, "dirs", "Folders")
+        folders.Collapsible = True
+        Dim others As Object = lv.Groups.Add(, "files", "Files", , "3 files")
+        lv.GroupView = True
+        Set FileItem(lv, "letters", "Letters", "folder", "", "File folder").Group = folders
+        Set FileItem(lv, "reports", "Reports", "folder", "", "File folder").Group = folders
+        Set FileItem(lv, "holiday", "Holiday.jpg", "photo", "2,315 KB", "JPEG image").Group = others
+        Set FileItem(lv, "notes", "Notes.txt", "file", "2 KB", "Text document").Group = others
+        Set FileItem(lv, "old", "Old notes.txt", "file", "1 KB", "Text document").Group = others
+        If folders.ListItemCount <> 2 Or others.ListItemCount <> 3 Then
+            Err.Raise 5, , "the items did not join their groups: a 64-bit program?"
+        End If
+        Text f, "GroupView = True", 0, 16 + H + 8, W + 40
+    End Sub
+
+    ' ---------------------------------------------------------------- the lists
+
+    ' The items of an image combo: Documents, and indented under it the folders Letters and
+    ' Reports and the files Holiday.jpg and Notes.txt.
+    Private Sub FolderItems(ByVal ic As Object)
+        With ic.ComboItems
+            .Add , "docs", "Documents", "folder", , 0
+            .Add , "letters", "Letters", "folder", , 1
+            .Add , "reports", "Reports", "folder", , 1
+            .Add , "holiday", "Holiday.jpg", "photo", , 1
+            .Add , "notes", "Notes.txt", "file", , 1
+        End With
+    End Sub
+
+    ' A list view in the report view, with check boxes, grid lines and whole rows selected,
+    ' sorted by Name from A to Z: Notes.txt selected, Beach.jpg and Notes.txt checked.
+    Private Sub ReportList(ByVal lv As Object, ByVal il As Object)
+        lv.View = LvwViewReport
+        Set lv.SmallIcons = il
+        lv.Checkboxes = True
+        lv.GridLines = True
+        lv.FullRowSelect = True
+        lv.HideSelection = False
+        Columns lv
+        Files lv, False
+        lv.SortKey = 0
+        lv.SortOrder = LvwSortOrderAscending
+        lv.Sorted = True
+        lv.ColumnHeaders(1).SortArrow = LvwColumnHeaderSortArrowUp
+        lv.ListItems("beach").Checked = True
+        lv.ListItems("notes").Checked = True
+        lv.ListItems("notes").Selected = True
+    End Sub
+
+    ' The columns Name, Size (aligned to the right) and Type.
+    Private Sub Columns(ByVal lv As Object)
+        With lv.ColumnHeaders
+            .Add , , "Name", 128
+            .Add , , "Size", 70, LvwColumnHeaderAlignmentRight
+            .Add , , "Type", 116
+        End With
+    End Sub
+
+    ' Five items, not in the order of their names: a folder, two photos and two text files, each
+    ' with its large icon too when Large; without Old notes.txt when Four, so that four tiles fit.
+    Private Sub Files(ByVal lv As Object, ByVal Large As Boolean, Optional ByVal Four As Boolean = False)
+        FileItem lv, "notes", "Notes.txt", "file", "2 KB", "Text document", Large
+        FileItem lv, "letters", "Letters", "folder", "", "File folder", Large
+        FileItem lv, "holiday", "Holiday.jpg", "photo", "2,315 KB", "JPEG image", Large
+        If Not Four Then FileItem lv, "old", "Old notes.txt", "file", "1 KB", "Text document", Large
+        FileItem lv, "beach", "Beach.jpg", "photo", "1,840 KB", "JPEG image", Large
+    End Sub
+
+    ' An item of a list view with the picture Picture, its size and its type as its subitems.
+    Private Function FileItem(ByVal lv As Object, ByVal Key As String, ByVal Caption As String, ByVal Picture As String, _
+            ByVal Size As String, ByVal Kind As String, Optional ByVal Large As Boolean = False) As Object
+        Dim it As Object
+        If Large Then
+            Set it = lv.ListItems.Add(, Key, Caption, Picture, Picture)
+        Else
+            Set it = lv.ListItems.Add(, Key, Caption, , Picture)
+        End If
+        If Len(Size) Then it.SubItems(1) = Size
+        it.SubItems(2) = Kind
+        Return it
+    End Function
+
+    ' The combo box Dropped with its list dropped down, again whenever it has closed, and the
+    ' caret its text box then shows hidden: it blinks. The text box makes its caret when it gets
+    ' the focus, which can come after the list has dropped down, so the caret is hidden on every
+    ' call.
+    Private Sub KeepDropped()
+        If Dropped Is Nothing Then Exit Sub
+        If Not Dropped.DroppedDown Then
+            Dropped.DroppedDown = True
+            DoEvents
+        End If
+        HideCaret 0
+    End Sub
+
+    ' ---------------------------------------------------------------- the trees
+
+    ' The nodes of a tree: Documents, open, with the closed folders Letters and Reports and the
+    ' files Holiday.jpg, Notes.txt and Old notes.txt.
+    Private Sub Documents(ByVal tv As Object)
+        Dim root As Object = Folder(tv, Nothing, "docs", "Documents", False)
+        Folder tv, root, "letters", "Letters"
+        Folder tv, root, "reports", "Reports"
+        tv.Nodes.Add root, TvwNodeRelationshipChild, "holiday", "Holiday.jpg", "photo"
+        tv.Nodes.Add root, TvwNodeRelationshipChild, "notes", "Notes.txt", "file"
+        tv.Nodes.Add root, TvwNodeRelationshipChild, "old", "Old notes.txt", "file"
+        root.Expanded = True
+    End Sub
+
+    ' A folder node, at the root level when Parent is Nothing, with the open folder's picture while
+    ' it is expanded, and with WithFile a file in it, so that a closed folder has a button.
+    Private Function Folder(ByVal tv As Object, ByVal Parent As Object, ByVal Key As String, ByVal Caption As String, _
+            Optional ByVal WithFile As Boolean = True) As Object
+        Dim n As Object
+        If Parent Is Nothing Then
+            Set n = tv.Nodes.Add(, , Key, Caption, "folder")
+        Else
+            Set n = tv.Nodes.Add(Parent, TvwNodeRelationshipChild, Key, Caption, "folder")
+        End If
+        n.ExpandedImage = "open"
+        If WithFile Then tv.Nodes.Add n, TvwNodeRelationshipChild, , "Summary.txt", "file"
+        Return n
+    End Function
+
+    ' The ImageList of the form given four pictures of 16 pixels, drawn by the program: a folder,
+    ' an open folder, a page of text and a photo. Nothing is taken from the machine.
+    Private Sub TreeImages(ByVal f As Form)
+        Doing = "ImageList1"
+        FillImages f.Controls("ImageList1"), 1
+    End Sub
+
+    ' The ImageList2 of the form given the same four pictures at 32 pixels, for the large icons
+    ' of a list view.
+    Private Sub BigImages(ByVal f As Form)
+        Doing = "ImageList2"
+        FillImages f.Controls("ImageList2"), 2
+    End Sub
+
+    ' The ImageList1 of the form given the four pictures of TreeImages and three more for the
+    ' toolbars' buttons: a disk, a bold B and a clipboard.
+    Private Sub ToolImages(ByVal f As Form)
+        Doing = "ImageList1"
+        Dim il As Object = f.Controls("ImageList1")
+        FillImages il, 1
+        Dim i As Long
+        For i = 5 To 7
+            il.ListImages.Add , Choose(i - 4, "save", "bold", "paste"), Picture16(i)
+        Next
+    End Sub
+
+    ' The image list il given the four pictures, 16 pixels times Scale.
+    Private Sub FillImages(ByVal il As Object, ByVal Scale As Long)
+        il.ImageWidth = 16 * Scale
+        il.ImageHeight = 16 * Scale
+        il.UseMaskColor = True
+        il.MaskColor = MASK
+        Dim i As Long
+        For i = 1 To 4
+            il.ListImages.Add , Choose(i, "folder", "open", "file", "photo"), Picture16(i, Scale)
+        Next
+    End Sub
+
+    ' One of the four pictures of TreeImages, on the ground MASK, drawn Scale times as large.
+    Private Function Picture16(ByVal Kind As Long, Optional ByVal Scale As Long = 1) As StdPicture
+        Const EDGE As Long = &H2080B0        ' RGB(176, 128, 32), a folder's edge
+        Const PAPER As Long = &H60D0F8       ' RGB(248, 208, 96), a folder
+        Const BACK As Long = &H40B0E0        ' RGB(224, 176, 64), the back of an open folder
+        Const GREY As Long = &H808080
+        Dim s As Long = Scale
+        Dim screenDC As LongPtr = GetDC(0)
+        Dim dc As LongPtr = CreateCompatibleDC(screenDC)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(screenDC, 16 * s, 16 * s)
+        ReleaseDC 0, screenDC
+        Dim oldBmp As LongPtr = SelectObject(dc, bmp)
+        DrawBox dc, MASK, MASK, 0, 0, 16 * s, 16 * s, s
+        Select Case Kind
+            Case 1 ' a folder: its tab and its body
+                DrawBox dc, EDGE, PAPER, 1 * s, 2 * s, 8 * s, 6 * s, s
+                DrawBox dc, EDGE, PAPER, 1 * s, 4 * s, 15 * s, 14 * s, s
+            Case 2 ' an open folder: its back, and its front tilted open
+                DrawBox dc, EDGE, BACK, 1 * s, 2 * s, 8 * s, 6 * s, s
+                DrawBox dc, EDGE, BACK, 1 * s, 4 * s, 14 * s, 14 * s, s
+                DrawPolygon dc, EDGE, PAPER, Array(4, 7, 15, 7, 12, 13, 1, 13), s
+            Case 3 ' a page of text
+                DrawBox dc, GREY, vbWhite, 3 * s, 1 * s, 14 * s, 15 * s, s
+                Dim y As Long
+                For y = 4 To 11 Step 2
+                    DrawBox dc, &HB0B0B0, &HB0B0B0, 5 * s, y * s, 12 * s, (y + 1) * s, s
+                Next
+            Case 4 ' a photo: the sky, a sun and green hills
+                DrawBox dc, GREY, &HF0C896, 1 * s, 2 * s, 15 * s, 14 * s, s           ' RGB(150, 200, 240)
+                DrawBox dc, &H28D2FA, &H28D2FA, 10 * s, 4 * s, 13 * s, 7 * s, s        ' RGB(250, 210, 40)
+                DrawPolygon dc, &H46A046, &H46A046, Array(2, 13, 2, 10, 6, 7, 9, 10, 12, 8, 14, 10, 14, 13), s
+            Case 5 ' a disk: its blue case, its white label and its gray shutter
+                DrawBox dc, &H804020, &HC08040, 1 * s, 1 * s, 15 * s, 15 * s, s        ' RGB(64, 128, 192)
+                DrawBox dc, GREY, vbWhite, 4 * s, 1 * s, 12 * s, 7 * s, s
+                DrawBox dc, GREY, &HC0C0C0, 5 * s, 10 * s, 11 * s, 15 * s, s
+            Case 6 ' a bold B, of blocks
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 2 * s, 7 * s, 14 * s, s
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 2 * s, 10 * s, 4 * s, s
+                DrawBox dc, vbBlack, vbBlack, 9 * s, 3 * s, 12 * s, 7 * s, s
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 7 * s, 11 * s, 9 * s, s
+                DrawBox dc, vbBlack, vbBlack, 10 * s, 8 * s, 13 * s, 13 * s, s
+                DrawBox dc, vbBlack, vbBlack, 3 * s, 12 * s, 11 * s, 14 * s, s
+            Case 7 ' a clipboard: its brown board, a sheet of paper and the gray clip
+                DrawBox dc, &H204080, &H3070A0, 2 * s, 2 * s, 14 * s, 15 * s, s        ' RGB(160, 112, 48)
+                DrawBox dc, GREY, vbWhite, 4 * s, 4 * s, 12 * s, 14 * s, s
+                DrawBox dc, &H606060, &HA0A0A0, 5 * s, 1 * s, 11 * s, 5 * s, s
+            Case 8 ' the arrow of a shortcut: a white box at the bottom left, a blue arrow in it
+                DrawBox dc, GREY, vbWhite, 0, 8 * s, 9 * s, 16 * s, s
+                DrawPolygon dc, &HC06020, &HC06020, Array(2, 13, 4, 11, 3, 10, 7, 10, 7, 14, 6, 13, 3, 15, 2, 15), s  ' RGB(32, 96, 192)
+        End Select
+        SelectObject dc, oldBmp
+        DeleteDC dc
+        Dim desc As PICTDESC, iid As PicGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1 ' a bitmap
+        desc.Handle = bmp
+        ' IID_IPictureDisp, {7BF80981-BF32-101A-8BBB-00AA00300CAB}
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        If OleCreatePictureIndirect(desc, iid, 1, pic) <> 0 Then Err.Raise 5, , "no picture " & Kind
+        Return pic
+    End Function
+
+    ' A rectangle from (l, t) to just before (r, b), its edge in the color Pen, Thick pixels wide
+    ' and inside the rectangle, and its inside in Fill.
+    Private Sub DrawBox(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal l As Long, ByVal t As Long, _
+            ByVal r As Long, ByVal b As Long, Optional ByVal Thick As Long = 1)
+        ' PS_SOLID for one pixel, PS_INSIDEFRAME for more
+        Dim p As LongPtr = SelectObject(dc, CreatePen(IIf(Thick > 1, 6, 0), Thick, Pen))
+        Dim br As LongPtr = SelectObject(dc, CreateSolidBrush(Fill))
+        Rectangle dc, l, t, r, b
+        DeleteObject SelectObject(dc, br)
+        DeleteObject SelectObject(dc, p)
+    End Sub
+
+    ' A polygon through the points of Xy, pairs of x and y, Scale times as far apart, drawn as
+    ' DrawBox draws with a pen Scale pixels wide.
+    Private Sub DrawPolygon(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal Xy As Variant, _
+            Optional ByVal Scale As Long = 1)
+        Dim n As Long = (UBound(Xy) + 1) \ 2
+        Dim pts() As POINTAPI
+        ReDim pts(0 To n - 1)
+        Dim i As Long
+        For i = 0 To n - 1
+            pts(i).x = Xy(2 * i) * Scale
+            pts(i).y = Xy(2 * i + 1) * Scale
+        Next
+        Dim p As LongPtr = SelectObject(dc, CreatePen(0, Scale, Pen))
+        Dim br As LongPtr = SelectObject(dc, CreateSolidBrush(Fill))
+        Polygon dc, pts(0), n
+        DeleteObject SelectObject(dc, br)
+        DeleteObject SelectObject(dc, p)
+    End Sub
+
+    ' A settings form: its caption, its client area Width by Height pixels at 96 DPI, and what
+    ' it prints kept (AutoRedraw).
+    Private Sub Settings(ByVal f As Form, ByVal Caption As String, ByVal Width As Single, ByVal Height As Single)
+        f.Caption = Caption
+        f.AutoRedraw = True
+        f.ForeColor = vbBlack
+        FitClient f, Width, Height
+    End Sub
+
+    ' Text printed on the form at (x, y), centred in a column Width wide when Width is given.
+    Private Sub Text(ByVal f As Form, ByVal s As String, ByVal x As Single, ByVal y As Single, Optional ByVal Width As Single = 0)
+        f.CurrentX = IIf(Width > 0, x + (Width - f.TextWidth(s)) / 2, x)
+        f.CurrentY = y
+        f.Print s
+    End Sub
+
+    ' Device pixels to a pixel at 96 DPI.
+    Private Function Dpi() As Single
+        Return 15 / Screen.TwipsPerPixelX
+    End Function
+
+    ' ---------------------------------------------------------------- helpers
+
+    ' The control `Name` of the form, placed and shown, and its picture's rectangle written
+    ' under `ClipName`: the control's class when left out, and none when "". With `Fixed`, the
+    ' control is one the form's designer file has at this place already, and it is not moved:
+    ' LabelW, a windowless control, is not drawn once its Left or Top is set at run time (BETA
+    ' 1042), so the generator of the sheets' forms gives it its place.
+    Private Function Place(ByVal f As Form, ByVal Name As String, ByVal x As Single, ByVal y As Single, _
+            ByVal w As Single, ByVal h As Single, Optional ByVal ClipName As String = "*", _
+            Optional ByVal Fixed As Boolean = False) As Object
+        Doing = Name
+        Dim c As Object = f.Controls(Name)
+        If Not Fixed Then c.Move x, y, w, h
+        Asked.Add Array(x, y, w, h), Name
+        c.TabStop = False
+        c.Visible = True
+        If ClipName = "*" Then ClipName = TypeName(c)
+        If Len(ClipName) Then Clip ClipName, x, y, w, h
+        Return c
+    End Function
+
+    ' Where each control of the form is, for a person looking into a picture that came out
+    ' wrong: what Place asked for, what the form then reports (in its scale's units), and where
+    ' the control's windows are, in device pixels of the form's client area. Written to the file
+    ' "placements" in the folder of the signals, or, when no tool runs the program, to
+    ' placements.txt beside the program, and to the DEBUG CONSOLE.
+    Private Sub Dump(ByVal f As Form)
+        Dim s As String, c As Object, a As Variant
+        s = "form " & f.Name & ": ScaleMode " & f.ScaleMode & ", scale " & F2(f.ScaleWidth) & " x " & F2(f.ScaleHeight) & _
+            ", size " & F2(f.Width) & " x " & F2(f.Height) & " twips, " & F2(Screen.TwipsPerPixelX) & " twips to a device pixel" & vbCrLf
+        For Each c In f.Controls
+            s = s & c.Name & " (" & TypeName(c) & ")" & vbCrLf
+            On Error Resume Next
+            a = Empty
+            a = Asked(c.Name)
+            If Not IsEmpty(a) Then s = s & "    asked     " & F2(a(0)) & ", " & F2(a(1)) & ", " & F2(a(2)) & " x " & F2(a(3)) & vbCrLf
+            s = s & "    reports   " & F2(c.Left) & ", " & F2(c.Top) & ", " & F2(c.Width) & " x " & F2(c.Height) & ", Visible " & c.Visible & vbCrLf
+            Dim h As LongPtr
+            h = 0
+            h = c.hWndUserControl
+            s = s & "    its window        " & WindowBox(f, h) & vbCrLf
+            h = 0
+            h = c.hWnd
+            s = s & "    its inner window  " & WindowBox(f, h) & vbCrLf
+            On Error GoTo 0
+        Next
+        Debug.Print s
+        Dim n As Integer = FreeFile
+        If Len(Signals()) Then
+            Open Signals() & "\placements" For Output As #n
+        Else
+            Open App.Path & "\placements.txt" For Output As #n
+        End If
+        Print #n, s
+        Close #n
+    End Sub
+
+    ' A window's rectangle in device pixels of the form's client area, or "none".
+    Private Function WindowBox(ByVal f As Form, ByVal h As LongPtr) As String
+        If h = 0 Then Return "none"
+        Dim r As RECT, p As POINTAPI
+        GetWindowRect h, r
+        ClientToScreen f.hWnd, p
+        Return (r.Left - p.x) & ", " & (r.Top - p.y) & ", " & (r.Right - r.Left) & " x " & (r.Bottom - r.Top) & " px"
+    End Function
+
+    Private Function F2(ByVal v As Variant) As String
+        Return Trim$(Str$(Round(CDbl(v), 2)))
+    End Function
+
+    Private Sub Clip(ByVal Name As String, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single)
+        Clips = Clips & Name & " " & Str$(x) & " " & Str$(y) & " " & Str$(w) & " " & Str$(h) & vbLf
+    End Sub
+
+    ' The form's client area made Width by Height pixels at 96 DPI, and its scale those pixels.
+    Private Sub FitClient(ByVal f As Form, ByVal Width As Single, ByVal Height As Single)
+        f.ScaleMode = vbTwips
+        f.Width = f.Width + (Width * 15 - f.ScaleWidth)
+        f.Height = f.Height + (Height * 15 - f.ScaleHeight)
+        f.Scale (0, 0)-(Width, Height)
+    End Sub
+
+    ' Makes the form the active window, as it is when a person starts the program. On the
+    ' tool's private desktop, which has no input, the foreground is not dependable, so while
+    ' the form waits it draws its frame as the active window's whenever it is not the
+    ' foreground window.
+    Private Sub Activate(ByVal f As Form)
+        SetForegroundWindow f.hWnd
+        DoEvents
+        KeepActive f
+    End Sub
+
+    Private Sub KeepActive(ByVal f As Form)
+        If f.Visible And GetForegroundWindow() <> f.hWnd Then SendMessageW f.hWnd, WM_NCACTIVATE, 1, 0
+    End Sub
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Private Sub Signal(ByVal Name As String, Optional ByVal Text As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        If Len(Text) Then Print #n, Text
+        Close #n
+    End Sub
+
+    ' Waits until the signal is there (True), or until the form is closed (False).
+    Private Function WaitFor(ByVal Name As String, ByVal f As Form) As Boolean
+        Do
+            If Len(Signals()) Then
+                If Len(Dir$(Signals() & "\" & Name)) Then Return True
+            End If
+            If Not IsLoaded(f) Then Return False
+            KeepActive f
+            KeepStill
+            KeepDropped
+            DoEvents
+            Sleep 50
+        Loop
+    End Function
+
+    Private Function IsLoaded(ByVal f As Form) As Boolean
+        Dim g As Object
+        For Each g In Forms
+            If g Is f Then Return True
+        Next
+        Return False
+    End Function
+
+End Module

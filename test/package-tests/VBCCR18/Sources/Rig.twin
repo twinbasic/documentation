@@ -1,0 +1,33 @@
+' Rig: what the test cases of VBCCR18 set up. A case works on the controls of a HostForm, which is
+' loaded and never shown.
+Module Rig
+
+    ' The events a case's sink wrote since the last call of ClearLog, one per line.
+    Public Log As String
+
+    Public Sub Ev(ByVal Text As String)
+        Log = Log & Text & vbLf
+    End Sub
+
+    Public Sub ClearLog()
+        Log = ""
+    End Sub
+
+    ' The events of the log as one line, each with its arguments, separated by " | ".
+    Public Function Events() As String
+        Dim lines() As String = Split(Log, vbLf)
+        Dim i As Long
+        For i = 0 To UBound(lines)
+            If Len(lines(i)) > 0 Then Events = Events & IIf(Len(Events) > 0, " | ", "") & lines(i)
+        Next
+    End Function
+
+    ' A loaded form, not shown, with every control on its default properties.
+    Public Function NewForm() As HostForm
+        Dim f As New HostForm
+        Load f
+        Set NewForm = f
+        ClearLog
+    End Function
+
+End Module
