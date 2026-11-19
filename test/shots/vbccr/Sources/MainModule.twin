@@ -258,17 +258,27 @@ Module MainModule
 
     ' The bars still: a progress bar drawn with visual styles animates its bar (its growth to a
     ' new value, and a light that runs along a bar in the normal state) with timers of its own
-    ' window, and a picture needs a still frame. Once the bars have grown to their values, and
-    ' before the light first runs, every timer is stopped (test/shots/commonctls does the same).
+    ' window, and a picture needs a still frame. No wait is right for both: at 0.6 s a bar at 60
+    ' was once drawn at 48, and at 1.5 s the light was running along it. So each bar is given one
+    ' more than its value and then its value again: a bar drawn with visual styles grows with an
+    ' animation and shrinks at once, so it stands at its value straight away. Then, before the
+    ' light first runs, every timer is stopped.
     Private Sub StillBars(ByVal f As Form)
+        Dim c As Object
+        For Each c In f.Controls
+            If TypeName(c) = "ProgressBar" Then
+                Dim v As Long = c.Value
+                If v < c.Max Then
+                    c.Value = v + 1
+                    c.Value = v
+                End If
+            End If
+        Next
         Dim t As Single = Timer
-        ' Long enough for the bar's growing animation to end: at 0.6 s a bar at 60 was once
-        ' drawn at 48.
-        Do While Timer - t < 1.5
+        Do While Timer - t < 0.1
             DoEvents
             Sleep 20
         Loop
-        Dim c As Object
         For Each c In f.Controls
             If TypeName(c) = "ProgressBar" Then
                 Dim id As Long
