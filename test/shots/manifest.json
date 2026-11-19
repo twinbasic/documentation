@@ -822,6 +822,14 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/ImageList/Images/ImageList_Overlay.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/ImageList/Images/ImlDrawConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/Animation.png": {
       "build": 1042,
       "scale": 1.5
@@ -858,7 +866,23 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/CheckBoxW_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CheckBoxW_Value.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CmdImageListAlignmentConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/ComboBoxW.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/ComboBoxW_DroppedDown.png": {
       "build": 1042,
       "scale": 1.5
     },
@@ -866,7 +890,15 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/CommandButtonW_SplitButton.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/CommandLink.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CommandLink_Looks.png": {
       "build": 1042,
       "scale": 1.5
     },
@@ -898,6 +930,10 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/FrameW_Looks.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/HotKey.png": {
       "build": 1042,
       "scale": 1.5
@@ -918,11 +954,27 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/LabelW_Lines.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/LblEllipsisFormatConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/LinkLabel.png": {
       "build": 1042,
       "scale": 1.5
     },
     "Reference/Contributed/VBCCR18/Images/ListBoxW.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/ListBoxW_MultiColumn.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/ListBoxW_MultiSelect.png": {
       "build": 1042,
       "scale": 1.5
     },
@@ -954,11 +1006,23 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/OptionButtonW_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/Pager.png": {
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/PrbStateConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/ProgressBar.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/ProgressBar_Text.png": {
       "build": 1042,
       "scale": 1.5
     },
@@ -986,6 +1050,18 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/TextBoxW_CueBanner.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/TextBoxW_MultiLine.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/TextBoxW_Password.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/UdnOrientationConstants.png": {
       "build": 1042,
       "scale": 1.5
@@ -1002,7 +1078,19 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/VirtualCombo_DroppedDown.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/WindowedLabel.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/WindowedLabel_Transparent.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/LinkLabel/Images/LinkLabel_Looks.png": {
       "build": 1042,
       "scale": 1.5
     },
