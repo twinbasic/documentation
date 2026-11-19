@@ -822,6 +822,14 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/Animation.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/Animation_Look.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/CCAppearanceConstants.png": {
       "build": 1042,
       "scale": 1.5
@@ -862,6 +870,22 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/DTPicker.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/DTPicker_CheckBox.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/DTPicker_DroppedDown.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/DTPicker_Formats.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/FontCombo.png": {
       "build": 1042,
       "scale": 1.5
@@ -871,6 +895,22 @@
       "scale": 1.5
     },
     "Reference/Contributed/VBCCR18/Images/FrameW.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/HotKey.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/HotKey_States.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/IPAddress.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/IPAddress_States.png": {
       "build": 1042,
       "scale": 1.5
     },
@@ -886,6 +926,30 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/MCIWnd.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/MCIWnd_Look.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/MonthView.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/MonthView_Months.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/MonthView_MultiSelect.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/MonthView_Views.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/OptionButtonW.png": {
       "build": 1042,
       "scale": 1.5
@@ -898,7 +962,35 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/SldTickStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/Slider.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/Slider_SelectRange.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/SpinBox.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/SpinBox_Styles.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/TextBoxW.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/UdnOrientationConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/UpDown.png": {
       "build": 1042,
       "scale": 1.5
     },
