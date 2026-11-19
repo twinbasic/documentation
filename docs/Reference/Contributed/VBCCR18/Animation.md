@@ -12,6 +12,8 @@ symbols:
 
 An **Animation** plays a silent AVI clip in a box on the form, such as the moving picture of a file copy or a search in progress.
 
+![An animation with Center set to True and an opaque BackStyle that shows the first frame of the clip of this page's samples, a dark gray square of 16 by 16 pixels, in the middle of the control](Images/Animation.png){:width="60" height="60"}
+
 ```tb hidden
 Private Sub SamplePut32(b() As Byte, ByRef p As Long, ByVal v As Long)
     b(p) = v And &HFF&
@@ -144,6 +146,8 @@ A new control plays nothing, and has [**AutoPlay**](#autoplay) and [**Center**](
 <!-- /test -->
 
 With a transparent [**BackStyle**](#backstyle) the background color of the clip is not drawn, and the control's [**BackColor**](#backcolor) shows in its place; with an opaque one the clip keeps all its colors. With [**Center**](#center) set to **True** the clip is drawn in the middle of the control, and otherwise at its top left corner. Changing **AutoPlay**, **BackStyle** or **Center** loads the clip again, which stops a clip that was playing.
+
+![Three animations with the first frame of the samples' clip, a dark gray square: with Center set to False and an opaque BackStyle it is at the top left corner of the control, with Center set to True in the middle, and with a transparent BackStyle the whole frame is its background color, so only the pale yellow BackColor shows](Images/Animation_Look.png){:width="621" height="143"}
 
 Properties
 ----------

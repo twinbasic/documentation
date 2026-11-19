@@ -13,6 +13,8 @@ symbols:
 
 A **SpinBox** is a text box that holds a whole number, with a pair of arrow buttons beside it that raise and lower the number. The user types the number or uses the arrows.
 
+![A spin box that shows 40, with a pair of arrow buttons at the right of the box](Images/SpinBox.png){:width="92" height="36"}
+
 ```tb check_build check_run arch=win32,win64
 SpinBox1.Min = 0
 SpinBox1.Max = 100
@@ -59,8 +61,10 @@ Debug.Print SpinBox1.Value, SpinBox1.Text
 ```
 <!-- /test -->
 
-<!-- test: SpinBoxTests.NumberStyle_Hexadecimal_ShowsEightDigits, SpinBoxTests.ThousandsSeparator_False_ShowsNoSeparator, SpinBoxTests.ThousandsSeparator_True_ShowsTheSeparatorOfTheUser -->
-With [**NumberStyle**](#numberstyle) hexadecimal the box shows the number as `0x` and eight hexadecimal digits. In decimal it groups the digits by thousands when [**ThousandsSeparator**](#thousandsseparator) is **True**, with the separator of the user's language.
+<!-- test: SpinBoxTests.NumberStyle_Hexadecimal_ShowsEightDigits, SpinBoxTests.NumberStyle_Hexadecimal_SmallRange_ShowsFourDigits, SpinBoxTests.ThousandsSeparator_False_ShowsNoSeparator, SpinBoxTests.ThousandsSeparator_True_ShowsTheSeparatorOfTheUser -->
+With [**NumberStyle**](#numberstyle) hexadecimal the box shows the number as `0x` and four hexadecimal digits, or eight when the range needs more than four: with **Max** at 1000, 255 shows as `0x00FF`, and with **Max** at 100000 as `0x000000FF`. In decimal it groups the digits by thousands when [**ThousandsSeparator**](#thousandsseparator) is **True**, with the separator of the user's language.
+
+![Three spin boxes: with Alignment set to CCLeftRightAlignmentLeft and TextAlignment to vbRightJustify the arrows are at the left and 40 at the right of the box, with NumberStyle set to SpbNumberStyleHexadecimal 255 shows as 0x00FF, and with ThousandsSeparator set to True 12345 shows as 12,345](Images/SpinBox_Styles.png){:width="801" height="119"}
 <!-- /test -->
 
 ## What a click raises
@@ -307,7 +311,7 @@ The values of [**NumberStyle**](#numberstyle).
 | Member | Value | Description |
 |---|---|---|
 | **SpbNumberStyleDecimal**{: #SpbNumberStyleConstants_SpbNumberStyleDecimal } | 0 | Decimal, grouped by thousands if [**ThousandsSeparator**](#thousandsseparator) is **True**. |
-| **SpbNumberStyleHexadecimal**{: #SpbNumberStyleConstants_SpbNumberStyleHexadecimal } | 1 | Hexadecimal, as `0x` and eight digits. |
+| **SpbNumberStyleHexadecimal**{: #SpbNumberStyleConstants_SpbNumberStyleHexadecimal } | 1 | Hexadecimal, as `0x` and four or eight digits. |
 
 ## See Also
 

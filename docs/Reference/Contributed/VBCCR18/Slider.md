@@ -17,6 +17,8 @@ symbols:
 
 A **Slider** is a track with a thumb that the user moves to choose a value in a range. It can show tick marks and a tip with the value, mark a selected part of the range, and leave the drawing of its parts to the program.
 
+![A horizontal slider from 0 to 10 with its thumb at 4, pointing down at a row of eleven tick marks](Images/Slider.png){:width="212" height="44"}
+
 ```tb check_build check_run arch=win32,win64
 Slider1.Min = 0
 Slider1.Max = 200
@@ -106,6 +108,8 @@ Debug.Print Slider1.GetNumTicks
 ## A selected range
 
 With [**SelectRange**](#selectrange) set to **True** the slider can mark a part of the range, drawn in a wider channel with its two ends marked. [**SelStart**](#selstart) is the first value of the part and [**SelLength**](#sellength) the number of values it spans. The part is only a mark: it does not limit the thumb.
+
+![A slider from 0 to 10 with SelectRange set to True, SelStart to 3 and SelLength to 4: the channel from 3 to 7 is wider and filled, a small mark under the ticks at 3 and at 7, and the thumb at 5](Images/Slider_SelectRange.png){:width="361" height="107"}
 
 <!-- test: SliderTests.SelectRange_True_StartsAtTheValueWithNoLength, SliderTests.SelStart_OutsideTheRange_Raises380, SliderTests.Max_BelowTheSelection_CutsIt, SliderTests.Min_AboveTheSelection_MovesItsStart, SliderTests.ClearSel_LeavesNoLength -->
 Switching **SelectRange** on makes the part start at the thumb, with a length of 0. A **SelStart** outside the range, and a **SelLength** that is negative or reaches past **Max**, raise run-time error 380. A **Max** below the end of the part shortens it, and a **Min** above its start moves the start to **Min** and makes the length 0. [**ClearSel**](#clearsel) removes the part, leaving **SelLength** at 0.
@@ -443,6 +447,8 @@ The parts of a slider that [**ItemDraw**](#itemdraw) draws.
 {: #sldtickstyleconstants }
 
 The values of [**TickStyle**](#tickstyle).
+
+![Four sliders from 0 to 10 at 4: in SldTickStyleBottomRight the tick marks are below and the thumb points down, in SldTickStyleTopLeft they are above and the thumb points up, in SldTickStyleBoth they are on both sides and the thumb is a plain box, in SldTickStyleNone there are none](Images/SldTickStyleConstants.png){:width="821" height="119"}
 
 | Member | Value | Description |
 |---|---|---|

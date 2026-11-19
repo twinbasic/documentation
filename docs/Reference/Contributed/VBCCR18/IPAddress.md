@@ -13,6 +13,8 @@ symbols:
 
 An **IPAddress** is a box for an IPv4 address: four fields that each take a number from 0 to 255, with a dot between two fields. A program reads the address as text or as one number, and can limit the numbers each field takes.
 
+![An IP address box that shows 192.168.0.1, its four numbers separated by dots](Images/IPAddress.png){:width="152" height="36"}
+
 ```tb check_build check_run arch=win32,win64
 IPAddress1.Text = "192.168.0.1"
 Debug.Print IPAddress1.Text
@@ -85,6 +87,8 @@ A field takes digits only, up to three. After the third digit the focus moves to
 
 [**AutoSelect**](#autoselect) is the field that gets the focus, with its number selected, when the control gets it. [**SelectedItem**](#selecteditem) is the number of the field that has the focus, or had it last. The event [**SelChange**](#selchange) is raised when the focus moves to another field. [**Locked**](#locked) makes the fields read-only.
 
+![Three IP address boxes: with an empty Text the four fields are empty between their dots, with Locked set to True and BorderStyle to CCBorderStyleSingle 10.0.1.2 is in a thin dark border, and with Enabled set to False 192.168.0.1 is gray](Images/IPAddress_States.png){:width="681" height="119"}
+
 ## Mouse events
 
 [**MouseDown**](#mousedown-mousemove-mouseup), **MouseMove** and **MouseUp**, and [**Click**](Common#click) and [**DblClick**](Common#dblclick), are raised for the four fields and for the border and the dots around them. Where the position is given, it is measured from the top left corner of the control.
@@ -136,8 +140,9 @@ Another *Index* raises run-time error 35600, *Index out of bounds*.
 Whether the user is kept from changing the numbers. **Boolean**. Default: **False**. With **True** the four fields are read-only, and a program can still change the address.
 
 <!-- test: IPAddressTests.Locked_MakesTheFieldsReadOnly -->
-The fields take the read-only style of the text box of Windows.
+Each field is given the read-only style of the edit control of Windows, `ES_READONLY`.
 <!-- /test -->
+The fields keep their background colour: a locked control does not look different.
 
 ### Max
 {: .no_toc }

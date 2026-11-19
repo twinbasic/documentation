@@ -16,6 +16,8 @@ symbols:
 
 An **MCIWnd** is a player for sound files, video files and the other media devices of Windows: a window with a play bar and a menu, which shows the picture of a video, and which the user or the program controls.
 
+![An MCIWnd with a sound file open: its play bar has the play button, the menu button and a track with its thumb at the start](Images/MCIWnd.png){:width="252" height="31"}
+
 ```tb hidden
 ' Writes a WAV file of a tenth of a second of silence: 8-bit mono samples at 8000 Hz, each 128.
 Public Sub WriteSilentWav(ByVal Path As String)
@@ -161,6 +163,8 @@ Kill Path
 ## What the user sees
 
 [**Playbar**](#playbar) shows the play bar, [**Menu**](#menu) its menu button, and [**Record**](#record) its record button. [**Caption**](#caption) gives the control a title bar that shows the file's name, the position or the mode. For a video, [**Zoom**](#zoom) is the size of the picture as a percentage of its own size, and [**AutoSizeMovie**](#autosizemovie) makes the picture follow the control's size. [**ErrorDlg**](#errordlg) shows the MCI errors to the user in a message box.
+
+![Three MCIWnd controls with a sound file open: with Record set to True the play bar has a red record button after the play button, with Caption set to MciCaptionNamePosMode a title bar above it shows silence.wav (0 - stopped), and with Menu set to False it has no menu button](Images/MCIWnd_Look.png){:width="861" height="119"}
 
 Properties
 ----------

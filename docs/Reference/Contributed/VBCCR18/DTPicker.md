@@ -13,6 +13,8 @@ symbols:
 
 A **DTPicker** shows one date, one time, or both, in a box of fields. The user changes a field with the keyboard or the mouse and picks a date from a drop-down calendar, or from a pair of arrow buttons that stand in place of the calendar.
 
+![A date picker that shows 2026-03-15 in the custom format yyyy-MM-dd, with the button of its calendar at the right](Images/DTPicker.png){:width="172" height="36"}
+
 ```tb check_build check_run arch=win32,win64
 DTPicker1.Value = DateSerial(2026, 3, 15) + TimeSerial(10, 20, 30)
 Debug.Print Format$(DTPicker1.Value, "yyyy-mm-dd hh:nn:ss")
@@ -76,6 +78,8 @@ A new **MinDate** after the current date, or a new **MaxDate** before it, moves 
 
 With [**CheckBox**](#checkbox) set to **True** the control shows a check box at the left of the date. While the box is not checked the control has no date: **Value** is **Null** and [**Selected**](#selected) is **False**. The user checks the box with the mouse or the space bar. A program unselects the date by assigning **Null** to **Value**, or **False** to **Selected**, and selects it again with **Selected** set to **True**, which brings back the date the control held before.
 
+![Two date pickers with CheckBox set to True: with the Value 2026-03-15 the box is checked and the date is black, with the Value Null the box is empty and the date is gray](Images/DTPicker_CheckBox.png){:width="421" height="99"}
+
 <!-- test: DTPickerTests.Value_NullWithCheckBox_UnselectsTheDate, DTPickerTests.Value_NullWithoutCheckBox_Raises35787, DTPickerTests.CheckBox_Off_SelectsTheLastDateAgain -->
 Assigning **Null** to a control without a check box raises run-time error 35787. Setting **CheckBox** to **False** while no date is selected selects the date held before.
 
@@ -95,6 +99,8 @@ Debug.Print DTPicker1.Selected, Format$(DTPicker1.Value, "yyyy-mm-dd")
 ## Custom formats
 
 With [**Format**](#format) set to **DtpFormatCustom**, [**CustomFormat**](#customformat) says what the box shows. Each of these codes shows a field, and the user changes the field with the arrow keys.
+
+![Two date pickers with custom formats: "yyyy-MM-dd HH:mm" shows 2026-03-15 10:30 with the button of the calendar, and "HH:mm" with UpDown set to True shows 10:30 with a pair of arrow buttons](Images/DTPicker_Formats.png){:width="461" height="99"}
 
 | Code | Shows |
 |---|---|
@@ -169,6 +175,8 @@ End Sub
 ## The calendar
 
 The calendar drops down from a button at the right of the box, or when the user presses Alt+Down. [**DropDown**](#dropdown) is raised when it is about to open and [**CloseUp**](#closeup) when it has closed. While it is open, [**DroppedDown**](#droppeddown) is **True** and [**hWndCalendar**](#hwndcalendar) is its handle. With [**UpDown**](#updown) set to **True** the control has a pair of arrow buttons in place of the calendar, and the time format has none either way.
+
+![A date picker with DroppedDown set to True: under the box that shows 2026-03-15 its calendar shows March 2026, with the 15th selected and the last days of February and the first of April in gray](Images/DTPicker_DroppedDown.png){:width="241" height="231"}
 
 The calendar has its own font, [**CalendarFont**](#calendarfont), its own colors, and the options of the **Calendar** properties: [**CalendarShowToday**](#calendarshowtoday) and [**CalendarShowTodayCircle**](#calendarshowtodaycircle) for the day of the program's run, [**CalendarShowWeekNumbers**](#calendarshowweeknumbers), [**CalendarShowTrailingDates**](#calendarshowtrailingdates), [**CalendarUseShortestDayNames**](#calendaruseshortestdaynames) and [**StartOfWeek**](#startofweek).
 

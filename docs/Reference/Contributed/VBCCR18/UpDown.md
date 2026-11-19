@@ -14,6 +14,8 @@ symbols:
 
 An **UpDown** is a pair of arrow buttons that raise and lower a number in a range. It draws no number of its own: the program shows the number in another control, or joins the **UpDown** to a control that does, its buddy.
 
+![A vertical up-down control, a pair of arrow buttons one above the other, beside a text box that shows 5](Images/UpDown.png){:width="90" height="36"}
+
 ```tb check_build check_run arch=win32,win64
 UpDown1.Min = 0
 UpDown1.Max = 10
@@ -205,6 +207,8 @@ Syntax: *object*\_**UpClick**( )
 {: #udnorientationconstants }
 
 The values of [**Orientation**](#orientation).
+
+![Two up-down controls: in UdnOrientationVertical the arrows point up and down, one above the other, in UdnOrientationHorizontal they point left and right, side by side](Images/UdnOrientationConstants.png){:width="421" height="115"}
 
 | Member | Value | Description |
 |---|---|---|

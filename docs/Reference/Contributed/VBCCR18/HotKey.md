@@ -13,6 +13,8 @@ symbols:
 
 A **HotKey** is a box in which the user presses a key combination, such as Ctrl+Alt+F5, and which then shows it. A program reads the combination, and can ask Windows to activate a window when the user presses it.
 
+![A hot key box that shows Ctrl + Alt + F5](Images/HotKey.png){:width="172" height="36"}
+
 ```tb check_build check_run arch=win32,win64
 HotKey1.Value(vbCtrlMask Or vbAltMask) = vbKeyF5        ' Ctrl+Alt+F5
 Dim Modifiers As Integer
@@ -52,6 +54,8 @@ Debug.Print Hex$(HotKey1.RawValue)
 <!-- /test -->
 
 [**Text**](#text) is the combination as words, such as Ctrl + Alt + F5. Windows makes the names of the keys and the separator, so they depend on the keyboard layout and the language of Windows.
+
+![Three hot key boxes: with no key it shows None, with Enabled set to False Ctrl + Alt + F5 is gray, and with BorderStyle set to CCBorderStyleSingle and a pale yellow BackColor Ctrl + Shift + S is on yellow in a thin dark border](Images/HotKey_States.png){:width="681" height="119"}
 
 ## Rules for the user's input
 

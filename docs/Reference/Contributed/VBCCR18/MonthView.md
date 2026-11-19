@@ -14,6 +14,8 @@ symbols:
 
 A **MonthView** is a calendar that stays on the form. It shows one month or several, and the user selects a date, or a range of dates, by clicking it.
 
+![A month view of March 2026 with arrows at both sides of its title, the 15th selected, and the last days of February and the first of April in gray](Images/MonthView.png){:width="215" height="157"}
+
 ```tb check_build check_run arch=win32,win64
 MonthView1.Value = DateSerial(2026, 3, 15) + TimeSerial(10, 20, 30)
 Debug.Print Format$(MonthView1.Value, "yyyy-mm-dd")
@@ -48,6 +50,8 @@ A **Month** outside 1 to 12, a **Day** outside the month and a **Week** outside 
 
 With [**MultiSelect**](#multiselect) set to **True** the user selects several days in a row, by dragging or with the Shift key, up to [**MaxSelCount**](#maxselcount) days. [**SelStart**](#selstart) and [**SelEnd**](#selend) are the first and the last of them, and **Value** is the first. [**SetSelRange**](#setselrange) selects a range from the program.
 
+![A month view with MultiSelect set to True, in which SetSelRange selected the days from 10 to 14 March 2026](Images/MonthView_MultiSelect.png){:width="301" height="219"}
+
 <!-- test: MonthViewTests.SetSelRange_MultiSelect_SelectsTheRange, MonthViewTests.SetSelRange_LongerThanMaxSelCount_Raises35770, MonthViewTests.SetSelRange_OutsideTheRange_Raises35770, MonthViewTests.SetSelRange_WithoutMultiSelect_SelectsTheFirstDate -->
 A range of more than **MaxSelCount** days, or one that has a date outside **MinDate** and **MaxDate**, raises run-time error 35770, *An invalid date range was specified*. Without **MultiSelect**, **SetSelRange** selects its first date only, and **SelStart** and **SelEnd** are both **Value**.
 
@@ -71,6 +75,8 @@ Setting **MultiSelect**, **DayState** or **BorderStyle** makes the control draw 
 ## Several months
 
 [**MonthColumns**](#monthcolumns) and [**MonthRows**](#monthrows) say how many months the control shows across and down. The control sets its own size to hold them: an assignment to **Width** or **Height** has no lasting effect, and a change of the number of months, of the font, of [**ShowToday**](#showtoday) or of [**ShowWeekNumbers**](#showweeknumbers) changes the size. [**ComputeControlSize**](#computecontrolsize) tells what size a number of months needs, and [**CalendarCount**](#calendarcount) how many months are shown.
+
+![A month view with MonthRows set to 2, ShowWeekNumbers set to True and StartOfWeek set to 1: March 2026 above April 2026, each week with its number at the left, and Monday the first day of each week](Images/MonthView_Months.png){:width="321" height="383"}
 
 <!-- test: MonthViewTests.MonthColumns_Changed_ResizesTheControl, MonthViewTests.Width_Assigned_HasNoLastingEffect, MonthViewTests.MonthColumns_OutOfRange_Raises35776, MonthViewTests.MonthColumnsTimesRows_OverTwelve_Raises35777, MonthViewTests.MonthColumns_Zero_Raises380 -->
 Each of the two is from 1 to 12, and together they make at most 12 months. A value above 12 raises run-time error 35776, a product above 12 raises 35777, and 0 raises 380. [**ComputeControlSize**](#computecontrolsize) raises the same two errors.
@@ -99,6 +105,8 @@ Debug.Print MonthView1.CalendarCount       ' three months across
 ## Views
 
 With visual styles, the user clicks the title of the calendar to zoom out, from the days of a month to the months of a year, the years of a decade and the decades of a century. [**View**](#view) reads and sets what is shown, and [**ViewChange**](#viewchange) is raised when it changes. A program without visual styles has the month view only.
+
+![Two month views on 15 March 2026: in MvwViewYear the months of 2026, Mar selected, and in MvwViewDecade the years 2020-2029, 2026 selected, with 2019 and 2030 in gray](Images/MonthView_Views.png){:width="505" height="219"}
 
 ## Bold days
 
