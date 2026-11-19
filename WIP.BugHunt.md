@@ -86,6 +86,20 @@ narrowed to a UserControl of our own.
   form loaded or shown, win32 and win64. The OptionButtonW page has a WARNING and a probe
   sample (`optionbuttonw-group`). Probably one defect with the 438 above: `PropertyChanged`
   failing inside.
+- **A process stops returning after about ten thousand loads of a VBCCR18 control.** A form with
+  one control (ToolBar, LabelW), made with `New`, loaded, unloaded and set to Nothing in a loop
+  inside one `[TestCase]`, runs at a steady speed (about 3 to 5 ms a load) and does not return
+  from a load between the 9,000th and the 9,500th, win32; the test project's HostForm, with one
+  of every control, stops between its 270th and 280th. The same loop over a form with a VB
+  Label or CommandButton runs 30,000 times. GDI and USER handle counts do not grow in the
+  ToolBar and LabelW loops. Not narrowed: a UserControl of our own (twinBASIC's or the
+  package's), win64, a built exe, where the process waits. `package_tests` avoids it with
+  `CASES_PER_IDE` (`lib/package-tests.mjs`).
+- **Some VBCCR18 controls leave handles behind at each load and unload** of their form (win32,
+  `GetGuiResources`, 300 loads): Animation, ImageList and SysInfo 4 GDI and 1 USER a load;
+  FrameW and WindowedLabel 2 GDI; LinkLabel 1 GDI. The others leave none. They do not cause the
+  stop above (2,100 such loads change nothing in the time of a HostForm load). Not checked in
+  VB6.
 - **`Visible` reads False** for a control on a form that is loaded and not shown
   (`Extender.Visible`).
 - **`CallByName Control, "FontQuality", VbLet, 7`** gives -2147352567 where the property raises

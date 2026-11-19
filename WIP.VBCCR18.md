@@ -65,6 +65,13 @@ without a page in bold, with no link; link it when its page exists.
   gets a form from `Rig.NewForm()`, and looks at events through a class of its own that holds
   the control `WithEvents` and writes to `Rig.Ev` (`ProgressBarSink`). No case edits
   `HostForm.twin`.
+- **`package_tests` gives this package a new IDE every 120 cases** (`CASES_PER_IDE` in
+  `lib/package-tests.mjs`). A process that has loaded about ten thousand of the package's
+  controls does not return from the next load (WIP.BugHunt.md, *UserControl*), and each case
+  loads a HostForm, which has one of every control: the limit is near the 275th case. Before
+  the setting, a run of 276 cases had one of its last cases (WindowedLabelTests, the last
+  fixture) "not return" on win32 in some runs, a different one each time. A case that loads
+  HostForm many times itself counts against the same limit.
 - **A case does not read `Err.Number` after an assignment that succeeds**: twinBASIC leaves 438
   there (WIP.BugHunt.md, *UserControl*). It checks the value the property then has. A case
   assigns directly, not through `CallByName`, which reports another error number.
