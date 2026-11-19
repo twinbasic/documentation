@@ -1,0 +1,532 @@
+' StatusBarTests: the StatusBar control, its SbrPanels collection and its SbrPanel items. A click
+' of the user is a mouse message sent to the control's window.
+[TestFixture]
+Module StatusBarTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+    Private Const WM_LBUTTONDBLCLK As Long = &H203
+    Private Const WM_RBUTTONDOWN As Long = &H204
+    Private Const WM_RBUTTONUP As Long = &H205
+    Private Const SB_GETPARTS As Long = &H406
+
+    ' The keys of a bar's panels in order, "-" for a panel without one.
+    Private Function Keys(ByVal Bar As VBCCR18.StatusBar) As String
+        Dim p As SbrPanel
+        For Each p In Bar.Panels
+            Keys = Keys & IIf(Len(Keys) > 0, ",", "") & IIf(Len(p.Key) > 0, p.Key, "-")
+        Next
+    End Function
+
+    ' A mouse message of the left button at a point of the bar given in pixels.
+    Private Sub Mouse(ByVal Bar As VBCCR18.StatusBar, ByVal Message As Long, ByVal X As Long, ByVal Y As Long)
+        SendMessageW Bar.hWnd, Message, IIf(Message = WM_LBUTTONUP, 0, 1), X + Y * 65536
+    End Sub
+
+    ' The number of pixels of a width given in the form's twips.
+    Private Function Pixels(ByVal f As HostForm, ByVal Twips As Single) As Long
+        Pixels = CLng(f.ScaleX(Twips, vbTwips, vbPixels))
+    End Function
+
+    [TestCase]
+    Public Sub Panels_NewBar_HasOneEmptyPanel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 1, f.StatusBar1.Panels.Count, "Panels.Count of a new status bar"
+        Expect.AreEqual "", f.StatusBar1.Panels(1).Text, "Text of its panel"
+        Expect.AreEqual "", f.StatusBar1.Panels(1).Key, "Key of its panel"
+        Expect.AreEqual SbrPanelBevelInset, f.StatusBar1.Panels(1).Bevel, "Bevel of its panel"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_AtAnIndex_MovesTheLaterPanelsUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.StatusBar1.Panels
+            .Add , "a", "A"
+            .Add , "b", "B"
+            .Add 1, "first", "F"
+            Expect.AreEqual "first,-,a,b", Keys(f.StatusBar1), "the keys after Add 1"
+            Expect.AreEqual 3, .Item("a").Index, "Index of the panel a after Add 1"
+            Expect.AreEqual 4, .Count, "Count after three Add calls"
+            Expect.AreEqual "F", .Item(1).Text, "Text of the panel at 1"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.StatusBar1.Panels.Add 9
+        Expect.AreEqual 35600, Err.Number, "Add 9 in a list of one panel"
+        Err.Clear
+        f.StatusBar1.Panels.Add -1
+        Expect.AreEqual 35600, Err.Number, "Add -1"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.StatusBar1.Panels.Count, "Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457AndAddsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Panels.Add , "pos", "Ln 1"
+        On Error Resume Next
+        Err.Clear
+        f.StatusBar1.Panels.Add , "pos", "again"
+        Expect.AreEqual 457, Err.Number, "Add with the key of another panel"
+        On Error GoTo 0
+        Expect.AreEqual 2, f.StatusBar1.Panels.Count, "Count after the refused call"
+        Expect.AreEqual 2, CLng(SendMessageW(f.StatusBar1.hWnd, SB_GETPARTS, 0, 0)), "the parts of the window after the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_MoreThan255Panels_Raises35616()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim i As Long
+        For i = 2 To 255
+            f.StatusBar1.Panels.Add
+        Next
+        Expect.AreEqual 255, f.StatusBar1.Panels.Count, "Count after 254 Add calls"
+        On Error Resume Next
+        Err.Clear
+        f.StatusBar1.Panels.Add
+        Expect.AreEqual 35616, Err.Number, "the 256th panel"
+        On Error GoTo 0
+        Expect.AreEqual 255, f.StatusBar1.Panels.Count, "Count after the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_InvalidStyle_Raises380AndAddsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.StatusBar1.Panels.Add , "q", "text", 99
+        Expect.AreEqual 380, Err.Number, "Add with Style 99"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.StatusBar1.Panels.Count, "Count after the refused call"
+        Expect.IsFalse f.StatusBar1.Panels.Exists("q"), "Exists of the key of the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumberOutOfRange_Raises9AndUnknownKeyRaises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        On Error Resume Next
+        Err.Clear
+        Set p = f.StatusBar1.Panels(9)
+        Expect.AreEqual 9, Err.Number, "Panels(9)"
+        Err.Clear
+        Set p = f.StatusBar1.Panels("zzz")
+        Expect.AreEqual 5, Err.Number, "Panels(""zzz"")"
+        On Error GoTo 0
+        Expect.IsFalse f.StatusBar1.Panels.Exists(9), "Exists(9)"
+        Expect.IsFalse f.StatusBar1.Panels.Exists("zzz"), "Exists(""zzz"")"
+        Expect.IsTrue f.StatusBar1.Panels.Exists(1), "Exists(1)"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_RenumbersTheLaterPanels()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Panels.Add , "a", "A"
+        f.StatusBar1.Panels.Add , "b", "B"
+        f.StatusBar1.Panels.Remove 1
+        Expect.AreEqual "a,b", Keys(f.StatusBar1), "the keys after Remove 1"
+        Expect.AreEqual 2, f.StatusBar1.Panels("b").Index, "Index of the panel b"
+        f.StatusBar1.Panels.Remove "a"
+        Expect.AreEqual 1, f.StatusBar1.Panels("b").Index, "Index of the panel b after Remove ""a"""
+        Expect.AreEqual 1, f.StatusBar1.Panels.Count, "Count"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_RemovesEveryPanel()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Panels.Add , "a", "A"
+        f.StatusBar1.Panels.Clear
+        Expect.AreEqual 0, f.StatusBar1.Panels.Count, "Count after Clear"
+        f.StatusBar1.Panels.Add
+        Expect.AreEqual 1, f.StatusBar1.Panels.Count, "Count after Add"
+        Expect.AreEqual 1, f.StatusBar1.Panels(1).Index, "Index of the new panel"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Assigned_RenamesTheTakesAwayAndRefusesAKeyInUse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Panels.Add , "a", "A"
+        f.StatusBar1.Panels.Add , "b", "B"
+        f.StatusBar1.Panels("a").Key = "c"
+        Expect.IsFalse f.StatusBar1.Panels.Exists("a"), "Exists(""a"") after Key = ""c"""
+        Expect.AreEqual 2, f.StatusBar1.Panels("c").Index, "Index of the panel c"
+        f.StatusBar1.Panels("c").Key = ""
+        Expect.AreEqual "-,-,b", Keys(f.StatusBar1), "the keys after Key = """""
+        On Error Resume Next
+        Err.Clear
+        f.StatusBar1.Panels(2).Key = "b"
+        Expect.AreEqual 457, Err.Number, "Key = ""b"" on a panel while another has it"
+        On Error GoTo 0
+        Expect.AreEqual "", f.StatusBar1.Panels(2).Key, "Key of the panel after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Panel_ValuesOutsideTheEnumerations_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        Set p = f.StatusBar1.Panels(1)
+        On Error Resume Next
+        Err.Clear: p.Style = 99
+        Expect.AreEqual 380, Err.Number, "Style = 99"
+        Err.Clear: p.Bevel = 7
+        Expect.AreEqual 380, Err.Number, "Bevel = 7"
+        Err.Clear: p.AutoSize = 7
+        Expect.AreEqual 380, Err.Number, "AutoSize = 7"
+        Err.Clear: p.Alignment = 7
+        Expect.AreEqual 380, Err.Number, "Alignment = 7"
+        Err.Clear: p.DTFormat = 7
+        Expect.AreEqual 380, Err.Number, "DTFormat = 7"
+        Err.Clear: f.StatusBar1.Style = 5
+        Expect.AreEqual 380, Err.Number, "StatusBar Style = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Panel_NegativeSizes_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        Set p = f.StatusBar1.Panels(1)
+        On Error Resume Next
+        Err.Clear: p.TextIndent = -1
+        Expect.AreEqual 380, Err.Number, "TextIndent = -1"
+        Err.Clear: p.MinWidth = -1
+        Expect.AreEqual 380, Err.Number, "MinWidth = -1"
+        Err.Clear: p.PictureIndent = -1
+        Expect.AreEqual 380, Err.Number, "PictureIndent = -1"
+        Err.Clear: p.Width = -5
+        Expect.AreEqual 380, Err.Number, "Width = -5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Left_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.StatusBar1.Panels(1).Left = 5
+        Expect.AreEqual 383, Err.Number, "Left = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Width_AutoSizeNone_IsTheAssignedWidth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        Set p = f.StatusBar1.Panels(1)
+        Dim before As Single
+        before = p.Width
+        Expect.IsTrue Abs(before - p.MinWidth) < 1, "Width of a new panel: expected MinWidth " & p.MinWidth & ", got " & before
+        p.Width = 3000
+        Expect.IsTrue Abs(p.Width - 3000) < 30, "Width after Width = 3000, got " & p.Width
+        Expect.IsTrue Abs(p.MinWidth - before) < 1, "MinWidth after Width = 3000, got " & p.MinWidth
+        p.Width = -1
+        Expect.IsTrue Abs(p.Width - p.MinWidth) < 1, "Width after Width = -1, got " & p.Width
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Width_AutoSizeContent_SetsTheMinimumWidth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        Set p = f.StatusBar1.Panels(1)
+        p.AutoSize = SbrPanelAutoSizeContent
+        p.Width = 3000
+        Expect.IsTrue Abs(p.MinWidth - 3000) < 30, "MinWidth after Width = 3000 with AutoSize content, got " & p.MinWidth
+        p.Text = String$(200, "W")
+        Expect.IsTrue p.Width > 3000, "Width of a panel of 200 letters with AutoSize content, got " & p.Width
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Visible_False_MakesThePanelNoWidth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Panels.Add , "b", "B"
+        f.StatusBar1.Panels(1).Visible = False
+        Expect.AreEqual 0, CLng(f.StatusBar1.Panels(1).Width), "Width of a panel that is not visible"
+        Expect.IsFalse f.StatusBar1.Panels(1).Visible, "Visible"
+        Expect.AreEqual 2, f.StatusBar1.Panels.Count, "Count"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_KeyStyle_KeepsTheAssignedText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        Set p = f.StatusBar1.Panels(1)
+        p.Text = "abc"
+        p.Style = SbrPanelStyleCaps
+        Expect.AreEqual "abc", p.Text, "Text after Style = SbrPanelStyleCaps"
+        p.Style = SbrPanelStyleDate
+        p.DTFormat = SbrPanelDTFormatCustom
+        p.Text = "yyyy"
+        Expect.AreEqual "yyyy", p.Text, "Text of a date panel with a custom format"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_KeyStyle_FollowsTheKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim p As SbrPanel
+        Set p = f.StatusBar1.Panels(1)
+        p.Style = SbrPanelStyleCaps
+        Dim on_ As Boolean
+        on_ = CBool(GetKeyState(&H14) And 1)
+        p.Enabled = Not on_
+        Expect.AreEqual on_, p.Enabled, "Enabled of a caps lock panel after Enabled = Not the key's state"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tag_NewPanel_IsAnEmptyString()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim v As Variant
+        v = f.StatusBar1.Panels(1).Tag
+        Expect.AreEqual vbString, VarType(v), "VarType of the Tag of a new panel"
+        Expect.AreEqual "", CStr(v), "the Tag of a new panel"
+        f.StatusBar1.Panels(1).Tag = 5
+        Expect.AreEqual 5, CLng(f.StatusBar1.Panels(1).Tag), "the Tag after Tag = 5"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SimpleText_KeptWhileTheStyleIsNormal()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Style = SbrStyleSimple
+        f.StatusBar1.SimpleText = "hi"
+        Expect.AreEqual "hi", f.StatusBar1.SimpleText, "SimpleText with the simple style"
+        f.StatusBar1.Style = SbrStyleNormal
+        Expect.AreEqual "hi", f.StatusBar1.SimpleText, "SimpleText with the normal style"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StyleChange_RaisedForEachChangeOfStyle()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New StatusBarSink
+        Set sink.Bar = f.StatusBar1
+        Rig.ClearLog
+        f.StatusBar1.Style = SbrStyleSimple
+        f.StatusBar1.Style = SbrStyleNormal
+        Expect.AreEqual "StyleChange | StyleChange", Rig.Events(), "the events of two changes of Style"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_ByTheUser_RaisesPanelClickBetweenMouseDownAndMouseUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New StatusBarSink
+        Set sink.Bar = f.StatusBar1
+        f.StatusBar1.Panels.Add , , "B"
+        Rig.ClearLog
+        Mouse f.StatusBar1, WM_LBUTTONDOWN, 10, 5
+        Mouse f.StatusBar1, WM_LBUTTONUP, 10, 5
+        Expect.AreEqual "MouseDown 1 | PanelClick 1 1 | MouseUp 1 | Click", Rig.Events(), "the events of a click on the first panel"
+        Rig.ClearLog
+        SendMessageW f.StatusBar1.hWnd, WM_RBUTTONDOWN, 2, 10 + 5 * 65536
+        SendMessageW f.StatusBar1.hWnd, WM_RBUTTONUP, 0, 10 + 5 * 65536
+        Expect.AreEqual "MouseDown 2 | PanelClick 1 2 | MouseUp 2 | Click", Rig.Events(), "the events of a click of the right button on the first panel"
+        Rig.ClearLog
+        Mouse f.StatusBar1, WM_LBUTTONDOWN, Pixels(f, f.StatusBar1.Panels(2).Left) + 10, 5
+        Mouse f.StatusBar1, WM_LBUTTONUP, Pixels(f, f.StatusBar1.Panels(2).Left) + 10, 5
+        Expect.AreEqual "MouseDown 1 | PanelClick 2 1 | MouseUp 1 | Click", Rig.Events(), "the events of a click on the second panel"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DblClick_ByTheUser_RaisesPanelDblClickThenDblClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New StatusBarSink
+        Set sink.Bar = f.StatusBar1
+        Rig.ClearLog
+        Mouse f.StatusBar1, WM_LBUTTONDBLCLK, 10, 5
+        Expect.AreEqual "PanelDblClick 1 1 | DblClick", Rig.Events(), "the events of a double click on the first panel"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseTrack_True_RaisesThePanelEnterAndLeaveEvents()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New StatusBarSink
+        Set sink.Bar = f.StatusBar1
+        f.StatusBar1.Panels.Add , , "B"
+        f.StatusBar1.MouseTrack = True
+        Rig.ClearLog
+        Mouse f.StatusBar1, WM_MOUSEMOVE, 10, 5
+        Mouse f.StatusBar1, WM_MOUSEMOVE, Pixels(f, f.StatusBar1.Panels(2).Left) + 10, 5
+        Expect.AreEqual "MouseEnter | PanelMouseEnter 1 | PanelMouseLeave 1 | PanelMouseEnter 2", Rig.Events(), "the events of moving over the first and the second panel"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTest_ReturnsThePanelAtThePoint()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.StatusBar1.Panels.Add , , "B"
+        Expect.AreEqual 1, f.StatusBar1.HitTest(100, 50).Index, "the panel at 100, 50"
+        Expect.AreEqual 2, f.StatusBar1.HitTest(f.StatusBar1.Panels(2).Left + 100, 50).Index, "the panel at its second panel's left + 100"
+        Expect.IsTrue f.StatusBar1.HitTest(99999, 50) Is Nothing, "the panel at 99999, 50"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTips_True_MakesTheToolTipWindow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 0, CLng(f.StatusBar1.hWndToolTip), "hWndToolTip while ShowTips is False"
+        f.StatusBar1.ShowTips = True
+        Expect.IsTrue f.StatusBar1.hWndToolTip <> 0, "hWndToolTip while ShowTips is True"
+        f.StatusBar1.ShowTips = False
+        Expect.AreEqual 0, CLng(f.StatusBar1.hWndToolTip), "hWndToolTip after ShowTips is False again"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a StatusBar, written to Rig.Log.
+Class StatusBarSink
+
+    Public WithEvents Bar As VBCCR18.StatusBar
+
+    Private Sub Bar_Click() Handles Bar.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Bar_DblClick() Handles Bar.DblClick
+        Rig.Ev "DblClick"
+    End Sub
+
+    Private Sub Bar_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseDown
+        Rig.Ev "MouseDown " & Button
+    End Sub
+
+    Private Sub Bar_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseUp
+        Rig.Ev "MouseUp " & Button
+    End Sub
+
+    Private Sub Bar_MouseEnter() Handles Bar.MouseEnter
+        Rig.Ev "MouseEnter"
+    End Sub
+
+    Private Sub Bar_PanelClick(ByVal Panel As SbrPanel, ByVal Button As Integer) Handles Bar.PanelClick
+        Rig.Ev "PanelClick " & Panel.Index & " " & Button
+    End Sub
+
+    Private Sub Bar_PanelDblClick(ByVal Panel As SbrPanel, ByVal Button As Integer) Handles Bar.PanelDblClick
+        Rig.Ev "PanelDblClick " & Panel.Index & " " & Button
+    End Sub
+
+    Private Sub Bar_PanelMouseEnter(ByVal Panel As SbrPanel) Handles Bar.PanelMouseEnter
+        Rig.Ev "PanelMouseEnter " & Panel.Index
+    End Sub
+
+    Private Sub Bar_PanelMouseLeave(ByVal Panel As SbrPanel) Handles Bar.PanelMouseLeave
+        Rig.Ev "PanelMouseLeave " & Panel.Index
+    End Sub
+
+    Private Sub Bar_StyleChange() Handles Bar.StyleChange
+        Rig.Ev "StyleChange"
+    End Sub
+
+End Class

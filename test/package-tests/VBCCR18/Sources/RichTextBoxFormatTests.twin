@@ -1,0 +1,273 @@
+' RichTextBoxFormatTests: the format of the characters of the RichTextBox, and of its paragraphs.
+[TestFixture]
+Module RichTextBoxFormatTests
+
+    [TestCase]
+    Public Sub SelBold_Assigned_MakesTheSelectionBold()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "Hello world"
+            .SelStart = 6: .SelLength = 5
+            .SelBold = True
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelBold), "SelBold of ""world"" after SelBold = True"
+            .SelStart = 0: .SelLength = 5
+            Expect.AreEqual "False", RichTextBoxRig.Show(.SelBold), "SelBold of ""Hello"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelBold_MixedSelection_IsNull()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "bold and plain"
+            .SelStart = 0: .SelLength = 4
+            .SelBold = True
+            .SelLength = 14
+            Expect.AreEqual "Null", RichTextBoxRig.Show(.SelBold), "SelBold of a selection that is partly bold"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelBold_Null_MakesTheSelectionBold()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "bold and plain"
+            .SelStart = 0: .SelLength = 4
+            .SelBold = True
+            .SelLength = 14
+            .SelBold = Null
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelBold), "SelBold after SelBold = Null"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelBold_String_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "abc"
+        f.RichTextBox1.SelStart = 0: f.RichTextBox1.SelLength = 3
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.SelBold = "yes"
+        Expect.AreEqual 13, Err.Number, "SelBold = ""yes"""
+        Err.Clear
+        f.RichTextBox1.SelColor = "red"
+        Expect.AreEqual 13, Err.Number, "SelColor = ""red"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelFontSize_Assigned_ReadsBack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "Title and text"
+            .SelStart = 0: .SelLength = 5
+            .SelFontSize = 14
+            Expect.AreEqual "14", RichTextBoxRig.Show(.SelFontSize), "SelFontSize after SelFontSize = 14"
+            .SelLength = 14
+            Expect.AreEqual "Null", RichTextBoxRig.Show(.SelFontSize), "SelFontSize of text in two sizes"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelColor_Assigned_ReadsBackAsRGB()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "Title"
+            .SelStart = 0: .SelLength = 5
+            .SelColor = vbBlue
+            Expect.AreEqual CStr(vbBlue), RichTextBoxRig.Show(.SelColor), "SelColor after SelColor = vbBlue"
+            .SelBkColor = vbYellow
+            Expect.AreEqual CStr(vbYellow), RichTextBoxRig.Show(.SelBkColor), "SelBkColor after SelBkColor = vbYellow"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelVisible_False_KeepsTheTextInText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "plain text"
+            .SelStart = 0: .SelLength = 2
+            .SelVisible = False
+            Expect.AreEqual "False", RichTextBoxRig.Show(.SelVisible), "SelVisible after SelVisible = False"
+            Expect.AreEqual "plain text", .Text, "Text with two hidden characters"
+            Expect.AreEqual 10, .TextLength, "TextLength with two hidden characters"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+[TestFixture]
+Module RichTextBoxParagraphTests
+
+    ' "A title", a carriage return, and "A point".
+    Private Sub TwoParagraphs(ByVal Box As VBCCR18.RichTextBox)
+        Box.Text = "A title" & vbCr & "A point"
+    End Sub
+
+    [TestCase]
+    Public Sub SelAlignment_Assigned_ReadsBack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        f.RichTextBox1.SelStart = 0
+        Expect.AreEqual CStr(RtfSelAlignmentLeft), RichTextBoxRig.Show(f.RichTextBox1.SelAlignment), "SelAlignment of a new paragraph"
+        f.RichTextBox1.SelAlignment = RtfSelAlignmentCenter
+        Expect.AreEqual CStr(RtfSelAlignmentCenter), RichTextBoxRig.Show(f.RichTextBox1.SelAlignment), "SelAlignment after SelAlignment = RtfSelAlignmentCenter"
+        f.RichTextBox1.SelStart = 8
+        Expect.AreEqual CStr(RtfSelAlignmentLeft), RichTextBoxRig.Show(f.RichTextBox1.SelAlignment), "SelAlignment of the second paragraph"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelAlignment_MixedParagraphs_IsNull()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        f.RichTextBox1.SelStart = 0
+        f.RichTextBox1.SelAlignment = RtfSelAlignmentRight
+        f.RichTextBox1.SelLength = 15
+        Expect.AreEqual "Null", RichTextBoxRig.Show(f.RichTextBox1.SelAlignment), "SelAlignment of two paragraphs aligned differently"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelAlignment_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        f.RichTextBox1.SelStart = 0
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.SelAlignment = 7
+        Expect.AreEqual 380, Err.Number, "SelAlignment = 7"
+        Err.Clear
+        f.RichTextBox1.SelAlignment = "x"
+        Expect.AreEqual 13, Err.Number, "SelAlignment = ""x"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelTabs_Assigned_ReadBack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        With f.RichTextBox1
+            .SelStart = 8
+            Expect.AreEqual "0", RichTextBoxRig.Show(.SelTabCount), "SelTabCount of a new paragraph"
+            .SelTabCount = 2
+            .SelTabs(0) = 1440
+            .SelTabs(1) = 2880
+            Expect.AreEqual "2", RichTextBoxRig.Show(.SelTabCount), "SelTabCount after SelTabCount = 2"
+            Expect.IsTrue RichTextBoxRig.IsNear(.SelTabs(0), 1440, 30), "SelTabs(0) after SelTabs(0) = 1440: " & RichTextBoxRig.Show(.SelTabs(0))
+            Expect.IsTrue RichTextBoxRig.IsNear(.SelTabs(1), 2880, 30), "SelTabs(1) after SelTabs(1) = 2880: " & RichTextBoxRig.Show(.SelTabs(1))
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelTabCount_Above32_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        f.RichTextBox1.SelStart = 0
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.SelTabCount = 33
+        Expect.AreEqual 380, Err.Number, "SelTabCount = 33"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelTabs_PastSelTabCount_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        f.RichTextBox1.SelStart = 0
+        f.RichTextBox1.SelTabCount = 2
+        Dim v As Variant
+        On Error Resume Next
+        Err.Clear
+        v = f.RichTextBox1.SelTabs(5)
+        Expect.AreEqual 381, Err.Number, "SelTabs(5) read with SelTabCount 2"
+        Err.Clear
+        f.RichTextBox1.SelTabs(5) = 100
+        Expect.AreEqual 381, Err.Number, "SelTabs(5) = 100 with SelTabCount 2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelBullet_Assigned_SetsTheHangingIndentToBulletIndent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoParagraphs f.RichTextBox1
+        With f.RichTextBox1
+            .SelStart = 8
+            .BulletIndent = 300
+            .SelBullet = True
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelBullet), "SelBullet after SelBullet = True"
+            Expect.IsTrue RichTextBoxRig.IsNear(.SelHangingIndent, .BulletIndent, 1), "SelHangingIndent" & RichTextBoxRig.Show(.SelHangingIndent) & " against BulletIndent " & .BulletIndent
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BulletIndent_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.BulletIndent = -1
+        Expect.AreEqual 380, Err.Number, "BulletIndent = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.RichTextBox1.BulletIndent), "BulletIndent after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

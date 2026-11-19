@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 558 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 797 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -299,6 +299,106 @@ Module RunAll
         Err.Clear
         CommonTests.OLEDropMode_Automatic_Raises380
         Expect.EndCase "CommonTests.OLEDropMode_Automatic_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_NewControl_HasThreeBandsTheSecondOnANewRow
+        Expect.EndCase "CoolBarTests.Bands_NewControl_HasThreeBandsTheSecondOnANewRow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Add_AtAnIndex_MovesTheLaterBands
+        Expect.EndCase "CoolBarTests.Bands_Add_AtAnIndex_MovesTheLaterBands", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Add_NewRowOnTheFirstBand_Raises35801
+        Expect.EndCase "CoolBarTests.Bands_Add_NewRowOnTheFirstBand_Raises35801", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "CoolBarTests.Bands_Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Add_DuplicateKey_Raises457
+        Expect.EndCase "CoolBarTests.Bands_Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Add_DuplicateKey_AddsNothingToTheWindow
+        Expect.EndCase "CoolBarTests.Bands_Add_DuplicateKey_AddsNothingToTheWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Item_OutOfRangeOrUnknown_RaisesItsError
+        Expect.EndCase "CoolBarTests.Bands_Item_OutOfRangeOrUnknown_RaisesItsError", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Remove_RenumbersTheLaterBands
+        Expect.EndCase "CoolBarTests.Bands_Remove_RenumbersTheLaterBands", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Key_Assigned_RenamesTheBand
+        Expect.EndCase "CoolBarTests.Band_Key_Assigned_RenamesTheBand", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Position_MovesTheBandNotItsIndex
+        Expect.EndCase "CoolBarTests.Band_Position_MovesTheBandNotItsIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Position_NotAMove_Raises380
+        Expect.EndCase "CoolBarTests.Band_Position_NotAMove_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Height_Assigned_Raises383
+        Expect.EndCase "CoolBarTests.Band_Height_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_FixedSize_WidthAndNewRowAreRefused
+        Expect.EndCase "CoolBarTests.Band_FixedSize_WidthAndNewRowAreRefused", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Properties_ValuesOutOfRange_Raise380
+        Expect.EndCase "CoolBarTests.Band_Properties_ValuesOutOfRange_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_ChildEdge_False_TakesTheEdgeAway
+        Expect.EndCase "CoolBarTests.Band_ChildEdge_False_TakesTheEdgeAway", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Child_ControlNotOnTheCoolBar_Raises380
+        Expect.EndCase "CoolBarTests.Band_Child_ControlNotOnTheCoolBar_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Child_RefusedControl_IsNotKept
+        Expect.EndCase "CoolBarTests.Band_Child_RefusedControl_IsNotKept", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Bands_Add_ChildNotOnTheCoolBar_Raises380
+        Expect.EndCase "CoolBarTests.Bands_Add_ChildNotOnTheCoolBar_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Band_Image_KeyWithoutAnImageListOrNegativeNumber_RaisesItsError
+        Expect.EndCase "CoolBarTests.Band_Image_KeyWithoutAnImageListOrNegativeNumber_RaisesItsError", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.ImageList_AnotherObject_Raises35610
+        Expect.EndCase "CoolBarTests.ImageList_AnotherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.HitTest_PointOnABand_ReturnsTheBand
+        Expect.EndCase "CoolBarTests.HitTest_PointOnABand_ReturnsTheBand", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Orientation_Vertical_ExchangesWidthAndHeight
+        Expect.EndCase "CoolBarTests.Orientation_Vertical_ExchangesWidthAndHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.BandMouseEnter_MouseTrackTrue_RaisedAfterMouseEnterAndBeforeMouseLeave
+        Expect.EndCase "CoolBarTests.BandMouseEnter_MouseTrackTrue_RaisedAfterMouseEnterAndBeforeMouseLeave", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.Click_AMouseClick_IsRaisedAfterMouseUp
+        Expect.EndCase "CoolBarTests.Click_AMouseClick_IsRaisedAfterMouseUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        CoolBarTests.HeightChanged_BandsRemoved_FollowsResize
+        Expect.EndCase "CoolBarTests.HeightChanged_BandsRemoved_FollowsResize", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         FontComboTests.Defaults_OfANewControl
@@ -1601,6 +1701,50 @@ Module RunAll
         Expect.EndCase "OptionButtonWTests.ImageListMargin_Negative_Raises380", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        PagerTests.Defaults_NewPager
+        Expect.EndCase "PagerTests.Defaults_NewPager", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.Properties_InvalidValues_Raise380
+        Expect.EndCase "PagerTests.Properties_InvalidValues_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.BorderWidthAndButtonSize_Assigned_AreRead
+        Expect.EndCase "PagerTests.BorderWidthAndButtonSize_Assigned_AreRead", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.BuddyControl_Control_BecomesAChildWindowOfThePager
+        Expect.EndCase "PagerTests.BuddyControl_Control_BecomesAChildWindowOfThePager", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.BuddyControl_NameOrHandle_ChoosesTheBuddy
+        Expect.EndCase "PagerTests.BuddyControl_NameOrHandle_ChoosesTheBuddy", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.BuddyControl_InvalidValues_Raise35610And13
+        Expect.EndCase "PagerTests.BuddyControl_InvalidValues_Raise35610And13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.GetButtonState_BuddyTallerThanThePager_ShowsTheButtonsThatCanScroll
+        Expect.EndCase "PagerTests.GetButtonState_BuddyTallerThanThePager_ShowsTheButtonsThatCanScroll", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.CalcSize_RaisedWithTheBuddysSizeAndTheHandlerCanChangeIt
+        Expect.EndCase "PagerTests.CalcSize_RaisedWithTheBuddysSizeAndTheHandlerCanChangeIt", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.CalcSize_HandlerSetsAHeightBeforeTheBuddy_IsTheScrollableHeight
+        Expect.EndCase "PagerTests.CalcSize_HandlerSetsAHeightBeforeTheBuddy_IsTheScrollableHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.Scroll_ClickOnTheFarButton_RaisesScrollAndTheHandlerSetsDelta
+        Expect.EndCase "PagerTests.Scroll_ClickOnTheFarButton_RaisesScrollAndTheHandlerSetsDelta", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        PagerTests.Scroll_Horizontal_RaisesScrollWithPgrDirectionRight
+        Expect.EndCase "PagerTests.Scroll_Horizontal_RaisesScrollWithPgrDirectionRight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         ProgressBarTests.Value_OutsideTheRange_IsTheNearestEnd
         Expect.EndCase "ProgressBarTests.Value_OutsideTheRange_IsTheNearestEnd", Err.Number, Err.Description
         Expect.StartCase
@@ -1627,6 +1771,642 @@ Module RunAll
         Err.Clear
         ProgressBarTests.Change_RaisedOnceForEachChangeOfValue
         Expect.EndCase "ProgressBarTests.Change_RaisedOnceForEachChangeOfValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.SaveFile_LoadFile_KeepsTheFormatting
+        Expect.EndCase "RichTextBoxFilesTests.SaveFile_LoadFile_KeepsTheFormatting", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.SaveFile_UnicodeText_StartsWithAByteOrderMark
+        Expect.EndCase "RichTextBoxFilesTests.SaveFile_UnicodeText_StartsWithAByteOrderMark", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.LoadFile_SelectionOnly_InsertsAtTheInsertionPoint
+        Expect.EndCase "RichTextBoxFilesTests.LoadFile_SelectionOnly_InsertsAtTheInsertionPoint", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.FileName_TextFile_LoadsIt
+        Expect.EndCase "RichTextBoxFilesTests.FileName_TextFile_LoadsIt", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.FileName_RtfFileInPlainText_IsNotLoaded
+        Expect.EndCase "RichTextBoxFilesTests.FileName_RtfFileInPlainText_IsNotLoaded", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.FileName_Missing_Raises75
+        Expect.EndCase "RichTextBoxFilesTests.FileName_Missing_Raises75", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.LoadFile_Missing_Raises75
+        Expect.EndCase "RichTextBoxFilesTests.LoadFile_Missing_Raises75", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFilesTests.SaveFile_FolderMissing_RaisesAnError
+        Expect.EndCase "RichTextBoxFilesTests.SaveFile_FolderMissing_RaisesAnError", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxOLETests.OLEObjectsAddFromPicture_InsertsOneObject
+        Expect.EndCase "RichTextBoxOLETests.OLEObjectsAddFromPicture_InsertsOneObject", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxOLETests.OLEObjectsAddFromPicture_SelectedObject_IsRtfSelTypeObject
+        Expect.EndCase "RichTextBoxOLETests.OLEObjectsAddFromPicture_SelectedObject_IsRtfSelTypeObject", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxOLETests.OLEObjectsAddFromPicture_TheObjectIsASpaceInText
+        Expect.EndCase "RichTextBoxOLETests.OLEObjectsAddFromPicture_TheObjectIsASpaceInText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxOLETests.SelText_OverAnObject_RaisesOLEDeleteObject
+        Expect.EndCase "RichTextBoxOLETests.SelText_OverAnObject_RaisesOLEDeleteObject", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxOLETests.OLEObjectsAddFromPicture_WrongClipFormat_Raises461
+        Expect.EndCase "RichTextBoxOLETests.OLEObjectsAddFromPicture_WrongClipFormat_Raises461", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxOLETests.OLEObjectsAddFromFile_Missing_Raises53
+        Expect.EndCase "RichTextBoxOLETests.OLEObjectsAddFromFile_Missing_Raises53", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Find_Found_ReturnsThePlaceAndSelects
+        Expect.EndCase "RichTextBoxFindTests.Find_Found_ReturnsThePlaceAndSelects", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Find_NotFound_ReturnsMinusOne
+        Expect.EndCase "RichTextBoxFindTests.Find_NotFound_ReturnsMinusOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Find_Reverse_SearchesBackFromMin
+        Expect.EndCase "RichTextBoxFindTests.Find_Reverse_SearchesBackFromMin", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Find_NoHighlight_KeepsTheSelection
+        Expect.EndCase "RichTextBoxFindTests.Find_NoHighlight_KeepsTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Find_WholeWord_SkipsAPartOfAWord
+        Expect.EndCase "RichTextBoxFindTests.Find_WholeWord_SkipsAPartOfAWord", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Find_NegativeMin_Raises380
+        Expect.EndCase "RichTextBoxFindTests.Find_NegativeMin_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.Span_Forward_SelectsTheCharactersOfTheSet
+        Expect.EndCase "RichTextBoxFindTests.Span_Forward_SelectsTheCharactersOfTheSet", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFindTests.UpTo_Forward_StopsBeforeTheCharacter
+        Expect.EndCase "RichTextBoxFindTests.UpTo_Forward_StopsBeforeTheCharacter", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.Undo_TakesBackTheTyping
+        Expect.EndCase "RichTextBoxUndoTests.Undo_TakesBackTheTyping", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.Redo_PutsBackWhatUndoTookBack
+        Expect.EndCase "RichTextBoxUndoTests.Redo_PutsBackWhatUndoTookBack", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.UndoType_AfterTyping_IsTyping
+        Expect.EndCase "RichTextBoxUndoTests.UndoType_AfterTyping_IsTyping", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.StopUndoAction_SplitsTheTyping
+        Expect.EndCase "RichTextBoxUndoTests.StopUndoAction_SplitsTheTyping", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.UndoLimit_Zero_LeavesNothingToUndo
+        Expect.EndCase "RichTextBoxUndoTests.UndoLimit_Zero_LeavesNothingToUndo", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.UndoLimit_Above1000_Is1000
+        Expect.EndCase "RichTextBoxUndoTests.UndoLimit_Above1000_Is1000", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.UndoLimit_Negative_Raises380
+        Expect.EndCase "RichTextBoxUndoTests.UndoLimit_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxUndoTests.ResetUndoQueue_LeavesNothingToUndo
+        Expect.EndCase "RichTextBoxUndoTests.ResetUndoQueue_LeavesNothingToUndo", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelBold_Assigned_MakesTheSelectionBold
+        Expect.EndCase "RichTextBoxFormatTests.SelBold_Assigned_MakesTheSelectionBold", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelBold_MixedSelection_IsNull
+        Expect.EndCase "RichTextBoxFormatTests.SelBold_MixedSelection_IsNull", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelBold_Null_MakesTheSelectionBold
+        Expect.EndCase "RichTextBoxFormatTests.SelBold_Null_MakesTheSelectionBold", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelBold_String_Raises13
+        Expect.EndCase "RichTextBoxFormatTests.SelBold_String_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelFontSize_Assigned_ReadsBack
+        Expect.EndCase "RichTextBoxFormatTests.SelFontSize_Assigned_ReadsBack", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelColor_Assigned_ReadsBackAsRGB
+        Expect.EndCase "RichTextBoxFormatTests.SelColor_Assigned_ReadsBackAsRGB", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxFormatTests.SelVisible_False_KeepsTheTextInText
+        Expect.EndCase "RichTextBoxFormatTests.SelVisible_False_KeepsTheTextInText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelAlignment_Assigned_ReadsBack
+        Expect.EndCase "RichTextBoxParagraphTests.SelAlignment_Assigned_ReadsBack", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelAlignment_MixedParagraphs_IsNull
+        Expect.EndCase "RichTextBoxParagraphTests.SelAlignment_MixedParagraphs_IsNull", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelAlignment_NotAMember_Raises380
+        Expect.EndCase "RichTextBoxParagraphTests.SelAlignment_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelTabs_Assigned_ReadBack
+        Expect.EndCase "RichTextBoxParagraphTests.SelTabs_Assigned_ReadBack", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelTabCount_Above32_Raises380
+        Expect.EndCase "RichTextBoxParagraphTests.SelTabCount_Above32_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelTabs_PastSelTabCount_Raises381
+        Expect.EndCase "RichTextBoxParagraphTests.SelTabs_PastSelTabCount_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.SelBullet_Assigned_SetsTheHangingIndentToBulletIndent
+        Expect.EndCase "RichTextBoxParagraphTests.SelBullet_Assigned_SetsTheHangingIndentToBulletIndent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxParagraphTests.BulletIndent_Negative_Raises380
+        Expect.EndCase "RichTextBoxParagraphTests.BulletIndent_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.AutoURLDetect_True_MarksAUrlAsALink
+        Expect.EndCase "RichTextBoxLinksTests.AutoURLDetect_True_MarksAUrlAsALink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.SelLink_AutoURLDetectFalse_IsKept
+        Expect.EndCase "RichTextBoxLinksTests.SelLink_AutoURLDetectFalse_IsKept", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.SelLink_AutoURLDetectTrue_OnTextThatIsNoUrl_IsNotKept
+        Expect.EndCase "RichTextBoxLinksTests.SelLink_AutoURLDetectTrue_OnTextThatIsNoUrl_IsNotKept", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.LinkEvent_Click_RaisesTheButtonMessages
+        Expect.EndCase "RichTextBoxLinksTests.LinkEvent_Click_RaisesTheButtonMessages", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.LinkEvent_Click_GivesTheRangeOfTheLink
+        Expect.EndCase "RichTextBoxLinksTests.LinkEvent_Click_GivesTheRangeOfTheLink", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.SelProtected_SelText_RaisesModifyProtectedAndKeepsTheText
+        Expect.EndCase "RichTextBoxLinksTests.SelProtected_SelText_RaisesModifyProtectedAndKeepsTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.SelProtected_Typing_RaisesModifyProtectedAndKeepsTheText
+        Expect.EndCase "RichTextBoxLinksTests.SelProtected_Typing_RaisesModifyProtectedAndKeepsTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.ModifyProtected_Allow_ChangesTheText
+        Expect.EndCase "RichTextBoxLinksTests.ModifyProtected_Allow_ChangesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.ModifyProtected_GivesTheRangeOfTheChange
+        Expect.EndCase "RichTextBoxLinksTests.ModifyProtected_GivesTheRangeOfTheChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxLinksTests.Text_Assigned_ReplacesProtectedText
+        Expect.EndCase "RichTextBoxLinksTests.Text_Assigned_ReplacesProtectedText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.SelLength_Assigned_RaisesSelChange
+        Expect.EndCase "RichTextBoxSelectionTests.SelLength_Assigned_RaisesSelChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.SelText_Assigned_ReplacesTheSelection
+        Expect.EndCase "RichTextBoxSelectionTests.SelText_Assigned_ReplacesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.GetTextRange_ReturnsTheCharactersBetween
+        Expect.EndCase "RichTextBoxSelectionTests.GetTextRange_ReturnsTheCharactersBetween", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.GetTextRange_MinAboveMax_Raises380
+        Expect.EndCase "RichTextBoxSelectionTests.GetTextRange_MinAboveMax_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.SelLength_Negative_Raises380
+        Expect.EndCase "RichTextBoxSelectionTests.SelLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.SelStart_PastTheEnd_IsTheEnd
+        Expect.EndCase "RichTextBoxSelectionTests.SelStart_PastTheEnd_IsTheEnd", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxSelectionTests.SelStart_Negative_Raises380
+        Expect.EndCase "RichTextBoxSelectionTests.SelStart_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTests.BorderStyle_Two_Raises380
+        Expect.EndCase "RichTextBoxTests.BorderStyle_Two_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.Text_Paragraphs_EndWithACarriageReturn
+        Expect.EndCase "RichTextBoxTextTests.Text_Paragraphs_EndWithACarriageReturn", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.UseCrLf_True_GivesCrLf
+        Expect.EndCase "RichTextBoxTextTests.UseCrLf_True_GivesCrLf", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextRTF_Assigned_GivesTheFormattedText
+        Expect.EndCase "RichTextBoxTextTests.TextRTF_Assigned_GivesTheFormattedText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextMode_Changed_EmptiesTheText
+        Expect.EndCase "RichTextBoxTextTests.TextMode_Changed_EmptiesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextMode_PlainText_KeepsNoFormatOfAPart
+        Expect.EndCase "RichTextBoxTextTests.TextMode_PlainText_KeepsNoFormatOfAPart", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextRTF_PlainText_LeavesTheBoxEmpty
+        Expect.EndCase "RichTextBoxTextTests.TextRTF_PlainText_LeavesTheBoxEmpty", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextMode_OutOfRange_Raises380
+        Expect.EndCase "RichTextBoxTextTests.TextMode_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.Text_SameText_RaisesChange
+        Expect.EndCase "RichTextBoxTextTests.Text_SameText_RaisesChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.Text_Assigned_ResetsModified
+        Expect.EndCase "RichTextBoxTextTests.Text_Assigned_ResetsModified", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextRTF_Assigned_SetsModified
+        Expect.EndCase "RichTextBoxTextTests.TextRTF_Assigned_SetsModified", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.MaxLength_Assigned_DoesNotCutTheText
+        Expect.EndCase "RichTextBoxTextTests.MaxLength_Assigned_DoesNotCutTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.Typing_PastMaxLength_RaisesMaxText
+        Expect.EndCase "RichTextBoxTextTests.Typing_PastMaxLength_RaisesMaxText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.MaxLength_Zero_LimitsTypingTo65536
+        Expect.EndCase "RichTextBoxTextTests.MaxLength_Zero_LimitsTypingTo65536", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.Typing_AfterALongerTextWasAssigned_IsLimitedToMaxLength
+        Expect.EndCase "RichTextBoxTextTests.Typing_AfterALongerTextWasAssigned_IsLimitedToMaxLength", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.MaxLength_Negative_Raises380
+        Expect.EndCase "RichTextBoxTextTests.MaxLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.Typing_Locked_ChangesNothing
+        Expect.EndCase "RichTextBoxTextTests.Typing_Locked_ChangesNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.SelText_Locked_ChangesTheText
+        Expect.EndCase "RichTextBoxTextTests.SelText_Locked_ChangesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.OverTypeMode_True_ReplacesTheNextCharacter
+        Expect.EndCase "RichTextBoxTextTests.OverTypeMode_True_ReplacesTheNextCharacter", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.AllowOverType_False_EndsOverTypeMode
+        Expect.EndCase "RichTextBoxTextTests.AllowOverType_False_EndsOverTypeMode", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.MultiLine_AtRunTime_Raises382
+        Expect.EndCase "RichTextBoxTextTests.MultiLine_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.PasswordChar_NoneSet_IsCharacterZero
+        Expect.EndCase "RichTextBoxTextTests.PasswordChar_NoneSet_IsCharacterZero", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.PasswordChar_TwoCharacters_Raises380
+        Expect.EndCase "RichTextBoxTextTests.PasswordChar_TwoCharacters_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxTextTests.TextRTF_ProtectedText_RaisesModifyProtected
+        Expect.EndCase "RichTextBoxTextTests.TextRTF_ProtectedText_RaisesModifyProtected", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.GetLine_ReturnsTheLineOfThatNumber
+        Expect.EndCase "RichTextBoxViewTests.GetLine_ReturnsTheLineOfThatNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.GetLine_Zero_IsTheLineOfTheInsertionPoint
+        Expect.EndCase "RichTextBoxViewTests.GetLine_Zero_IsTheLineOfTheInsertionPoint", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.GetLineFromChar_ReturnsTheLineNumber
+        Expect.EndCase "RichTextBoxViewTests.GetLineFromChar_ReturnsTheLineNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.GetLine_PastTheLastLine_Raises380
+        Expect.EndCase "RichTextBoxViewTests.GetLine_PastTheLastLine_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.GetLine_Negative_Raises380
+        Expect.EndCase "RichTextBoxViewTests.GetLine_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.ScrollToLine_PastTheLastLine_Raises380
+        Expect.EndCase "RichTextBoxViewTests.ScrollToLine_PastTheLastLine_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.ScrollToLine_RaisesScroll
+        Expect.EndCase "RichTextBoxViewTests.ScrollToLine_RaisesScroll", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.ZoomFactor_Assigned_ReadsBack
+        Expect.EndCase "RichTextBoxViewTests.ZoomFactor_Assigned_ReadsBack", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.ZoomFactor_Above64_Raises380
+        Expect.EndCase "RichTextBoxViewTests.ZoomFactor_Above64_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.DisableNoScroll_AtRunTime_Raises382
+        Expect.EndCase "RichTextBoxViewTests.DisableNoScroll_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.LeftMargin_Negative_Raises380
+        Expect.EndCase "RichTextBoxViewTests.LeftMargin_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.ScrollBars_Changed_KeepsTheText
+        Expect.EndCase "RichTextBoxViewTests.ScrollBars_Changed_KeepsTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxViewTests.ScrollBars_OutOfRange_Raises380
+        Expect.EndCase "RichTextBoxViewTests.ScrollBars_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxMenuTests.ContextMenu_RaisedBeforeOLEGetContextMenu
+        Expect.EndCase "RichTextBoxMenuTests.ContextMenu_RaisedBeforeOLEGetContextMenu", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxDragTests.OLEDragMode_AutomaticWithOLEDragDropRTF_Raises383
+        Expect.EndCase "RichTextBoxDragTests.OLEDragMode_AutomaticWithOLEDragDropRTF_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxDragTests.OLEDropMode_ManualWithOLEDragDropRTF_Raises383
+        Expect.EndCase "RichTextBoxDragTests.OLEDropMode_ManualWithOLEDragDropRTF_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxDragTests.OLEDragDropScroll_FalseWithOLEDragDropRTF_Raises383
+        Expect.EndCase "RichTextBoxDragTests.OLEDragDropScroll_FalseWithOLEDragDropRTF_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxDragTests.OLEDragDropRTF_False_MakesANewWindowAndKeepsTheText
+        Expect.EndCase "RichTextBoxDragTests.OLEDragDropRTF_False_MakesANewWindowAndKeepsTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxDragTests.OLEDragDropRTF_True_ResetsTheOtherProperties
+        Expect.EndCase "RichTextBoxDragTests.OLEDragDropRTF_True_ResetsTheOtherProperties", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        RichTextBoxDragTests.OLEDropMode_Automatic_Raises380
+        Expect.EndCase "RichTextBoxDragTests.OLEDropMode_Automatic_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Panels_NewBar_HasOneEmptyPanel
+        Expect.EndCase "StatusBarTests.Panels_NewBar_HasOneEmptyPanel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Add_AtAnIndex_MovesTheLaterPanelsUp
+        Expect.EndCase "StatusBarTests.Add_AtAnIndex_MovesTheLaterPanelsUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "StatusBarTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Add_DuplicateKey_Raises457AndAddsNothing
+        Expect.EndCase "StatusBarTests.Add_DuplicateKey_Raises457AndAddsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Add_MoreThan255Panels_Raises35616
+        Expect.EndCase "StatusBarTests.Add_MoreThan255Panels_Raises35616", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Add_InvalidStyle_Raises380AndAddsNothing
+        Expect.EndCase "StatusBarTests.Add_InvalidStyle_Raises380AndAddsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Item_NumberOutOfRange_Raises9AndUnknownKeyRaises5
+        Expect.EndCase "StatusBarTests.Item_NumberOutOfRange_Raises9AndUnknownKeyRaises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Remove_RenumbersTheLaterPanels
+        Expect.EndCase "StatusBarTests.Remove_RenumbersTheLaterPanels", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Clear_RemovesEveryPanel
+        Expect.EndCase "StatusBarTests.Clear_RemovesEveryPanel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Key_Assigned_RenamesTheTakesAwayAndRefusesAKeyInUse
+        Expect.EndCase "StatusBarTests.Key_Assigned_RenamesTheTakesAwayAndRefusesAKeyInUse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Panel_ValuesOutsideTheEnumerations_Raise380
+        Expect.EndCase "StatusBarTests.Panel_ValuesOutsideTheEnumerations_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Panel_NegativeSizes_Raise380
+        Expect.EndCase "StatusBarTests.Panel_NegativeSizes_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Left_Assigned_Raises383
+        Expect.EndCase "StatusBarTests.Left_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Width_AutoSizeNone_IsTheAssignedWidth
+        Expect.EndCase "StatusBarTests.Width_AutoSizeNone_IsTheAssignedWidth", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Width_AutoSizeContent_SetsTheMinimumWidth
+        Expect.EndCase "StatusBarTests.Width_AutoSizeContent_SetsTheMinimumWidth", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Visible_False_MakesThePanelNoWidth
+        Expect.EndCase "StatusBarTests.Visible_False_MakesThePanelNoWidth", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Text_KeyStyle_KeepsTheAssignedText
+        Expect.EndCase "StatusBarTests.Text_KeyStyle_KeepsTheAssignedText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Enabled_KeyStyle_FollowsTheKey
+        Expect.EndCase "StatusBarTests.Enabled_KeyStyle_FollowsTheKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Tag_NewPanel_IsAnEmptyString
+        Expect.EndCase "StatusBarTests.Tag_NewPanel_IsAnEmptyString", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.SimpleText_KeptWhileTheStyleIsNormal
+        Expect.EndCase "StatusBarTests.SimpleText_KeptWhileTheStyleIsNormal", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.StyleChange_RaisedForEachChangeOfStyle
+        Expect.EndCase "StatusBarTests.StyleChange_RaisedForEachChangeOfStyle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.Click_ByTheUser_RaisesPanelClickBetweenMouseDownAndMouseUp
+        Expect.EndCase "StatusBarTests.Click_ByTheUser_RaisesPanelClickBetweenMouseDownAndMouseUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.DblClick_ByTheUser_RaisesPanelDblClickThenDblClick
+        Expect.EndCase "StatusBarTests.DblClick_ByTheUser_RaisesPanelDblClickThenDblClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.MouseTrack_True_RaisesThePanelEnterAndLeaveEvents
+        Expect.EndCase "StatusBarTests.MouseTrack_True_RaisesThePanelEnterAndLeaveEvents", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.HitTest_ReturnsThePanelAtThePoint
+        Expect.EndCase "StatusBarTests.HitTest_ReturnsThePanelAtThePoint", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        StatusBarTests.ShowTips_True_MakesTheToolTipWindow
+        Expect.EndCase "StatusBarTests.ShowTips_True_MakesTheToolTipWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Tabs_NewStrip_HasOneSelectedTab
+        Expect.EndCase "TabStripTests.Tabs_NewStrip_HasOneSelectedTab", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Add_AtAnIndex_MovesTheLaterTabsUp
+        Expect.EndCase "TabStripTests.Add_AtAnIndex_MovesTheLaterTabsUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "TabStripTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Add_DuplicateKey_Raises457
+        Expect.EndCase "TabStripTests.Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Add_DuplicateKey_LeavesNoTabInTheWindow
+        Expect.EndCase "TabStripTests.Add_DuplicateKey_LeavesNoTabInTheWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Item_NumberOutOfRange_Raises9AndUnknownKeyRaises5
+        Expect.EndCase "TabStripTests.Item_NumberOutOfRange_Raises9AndUnknownKeyRaises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Remove_RenumbersTheLaterTabs
+        Expect.EndCase "TabStripTests.Remove_RenumbersTheLaterTabs", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Clear_RemovesEveryTabAndTheSelection
+        Expect.EndCase "TabStripTests.Clear_RemovesEveryTabAndTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Key_Assigned_RenamesTheTab
+        Expect.EndCase "TabStripTests.Key_Assigned_RenamesTheTab", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Image_ByKeyAndNumber_IsTheNumberInTheList
+        Expect.EndCase "TabStripTests.Image_ByKeyAndNumber_IsTheNumberInTheList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.ImageList_NotAnImageList_Raises35610
+        Expect.EndCase "TabStripTests.ImageList_NotAnImageList_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Selected_Assigned_RaisesTabBeforeClickThenTabClick
+        Expect.EndCase "TabStripTests.Selected_Assigned_RaisesTabBeforeClickThenTabClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabBeforeClick_Cancel_KeepsTheSelectedTab
+        Expect.EndCase "TabStripTests.TabBeforeClick_Cancel_KeepsTheSelectedTab", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Click_ByTheUser_RaisesTabBeforeClickThenTabClick
+        Expect.EndCase "TabStripTests.Click_ByTheUser_RaisesTabBeforeClickThenTabClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Selected_False_LeavesNoTabSelected
+        Expect.EndCase "TabStripTests.Selected_False_LeavesNoTabSelected", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabScrollWheel_TurnsToTheNextAndThePreviousTab
+        Expect.EndCase "TabStripTests.TabScrollWheel_TurnsToTheNextAndThePreviousTab", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabScrollWheel_RaisesTheTabEvents
+        Expect.EndCase "TabStripTests.TabScrollWheel_RaisesTheTabEvents", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Properties_ValuesOutsideTheEnumerations_Raise380
+        Expect.EndCase "TabStripTests.Properties_ValuesOutsideTheEnumerations_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabSizes_Negative_Raise380
+        Expect.EndCase "TabStripTests.TabSizes_Negative_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.DrawMode_AtRunTime_Raises382
+        Expect.EndCase "TabStripTests.DrawMode_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabGeometry_Assigned_Raises383
+        Expect.EndCase "TabStripTests.TabGeometry_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabStyleOpposite_ForcesTheTabsStyleAndMultipleRows
+        Expect.EndCase "TabStripTests.TabStyleOpposite_ForcesTheTabsStyleAndMultipleRows", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.TabAlignment_WithoutFixedWidth_IsStandard
+        Expect.EndCase "TabStripTests.TabAlignment_WithoutFixedWidth_IsStandard", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Style_Changed_KeepsTheTabsAndTheSelection
+        Expect.EndCase "TabStripTests.Style_Changed_KeepsTheTabsAndTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.Placement_WithVisualStyles_LeavesTheTabsOnTop
+        Expect.EndCase "TabStripTests.Placement_WithVisualStyles_LeavesTheTabsOnTop", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.ClientWidth_Assigned_ResizesTheControl
+        Expect.EndCase "TabStripTests.ClientWidth_Assigned_ResizesTheControl", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TabStripTests.HitTest_ReturnsTheTabAtThePoint
+        Expect.EndCase "TabStripTests.HitTest_ReturnsTheTabAtThePoint", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         TextBoxWTests.Text_LongerThanMaxLength_IsCutToIt
@@ -1787,6 +2567,182 @@ Module RunAll
         Err.Clear
         TextBoxWTests.ValidateNetAddress_Empty_Raises380
         Expect.EndCase "TextBoxWTests.ValidateNetAddress_Empty_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Add_AtAnIndex_MovesTheLaterButtons
+        Expect.EndCase "ToolBarTests.Buttons_Add_AtAnIndex_MovesTheLaterButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "ToolBarTests.Buttons_Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Add_StyleOutOfRange_Raises380
+        Expect.EndCase "ToolBarTests.Buttons_Add_StyleOutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Add_DuplicateKey_Raises457
+        Expect.EndCase "ToolBarTests.Buttons_Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Add_DuplicateKey_AddsNothingToTheWindow
+        Expect.EndCase "ToolBarTests.Buttons_Add_DuplicateKey_AddsNothingToTheWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Item_NumberOutOfRange_Raises9
+        Expect.EndCase "ToolBarTests.Buttons_Item_NumberOutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Item_UnknownKey_Raises5
+        Expect.EndCase "ToolBarTests.Buttons_Item_UnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Exists_SaysWhetherTheListHasTheNumberOrKey
+        Expect.EndCase "ToolBarTests.Buttons_Exists_SaysWhetherTheListHasTheNumberOrKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_Remove_RenumbersTheLaterButtons
+        Expect.EndCase "ToolBarTests.Buttons_Remove_RenumbersTheLaterButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Key_Assigned_RenamesTheButton
+        Expect.EndCase "ToolBarTests.Button_Key_Assigned_RenamesTheButton", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Position_MovesTheButtonNotItsIndex
+        Expect.EndCase "ToolBarTests.Button_Position_MovesTheButtonNotItsIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Position_AboveTheLastPlace_MovesTheButtonToTheEnd
+        Expect.EndCase "ToolBarTests.Button_Position_AboveTheLastPlace_MovesTheButtonToTheEnd", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Position_OwnPlace_Raises380
+        Expect.EndCase "ToolBarTests.Button_Position_OwnPlace_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Place_Assigned_Raises383
+        Expect.EndCase "ToolBarTests.Button_Place_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Value_CheckGroup_UnpressesTheOthers
+        Expect.EndCase "ToolBarTests.Button_Value_CheckGroup_UnpressesTheOthers", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Style_Assigned_ChangesTheStyleAndKeepsTheCaption
+        Expect.EndCase "ToolBarTests.Button_Style_Assigned_ChangesTheStyleAndKeepsTheCaption", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Image_FromTheImageList_ByKeyAndNumber
+        Expect.EndCase "ToolBarTests.Button_Image_FromTheImageList_ByKeyAndNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ImageList_ImageListOnTheForm_CanBeGivenByName
+        Expect.EndCase "ToolBarTests.ImageList_ImageListOnTheForm_CanBeGivenByName", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ImageList_AnotherObject_Raises35610
+        Expect.EndCase "ToolBarTests.ImageList_AnotherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ImageList_ListOfAnotherSize_Raises380
+        Expect.EndCase "ToolBarTests.ImageList_ListOfAnotherSize_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ToolBar_Properties_ValuesOutOfRange_Raise380
+        Expect.EndCase "ToolBarTests.ToolBar_Properties_ValuesOutOfRange_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.MaxTextRows_MoreThanOneWithTextAlignRight_Raises383
+        Expect.EndCase "ToolBarTests.MaxTextRows_MoreThanOneWithTextAlignRight_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonHeight_SmallerThanTheMinimum_IsRaisedToIt
+        Expect.EndCase "ToolBarTests.ButtonHeight_SmallerThanTheMinimum_IsRaisedToIt", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_HeldAcrossTextAlignmentChange_StillReachTheirButtons
+        Expect.EndCase "ToolBarTests.Buttons_HeldAcrossTextAlignmentChange_StillReachTheirButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_HeldAcrossOrientationChange_StillReachTheirButtons
+        Expect.EndCase "ToolBarTests.Buttons_HeldAcrossOrientationChange_StillReachTheirButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_HeldAcrossStyleChange_StillReachTheirButtons
+        Expect.EndCase "ToolBarTests.Buttons_HeldAcrossStyleChange_StillReachTheirButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Buttons_HeldAcrossRightToLeftChange_StillReachTheirButtons
+        Expect.EndCase "ToolBarTests.Buttons_HeldAcrossRightToLeftChange_StillReachTheirButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Visible_False_MovesTheLaterButtonsUp
+        Expect.EndCase "ToolBarTests.Button_Visible_False_MovesTheLaterButtonsUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_CustomWidth_SetsTheWidth
+        Expect.EndCase "ToolBarTests.Button_CustomWidth_SetsTheWidth", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_AutoSize_WidthFollowsTheCaption
+        Expect.EndCase "ToolBarTests.Button_AutoSize_WidthFollowsTheCaption", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Button_Tag_NewButton_IsAnEmptyString
+        Expect.EndCase "ToolBarTests.Button_Tag_NewButton_IsAnEmptyString", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonMenus_Add_AtAnIndex_MovesTheLaterMenus
+        Expect.EndCase "ToolBarTests.ButtonMenus_Add_AtAnIndex_MovesTheLaterMenus", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonMenus_Add_RefusedArguments_RaiseTheirErrors
+        Expect.EndCase "ToolBarTests.ButtonMenus_Add_RefusedArguments_RaiseTheirErrors", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonMenu_Key_Assigned_RenamesTheItem
+        Expect.EndCase "ToolBarTests.ButtonMenu_Key_Assigned_RenamesTheItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.HitTest_PointOnAButton_ReturnsTheButton
+        Expect.EndCase "ToolBarTests.HitTest_PointOnAButton_ReturnsTheButton", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.FindMnemonic_CharacterOfAMnemonicOrOfAFirstLetter_ReturnsTheButton
+        Expect.EndCase "ToolBarTests.FindMnemonic_CharacterOfAMnemonicOrOfAFirstLetter_ReturnsTheButton", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.InsertMark_Set_IsReadBackWithItsSide
+        Expect.EndCase "ToolBarTests.InsertMark_Set_IsReadBackWithItsSide", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.HitTestInsertMark_HalfOfAButton_GivesTheSide
+        Expect.EndCase "ToolBarTests.HitTestInsertMark_HalfOfAButton_GivesTheSide", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.GetIdealSize_ReachesTheLastButton
+        Expect.EndCase "ToolBarTests.GetIdealSize_ReachesTheLastButton", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.Height_Assigned_FollowsTheButtons
+        Expect.EndCase "ToolBarTests.Height_Assigned_FollowsTheButtons", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonClick_AMouseClick_IsRaisedBetweenMouseDownAndMouseUp
+        Expect.EndCase "ToolBarTests.ButtonClick_AMouseClick_IsRaisedBetweenMouseDownAndMouseUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonClick_ASeparator_RaisesNoButtonClick
+        Expect.EndCase "ToolBarTests.ButtonClick_ASeparator_RaisesNoButtonClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonHotChanged_HotAssigned_RaisesTheNewButtonBeforeTheOldOne
+        Expect.EndCase "ToolBarTests.ButtonHotChanged_HotAssigned_RaisesTheNewButtonBeforeTheOldOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ToolBarTests.ButtonMouseEnter_MouseTrackTrue_RaisedAfterMouseEnterAndBeforeMouseLeave
+        Expect.EndCase "ToolBarTests.ButtonMouseEnter_MouseTrackTrue_RaisedAfterMouseEnterAndBeforeMouseLeave", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         TreeViewTests.Add_Relationships_PlaceTheNewNode

@@ -1,0 +1,1009 @@
+' ToolBarTests: the ToolBar control, its TbrButtons collection, its TbrButton items and their
+' TbrButtonMenus. A mouse click is made by sending the window messages a click makes to the
+' control's window, since the form is never shown. A picture is a bitmap of one color made here.
+[TestFixture]
+Module ToolBarTests
+
+    Private Type PictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+
+    Private Type PictGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal X As Long, ByVal Y As Long, ByVal W As Long, ByVal H As Long, ByVal Rop As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PictDesc, ByRef IID As PictGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Declare PtrSafe Function ImageList_Create Lib "comctl32" (ByVal cx As Long, ByVal cy As Long, ByVal Flags As Long, ByVal cInitial As Long, ByVal cGrow As Long) As LongPtr
+    Private Declare PtrSafe Function ImageList_Destroy Lib "comctl32" (ByVal hImageList As LongPtr) As Long
+
+    Private Const PATCOPY As Long = &HF00021
+    Private Const ILC_COLOR32 As Long = &H20
+    Private Const TB_BUTTONCOUNT As Long = &H418
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+    Private Const WM_MOUSELEAVE As Long = &H2A3
+
+    ' A bitmap of one color.
+    Private Function ColorSquare(ByVal Color As Long, Optional ByVal Width As Long = 16, Optional ByVal Height As Long = 16) As StdPicture
+        Dim screenDC As LongPtr, memDC As LongPtr, bmp As LongPtr, brush As LongPtr, oldBmp As LongPtr, oldBrush As LongPtr
+        screenDC = GetDC(0)
+        memDC = CreateCompatibleDC(screenDC)
+        bmp = CreateCompatibleBitmap(screenDC, Width, Height)
+        brush = CreateSolidBrush(Color)
+        oldBmp = SelectObject(memDC, bmp)
+        oldBrush = SelectObject(memDC, brush)
+        PatBlt memDC, 0, 0, Width, Height, PATCOPY
+        SelectObject memDC, oldBrush
+        SelectObject memDC, oldBmp
+        DeleteObject brush
+        DeleteDC memDC
+        ReleaseDC 0, screenDC
+        Dim desc As PictDesc, iid As PictGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = bmp
+        ' IID_IPictureDisp, {7BF80981-BF32-101A-8BBB-00AA00300CAB}
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set ColorSquare = pic
+    End Function
+
+    ' The keys of the buttons, in the order of the collection, as one string.
+    Private Function Keys(ByVal Bar As VBCCR18.ToolBar) As String
+        Dim i As Long
+        For i = 1 To Bar.Buttons.Count
+            Keys = Keys & Bar.Buttons(i).Key
+        Next
+    End Function
+
+    ' The keys of the buttons, in the order the toolbar shows them.
+    Private Function KeysByPosition(ByVal Bar As VBCCR18.ToolBar) As String
+        Dim i As Long, j As Long
+        For i = 1 To Bar.Buttons.Count
+            For j = 1 To Bar.Buttons.Count
+                If Bar.Buttons(j).Position = i Then KeysByPosition = KeysByPosition & Bar.Buttons(j).Key
+            Next
+        Next
+    End Function
+
+    ' The key of a button, or "Nothing", so that a wrong answer fails the case instead of raising.
+    Private Function KeyOf(ByVal Button As TbrButton) As String
+        If Button Is Nothing Then KeyOf = "Nothing" Else KeyOf = Button.Key
+    End Function
+
+    ' The pixel position of a point of the form, as the low and high words of a message's lParam.
+    Private Function PointParam(ByVal f As HostForm, ByVal X As Single, ByVal Y As Single) As LongPtr
+        Dim px As Long, py As Long
+        px = CLng(f.ScaleX(X, f.ScaleMode, vbPixels))
+        py = CLng(f.ScaleY(Y, f.ScaleMode, vbPixels))
+        PointParam = CLngPtr((py * &H10000) Or px)
+    End Function
+
+    [TestCase]
+    Public Sub Buttons_Add_AtAnIndex_MovesTheLaterButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            .Buttons.Add 1, "c", "C"
+            Expect.AreEqual "cab", Keys(f.ToolBar1), "the keys of the buttons after Add at 1"
+            Expect.AreEqual "cab", KeysByPosition(f.ToolBar1), "the keys of the buttons in the order the toolbar shows them after Add at 1"
+            Expect.AreEqual 2, .Buttons("a").Index, "Index of the first button added after Add at 1"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.Buttons.Add , "a", "A"
+        On Error Resume Next
+        Err.Clear
+        f.ToolBar1.Buttons.Add 3
+        Expect.AreEqual 35600, Err.Number, "Add at 3 with one button"
+        Err.Clear
+        f.ToolBar1.Buttons.Add -1
+        Expect.AreEqual 35600, Err.Number, "Add at -1"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ToolBar1.Buttons.Count, "Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Add_StyleOutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ToolBar1.Buttons.Add , "a", "A", 9
+        Expect.AreEqual 380, Err.Number, "Add with the style 9"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ToolBar1.Buttons.Count, "Count after the refused Add"
+        Expect.AreEqual 0, CLng(SendMessageW(f.ToolBar1.hWnd, TB_BUTTONCOUNT, 0, 0)), "the buttons the window has after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.Buttons.Add , "a", "A"
+        On Error Resume Next
+        Err.Clear
+        f.ToolBar1.Buttons.Add , "A", "again"
+        Expect.AreEqual 457, Err.Number, "Add with the key of another button, in another case"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ToolBar1.Buttons.Count, "Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Add_DuplicateKey_AddsNothingToTheWindow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.Buttons.Add , "a", "A"
+        On Error Resume Next
+        f.ToolBar1.Buttons.Add , "a", "again"
+        On Error GoTo 0
+        Expect.AreEqual 1, CLng(SendMessageW(f.ToolBar1.hWnd, TB_BUTTONCOUNT, 0, 0)), "the buttons the window of the toolbar has after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Item_NumberOutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.Buttons.Add , "a", "A"
+        On Error Resume Next
+        Err.Clear
+        Debug.Print KeyOf(f.ToolBar1.Buttons(2))
+        Expect.AreEqual 9, Err.Number, "Buttons(2) with one button"
+        Err.Clear
+        Debug.Print KeyOf(f.ToolBar1.Buttons(0))
+        Expect.AreEqual 9, Err.Number, "Buttons(0)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Item_UnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.Buttons.Add , "a", "A"
+        On Error Resume Next
+        Err.Clear
+        Debug.Print KeyOf(f.ToolBar1.Buttons("zz"))
+        Expect.AreEqual 5, Err.Number, "Buttons(""zz"")"
+        On Error GoTo 0
+        Expect.AreEqual "a", KeyOf(f.ToolBar1.Buttons("A")), "the key of Buttons(""A"") for the key ""a"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Exists_SaysWhetherTheListHasTheNumberOrKey()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.Buttons.Add , "a", "A"
+        Expect.IsTrue f.ToolBar1.Buttons.Exists("a"), "Exists of a key the list has"
+        Expect.IsTrue f.ToolBar1.Buttons.Exists(1), "Exists(1) with one button"
+        Expect.IsFalse f.ToolBar1.Buttons.Exists("zz"), "Exists of a key the list does not have"
+        Expect.IsFalse f.ToolBar1.Buttons.Exists(2), "Exists(2) with one button"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_Remove_RenumbersTheLaterButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            Dim removed As TbrButton
+            Set removed = .Buttons.Add(, "a", "A")
+            .Buttons.Add , "b", "B"
+            .Buttons.Add , "c", "C"
+            .Buttons.Remove "a"
+            Expect.AreEqual 0, removed.Position, "Position of the button that was removed"
+            Expect.AreEqual 2, .Buttons.Count, "Count after Remove"
+            Expect.AreEqual 1, .Buttons("b").Index, "Index of the second button after the first is removed"
+            Expect.AreEqual 2, .Buttons("c").Index, "Index of the third button after the first is removed"
+            Expect.AreEqual 2, CLng(SendMessageW(.hWnd, TB_BUTTONCOUNT, 0, 0)), "the buttons the window has after Remove"
+            .Buttons.Clear
+            Expect.AreEqual 0, .Buttons.Count, "Count after Clear"
+            Expect.AreEqual 0, CLng(SendMessageW(.hWnd, TB_BUTTONCOUNT, 0, 0)), "the buttons the window has after Clear"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Key_Assigned_RenamesTheButton()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            .Buttons("a").Key = "open"
+            Expect.IsFalse .Buttons.Exists("a"), "Exists of the old key"
+            Expect.AreEqual 1, .Buttons("open").Index, "Index of the button found by the new key"
+            On Error Resume Next
+            Err.Clear
+            .Buttons("open").Key = "B"
+            Expect.AreEqual 457, Err.Number, "Key = the key of another button"
+            On Error GoTo 0
+            Expect.AreEqual "open", .Buttons(1).Key, "Key after the refused assignment"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Position_MovesTheButtonNotItsIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            .Buttons.Add , "c", "C"
+            .Buttons("a").Position = 3
+            Expect.AreEqual "bca", KeysByPosition(f.ToolBar1), "the keys in the order the toolbar shows them after a.Position = 3"
+            Expect.AreEqual "abc", Keys(f.ToolBar1), "the keys in the order of the collection after a.Position = 3"
+            Expect.AreEqual 1, .Buttons("a").Index, "Index after a.Position = 3"
+            Expect.AreEqual 3, .Buttons("a").Position, "Position after a.Position = 3"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Position_AboveTheLastPlace_MovesTheButtonToTheEnd()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            .Buttons.Add , "c", "C"
+            .Buttons("a").Position = 99
+            Expect.AreEqual "bca", KeysByPosition(f.ToolBar1), "the keys in the order the toolbar shows them after a.Position = 99"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Position_OwnPlace_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            On Error Resume Next
+            Err.Clear
+            .Buttons("a").Position = 1
+            Expect.AreEqual 380, Err.Number, "Position = the button's own position"
+            On Error GoTo 0
+            Expect.AreEqual "ab", KeysByPosition(f.ToolBar1), "the keys in the order the toolbar shows them after the refused assignment"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Place_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A")
+        On Error Resume Next
+        Err.Clear
+        b.Left = 5
+        Expect.AreEqual 383, Err.Number, "Left = 5"
+        Err.Clear
+        b.Top = 5
+        Expect.AreEqual 383, Err.Number, "Top = 5"
+        Err.Clear
+        b.Width = 5
+        Expect.AreEqual 383, Err.Number, "Width = 5"
+        Err.Clear
+        b.Height = 5
+        Expect.AreEqual 383, Err.Number, "Height = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Value_CheckGroup_UnpressesTheOthers()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A", TbrButtonStyleCheckGroup
+            .Buttons.Add , "b", "B", TbrButtonStyleCheckGroup
+            .Buttons.Add , "c", "C", TbrButtonStyleCheck
+            .Buttons("a").Value = TbrButtonValuePressed
+            .Buttons("b").Value = TbrButtonValuePressed
+            .Buttons("c").Value = TbrButtonValuePressed
+            Expect.AreEqual CLng(TbrButtonValueUnpressed), CLng(.Buttons("a").Value), "Value of the first group button after the second is pressed"
+            Expect.AreEqual CLng(TbrButtonValuePressed), CLng(.Buttons("b").Value), "Value of the second group button"
+            Expect.AreEqual CLng(TbrButtonValuePressed), CLng(.Buttons("c").Value), "Value of the check button"
+            .Buttons("c").Value = TbrButtonValueUnpressed
+            Expect.AreEqual CLng(TbrButtonValuePressed), CLng(.Buttons("b").Value), "Value of the group button after the check button is unpressed"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Style_Assigned_ChangesTheStyleAndKeepsTheCaption()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "Alpha", TbrButtonStyleCheck)
+        b.Value = TbrButtonValuePressed
+        b.Style = TbrButtonStyleDropDown
+        Expect.AreEqual CLng(TbrButtonStyleDropDown), CLng(b.Style), "Style after Style = TbrButtonStyleDropDown"
+        Expect.AreEqual "Alpha", b.Caption, "Caption after the style changes"
+        Expect.AreEqual CLng(TbrButtonValueUnpressed), CLng(b.Value), "Value after the style of a pressed button changes"
+        On Error Resume Next
+        Err.Clear
+        b.Style = 9
+        Expect.AreEqual 380, Err.Number, "Style = 9"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Image_FromTheImageList_ByKeyAndNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        f.ImageList1.ListImages.Add , "green", ColorSquare(vbGreen)
+        Set f.ToolBar1.ImageList = f.ImageList1
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A", , "green")
+        Expect.AreEqual 2, b.ImageIndex, "ImageIndex of a button given the key ""green"""
+        Expect.AreEqual "green", CStr(b.Image), "Image of that button"
+        b.Image = 1
+        Expect.AreEqual 1, b.ImageIndex, "ImageIndex after Image = 1"
+        On Error Resume Next
+        Err.Clear
+        b.Image = "nope"
+        Expect.AreEqual 35601, Err.Number, "Image = a key the list does not have"
+        Err.Clear
+        b.Image = -2
+        Expect.AreEqual 35600, Err.Number, "Image = -2"
+        On Error GoTo 0
+        Expect.AreEqual 1, b.ImageIndex, "ImageIndex after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_ImageListOnTheForm_CanBeGivenByName()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed)
+        f.ToolBar1.ImageList = "ImageList1"
+        Expect.AreEqual "ImageList", TypeName(f.ToolBar1.ImageList), "TypeName of ImageList after ImageList = ""ImageList1"""
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A", , "red")
+        Expect.AreEqual 1, b.ImageIndex, "ImageIndex of a button given the key ""red"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_AnotherObject_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.ToolBar1.ImageList = f.ProgressBar1
+        Expect.AreEqual 35610, Err.Number, "ImageList = a ProgressBar"
+        Err.Clear
+        f.ToolBar1.ImageList = True
+        Expect.AreEqual 13, Err.Number, "ImageList = True"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_ListOfAnotherSize_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , "red", ColorSquare(vbRed, 16, 16)
+        Set f.ToolBar1.ImageList = f.ImageList1
+        Dim big As LongPtr
+        big = ImageList_Create(32, 32, ILC_COLOR32, 1, 1)
+        On Error Resume Next
+        Err.Clear
+        f.ToolBar1.DisabledImageList = big
+        Expect.AreEqual 380, Err.Number, "DisabledImageList = the handle of a list of pictures of another size than ImageList"
+        On Error GoTo 0
+        Unload f
+        ImageList_Destroy big
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToolBar_Properties_ValuesOutOfRange_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ToolBar1.Style = 5
+        Expect.AreEqual 380, Err.Number, "Style = 5"
+        Err.Clear
+        f.ToolBar1.TextAlignment = 3
+        Expect.AreEqual 380, Err.Number, "TextAlignment = 3"
+        Err.Clear
+        f.ToolBar1.Orientation = 7
+        Expect.AreEqual 380, Err.Number, "Orientation = 7"
+        Err.Clear
+        f.ToolBar1.MaxTextRows = -1
+        Expect.AreEqual 380, Err.Number, "MaxTextRows = -1"
+        Err.Clear
+        f.ToolBar1.ButtonWidth = -1
+        Expect.AreEqual 380, Err.Number, "ButtonWidth = -1"
+        Err.Clear
+        f.ToolBar1.MinButtonWidth = -1
+        Expect.AreEqual 380, Err.Number, "MinButtonWidth = -1"
+        Err.Clear
+        f.ToolBar1.MousePointer = 31
+        Expect.AreEqual 380, Err.Number, "MousePointer = 31"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxTextRows_MoreThanOneWithTextAlignRight_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ToolBar1.MaxTextRows = 3
+        Expect.AreEqual 3, CLng(f.ToolBar1.MaxTextRows), "MaxTextRows after MaxTextRows = 3"
+        f.ToolBar1.TextAlignment = TbrTextAlignRight
+        Expect.AreEqual 1, CLng(f.ToolBar1.MaxTextRows), "MaxTextRows after TextAlignment = TbrTextAlignRight"
+        On Error Resume Next
+        Err.Clear
+        f.ToolBar1.MaxTextRows = 2
+        Expect.AreEqual 383, Err.Number, "MaxTextRows = 2 with TextAlignment = TbrTextAlignRight"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonHeight_SmallerThanTheMinimum_IsRaisedToIt()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim min As Single
+        f.ToolBar1.ButtonHeight = 1
+        min = f.ToolBar1.ButtonHeight
+        Expect.IsTrue min > 1, "ButtonHeight after ButtonHeight = 1 twip"
+        f.ToolBar1.ButtonHeight = min * 2
+        Expect.IsTrue f.ToolBar1.ButtonHeight > min, "ButtonHeight after ButtonHeight is set to twice the minimum"
+        f.ToolBar1.ButtonHeight = 1
+        Expect.IsTrue Abs(f.ToolBar1.ButtonHeight - min) < 1, "ButtonHeight after it is set to 1 twip again"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_HeldAcrossTextAlignmentChange_StillReachTheirButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A")
+        f.ToolBar1.TextAlignment = TbrTextAlignRight
+        b.Enabled = False
+        Expect.IsFalse f.ToolBar1.Buttons("a").Enabled, "Enabled of the button after a variable that held it before TextAlignment changed is set to False"
+        Expect.AreEqual 1, b.Position, "Position of the button the variable held, after TextAlignment changed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_HeldAcrossOrientationChange_StillReachTheirButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A")
+        f.ToolBar1.Orientation = TbrOrientationVertical
+        Expect.AreEqual 1, b.Position, "Position of the button the variable held, after Orientation changed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_HeldAcrossStyleChange_StillReachTheirButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A")
+        f.ToolBar1.Style = TbrStyleFlat
+        b.Enabled = False
+        Expect.IsFalse f.ToolBar1.Buttons("a").Enabled, "Enabled of the button after a variable that held it before Style changed is set to False"
+        Expect.IsTrue f.ToolBar1.Buttons(1) Is b, "whether Buttons(1) is the object the variable held, after Style changed"
+        f.ToolBar1.Font.Size = 14
+        Expect.IsTrue f.ToolBar1.Buttons(1) Is b, "whether Buttons(1) is the object the variable held, after the font changed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Buttons_HeldAcrossRightToLeftChange_StillReachTheirButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A")
+        f.ToolBar1.RightToLeft = True
+        Expect.AreEqual 1, b.Position, "Position of the button the variable held, after RightToLeft changed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Visible_False_MovesTheLaterButtonsUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim leftOfB As Single
+            leftOfB = .Buttons("b").Left
+            Expect.IsTrue leftOfB > 0, "Left of the second button"
+            .Buttons("a").Visible = False
+            Expect.IsFalse .Buttons("a").Visible, "Visible after Visible = False"
+            Expect.AreEqual 1, .Buttons("a").Position, "Position of the hidden button"
+            Expect.AreEqual 1, .Buttons("a").Index, "Index of the hidden button"
+            Expect.AreEqual 0, CLng(.Buttons("b").Left), "Left of the second button after the first is hidden"
+            Expect.AreEqual 0, CLng(.Buttons("a").Width), "Width of the hidden button"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_CustomWidth_SetsTheWidth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As TbrButton, b As TbrButton
+        Set a = f.ToolBar1.Buttons.Add(, "a", "A")
+        Set b = f.ToolBar1.Buttons.Add(, "b", "B")
+        a.CustomWidth = 1500
+        Expect.IsTrue Abs(a.Width - 1500) < 15, "Width after CustomWidth = 1500"
+        Expect.IsTrue Abs(b.Left - a.Width) < 15, "Left of the next button after CustomWidth = 1500"
+        a.CustomWidth = 0
+        Expect.IsTrue a.Width < 1500, "Width after CustomWidth = 0"
+        On Error Resume Next
+        Err.Clear
+        a.CustomWidth = -1
+        Expect.AreEqual 380, Err.Number, "CustomWidth = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_AutoSize_WidthFollowsTheCaption()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As TbrButton, b As TbrButton
+        Set a = f.ToolBar1.Buttons.Add(, "a", "A")
+        Set b = f.ToolBar1.Buttons.Add(, "b", "Bbbbbbbbbbbbbbbbbbbbbbbb")
+        Dim standard As Single
+        standard = a.Width
+        a.AutoSize = True
+        b.AutoSize = True
+        Expect.IsTrue a.Width < standard, "Width of a short caption with AutoSize"
+        Expect.IsTrue b.Width > standard, "Width of a long caption with AutoSize"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Button_Tag_NewButton_IsAnEmptyString()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "a", "A")
+        Expect.AreEqual "", b.Tag, "Tag of a new button"
+        b.Tag = 5
+        Expect.AreEqual 5, b.Tag, "Tag after Tag = 5"
+        Set b.Tag = f.ProgressBar1
+        Expect.AreEqual "ProgressBar", TypeName(b.Tag), "TypeName of Tag after Set Tag = a ProgressBar"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonMenus_Add_AtAnIndex_MovesTheLaterMenus()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton, m As TbrButtonMenu
+        Set b = f.ToolBar1.Buttons.Add(, "d", "D", TbrButtonStyleDropDown)
+        Set m = b.ButtonMenus.Add(, "m1", "One")
+        Expect.AreEqual "One", m.Text, "Text of a new menu"
+        Expect.IsTrue m.Enabled And m.Visible And Not m.Checked And Not m.Separator, "the defaults of a new menu: Enabled, Visible, not Checked, not Separator"
+        Expect.IsTrue m.Picture Is Nothing, "Picture of a new menu is Nothing"
+        Expect.AreEqual "d", KeyOf(m.Parent), "the key of Parent of the menu"
+        b.ButtonMenus.Add 1, "m0", "Zero"
+        Expect.AreEqual 2, b.ButtonMenus("m1").Index, "Index of the first menu after another is added at 1"
+        b.ButtonMenus.Remove 1
+        Expect.AreEqual 1, b.ButtonMenus("m1").Index, "Index of the menu after the one before it is removed"
+        Expect.AreEqual 1, b.ButtonMenus.Count, "Count after Remove"
+        b.ButtonMenus.Clear
+        Expect.AreEqual 0, b.ButtonMenus.Count, "Count after Clear"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonMenus_Add_RefusedArguments_RaiseTheirErrors()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "d", "D", TbrButtonStyleDropDown)
+        b.ButtonMenus.Add , "m1", "One"
+        On Error Resume Next
+        Err.Clear
+        b.ButtonMenus.Add 7
+        Expect.AreEqual 35600, Err.Number, "Add at 7 with one menu"
+        Err.Clear
+        b.ButtonMenus.Add , "M1", "again"
+        Expect.AreEqual 457, Err.Number, "Add with the key of another menu"
+        Err.Clear
+        Debug.Print b.ButtonMenus("q").Text
+        Expect.AreEqual 5, Err.Number, "ButtonMenus(""q"")"
+        Err.Clear
+        Debug.Print b.ButtonMenus(9).Text
+        Expect.AreEqual 9, Err.Number, "ButtonMenus(9)"
+        On Error GoTo 0
+        Expect.AreEqual 1, b.ButtonMenus.Count, "Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonMenu_Key_Assigned_RenamesTheItem()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim b As TbrButton
+        Set b = f.ToolBar1.Buttons.Add(, "d", "D", TbrButtonStyleDropDown)
+        b.ButtonMenus.Add , "m1", "One"
+        b.ButtonMenus.Add , "m2", "Two"
+        b.ButtonMenus("m1").Key = "first"
+        Expect.IsFalse b.ButtonMenus.Exists("m1"), "Exists of the old key"
+        Expect.AreEqual 1, b.ButtonMenus("first").Index, "Index of the item found by the new key"
+        On Error Resume Next
+        Err.Clear
+        b.ButtonMenus("first").Key = "M2"
+        Expect.AreEqual 457, Err.Number, "Key = the key of another item"
+        On Error GoTo 0
+        Expect.AreEqual "first", b.ButtonMenus(1).Key, "Key after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTest_PointOnAButton_ReturnsTheButton()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim b As TbrButton
+            Set b = .Buttons("b")
+            Expect.AreEqual "b", KeyOf(.HitTest(b.Left + b.Width / 2, b.Top + b.Height / 2)), "the key of the button HitTest returns for the middle of the second button"
+            Expect.AreEqual "Nothing", KeyOf(.HitTest(.Width * 20, 5)), "the button HitTest returns for a point far to the right"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindMnemonic_CharacterOfAMnemonicOrOfAFirstLetter_ReturnsTheButton()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "&Open"
+            .Buttons.Add , "b", "Save"
+            .Buttons.Add , "c", "&Close"
+            Expect.AreEqual "c", KeyOf(.FindMnemonic(Asc("C"))), "the button FindMnemonic returns for ""C"""
+            Expect.AreEqual "c", KeyOf(.FindMnemonic(Asc("c"))), "the button FindMnemonic returns for ""c"""
+            Expect.AreEqual "b", KeyOf(.FindMnemonic(Asc("S"))), "the button FindMnemonic returns for the first letter of a caption without a mnemonic"
+            Expect.AreEqual "a", KeyOf(.FindMnemonic(Asc("O"))), "the button FindMnemonic returns for ""O"""
+            Expect.AreEqual "Nothing", KeyOf(.FindMnemonic(Asc("Z"))), "the button FindMnemonic returns for a letter no caption has"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_Set_IsReadBackWithItsSide()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim after As Boolean
+            Expect.AreEqual "Nothing", KeyOf(.InsertMark), "the button InsertMark returns before one is set"
+            Set .InsertMark(True) = .Buttons("b")
+            Expect.AreEqual "b", KeyOf(.InsertMark(after)), "the key of InsertMark after it is set after the second button"
+            Expect.IsTrue after, "After of InsertMark set after a button"
+            Set .InsertMark(False) = .Buttons("b")
+            Expect.AreEqual "b", KeyOf(.InsertMark(after)), "the key of InsertMark after it is set before the second button"
+            Expect.IsFalse after, "After of InsertMark set before a button"
+            Set .InsertMark = Nothing
+            Expect.AreEqual "Nothing", KeyOf(.InsertMark), "the button InsertMark returns after it is set to Nothing"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTestInsertMark_HalfOfAButton_GivesTheSide()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim b As TbrButton, after As Boolean
+            Set b = .Buttons("b")
+            after = True
+            Expect.AreEqual "b", KeyOf(.HitTestInsertMark(b.Left + b.Width * 0.1, b.Top + b.Height / 2, after)), "the button for a point in the left half of the second button"
+            Expect.IsFalse after, "After for a point in the left half"
+            Expect.AreEqual "b", KeyOf(.HitTestInsertMark(b.Left + b.Width * 0.9, b.Top + b.Height / 2, after)), "the button for a point in the right half of the second button"
+            Expect.IsTrue after, "After for a point in the right half"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetIdealSize_ReachesTheLastButton()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim w As Single, h As Single
+            .GetIdealSize w, h
+            Expect.IsTrue Abs(w - (.Buttons("b").Left + .Buttons("b").Width)) < 15, "the width GetIdealSize gives, against the right edge of the last button"
+            Expect.IsTrue Abs(h - .Height) < 15, "the height GetIdealSize gives, against Height"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Height_Assigned_FollowsTheButtons()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            Dim h As Single
+            h = .Height
+            .Height = h * 3
+            Expect.IsTrue Abs(.Height - h) < 15, "Height after it is set to three times the height of the buttons"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonClick_AMouseClick_IsRaisedBetweenMouseDownAndMouseUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ToolBarSink
+        Set sink.Bar = f.ToolBar1
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim p As LongPtr
+            p = PointParam(f, .Buttons("b").Left + 40, .Buttons("b").Top + 40)
+            Rig.ClearLog
+            SendMessageW .hWnd, WM_LBUTTONDOWN, 1, p
+            SendMessageW .hWnd, WM_LBUTTONUP, 0, p
+        End With
+        Expect.AreEqual "MouseDown | ButtonClick b | MouseUp | Click", Rig.Events(), "the events of a click on the second button"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonClick_ASeparator_RaisesNoButtonClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ToolBarSink
+        Set sink.Bar = f.ToolBar1
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "s", "", TbrButtonStyleSeparator
+            .Buttons.Add , "b", "B"
+            Dim p As LongPtr
+            p = PointParam(f, .Buttons("s").Left + .Buttons("s").Width / 2, .Buttons("s").Top + 40)
+            Rig.ClearLog
+            SendMessageW .hWnd, WM_LBUTTONDOWN, 1, p
+            SendMessageW .hWnd, WM_LBUTTONUP, 0, p
+        End With
+        Expect.AreEqual "MouseDown | MouseUp | Click", Rig.Events(), "the events of a click on a separator"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonHotChanged_HotAssigned_RaisesTheNewButtonBeforeTheOldOne()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ToolBarSink
+        Set sink.Bar = f.ToolBar1
+        With f.ToolBar1
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Rig.ClearLog
+            .Buttons("a").Hot = True
+            .Buttons("b").Hot = True
+            Set .HotItem = Nothing
+        End With
+        Expect.AreEqual "ButtonHotChanged a True | ButtonHotChanged b True | ButtonHotChanged a False | ButtonHotChanged b False", Rig.Events(), "the events of a.Hot = True, b.Hot = True and HotItem = Nothing"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ButtonMouseEnter_MouseTrackTrue_RaisedAfterMouseEnterAndBeforeMouseLeave()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New ToolBarSink
+        Set sink.Bar = f.ToolBar1
+        With f.ToolBar1
+            .MouseTrack = True
+            .Buttons.Add , "a", "A"
+            .Buttons.Add , "b", "B"
+            Dim pa As LongPtr, pb As LongPtr
+            pa = PointParam(f, .Buttons("a").Left + 40, .Buttons("a").Top + 40)
+            pb = PointParam(f, .Buttons("b").Left + 40, .Buttons("b").Top + 40)
+            Rig.ClearLog
+            SendMessageW .hWnd, WM_MOUSEMOVE, 0, pa
+            SendMessageW .hWnd, WM_MOUSEMOVE, 0, pb
+            SendMessageW .hWnd, WM_MOUSELEAVE, 0, 0
+        End With
+        Expect.AreEqual "MouseEnter | ButtonMouseEnter a | MouseMove | ButtonMouseLeave a | ButtonMouseEnter b | MouseMove | ButtonMouseLeave b | MouseLeave", Rig.Events(), "the events of a move onto the first button, a move onto the second and the pointer leaving"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a ToolBar, written to Rig.Log.
+Class ToolBarSink
+
+    Public WithEvents Bar As VBCCR18.ToolBar
+
+    Private Sub Bar_ButtonClick(ByVal Button As TbrButton) Handles Bar.ButtonClick
+        Rig.Ev "ButtonClick " & Button.Key
+    End Sub
+
+    Private Sub Bar_ButtonHotChanged(ByVal Button As TbrButton, ByVal Hot As Boolean) Handles Bar.ButtonHotChanged
+        Rig.Ev "ButtonHotChanged " & Button.Key & " " & Hot
+    End Sub
+
+    Private Sub Bar_ButtonMouseEnter(ByVal Button As TbrButton) Handles Bar.ButtonMouseEnter
+        Rig.Ev "ButtonMouseEnter " & Button.Key
+    End Sub
+
+    Private Sub Bar_ButtonMouseLeave(ByVal Button As TbrButton) Handles Bar.ButtonMouseLeave
+        Rig.Ev "ButtonMouseLeave " & Button.Key
+    End Sub
+
+    Private Sub Bar_Click() Handles Bar.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Bar_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseDown
+        Rig.Ev "MouseDown"
+    End Sub
+
+    Private Sub Bar_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseMove
+        Rig.Ev "MouseMove"
+    End Sub
+
+    Private Sub Bar_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseUp
+        Rig.Ev "MouseUp"
+    End Sub
+
+    Private Sub Bar_MouseEnter() Handles Bar.MouseEnter
+        Rig.Ev "MouseEnter"
+    End Sub
+
+    Private Sub Bar_MouseLeave() Handles Bar.MouseLeave
+        Rig.Ev "MouseLeave"
+    End Sub
+
+End Class

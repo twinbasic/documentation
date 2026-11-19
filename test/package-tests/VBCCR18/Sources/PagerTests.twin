@@ -1,0 +1,284 @@
+' PagerTests: the Pager control, with a ListBoxW of the same form as its buddy. A click of the user
+' on a scroll button is a mouse message sent to the pager's window.
+[TestFixture]
+Module PagerTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetParent Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+
+    ' A vertical pager 1000 twips high with a buddy 6000 twips high, so that it has a scroll button.
+    Private Sub TallBuddy(ByVal f As HostForm)
+        f.Pager1.Width = 2000
+        f.Pager1.Height = 1000
+        f.ListBoxW1.Width = 1900
+        f.ListBoxW1.Height = 6000
+        f.Pager1.BuddyControl = f.ListBoxW1
+        f.Pager1.ReCalcSize
+    End Sub
+
+    ' The button states of the pager as one string, "top bottom".
+    Private Function States(ByVal Pg As VBCCR18.Pager) As String
+        States = Pg.GetButtonState(PgrButtonTopOrLeft) & " " & Pg.GetButtonState(PgrButtonBottomOrRight)
+    End Function
+
+    ' A press and release of the left button at the pixel of the pager that is 3 pixels in from the
+    ' far end of a vertical pager, or of a horizontal one.
+    Private Sub ClickFarButton(ByVal f As HostForm)
+        Dim x As Long, y As Long
+        If f.Pager1.Orientation = PgrOrientationVertical Then
+            x = 5
+            y = CLng(f.ScaleY(f.Pager1.Height, vbTwips, vbPixels)) - 3
+        Else
+            x = CLng(f.ScaleX(f.Pager1.Width, vbTwips, vbPixels)) - 3
+            y = 5
+        End If
+        SendMessageW f.Pager1.hWnd, WM_LBUTTONDOWN, 1, x + y * 65536
+        SendMessageW f.Pager1.hWnd, WM_LBUTTONUP, 0, x + y * 65536
+    End Sub
+
+    ' The first event of the log.
+    Private Function FirstEvent() As String
+        Dim e As String
+        e = Rig.Events()
+        If InStr(e, " | ") > 0 Then FirstEvent = Left$(e, InStr(e, " | ") - 1) Else FirstEvent = e
+    End Function
+
+    [TestCase]
+    Public Sub Defaults_NewPager()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual PgrOrientationVertical, f.Pager1.Orientation, "Orientation"
+        Expect.AreEqual 0, CLng(f.Pager1.BorderWidth), "BorderWidth"
+        Expect.IsFalse f.Pager1.AutoScroll, "AutoScroll"
+        Expect.IsTrue f.Pager1.OLEDragDropScroll, "OLEDragDropScroll"
+        Expect.AreEqual 0, CLng(f.Pager1.Value), "Value"
+        Expect.IsTrue f.Pager1.BuddyControl Is Nothing, "BuddyControl"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Properties_InvalidValues_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear: f.Pager1.Value = -1
+        Expect.AreEqual 380, Err.Number, "Value = -1"
+        Err.Clear: f.Pager1.Orientation = 5
+        Expect.AreEqual 380, Err.Number, "Orientation = 5"
+        Err.Clear: f.Pager1.BorderWidth = -3
+        Expect.AreEqual 380, Err.Number, "BorderWidth = -3"
+        Err.Clear: f.Pager1.ButtonSize = -3
+        Expect.AreEqual 380, Err.Number, "ButtonSize = -3"
+        Err.Clear: f.Pager1.GetButtonState 5
+        Expect.AreEqual 380, Err.Number, "GetButtonState 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BorderWidthAndButtonSize_Assigned_AreRead()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Pager1.BorderWidth = 150
+        Expect.IsTrue Abs(f.Pager1.BorderWidth - 150) < 30, "BorderWidth after BorderWidth = 150, got " & f.Pager1.BorderWidth
+        f.Pager1.ButtonSize = 400
+        Expect.IsTrue Abs(f.Pager1.ButtonSize - 400) < 30, "ButtonSize after ButtonSize = 400, got " & f.Pager1.ButtonSize
+        f.Pager1.ButtonSize = -1
+        Expect.IsTrue f.Pager1.ButtonSize > 0, "ButtonSize after ButtonSize = -1, got " & f.Pager1.ButtonSize
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_Control_BecomesAChildWindowOfThePager()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim before As LongPtr
+        before = GetParent(f.ListBoxW1.hWndUserControl)
+        f.Pager1.BuddyControl = f.ListBoxW1
+        Expect.AreEqual "ListBoxW", TypeName(f.Pager1.BuddyControl), "TypeName of BuddyControl"
+        Expect.IsTrue GetParent(f.ListBoxW1.hWndUserControl) = f.Pager1.hWnd, "the parent window of the buddy while it is the buddy"
+        f.Pager1.BuddyControl = Nothing
+        Expect.IsTrue f.Pager1.BuddyControl Is Nothing, "BuddyControl after Nothing"
+        Expect.IsTrue GetParent(f.ListBoxW1.hWndUserControl) = before, "the parent window of the buddy after Nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_NameOrHandle_ChoosesTheBuddy()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Pager1.BuddyControl = "ListBoxW1"
+        Expect.AreEqual "ListBoxW", TypeName(f.Pager1.BuddyControl), "TypeName of BuddyControl after a name"
+        Expect.IsTrue GetParent(f.ListBoxW1.hWndUserControl) = f.Pager1.hWnd, "the parent window of the buddy after a name"
+        f.Pager1.BuddyControl = "nothing of that name"
+        Expect.IsTrue f.Pager1.BuddyControl Is Nothing, "BuddyControl after a name that no control has"
+        f.Pager1.BuddyControl = f.ListBoxW1.hWndUserControl
+        Expect.IsTrue f.Pager1.BuddyControl = f.ListBoxW1.hWndUserControl, "BuddyControl after a window handle"
+        Expect.IsTrue GetParent(f.ListBoxW1.hWndUserControl) = f.Pager1.hWnd, "the parent window of the buddy after a handle"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_InvalidValues_Raise35610And13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim c As Object
+        Set c = New StdFont
+        On Error Resume Next
+        Err.Clear
+        f.Pager1.BuddyControl = c
+        Expect.AreEqual 35610, Err.Number, "BuddyControl = a StdFont"
+        Err.Clear
+        f.Pager1.BuddyControl = 1.5
+        Expect.AreEqual 13, Err.Number, "BuddyControl = 1.5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetButtonState_BuddyTallerThanThePager_ShowsTheButtonsThatCanScroll()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Pager1.Width = 2000
+        f.Pager1.Height = 1000
+        f.ListBoxW1.Width = 1900
+        f.ListBoxW1.Height = 600
+        f.Pager1.BuddyControl = f.ListBoxW1
+        f.Pager1.ReCalcSize
+        Expect.AreEqual "0 0", States(f.Pager1), "the button states with a buddy that fits"
+        Unload f
+        Set f = Rig.NewForm()
+        TallBuddy f
+        Expect.AreEqual PgrButtonStateInvisible & " " & PgrButtonStateNormal, States(f.Pager1), "the button states at the start of a buddy that does not fit"
+        f.Pager1.Value = 500
+        Expect.AreEqual PgrButtonStateNormal & " " & PgrButtonStateNormal, States(f.Pager1), "the button states in the middle"
+        f.Pager1.Value = 100000
+        Expect.IsTrue f.Pager1.Value < 100000, "Value after Value = 100000, got " & f.Pager1.Value
+        Expect.IsTrue f.Pager1.Value > 0, "Value after Value = 100000, got " & f.Pager1.Value
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CalcSize_RaisedWithTheBuddysSizeAndTheHandlerCanChangeIt()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New PagerSink
+        Set sink.Pg = f.Pager1
+        TallBuddy f
+        Expect.AreEqual "CalcSize width 0 height > 0", Rig.Events(), "the events of ReCalcSize with a vertical pager"
+        Expect.AreEqual "0 1", States(f.Pager1), "the button states with the buddy's own height"
+        Set sink.Pg = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CalcSize_HandlerSetsAHeightBeforeTheBuddy_IsTheScrollableHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New PagerSink
+        Set sink.Pg = f.Pager1
+        sink.NewHeight = 5000
+        f.Pager1.Width = 2000
+        f.Pager1.Height = 1000
+        f.ListBoxW1.Width = 1900
+        f.ListBoxW1.Height = 600
+        f.Pager1.BuddyControl = f.ListBoxW1
+        f.Pager1.ReCalcSize
+        Expect.AreEqual "0 1", States(f.Pager1), "the button states with a buddy of 600 twips and a handler that says 5000"
+        Set sink.Pg = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scroll_ClickOnTheFarButton_RaisesScrollAndTheHandlerSetsDelta()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New PagerSink
+        TallBuddy f
+        Set sink.Pg = f.Pager1
+        sink.NewDelta = 300
+        Rig.ClearLog
+        ClickFarButton f
+        Expect.AreEqual "Scroll 2 delta > 0 at 0", FirstEvent(), "the first event of a click on the bottom button"
+        Expect.IsTrue Abs(f.Pager1.Value - 300) < 30, "Value after a click with Delta set to 300, got " & f.Pager1.Value
+        Set sink.Pg = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scroll_Horizontal_RaisesScrollWithPgrDirectionRight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New PagerSink
+        f.Pager1.Orientation = PgrOrientationHorizontal
+        f.Pager1.Width = 1000
+        f.Pager1.Height = 1000
+        f.ListBoxW1.Width = 6000
+        f.ListBoxW1.Height = 900
+        f.Pager1.BuddyControl = f.ListBoxW1
+        f.Pager1.ReCalcSize
+        Set sink.Pg = f.Pager1
+        Rig.ClearLog
+        ClickFarButton f
+        Expect.AreEqual "Scroll 8 delta > 0 at 0", FirstEvent(), "the first event of a click on the right button"
+        Expect.IsTrue f.Pager1.Value > 0, "Value after the click, got " & f.Pager1.Value
+        Set sink.Pg = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a Pager, written to Rig.Log. NewHeight and NewDelta are what the handlers of
+' CalcSize and Scroll set when they are not 0.
+Class PagerSink
+
+    Public WithEvents Pg As VBCCR18.Pager
+    Public NewHeight As Single
+    Public NewDelta As Single
+
+    Private Sub Pg_CalcSize(ByRef Width As Single, ByRef Height As Single) Handles Pg.CalcSize
+        Rig.Ev "CalcSize width " & CLng(Width) & " height " & IIf(Height > 0, "> 0", "0")
+        If NewHeight <> 0 Then Height = NewHeight
+    End Sub
+
+    Private Sub Pg_Scroll(ByVal Shift As Integer, ByVal Direction As PgrDirectionConstants, ByVal X As Single, ByVal Y As Single, ByRef Delta As Single, ByVal ClientLeft As Single, ByVal ClientTop As Single, ByVal ClientRight As Single, ByVal ClientBottom As Single) Handles Pg.Scroll
+        Dim at As String
+        If Direction = PgrDirectionUp Or Direction = PgrDirectionDown Then at = IIf(Y > 0, "Y > 0", "0") Else at = IIf(X > 0, "X > 0", "0")
+        Rig.Ev "Scroll " & Direction & " delta " & IIf(Delta > 0, "> 0", "0") & " at " & at
+        If NewDelta <> 0 Then Delta = NewDelta
+    End Sub
+
+    Private Sub Pg_HotChanged() Handles Pg.HotChanged
+        Rig.Ev "HotChanged"
+    End Sub
+
+    Private Sub Pg_Click() Handles Pg.Click
+        Rig.Ev "Click"
+    End Sub
+
+End Class

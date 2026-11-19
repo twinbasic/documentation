@@ -1,0 +1,277 @@
+' RichTextBoxFilesTests: loading the text of the RichTextBox from files and saving it to them. The
+' files are under %TEMP%\tbdocs-package-tests\VBCCR18, and each case deletes those it writes.
+[TestFixture]
+Module RichTextBoxFilesTests
+
+    [TestCase]
+    Public Sub SaveFile_LoadFile_KeepsTheFormatting()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String
+        Path = RichTextBoxRig.TempFolder() & "\rtb-keeps.rtf"
+        With f.RichTextBox1
+            .Text = "Saved text"
+            .SelStart = 0: .SelLength = 5
+            .SelBold = True
+            .SaveFile Path
+            .Text = ""
+            .LoadFile Path
+            Expect.AreEqual "Saved text", .Text, "Text after SaveFile and LoadFile"
+            .SelStart = 0: .SelLength = 5
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelBold), "SelBold of ""Saved"" after SaveFile and LoadFile"
+        End With
+        RichTextBoxRig.DeleteFile Path
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFile_UnicodeText_StartsWithAByteOrderMark()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String
+        Path = RichTextBoxRig.TempFolder() & "\rtb-unicode.txt"
+        f.RichTextBox1.Text = "w" & ChrW(&H3A9)
+        f.RichTextBox1.SaveFile Path, RtfLoadSaveFormatUnicodeText
+        Expect.AreEqual 6, FileLen(Path), "the length of the file of two characters in Unicode text"
+        Dim b(0 To 1) As Byte, n As Integer
+        n = FreeFile
+        Open Path For Binary Access Read As #n
+        Get #n, , b
+        Close #n
+        Expect.AreEqual "255 254", b(0) & " " & b(1), "the first two bytes of the file"
+        f.RichTextBox1.Text = ""
+        f.RichTextBox1.LoadFile Path, RtfLoadSaveFormatUnicodeText
+        Expect.AreEqual "w" & ChrW(&H3A9), f.RichTextBox1.Text, "Text after LoadFile of the file"
+        RichTextBoxRig.DeleteFile Path
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFile_SelectionOnly_InsertsAtTheInsertionPoint()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String
+        Path = RichTextBoxRig.TempFolder() & "\rtb-insert.txt"
+        f.RichTextBox1.Text = "words"
+        f.RichTextBox1.SaveFile Path, RtfLoadSaveFormatText
+        f.RichTextBox1.Text = "[]"
+        f.RichTextBox1.SelStart = 1
+        f.RichTextBox1.LoadFile Path, RtfLoadSaveFormatText, True
+        Expect.AreEqual "[words]", f.RichTextBox1.Text, "Text after LoadFile with SelectionOnly at 1 in ""[]"""
+        RichTextBoxRig.DeleteFile Path
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_TextFile_LoadsIt()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String
+        Path = RichTextBoxRig.TempFolder() & "\rtb-name.txt"
+        f.RichTextBox1.Text = "from a file"
+        f.RichTextBox1.SaveFile Path, RtfLoadSaveFormatText
+        f.RichTextBox1.Text = ""
+        f.RichTextBox1.FileName = Path
+        Expect.AreEqual "from a file", f.RichTextBox1.Text, "Text after FileName = the path of a text file"
+        Expect.AreEqual Path, f.RichTextBox1.FileName, "FileName after the assignment"
+        RichTextBoxRig.DeleteFile Path
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_RtfFileInPlainText_IsNotLoaded()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String
+        Path = RichTextBoxRig.TempFolder() & "\rtb-plain.rtf"
+        f.RichTextBox1.Text = "rich"
+        f.RichTextBox1.SaveFile Path
+        f.RichTextBox1.TextMode = RtfTextModePlainText
+        f.RichTextBox1.FileName = Path
+        Expect.AreEqual "", f.RichTextBox1.Text, "Text after FileName = the path of an RTF file in plain text"
+        Expect.AreEqual "", f.RichTextBox1.FileName, "FileName after the assignment"
+        RichTextBoxRig.DeleteFile Path
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileName_Missing_Raises75()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.FileName = RichTextBoxRig.TempFolder() & "\no such file.rtf"
+        Expect.AreEqual 75, Err.Number, "FileName = a file that does not exist"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFile_Missing_Raises75()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.LoadFile RichTextBoxRig.TempFolder() & "\no such file.rtf"
+        Expect.AreEqual 75, Err.Number, "LoadFile of a file that does not exist"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFile_FolderMissing_RaisesAnError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String
+        Path = RichTextBoxRig.TempFolder() & "\no such folder\rtb.rtf"
+        f.RichTextBox1.Text = "data"
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.SaveFile Path
+        Dim Number As Long
+        Number = Err.Number
+        On Error GoTo 0
+        Expect.IsTrue Number <> 0, "an error from SaveFile into a folder that does not exist"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' RichTextBoxOLETests: the OLE objects in the text.
+[TestFixture]
+Module RichTextBoxOLETests
+
+    ' Writes a bitmap of one red pixel and returns its path.
+    Private Function PixelFile() As String
+        Dim Bytes(0 To 57) As Byte, Header As Variant, i As Long, n As Integer
+        Header = Array(&H42, &H4D, 58, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24, 0)
+        For i = 0 To UBound(Header)
+            Bytes(i) = Header(i)
+        Next
+        Bytes(34) = 4
+        Bytes(56) = 255
+        PixelFile = RichTextBoxRig.TempFolder() & "\rtb-pixel.bmp"
+        n = FreeFile
+        Open PixelFile For Binary Access Write As #n
+        Put #n, , Bytes
+        Close #n
+    End Function
+
+    ' "ab" with the pixel between the two characters.
+    Private Sub InsertThePixel(ByVal Box As VBCCR18.RichTextBox)
+        Dim Path As String
+        Path = PixelFile()
+        Box.Text = "ab"
+        Box.SelStart = 1
+        Box.OLEObjectsAddFromPicture LoadPicture(Path)
+        RichTextBoxRig.DeleteFile Path
+    End Sub
+
+    [TestCase]
+    Public Sub OLEObjectsAddFromPicture_InsertsOneObject()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 0, f.RichTextBox1.OLEObjectsCount, "OLEObjectsCount of a new control"
+        InsertThePixel f.RichTextBox1
+        Expect.AreEqual 1, f.RichTextBox1.OLEObjectsCount, "OLEObjectsCount after OLEObjectsAddFromPicture"
+        Expect.AreEqual 3, f.RichTextBox1.TextLength, "TextLength of ""ab"" with a picture"
+        Expect.IsTrue f.RichTextBox1.OLEObjectsGet(0) <> 0, "OLEObjectsGet(0) is an address"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEObjectsAddFromPicture_SelectedObject_IsRtfSelTypeObject()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        InsertThePixel f.RichTextBox1
+        f.RichTextBox1.SelStart = 1
+        f.RichTextBox1.SelLength = 1
+        Expect.AreEqual CLng(RtfSelTypeObject), CLng(f.RichTextBox1.GetSelType), "GetSelType with the picture selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEObjectsAddFromPicture_TheObjectIsASpaceInText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        InsertThePixel f.RichTextBox1
+        Expect.AreEqual "a b", f.RichTextBox1.Text, "Text of ""ab"" with a picture between the two"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelText_OverAnObject_RaisesOLEDeleteObject()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        InsertThePixel f.RichTextBox1
+        Set sink.Box = f.RichTextBox1
+        f.RichTextBox1.SelStart = 1
+        f.RichTextBox1.SelLength = 1
+        Rig.ClearLog
+        f.RichTextBox1.SelText = ""
+        Expect.IsTrue InStr(Rig.Events(), "OLEDeleteObject") > 0, "an OLEDeleteObject event for deleting the picture: " & Rig.Events()
+        Expect.AreEqual 0, f.RichTextBox1.OLEObjectsCount, "OLEObjectsCount after deleting the picture"
+        Expect.AreEqual "ab", f.RichTextBox1.Text, "Text after deleting the picture"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEObjectsAddFromPicture_WrongClipFormat_Raises461()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim Path As String, Pic As StdPicture
+        Path = PixelFile()
+        Set Pic = LoadPicture(Path)
+        RichTextBoxRig.DeleteFile Path
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.OLEObjectsAddFromPicture Pic, vbCFDIB
+        Expect.AreEqual 461, Err.Number, "OLEObjectsAddFromPicture of a bitmap with vbCFDIB"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.RichTextBox1.OLEObjectsCount, "OLEObjectsCount after the refused call"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEObjectsAddFromFile_Missing_Raises53()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.OLEObjectsAddFromFile RichTextBoxRig.TempFolder() & "\no such file.bmp"
+        Expect.AreEqual 53, Err.Number, "OLEObjectsAddFromFile of a file that does not exist"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

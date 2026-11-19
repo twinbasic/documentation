@@ -1,0 +1,264 @@
+' RichTextBoxFindTests: finding text in the RichTextBox, and the spans of characters.
+[TestFixture]
+Module RichTextBoxFindTests
+
+    Private Const Sentence As String = "The cat sat on the Cat mat"
+
+    [TestCase]
+    Public Sub Find_Found_ReturnsThePlaceAndSelects()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = Sentence
+            Expect.AreEqual 4, .Find("cat"), "Find(""cat"")"
+            Expect.AreEqual 4, .SelStart, "SelStart after Find(""cat"")"
+            Expect.AreEqual 3, .SelLength, "SelLength after Find(""cat"")"
+            Expect.AreEqual 19, .Find("cat", 5), "Find(""cat"", 5), which finds ""Cat"""
+            Expect.AreEqual 19, .Find("Cat", 0, -1, RtfFindOptionMatchCase), "Find(""Cat"") with RtfFindOptionMatchCase"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Find_NotFound_ReturnsMinusOne()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = Sentence
+            Expect.AreEqual -1, .Find("dog"), "Find(""dog"")"
+            Expect.AreEqual -1, .Find("cat", 0, 3), "Find(""cat"", 0, 3)"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Find_Reverse_SearchesBackFromMin()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = Sentence
+            Expect.AreEqual 19, .Find("cat", 26, 0, RtfFindOptionReverse), "Find(""cat"", 26, 0) with RtfFindOptionReverse"
+            Expect.AreEqual 4, .Find("cat", 18, 0, RtfFindOptionReverse), "Find(""cat"", 18, 0) with RtfFindOptionReverse"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Find_NoHighlight_KeepsTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = Sentence
+            .SelStart = 0
+            Expect.AreEqual 8, .Find("sat", 0, -1, RtfFindOptionNoHighlight), "Find(""sat"") with RtfFindOptionNoHighlight"
+            Expect.AreEqual 0, .SelStart, "SelStart after the search"
+            Expect.AreEqual 0, .SelLength, "SelLength after the search"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Find_WholeWord_SkipsAPartOfAWord()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = Sentence
+        Expect.AreEqual -1, f.RichTextBox1.Find("at", 0, -1, RtfFindOptionWholeWord), "Find(""at"") with RtfFindOptionWholeWord"
+        Expect.AreEqual 12, f.RichTextBox1.Find("on", 0, -1, RtfFindOptionWholeWord), "Find(""on"") with RtfFindOptionWholeWord"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Find_NegativeMin_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = Sentence
+        Dim r As Long
+        On Error Resume Next
+        Err.Clear
+        r = f.RichTextBox1.Find("cat", -1)
+        Expect.AreEqual 380, Err.Number, "Find(""cat"", -1)"
+        Err.Clear
+        r = f.RichTextBox1.Find("cat", 0, -2)
+        Expect.AreEqual 380, Err.Number, "Find(""cat"", 0, -2)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Span_Forward_SelectsTheCharactersOfTheSet()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "The cat sat"
+            .SelStart = 4
+            .Span "abcdefghijklmnopqrstuvwxyz", True
+            Expect.AreEqual "cat", .SelText, "SelText after Span of the letters, forward from 4"
+            .SelStart = 4
+            .Span " ", True, True
+            Expect.AreEqual "cat", .SelText, "SelText after Span of what is not a space, forward from 4"
+            .SelStart = 6
+            .Span "abcdefghijklmnopqrstuvwxyz", False
+            Expect.AreEqual "ca", .SelText, "SelText after Span of the letters, back from 6"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UpTo_Forward_StopsBeforeTheCharacter()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "The cat sat"
+            .SelStart = 4
+            .UpTo " ", True
+            Expect.AreEqual 7, .SelStart, "SelStart after UpTo "" "", forward from 4"
+            Expect.AreEqual 0, .SelLength, "SelLength after UpTo"
+            .SelStart = 6
+            .UpTo " ", False
+            Expect.AreEqual 4, .SelStart, "SelStart after UpTo "" "", back from 6"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' RichTextBoxUndoTests: taking changes back and putting them back.
+[TestFixture]
+Module RichTextBoxUndoTests
+
+    [TestCase]
+    Public Sub Undo_TakesBackTheTyping()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "ab"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "cd"
+        Expect.IsTrue f.RichTextBox1.CanUndo, "CanUndo after typing"
+        f.RichTextBox1.Undo
+        Expect.AreEqual "ab", f.RichTextBox1.Text, "Text after Undo"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Redo_PutsBackWhatUndoTookBack()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "ab"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "cd"
+        f.RichTextBox1.Undo
+        Expect.IsTrue f.RichTextBox1.CanRedo, "CanRedo after Undo"
+        Expect.AreEqual CLng(RtfActionTypeTyping), CLng(f.RichTextBox1.RedoType), "RedoType after Undo of typing"
+        f.RichTextBox1.Redo
+        Expect.AreEqual "abcd", f.RichTextBox1.Text, "Text after Redo"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UndoType_AfterTyping_IsTyping()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "abcdef"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "x"
+        Expect.AreEqual CLng(RtfActionTypeTyping), CLng(f.RichTextBox1.UndoType), "UndoType after typing"
+        RichTextBoxRig.PressKey f.RichTextBox1, vbKeyDelete
+        Expect.AreEqual CLng(RtfActionTypeDelete), CLng(f.RichTextBox1.UndoType), "UndoType after the Delete key"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StopUndoAction_SplitsTheTyping()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = ""
+        RichTextBoxRig.TypeText f.RichTextBox1, "ab"
+        f.RichTextBox1.StopUndoAction
+        RichTextBoxRig.TypeText f.RichTextBox1, "c"
+        f.RichTextBox1.Undo
+        Expect.AreEqual "ab", f.RichTextBox1.Text, "Text after Undo of typing split by StopUndoAction"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UndoLimit_Zero_LeavesNothingToUndo()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 100, f.RichTextBox1.UndoLimit, "UndoLimit of a new control"
+        f.RichTextBox1.UndoLimit = 0
+        f.RichTextBox1.Text = "ab"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "c"
+        Expect.IsFalse f.RichTextBox1.CanUndo, "CanUndo after typing with UndoLimit 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UndoLimit_Above1000_Is1000()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.UndoLimit = 5000
+        Expect.AreEqual 1000, f.RichTextBox1.UndoLimit, "UndoLimit after UndoLimit = 5000"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UndoLimit_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.UndoLimit = -1
+        Expect.AreEqual 380, Err.Number, "UndoLimit = -1"
+        On Error GoTo 0
+        Expect.AreEqual 100, f.RichTextBox1.UndoLimit, "UndoLimit after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ResetUndoQueue_LeavesNothingToUndo()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "ab"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "c"
+        f.RichTextBox1.ResetUndoQueue
+        Expect.IsFalse f.RichTextBox1.CanUndo, "CanUndo after ResetUndoQueue"
+        f.RichTextBox1.Undo
+        Expect.AreEqual "abc", f.RichTextBox1.Text, "Text after Undo with nothing to take back"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

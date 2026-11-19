@@ -1,0 +1,557 @@
+' CoolBarTests: the CoolBar control, its CbrBands collection and its CbrBand items. A mouse
+' message is sent to the control's window, since the form is never shown.
+[TestFixture]
+Module CoolBarTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const RB_GETBANDCOUNT As Long = &H40C
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+    Private Const WM_MOUSELEAVE As Long = &H2A3
+
+    ' The keys of the bands, in the order of the collection, as one string.
+    Private Function Keys(ByVal Bar As VBCCR18.CoolBar) As String
+        Dim i As Long
+        For i = 1 To Bar.Bands.Count
+            Keys = Keys & Bar.Bands(i).Key
+        Next
+    End Function
+
+    ' The key of a band, or "Nothing", so that a wrong answer fails the case instead of raising.
+    Private Function KeyOf(ByVal Band As CbrBand) As String
+        If Band Is Nothing Then KeyOf = "Nothing" Else KeyOf = Band.Key
+    End Function
+
+    ' A cool bar with no bands but the two given, the second on a row of its own when NewRow is set.
+    Private Sub TwoBands(ByVal Bar As VBCCR18.CoolBar, Optional ByVal NewRow As Boolean)
+        Bar.Bands.Clear
+        Bar.Bands.Add , "k1", "First"
+        Bar.Bands.Add , "k2", "Second", , NewRow
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_NewControl_HasThreeBandsTheSecondOnANewRow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.CoolBar1
+            Expect.AreEqual 3, .Bands.Count, "Bands.Count of a new cool bar"
+            Expect.IsFalse .Bands(1).NewRow, "NewRow of the first band"
+            Expect.IsTrue .Bands(2).NewRow, "NewRow of the second band"
+            Expect.IsFalse .Bands(3).NewRow, "NewRow of the third band"
+            Expect.AreEqual 2, .RowCount, "RowCount of a new cool bar"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Add_AtAnIndex_MovesTheLaterBands()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        f.CoolBar1.Bands.Add 1, "k3", "Third"
+        Expect.AreEqual "k3k1k2", Keys(f.CoolBar1), "the keys of the bands after Add at 1"
+        Expect.AreEqual 2, f.CoolBar1.Bands("k1").Index, "Index of the first band added, after Add at 1"
+        Expect.AreEqual 2, f.CoolBar1.Bands("k1").Position, "Position of the first band added, after Add at 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Add_NewRowOnTheFirstBand_Raises35801()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.CoolBar1.Bands.Clear
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands.Add , "k1", "First", , True
+        Expect.AreEqual 35801, Err.Number, "Add with NewRow in an empty cool bar"
+        Expect.AreEqual 0, f.CoolBar1.Bands.Count, "Count after the refused Add"
+        On Error GoTo 0
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands.Add 1, "k3", "Third", , True
+        Expect.AreEqual 35801, Err.Number, "Add at 1 with NewRow"
+        Err.Clear
+        f.CoolBar1.Bands("k1").NewRow = True
+        Expect.AreEqual 35801, Err.Number, "NewRow = True on the band at position 1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands.Add 9
+        Expect.AreEqual 35600, Err.Number, "Add at 9 with two bands"
+        Err.Clear
+        f.CoolBar1.Bands.Add -1
+        Expect.AreEqual 35600, Err.Number, "Add at -1"
+        On Error GoTo 0
+        Expect.AreEqual 2, f.CoolBar1.Bands.Count, "Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands.Add , "K1", "again"
+        Expect.AreEqual 457, Err.Number, "Add with the key of another band, in another case"
+        On Error GoTo 0
+        Expect.AreEqual 2, f.CoolBar1.Bands.Count, "Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Add_DuplicateKey_AddsNothingToTheWindow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        f.CoolBar1.Bands.Add , "k1", "again"
+        On Error GoTo 0
+        Expect.AreEqual 2, CLng(SendMessageW(f.CoolBar1.hWnd, RB_GETBANDCOUNT, 0, 0)), "the bands the window of the cool bar has after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Item_OutOfRangeOrUnknown_RaisesItsError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        Debug.Print KeyOf(f.CoolBar1.Bands(7))
+        Expect.AreEqual 9, Err.Number, "Bands(7) with two bands"
+        Err.Clear
+        Debug.Print KeyOf(f.CoolBar1.Bands("zz"))
+        Expect.AreEqual 5, Err.Number, "Bands(""zz"")"
+        On Error GoTo 0
+        Expect.AreEqual "k1", KeyOf(f.CoolBar1.Bands("K1")), "the key of Bands(""K1"") for the key ""k1"""
+        Expect.IsTrue f.CoolBar1.Bands.Exists("k1") And f.CoolBar1.Bands.Exists(2), "Exists of a key and of a number the list has"
+        Expect.IsFalse f.CoolBar1.Bands.Exists("zz") Or f.CoolBar1.Bands.Exists(3), "Exists of a key and of a number the list does not have"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Remove_RenumbersTheLaterBands()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        f.CoolBar1.Bands.Add , "k3", "Third"
+        f.CoolBar1.Bands.Remove "k1"
+        Expect.AreEqual 2, f.CoolBar1.Bands.Count, "Count after Remove"
+        Expect.AreEqual 1, f.CoolBar1.Bands("k2").Index, "Index of the second band after the first is removed"
+        Expect.AreEqual 2, CLng(SendMessageW(f.CoolBar1.hWnd, RB_GETBANDCOUNT, 0, 0)), "the bands the window has after Remove"
+        f.CoolBar1.Bands.Clear
+        Expect.AreEqual 0, f.CoolBar1.Bands.Count, "Count after Clear"
+        Expect.AreEqual 0, CLng(SendMessageW(f.CoolBar1.hWnd, RB_GETBANDCOUNT, 0, 0)), "the bands the window has after Clear"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Key_Assigned_RenamesTheBand()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        f.CoolBar1.Bands("k1").Key = "main"
+        Expect.IsFalse f.CoolBar1.Bands.Exists("k1"), "Exists of the old key"
+        Expect.AreEqual 1, f.CoolBar1.Bands("main").Index, "Index of the band found by the new key"
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands("main").Key = "k2"
+        Expect.AreEqual 457, Err.Number, "Key = the key of another band"
+        On Error GoTo 0
+        Expect.AreEqual "main", f.CoolBar1.Bands(1).Key, "Key after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Position_MovesTheBandNotItsIndex()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        f.CoolBar1.Bands("k2").Position = 1
+        Expect.AreEqual 1, f.CoolBar1.Bands("k2").Position, "Position after Position = 1"
+        Expect.AreEqual 2, f.CoolBar1.Bands("k2").Index, "Index after Position = 1"
+        Expect.AreEqual "k2", KeyOf(f.CoolBar1.Bands.ItemFromPosition(1)), "the band ItemFromPosition returns for 1"
+        Expect.AreEqual "k1", KeyOf(f.CoolBar1.Bands.ItemFromPosition(2)), "the band ItemFromPosition returns for 2"
+        Expect.AreEqual "k1k2", Keys(f.CoolBar1), "the keys in the order of the collection after Position = 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Position_NotAMove_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands("k1").Position = 1
+        Expect.AreEqual 380, Err.Number, "Position = the band's own position"
+        Err.Clear
+        f.CoolBar1.Bands("k1").Position = 7
+        Expect.AreEqual 380, Err.Number, "Position = 7 with two bands"
+        Err.Clear
+        f.CoolBar1.Bands("k1").Position = 0
+        Expect.AreEqual 380, Err.Number, "Position = 0"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Height_Assigned_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands("k1").Height = 5
+        Expect.AreEqual 383, Err.Number, "Height = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_FixedSize_WidthAndNewRowAreRefused()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        With f.CoolBar1.Bands("k2")
+            .Style = CbrBandStyleFixedSize
+            On Error Resume Next
+            Err.Clear
+            .Width = 2000
+            Expect.AreEqual 35800, Err.Number, "Width = 2000 on a band of style CbrBandStyleFixedSize"
+            Err.Clear
+            .NewRow = True
+            Expect.AreEqual 35801, Err.Number, "NewRow = True on a band of style CbrBandStyleFixedSize"
+            On Error GoTo 0
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Properties_ValuesOutOfRange_Raise380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        With f.CoolBar1.Bands("k2")
+            On Error Resume Next
+            Err.Clear
+            .Style = 5
+            Expect.AreEqual 380, Err.Number, "Style = 5"
+            Err.Clear
+            .Gripper = 7
+            Expect.AreEqual 380, Err.Number, "Gripper = 7"
+            Err.Clear
+            .Width = -1
+            Expect.AreEqual 380, Err.Number, "Width = -1"
+            Err.Clear
+            .MinWidth = -1
+            Expect.AreEqual 380, Err.Number, "MinWidth = -1"
+            Err.Clear
+            .MinHeight = -1
+            Expect.AreEqual 380, Err.Number, "MinHeight = -1"
+            Err.Clear
+            .IdealWidth = -1
+            Expect.AreEqual 380, Err.Number, "IdealWidth = -1"
+            On Error GoTo 0
+        End With
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.BorderStyle = 2
+        Expect.AreEqual 380, Err.Number, "BorderStyle = 2"
+        Err.Clear
+        f.CoolBar1.Orientation = 5
+        Expect.AreEqual 380, Err.Number, "Orientation = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_ChildEdge_False_TakesTheEdgeAway()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        With f.CoolBar1.Bands("k1")
+            .ChildEdge = True
+            Expect.IsTrue .ChildEdge, "ChildEdge after ChildEdge = True"
+            .ChildEdge = False
+            Expect.IsFalse .ChildEdge, "ChildEdge after ChildEdge = False"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Child_ControlNotOnTheCoolBar_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        Set f.CoolBar1.Bands("k1").Child = f.ProgressBar1
+        Expect.AreEqual 380, Err.Number, "Set Child = a control that is on the form and not on the cool bar"
+        Err.Clear
+        Set f.CoolBar1.Bands("k1").Child = f.CoolBar1
+        Expect.AreEqual 380, Err.Number, "Set Child = the cool bar itself"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Child_RefusedControl_IsNotKept()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Set f.CoolBar1.Bands("k1").Child = f.ProgressBar1
+        On Error GoTo 0
+        Expect.IsTrue f.CoolBar1.Bands("k1").Child Is Nothing, "whether Child is Nothing after a Set Child that raised 380"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bands_Add_ChildNotOnTheCoolBar_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands.Add , "k3", "Third", , , f.ProgressBar1
+        Expect.AreEqual 380, Err.Number, "Add with a Child that is not on the cool bar"
+        On Error GoTo 0
+        Expect.AreEqual 2, f.CoolBar1.Bands.Count, "Count after the refused Add"
+        Expect.AreEqual 2, CLng(SendMessageW(f.CoolBar1.hWnd, RB_GETBANDCOUNT, 0, 0)), "the bands the window has after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Band_Image_KeyWithoutAnImageListOrNegativeNumber_RaisesItsError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.CoolBar1.Bands.Clear
+        On Error Resume Next
+        Err.Clear
+        f.CoolBar1.Bands.Add , "k1", "First", "green"
+        Expect.AreEqual 35601, Err.Number, "Add with a key of an image when the cool bar has no image list"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.CoolBar1.Bands.Count, "Count after the refused Add"
+        Dim b As CbrBand
+        Set b = f.CoolBar1.Bands.Add(, "k1", "First", 3)
+        Expect.AreEqual 3, b.ImageIndex, "ImageIndex of a band added with the image number 3"
+        On Error Resume Next
+        Err.Clear
+        b.Image = -2
+        Expect.AreEqual 35600, Err.Number, "Image = -2"
+        Err.Clear
+        b.Image = "nope"
+        Expect.AreEqual 35601, Err.Number, "Image = a key when the cool bar has no image list"
+        On Error GoTo 0
+        Expect.AreEqual 3, b.ImageIndex, "ImageIndex after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ImageList_AnotherObject_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.CoolBar1.ImageList = f.ProgressBar1
+        Expect.AreEqual 35610, Err.Number, "ImageList = a ProgressBar"
+        Err.Clear
+        f.CoolBar1.ImageList = True
+        Expect.AreEqual 13, Err.Number, "ImageList = True"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HitTest_PointOnABand_ReturnsTheBand()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1, True
+        With f.CoolBar1
+            .Bands("k1").Width = 2000
+            Dim h1 As Single, h2 As Single, result As CbrHitResultConstants
+            h1 = .Bands("k1").Height
+            h2 = .Bands("k2").Height
+            Expect.AreEqual "k1", KeyOf(.HitTest(600, h1 / 2, result)), "the band HitTest returns for a point on the first row"
+            Expect.AreEqual "k2", KeyOf(.HitTest(600, h1 + h2 / 2, result)), "the band HitTest returns for a point on the second row"
+            result = CbrHitResultGrabber
+            Expect.AreEqual "Nothing", KeyOf(.HitTest(.Width * 20, .Height * 20, result)), "the band HitTest returns for a point far outside the control"
+            Expect.AreEqual CLng(CbrHitResultGrabber), CLng(result), "HitResult after a point outside the control, as it was before"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Orientation_Vertical_ExchangesWidthAndHeight()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.CoolBar1
+            Dim w As Single, h As Single
+            w = .Width: h = .Height
+            .Orientation = CbrOrientationVertical
+            Expect.IsTrue Abs(.Width - h) < 15, "Width after Orientation = CbrOrientationVertical, against the height before"
+            Expect.IsTrue Abs(.Height - w) < 15, "Height after Orientation = CbrOrientationVertical, against the width before"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BandMouseEnter_MouseTrackTrue_RaisedAfterMouseEnterAndBeforeMouseLeave()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        Dim sink As New CoolBarSink
+        Set sink.Bar = f.CoolBar1
+        f.CoolBar1.MouseTrack = True
+        Dim p As LongPtr
+        p = CLngPtr((5& * &H10000) Or 100&)
+        Rig.ClearLog
+        SendMessageW f.CoolBar1.hWnd, WM_MOUSEMOVE, 0, p
+        SendMessageW f.CoolBar1.hWnd, WM_MOUSELEAVE, 0, 0
+        Expect.AreEqual "MouseEnter | BandMouseEnter 1 | MouseMove | BandMouseLeave 1 | MouseLeave", Rig.Events(), "the events of a move onto the first band and the pointer leaving"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Click_AMouseClick_IsRaisedAfterMouseUp()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        TwoBands f.CoolBar1
+        Dim sink As New CoolBarSink
+        Set sink.Bar = f.CoolBar1
+        Dim p As LongPtr
+        p = CLngPtr((5& * &H10000) Or 100&)
+        Rig.ClearLog
+        SendMessageW f.CoolBar1.hWnd, WM_LBUTTONDOWN, 1, p
+        SendMessageW f.CoolBar1.hWnd, WM_LBUTTONUP, 0, p
+        Expect.AreEqual "MouseDown | MouseUp | Click", Rig.Events(), "the events of a click on a band"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HeightChanged_BandsRemoved_FollowsResize()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New CoolBarSink
+        Set sink.Bar = f.CoolBar1
+        Rig.ClearLog
+        f.CoolBar1.Bands.Clear
+        Expect.AreEqual "Resize | HeightChanged", Rig.Events(), "the events of Bands.Clear on a cool bar of three bands in two rows"
+        Set sink.Bar = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a CoolBar, written to Rig.Log.
+Class CoolBarSink
+
+    Public WithEvents Bar As VBCCR18.CoolBar
+
+    Private Sub Bar_BandMouseEnter(ByVal Band As CbrBand) Handles Bar.BandMouseEnter
+        Rig.Ev "BandMouseEnter " & Band.Index
+    End Sub
+
+    Private Sub Bar_BandMouseLeave(ByVal Band As CbrBand) Handles Bar.BandMouseLeave
+        Rig.Ev "BandMouseLeave " & Band.Index
+    End Sub
+
+    Private Sub Bar_Click() Handles Bar.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Bar_HeightChanged(ByVal NewHeight As Single) Handles Bar.HeightChanged
+        Rig.Ev "HeightChanged"
+    End Sub
+
+    Private Sub Bar_Resize() Handles Bar.Resize
+        Rig.Ev "Resize"
+    End Sub
+
+    Private Sub Bar_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseDown
+        Rig.Ev "MouseDown"
+    End Sub
+
+    Private Sub Bar_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseMove
+        Rig.Ev "MouseMove"
+    End Sub
+
+    Private Sub Bar_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Bar.MouseUp
+        Rig.Ev "MouseUp"
+    End Sub
+
+    Private Sub Bar_MouseEnter() Handles Bar.MouseEnter
+        Rig.Ev "MouseEnter"
+    End Sub
+
+    Private Sub Bar_MouseLeave() Handles Bar.MouseLeave
+        Rig.Ev "MouseLeave"
+    End Sub
+
+End Class

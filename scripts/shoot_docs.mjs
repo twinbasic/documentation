@@ -12357,6 +12357,8 @@ const xCalendarShots = [
 // the form's frame.
 
 const VBCCR_SHOTS = path.join(REPO_ROOT, "test", "shots", "vbccr");
+// The windows a scene shows besides its form: a combo box's dropped-down list.
+const VBCCR_POPUPS = /^ComboLBox$/;
 const vbccrClip = (control, sheet) =>
   clipShot(`Reference/Contributed/VBCCR18/Images/${control}.png`, "vbccr", sheet, control);
 const vbccrShots = [
@@ -12384,6 +12386,17 @@ const vbccrShots = [
   ].map(([name, scene]) =>
     sceneShot(`Reference/Contributed/VBCCR18/TreeView/Images/${name}.png`, "vbccr", scene, NO_POPUPS),
   ),
+  // ImageCombo, FontCombo and ListView from the sheet items; a scene with a dropped list has the
+  // list's window (ComboLBox) laid over its form
+  clipShot("Reference/Contributed/VBCCR18/ImageCombo/Images/ImageCombo.png", "vbccr", "items", "ImageCombo"),
+  clipShot("Reference/Contributed/VBCCR18/Images/FontCombo.png", "vbccr", "items", "FontCombo"),
+  clipShot("Reference/Contributed/VBCCR18/ListView/Images/ListView.png", "vbccr", "items", "ListView"),
+  ...[
+    ["ImageCombo/Images/DroppedDown", "imcdropped"],
+    ["Images/FontCombo_Recent", "ftcrecent"],
+    ["ListView/Images/Views", "lvviews"],
+    ["ListView/Images/Groups", "lvgroups"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, VBCCR_POPUPS)),
 ];
 
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'

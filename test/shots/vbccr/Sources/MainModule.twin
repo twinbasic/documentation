@@ -14,9 +14,9 @@ Module MainModule
     ' designer names them. Every sheet lays its form out in pixels at 96 DPI (FitClient), with
     ' at least MARGIN pixels of the form's ground round each control, which the tool keeps
     ' round a picture. No control takes the focus, since a focused one draws a caret or a focus
-    ' rectangle, but a tree whose selected nodes a picture shows (FocusOn): a tree draws them in
-    ' the highlight color only while it has the focus, and in a mouse user's state it draws no
-    ' focus rectangle.
+    ' rectangle, but a tree or a list whose selected items a picture shows (FocusOn): it draws
+    ' them in the highlight color only while it has the focus, and in a mouse user's state it
+    ' draws no focus rectangle.
 
     Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
     Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
@@ -25,6 +25,7 @@ Module MainModule
         ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
     Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr) As Long
     Private Declare PtrSafe Function SetFocusAPI Lib "user32" Alias "SetFocus" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function HideCaret Lib "user32" (ByVal hWnd As LongPtr) As Long
     Private Const WM_NCACTIVATE As Long = &H86
     Private Const WM_CHANGEUISTATE As Long = &H127
     ' UIS_SET with UISF_HIDEFOCUS and UISF_HIDEACCEL: a mouse user's state.
@@ -97,6 +98,9 @@ Module MainModule
     ' The control given the focus once the form is shown, or Nothing: a tree draws its selected
     ' nodes in the highlight color only while it has the focus.
     Private FocusOn As Object
+    ' The combo box whose list is kept dropped down while the form waits, or Nothing: the list
+    ' closes when the form is made the active window.
+    Private Dropped As Object
 
     Public Sub Main()
         ' Command$ is the command line as written, quotes included
@@ -117,6 +121,11 @@ Module MainModule
             Case "tvtheme": Set f = frmTvTheme
             Case "tvcheckboxes": Set f = frmTvCheckboxes
             Case "tvmultiselect": Set f = frmTvMultiSelect
+            Case "items": Set f = frmItems
+            Case "imcdropped": Set f = frmImcDropped
+            Case "ftcrecent": Set f = frmFtcRecent
+            Case "lvviews": Set f = frmLvViews
+            Case "lvgroups": Set f = frmLvGroups
             Case Else: Set f = frmButtons
         End Select
         Load f
@@ -138,6 +147,11 @@ Module MainModule
             Case "tvtheme": TreeThemes f
             Case "tvcheckboxes": TreeCheckboxes f
             Case "tvmultiselect": TreeMultiSelect f
+            Case "items": Items f
+            Case "imcdropped": ImageComboDropped f
+            Case "ftcrecent": FontComboRecent f
+            Case "lvviews": ListViews f
+            Case "lvgroups": ListGroups f
             Case Else: Err.Raise 5, , "no sheet named " & scene
         End Select
         f.Show
@@ -156,8 +170,11 @@ Module MainModule
         If scene = "bars" Then StillBars f
         f.Refresh
         DoEvents
+        Doing = "drop down"
+        KeepDropped
         Sleep 200
         DoEvents
+        KeepDropped
     Shown:
         On Error GoTo 0
         Dump f
@@ -301,6 +318,30 @@ Module MainModule
         tv.Nodes("old").Enabled = False
         tv.Nodes("reports").Selected = True
         Set FocusOn = tv
+    End Sub
+
+    ' An image combo with Letters selected, a font combo with Segoe UI selected, and a list view
+    ' in the report view, which has the focus, so that it draws its selected row in the
+    ' highlight color.
+    Private Sub Items(ByVal f As Form)
+        Const W As Single = 200
+        Const LIST_W As Single = 320
+        Const LIST_H As Single = 122
+        FitClient f, 3 * MARGIN + W + LIST_W, 2 * MARGIN + LIST_H
+        TreeImages f
+        Dim ic As Object = Place(f, "ImageCombo1", MARGIN, MARGIN, W, 24, "")
+        Set ic.ImageList = f.Controls("ImageList1")
+        FolderItems ic
+        Set ic.SelectedItem = ic.ComboItems("letters")
+        Clip "ImageCombo", MARGIN, MARGIN, W, ic.Height
+        Dim y As Single = MARGIN + ic.Height + MARGIN
+        Dim fc As Object = Place(f, "FontCombo1", MARGIN, y, W, 24, "")
+        ' by its name: the fonts of the list are the machine's
+        fc.Text = "Segoe UI"
+        Clip "FontCombo", MARGIN, y, W, fc.Height
+        Dim lv As Object = Place(f, "ListView1", 2 * MARGIN + W, MARGIN, LIST_W, LIST_H)
+        ReportList lv, f.Controls("ImageList1")
+        Set FocusOn = lv
     End Sub
 
     ' The bars' timers stopped again while the form waits.
@@ -538,6 +579,195 @@ Module MainModule
         Text f, "MultiSelect = TvwMultiSelectAll", x, 16 + H + 8, TREE_COLUMN
     End Sub
 
+    ' The pictures of ImageCombo, FontCombo and ListView: each a whole form.
+
+    ' An image combo with its list dropped down: the items indented under Documents.
+    Private Sub ImageComboDropped(ByVal f As Form)
+        Const W As Single = 200
+        Settings f, "ImageCombo", W + 40, 30 + 24 + 96 + 16
+        Text f, "DroppedDown = True", 0, 8, W + 40
+        TreeImages f
+        Dim ic As Object = Place(f, "ImageCombo1", 20, 30, W, 24, "")
+        Set ic.ImageList = f.Controls("ImageList1")
+        FolderItems ic
+        Set ic.SelectedItem = ic.ComboItems("letters")
+        Set Dropped = ic
+    End Sub
+
+    ' A font combo with three recent fonts, its list dropped down. The list shows the recent
+    ' fonts only (MaxDropDownItems): the complete list after them is the machine's, and starts
+    ' with whatever fonts it has.
+    Private Sub FontComboRecent(ByVal f As Form)
+        Const W As Single = 200
+        Settings f, "FontCombo", W + 40, 30 + 24 + 3 * 20 + 24
+        Text f, "RecentMax = 3", 0, 8, W + 40
+        Dim fc As Object = Place(f, "FontCombo1", 20, 30, W, 24, "")
+        fc.RecentMax = 3
+        fc.RestoreRecent Array("Segoe UI", "Arial", "Times New Roman")
+        If fc.RecentCount <> 3 Then Err.Raise 5, , "the font combo has " & fc.RecentCount & " recent fonts, not 3"
+        fc.MaxDropDownItems = 3
+        fc.ListIndex = 0
+        Set Dropped = fc
+    End Sub
+
+    ' The four views besides the report view of a list view, none with the focus: the icon, small
+    ' icon and list views in a row, each as large as what it shows, and the tile view under them.
+    Private Sub ListViews(ByVal f As Form)
+        Const GAP As Single = 20
+        ' the row's widths and heights, and its height with the names under it
+        Dim ws As Variant = Array(290, 240, 130)
+        Dim hs As Variant = Array(64, 50, 96)
+        Const ROW As Single = 16 + 96 + 8 + 20
+        Const ROW_W As Single = 290 + 240 + 130 + 2 * GAP
+        ' two columns of tiles, under the middle of the row
+        Const TILE_W As Single = 500
+        Const TILE_H As Single = 112
+        Settings f, "View", ROW_W + 2 * GAP, ROW + 16 + TILE_H + 8 + 20
+        TreeImages f
+        BigImages f
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single, y As Single, W As Single, H As Single
+            If i < 3 Then
+                x = GAP + IIf(i > 0, ws(0) + GAP, 0) + IIf(i > 1, ws(1) + GAP, 0)
+                y = 0
+                W = ws(i)
+                H = hs(i)
+            Else
+                x = GAP + (ROW_W - TILE_W) / 2
+                y = ROW
+                W = TILE_W
+                H = TILE_H
+            End If
+            Dim v As Long = Choose(i + 1, LvwViewIcon, LvwViewSmallIcon, LvwViewList, LvwViewTile)
+            Dim lv As Object = Place(f, "ListView" & (i + 1), x, y + 16, W, H, "")
+            Set lv.Icons = f.Controls("ImageList2")
+            Set lv.SmallIcons = f.Controls("ImageList1")
+            Columns lv
+            lv.View = v
+            If v = LvwViewTile Then lv.TileViewLines = 2
+            Files lv, True, True
+            lv.Sorted = True
+            If v = LvwViewTile Then
+                Dim it As Object
+                For Each it In lv.ListItems
+                    it.TileViewIndices = Array(2, 1)
+                Next
+            End If
+            ' the list at its top: the tiles were once shown scrolled to the second
+            lv.ListItems(1).EnsureVisible
+            ' the names of the row at one height, under its tallest box
+            Text f, Choose(i + 1, "LvwViewIcon", "LvwViewSmallIcon", "LvwViewList", "LvwViewTile") & " (" & v & ")", _
+                x, y + 16 + IIf(i < 3, 96, H) + 8, W
+        Next
+    End Sub
+
+    ' A list view in the report view with two groups: Folders, which the user can collapse, and
+    ' Files, with a footer. An item joins a group in a 32-bit program only (VBCCR18 1.8.136.0).
+    Private Sub ListGroups(ByVal f As Form)
+        Const W As Single = 320
+        Const H As Single = 210
+        Settings f, "Groups", W + 40, 16 + H + 8 + 20
+        TreeImages f
+        Dim lv As Object = Place(f, "ListView1", 20, 16, W, H, "")
+        lv.View = LvwViewReport
+        Set lv.SmallIcons = f.Controls("ImageList1")
+        Columns lv
+        Dim folders As Object = lv.Groups.Add(, "dirs", "Folders")
+        folders.Collapsible = True
+        Dim others As Object = lv.Groups.Add(, "files", "Files", , "3 files")
+        lv.GroupView = True
+        Set FileItem(lv, "letters", "Letters", "folder", "", "File folder").Group = folders
+        Set FileItem(lv, "reports", "Reports", "folder", "", "File folder").Group = folders
+        Set FileItem(lv, "holiday", "Holiday.jpg", "photo", "2,315 KB", "JPEG image").Group = others
+        Set FileItem(lv, "notes", "Notes.txt", "file", "2 KB", "Text document").Group = others
+        Set FileItem(lv, "old", "Old notes.txt", "file", "1 KB", "Text document").Group = others
+        If folders.ListItemCount <> 2 Or others.ListItemCount <> 3 Then
+            Err.Raise 5, , "the items did not join their groups: a 64-bit program?"
+        End If
+        Text f, "GroupView = True", 0, 16 + H + 8, W + 40
+    End Sub
+
+    ' ---------------------------------------------------------------- the lists
+
+    ' The items of an image combo: Documents, and indented under it the folders Letters and
+    ' Reports and the files Holiday.jpg and Notes.txt.
+    Private Sub FolderItems(ByVal ic As Object)
+        With ic.ComboItems
+            .Add , "docs", "Documents", "folder", , 0
+            .Add , "letters", "Letters", "folder", , 1
+            .Add , "reports", "Reports", "folder", , 1
+            .Add , "holiday", "Holiday.jpg", "photo", , 1
+            .Add , "notes", "Notes.txt", "file", , 1
+        End With
+    End Sub
+
+    ' A list view in the report view, with check boxes, grid lines and whole rows selected,
+    ' sorted by Name from A to Z: Notes.txt selected, Beach.jpg and Notes.txt checked.
+    Private Sub ReportList(ByVal lv As Object, ByVal il As Object)
+        lv.View = LvwViewReport
+        Set lv.SmallIcons = il
+        lv.Checkboxes = True
+        lv.GridLines = True
+        lv.FullRowSelect = True
+        lv.HideSelection = False
+        Columns lv
+        Files lv, False
+        lv.SortKey = 0
+        lv.SortOrder = LvwSortOrderAscending
+        lv.Sorted = True
+        lv.ColumnHeaders(1).SortArrow = LvwColumnHeaderSortArrowUp
+        lv.ListItems("beach").Checked = True
+        lv.ListItems("notes").Checked = True
+        lv.ListItems("notes").Selected = True
+    End Sub
+
+    ' The columns Name, Size (aligned to the right) and Type.
+    Private Sub Columns(ByVal lv As Object)
+        With lv.ColumnHeaders
+            .Add , , "Name", 128
+            .Add , , "Size", 70, LvwColumnHeaderAlignmentRight
+            .Add , , "Type", 116
+        End With
+    End Sub
+
+    ' Five items, not in the order of their names: a folder, two photos and two text files, each
+    ' with its large icon too when Large; without Old notes.txt when Four, so that four tiles fit.
+    Private Sub Files(ByVal lv As Object, ByVal Large As Boolean, Optional ByVal Four As Boolean = False)
+        FileItem lv, "notes", "Notes.txt", "file", "2 KB", "Text document", Large
+        FileItem lv, "letters", "Letters", "folder", "", "File folder", Large
+        FileItem lv, "holiday", "Holiday.jpg", "photo", "2,315 KB", "JPEG image", Large
+        If Not Four Then FileItem lv, "old", "Old notes.txt", "file", "1 KB", "Text document", Large
+        FileItem lv, "beach", "Beach.jpg", "photo", "1,840 KB", "JPEG image", Large
+    End Sub
+
+    ' An item of a list view with the picture Picture, its size and its type as its subitems.
+    Private Function FileItem(ByVal lv As Object, ByVal Key As String, ByVal Caption As String, ByVal Picture As String, _
+            ByVal Size As String, ByVal Kind As String, Optional ByVal Large As Boolean = False) As Object
+        Dim it As Object
+        If Large Then
+            Set it = lv.ListItems.Add(, Key, Caption, Picture, Picture)
+        Else
+            Set it = lv.ListItems.Add(, Key, Caption, , Picture)
+        End If
+        If Len(Size) Then it.SubItems(1) = Size
+        it.SubItems(2) = Kind
+        Return it
+    End Function
+
+    ' The combo box Dropped with its list dropped down, again whenever it has closed, and the
+    ' caret its text box then shows hidden: it blinks. The text box makes its caret when it gets
+    ' the focus, which can come after the list has dropped down, so the caret is hidden on every
+    ' call.
+    Private Sub KeepDropped()
+        If Dropped Is Nothing Then Exit Sub
+        If Not Dropped.DroppedDown Then
+            Dropped.DroppedDown = True
+            DoEvents
+        End If
+        HideCaret 0
+    End Sub
+
     ' ---------------------------------------------------------------- the trees
 
     ' The nodes of a tree: Documents, open, with the closed folders Letters and Reports and the
@@ -571,47 +801,59 @@ Module MainModule
     ' an open folder, a page of text and a photo. Nothing is taken from the machine.
     Private Sub TreeImages(ByVal f As Form)
         Doing = "ImageList1"
-        Dim il As Object = f.Controls("ImageList1")
-        il.ImageWidth = 16
-        il.ImageHeight = 16
+        FillImages f.Controls("ImageList1"), 1
+    End Sub
+
+    ' The ImageList2 of the form given the same four pictures at 32 pixels, for the large icons
+    ' of a list view.
+    Private Sub BigImages(ByVal f As Form)
+        Doing = "ImageList2"
+        FillImages f.Controls("ImageList2"), 2
+    End Sub
+
+    ' The image list il given the four pictures, 16 pixels times Scale.
+    Private Sub FillImages(ByVal il As Object, ByVal Scale As Long)
+        il.ImageWidth = 16 * Scale
+        il.ImageHeight = 16 * Scale
         il.UseMaskColor = True
         il.MaskColor = MASK
         Dim i As Long
         For i = 1 To 4
-            il.ListImages.Add , Choose(i, "folder", "open", "file", "photo"), Picture16(i)
+            il.ListImages.Add , Choose(i, "folder", "open", "file", "photo"), Picture16(i, Scale)
         Next
     End Sub
 
-    ' One of the four pictures of TreeImages, on the ground MASK.
-    Private Function Picture16(ByVal Kind As Long) As StdPicture
+    ' One of the four pictures of TreeImages, on the ground MASK, drawn Scale times as large.
+    Private Function Picture16(ByVal Kind As Long, Optional ByVal Scale As Long = 1) As StdPicture
         Const EDGE As Long = &H2080B0        ' RGB(176, 128, 32), a folder's edge
         Const PAPER As Long = &H60D0F8       ' RGB(248, 208, 96), a folder
         Const BACK As Long = &H40B0E0        ' RGB(224, 176, 64), the back of an open folder
         Const GREY As Long = &H808080
+        Dim s As Long = Scale
         Dim screenDC As LongPtr = GetDC(0)
         Dim dc As LongPtr = CreateCompatibleDC(screenDC)
-        Dim bmp As LongPtr = CreateCompatibleBitmap(screenDC, 16, 16)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(screenDC, 16 * s, 16 * s)
         ReleaseDC 0, screenDC
         Dim oldBmp As LongPtr = SelectObject(dc, bmp)
-        DrawBox dc, MASK, MASK, 0, 0, 16, 16
+        DrawBox dc, MASK, MASK, 0, 0, 16 * s, 16 * s, s
         Select Case Kind
             Case 1 ' a folder: its tab and its body
-                DrawBox dc, EDGE, PAPER, 1, 2, 8, 6
-                DrawBox dc, EDGE, PAPER, 1, 4, 15, 14
+                DrawBox dc, EDGE, PAPER, 1 * s, 2 * s, 8 * s, 6 * s, s
+                DrawBox dc, EDGE, PAPER, 1 * s, 4 * s, 15 * s, 14 * s, s
             Case 2 ' an open folder: its back, and its front tilted open
-                DrawBox dc, EDGE, BACK, 1, 2, 8, 6
-                DrawBox dc, EDGE, BACK, 1, 4, 14, 14
-                DrawPolygon dc, EDGE, PAPER, Array(4, 7, 15, 7, 12, 13, 1, 13)
+                DrawBox dc, EDGE, BACK, 1 * s, 2 * s, 8 * s, 6 * s, s
+                DrawBox dc, EDGE, BACK, 1 * s, 4 * s, 14 * s, 14 * s, s
+                DrawPolygon dc, EDGE, PAPER, Array(4, 7, 15, 7, 12, 13, 1, 13), s
             Case 3 ' a page of text
-                DrawBox dc, GREY, vbWhite, 3, 1, 14, 15
+                DrawBox dc, GREY, vbWhite, 3 * s, 1 * s, 14 * s, 15 * s, s
                 Dim y As Long
                 For y = 4 To 11 Step 2
-                    DrawBox dc, &HB0B0B0, &HB0B0B0, 5, y, 12, y + 1
+                    DrawBox dc, &HB0B0B0, &HB0B0B0, 5 * s, y * s, 12 * s, (y + 1) * s, s
                 Next
             Case 4 ' a photo: the sky, a sun and green hills
-                DrawBox dc, GREY, &HF0C896, 1, 2, 15, 14           ' RGB(150, 200, 240)
-                DrawBox dc, &H28D2FA, &H28D2FA, 10, 4, 13, 7        ' RGB(250, 210, 40)
-                DrawPolygon dc, &H46A046, &H46A046, Array(2, 13, 2, 10, 6, 7, 9, 10, 12, 8, 14, 10, 14, 13)
+                DrawBox dc, GREY, &HF0C896, 1 * s, 2 * s, 15 * s, 14 * s, s           ' RGB(150, 200, 240)
+                DrawBox dc, &H28D2FA, &H28D2FA, 10 * s, 4 * s, 13 * s, 7 * s, s        ' RGB(250, 210, 40)
+                DrawPolygon dc, &H46A046, &H46A046, Array(2, 13, 2, 10, 6, 7, 9, 10, 12, 8, 14, 10, 14, 13), s
         End Select
         SelectObject dc, oldBmp
         DeleteDC dc
@@ -633,27 +875,31 @@ Module MainModule
         Return pic
     End Function
 
-    ' A rectangle from (l, t) to just before (r, b), its edge in the color Pen and its inside in Fill.
+    ' A rectangle from (l, t) to just before (r, b), its edge in the color Pen, Thick pixels wide
+    ' and inside the rectangle, and its inside in Fill.
     Private Sub DrawBox(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal l As Long, ByVal t As Long, _
-            ByVal r As Long, ByVal b As Long)
-        Dim p As LongPtr = SelectObject(dc, CreatePen(0, 1, Pen))
+            ByVal r As Long, ByVal b As Long, Optional ByVal Thick As Long = 1)
+        ' PS_SOLID for one pixel, PS_INSIDEFRAME for more
+        Dim p As LongPtr = SelectObject(dc, CreatePen(IIf(Thick > 1, 6, 0), Thick, Pen))
         Dim br As LongPtr = SelectObject(dc, CreateSolidBrush(Fill))
         Rectangle dc, l, t, r, b
         DeleteObject SelectObject(dc, br)
         DeleteObject SelectObject(dc, p)
     End Sub
 
-    ' A polygon through the points of Xy, pairs of x and y, drawn as DrawBox draws.
-    Private Sub DrawPolygon(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal Xy As Variant)
+    ' A polygon through the points of Xy, pairs of x and y, Scale times as far apart, drawn as
+    ' DrawBox draws with a pen Scale pixels wide.
+    Private Sub DrawPolygon(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal Xy As Variant, _
+            Optional ByVal Scale As Long = 1)
         Dim n As Long = (UBound(Xy) + 1) \ 2
         Dim pts() As POINTAPI
         ReDim pts(0 To n - 1)
         Dim i As Long
         For i = 0 To n - 1
-            pts(i).x = Xy(2 * i)
-            pts(i).y = Xy(2 * i + 1)
+            pts(i).x = Xy(2 * i) * Scale
+            pts(i).y = Xy(2 * i + 1) * Scale
         Next
-        Dim p As LongPtr = SelectObject(dc, CreatePen(0, 1, Pen))
+        Dim p As LongPtr = SelectObject(dc, CreatePen(0, Scale, Pen))
         Dim br As LongPtr = SelectObject(dc, CreateSolidBrush(Fill))
         Polygon dc, pts(0), n
         DeleteObject SelectObject(dc, br)
@@ -799,6 +1045,7 @@ Module MainModule
             If Not IsLoaded(f) Then Return False
             KeepActive f
             KeepStill
+            KeepDropped
             DoEvents
             Sleep 50
         Loop

@@ -1,0 +1,216 @@
+' RichTextBoxLinksTests: the links of the RichTextBox and its protected text. A click is given to
+' the box as the WM_LBUTTONDOWN and WM_LBUTTONUP messages that the mouse sends it.
+[TestFixture]
+Module RichTextBoxLinksTests
+
+    Private Type RtbTestPoint
+        X As Long
+        Y As Long
+    End Type
+    Private Declare PtrSafe Function SendMessagePoint Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByRef wParam As RtbTestPoint, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const EM_POSFROMCHAR As Long = &HD6
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+
+    ' A box wide enough for "see http://example.com now" on one line, and a click on its link.
+    Private Sub ClickTheLink(ByVal Box As VBCCR18.RichTextBox)
+        Box.Width = 6000
+        Box.Height = 2000
+        Box.Text = "see http://example.com now"
+        Dim pt As RtbTestPoint
+        SendMessagePoint Box.hWnd, EM_POSFROMCHAR, pt, 8
+        Dim lp As LongPtr
+        lp = (pt.Y + 3) * &H10000 + pt.X + 2
+        SendMessageW Box.hWnd, WM_LBUTTONDOWN, 1, lp
+        SendMessageW Box.hWnd, WM_LBUTTONUP, 0, lp
+    End Sub
+
+    [TestCase]
+    Public Sub AutoURLDetect_True_MarksAUrlAsALink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            Expect.IsTrue .AutoURLDetect, "AutoURLDetect of a new control"
+            .Text = "See http://example.com for more."
+            .SelStart = 6: .SelLength = 3
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelLink), "SelLink of a part of the address"
+            .SelStart = 0: .SelLength = 3
+            Expect.AreEqual "False", RichTextBoxRig.Show(.SelLink), "SelLink of ""See"""
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelLink_AutoURLDetectFalse_IsKept()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .AutoURLDetect = False
+            .Text = "Read the manual."
+            .SelStart = 9: .SelLength = 6
+            .SelLink = True
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelLink), "SelLink after SelLink = True with AutoURLDetect False"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelLink_AutoURLDetectTrue_OnTextThatIsNoUrl_IsNotKept()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .Text = "Read the manual."
+            .SelStart = 9: .SelLength = 6
+            .SelLink = True
+            Expect.AreEqual "False", RichTextBoxRig.Show(.SelLink), "SelLink after SelLink = True on ""manual"" with AutoURLDetect True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinkEvent_Click_RaisesTheButtonMessages()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        ClickTheLink f.RichTextBox1
+        Expect.IsTrue InStr(Rig.Events(), "LinkEvent &H201") > 0, "a LinkEvent with WM_LBUTTONDOWN for a click on a link: " & Rig.Events()
+        Expect.IsTrue InStr(Rig.Events(), "LinkEvent &H202") > 0, "a LinkEvent with WM_LBUTTONUP for a click on a link: " & Rig.Events()
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LinkEvent_Click_GivesTheRangeOfTheLink()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        ClickTheLink f.RichTextBox1
+        Expect.IsTrue InStr(Rig.Events(), "LinkEvent &H202 4 22") > 0, "LinkStart and LinkEnd of a click on the link at 4 to 22: " & Rig.Events()
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelProtected_SelText_RaisesModifyProtectedAndKeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        With f.RichTextBox1
+            .Text = "Name: Ada"
+            .SelStart = 0: .SelLength = 5
+            .SelProtected = True
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelProtected), "SelProtected after SelProtected = True"
+            Set sink.Box = f.RichTextBox1
+            .SelStart = 1: .SelLength = 1
+            Rig.ClearLog
+            .SelText = "X"
+            Expect.IsTrue InStr(Rig.Events(), "ModifyProtected") > 0, "a ModifyProtected event for SelText over protected text: " & Rig.Events()
+            Expect.AreEqual "Name: Ada", .Text, "Text after the refused SelText"
+        End With
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelProtected_Typing_RaisesModifyProtectedAndKeepsTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        With f.RichTextBox1
+            .Text = "Name: Ada"
+            .SelStart = 0: .SelLength = 5
+            .SelProtected = True
+            Set sink.Box = f.RichTextBox1
+            .SelStart = 2
+            Rig.ClearLog
+            RichTextBoxRig.TypeText f.RichTextBox1, "Q"
+            Expect.IsTrue InStr(Rig.Events(), "ModifyProtected") > 0, "a ModifyProtected event for typing in protected text: " & Rig.Events()
+            Expect.AreEqual "Name: Ada", .Text, "Text after typing in protected text"
+        End With
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ModifyProtected_Allow_ChangesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        sink.AllowChange = True
+        With f.RichTextBox1
+            .Text = "Name: Ada"
+            .SelStart = 0: .SelLength = 5
+            .SelProtected = True
+            Set sink.Box = f.RichTextBox1
+            .SelStart = 1: .SelLength = 1
+            .SelText = "X"
+            Expect.AreEqual "NXme: Ada", .Text, "Text after SelText over protected text, allowed by the handler"
+        End With
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ModifyProtected_GivesTheRangeOfTheChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        With f.RichTextBox1
+            .Text = "Name: Ada"
+            .SelStart = 0: .SelLength = 5
+            .SelProtected = True
+            Set sink.Box = f.RichTextBox1
+            .SelStart = 1: .SelLength = 1
+            Rig.ClearLog
+            .SelText = "X"
+            Expect.IsTrue InStr(Rig.Events(), "ModifyProtected 1 2") > 0, "SelStart and SelEnd of SelText over the character at 1: " & Rig.Events()
+        End With
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_ReplacesProtectedText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        With f.RichTextBox1
+            .Text = "Name: Ada"
+            .SelStart = 0: .SelLength = 5
+            .SelProtected = True
+            Set sink.Box = f.RichTextBox1
+            Rig.ClearLog
+            .Text = "Other"
+            Expect.AreEqual "Other", .Text, "Text after Text = ""Other"" over protected text"
+            Expect.IsTrue InStr(Rig.Events(), "ModifyProtected") = 0, "no ModifyProtected event for Text = ""Other"": " & Rig.Events()
+        End With
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

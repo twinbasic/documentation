@@ -1,0 +1,354 @@
+' RichTextBoxTextTests: the text of the RichTextBox as plain text and as RTF, the Change event, the
+' Modified flag, and the limits on what the user types.
+[TestFixture]
+Module RichTextBoxTextTests
+
+    [TestCase]
+    Public Sub Text_Paragraphs_EndWithACarriageReturn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "one" & vbCrLf & "two"
+        Expect.AreEqual "one" & vbCr & "two", f.RichTextBox1.Text, "Text after Text = ""one"" & vbCrLf & ""two"""
+        Expect.AreEqual 7, f.RichTextBox1.TextLength, "TextLength after Text = ""one"" & vbCrLf & ""two"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UseCrLf_True_GivesCrLf()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "one" & vbCrLf & "two"
+        f.RichTextBox1.UseCrLf = True
+        Expect.AreEqual "one" & vbCrLf & "two", f.RichTextBox1.Text, "Text with UseCrLf True"
+        Expect.AreEqual 8, f.RichTextBox1.TextLength, "TextLength with UseCrLf True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextRTF_Assigned_GivesTheFormattedText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .TextRTF = "{\rtf1 plain and \b bold\b0  text}"
+            Expect.AreEqual "plain and bold text", .Text, "Text after an assignment of RTF"
+            .SelStart = 10: .SelLength = 4
+            Expect.AreEqual "True", RichTextBoxRig.Show(.SelBold), "SelBold of ""bold"""
+            .SelStart = 0: .SelLength = 5
+            Expect.AreEqual "False", RichTextBoxRig.Show(.SelBold), "SelBold of ""plain"""
+            Expect.AreEqual "{\rtf1", Left$(.TextRTF, 6), "the start of TextRTF"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextMode_Changed_EmptiesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "something"
+        f.RichTextBox1.TextMode = RtfTextModePlainText
+        Expect.AreEqual "", f.RichTextBox1.Text, "Text after TextMode = RtfTextModePlainText"
+        Expect.AreEqual CLng(RtfTextModePlainText), CLng(f.RichTextBox1.TextMode), "TextMode after the assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextMode_PlainText_KeepsNoFormatOfAPart()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.RichTextBox1
+            .TextMode = RtfTextModePlainText
+            .Text = "ab cd"
+            .SelStart = 0: .SelLength = 2
+            .SelBold = True
+            Expect.AreEqual "False", RichTextBoxRig.Show(.SelBold), "SelBold of ""ab"" after SelBold = True in plain text"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextRTF_PlainText_LeavesTheBoxEmpty()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.TextMode = RtfTextModePlainText
+        f.RichTextBox1.Text = "old"
+        Expect.AreEqual "{\rtf1", Left$(f.RichTextBox1.TextRTF, 6), "the start of TextRTF in plain text"
+        f.RichTextBox1.TextRTF = "{\rtf1 new}"
+        Expect.AreEqual "", f.RichTextBox1.Text, "Text after an assignment of RTF in plain text"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextMode_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.TextMode = 2
+        Expect.AreEqual 380, Err.Number, "TextMode = 2"
+        On Error GoTo 0
+        Expect.AreEqual CLng(RtfTextModeRichText), CLng(f.RichTextBox1.TextMode), "TextMode after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_SameText_RaisesChange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        f.RichTextBox1.Text = "same"
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        f.RichTextBox1.Text = "same"
+        Expect.IsTrue InStr(Rig.Events(), "Change") > 0, "a Change event for Text = ""same"" on a box that holds it: " & Rig.Events()
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_Assigned_ResetsModified()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "ab"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "c"
+        Expect.IsTrue f.RichTextBox1.Modified, "Modified after typing c"
+        f.RichTextBox1.Text = "new"
+        Expect.IsFalse f.RichTextBox1.Modified, "Modified after Text = ""new"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextRTF_Assigned_SetsModified()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "ab"
+        Expect.IsFalse f.RichTextBox1.Modified, "Modified after Text = ""ab"""
+        f.RichTextBox1.TextRTF = "{\rtf1 q}"
+        Expect.IsTrue f.RichTextBox1.Modified, "Modified after an assignment of RTF"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Assigned_DoesNotCutTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.MaxLength = 2
+        f.RichTextBox1.Text = "abcdef"
+        Expect.AreEqual "abcdef", f.RichTextBox1.Text, "Text after Text = ""abcdef"" with MaxLength 2"
+        f.RichTextBox1.SelStart = 6
+        f.RichTextBox1.SelText = "g"
+        Expect.AreEqual "abcdefg", f.RichTextBox1.Text, "Text after SelText = ""g"" with MaxLength 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_PastMaxLength_RaisesMaxText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        f.RichTextBox1.MaxLength = 2
+        f.RichTextBox1.Text = "12"
+        f.RichTextBox1.SelStart = 2
+        Set sink.Box = f.RichTextBox1
+        Rig.ClearLog
+        RichTextBoxRig.TypeText f.RichTextBox1, "3"
+        Expect.IsTrue InStr(Rig.Events(), "MaxText") > 0, "a MaxText event for a third character with MaxLength 2: " & Rig.Events()
+        Expect.AreEqual "12", f.RichTextBox1.Text, "Text after typing a third character with MaxLength 2"
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Zero_LimitsTypingTo65536()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = String$(65535, "a")
+        f.RichTextBox1.SelStart = 65535
+        RichTextBoxRig.TypeText f.RichTextBox1, "bc"
+        Expect.AreEqual 65536, f.RichTextBox1.TextLength, "TextLength after typing two characters at the end of 65,535 with MaxLength 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_AfterALongerTextWasAssigned_IsLimitedToMaxLength()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.MaxLength = 3
+        f.RichTextBox1.Text = "abcdef"
+        f.RichTextBox1.Text = "ab"
+        f.RichTextBox1.SelStart = 2
+        RichTextBoxRig.TypeText f.RichTextBox1, "xxxxx"
+        Expect.AreEqual "abx", f.RichTextBox1.Text, "Text after typing five characters into ""ab"" with MaxLength 3, once Text was ""abcdef"""
+        Expect.AreEqual 3, f.RichTextBox1.MaxLength, "MaxLength"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.MaxLength = -1
+        Expect.AreEqual 380, Err.Number, "MaxLength = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.RichTextBox1.MaxLength, "MaxLength after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Typing_Locked_ChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "q"
+        f.RichTextBox1.SelStart = 1
+        f.RichTextBox1.Locked = True
+        RichTextBoxRig.TypeText f.RichTextBox1, "b"
+        Expect.AreEqual "q", f.RichTextBox1.Text, "Text after typing b into a locked box that holds q"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelText_Locked_ChangesTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "q"
+        f.RichTextBox1.Locked = True
+        f.RichTextBox1.SelStart = 1
+        f.RichTextBox1.SelText = "z"
+        Expect.AreEqual "qz", f.RichTextBox1.Text, "Text after SelText = ""z"" on a locked box"
+        f.RichTextBox1.Text = "set"
+        Expect.AreEqual "set", f.RichTextBox1.Text, "Text after Text = ""set"" on a locked box"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OverTypeMode_True_ReplacesTheNextCharacter()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.RichTextBox1.Text = "abc"
+        f.RichTextBox1.SelStart = 0
+        f.RichTextBox1.OverTypeMode = True
+        Expect.IsTrue f.RichTextBox1.OverTypeMode, "OverTypeMode after OverTypeMode = True"
+        RichTextBoxRig.TypeText f.RichTextBox1, "Q"
+        Expect.AreEqual "Qbc", f.RichTextBox1.Text, "Text after typing Q at the start of ""abc"" in overtype mode"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AllowOverType_False_EndsOverTypeMode()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.RichTextBox1.AllowOverType, "AllowOverType of a new control"
+        f.RichTextBox1.OverTypeMode = True
+        f.RichTextBox1.AllowOverType = False
+        Expect.IsFalse f.RichTextBox1.OverTypeMode, "OverTypeMode after AllowOverType = False"
+        f.RichTextBox1.OverTypeMode = True
+        Expect.IsFalse f.RichTextBox1.OverTypeMode, "OverTypeMode after OverTypeMode = True with AllowOverType False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultiLine_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.MultiLine = False
+        Expect.AreEqual 382, Err.Number, "MultiLine = False at run time"
+        On Error GoTo 0
+        Expect.IsTrue f.RichTextBox1.MultiLine, "MultiLine after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PasswordChar_NoneSet_IsCharacterZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 1, Len(f.RichTextBox1.PasswordChar), "Len(PasswordChar) of a new control"
+        Expect.AreEqual 0, AscW(f.RichTextBox1.PasswordChar & "x"), "AscW(PasswordChar) of a new control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PasswordChar_TwoCharacters_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.RichTextBox1.PasswordChar = "ab"
+        Expect.AreEqual 380, Err.Number, "PasswordChar = ""ab"""
+        On Error GoTo 0
+        f.RichTextBox1.PasswordChar = "*"
+        f.RichTextBox1.Text = "secret"
+        Expect.AreEqual "*", f.RichTextBox1.PasswordChar, "PasswordChar after PasswordChar = ""*"""
+        Expect.AreEqual "secret", f.RichTextBox1.Text, "Text with a password character"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextRTF_ProtectedText_RaisesModifyProtected()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New RichTextBoxSink
+        With f.RichTextBox1
+            .Text = "keep this"
+            .SelStart = 0: .SelLength = 4
+            .SelProtected = True
+            Set sink.Box = f.RichTextBox1
+            Rig.ClearLog
+            .TextRTF = "{\rtf1 replaced}"
+            Expect.IsTrue InStr(Rig.Events(), "ModifyProtected") > 0, "a ModifyProtected event for an assignment of RTF over protected text: " & Rig.Events()
+            Expect.AreEqual "keep this", .Text, "Text after the refused assignment of RTF"
+        End With
+        Set sink.Box = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

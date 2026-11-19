@@ -4,6 +4,15 @@
     "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher": {
       "fails": "1 of 2 checks failed: GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word: expected True, got False"
     },
+    "CoolBarTests.Bands_Add_DuplicateKey_AddsNothingToTheWindow": {
+      "fails": "1 of 1 checks failed: the bands the window of the cool bar has after the refused Add: expected 2, got 3"
+    },
+    "CoolBarTests.Band_ChildEdge_False_TakesTheEdgeAway": {
+      "fails": "1 of 2 checks failed: ChildEdge after ChildEdge = False: expected False, got True"
+    },
+    "CoolBarTests.Band_Child_RefusedControl_IsNotKept": {
+      "fails": "1 of 1 checks failed: whether Child is Nothing after a Set Child that raised 380: expected True, got False"
+    },
     "FontComboTests.RestoreRecent_UnknownNameBeforeAKnownOne_KeepsTheKnownOnes": {
       "fails": "2 of 3 checks failed: the entries added to the list by RestoreRecent of two names with an unknown one between them: expected 2, got 1; the recent fonts after RestoreRecent of two names with an unknown one between them: expected \"Bahnschrift Light SemiCondensed Arial Narrow\", got \"Bahnschrift Light SemiCondensed Agency FB\""
     },
@@ -64,6 +73,30 @@
     "ListViewItemsTests.SubItems_LongText_IsReturnedWhole": {
       "fails": "1 of 2 checks failed: Len(SubItems(1)) of a subitem of 300 characters: expected 300, got 259"
     },
+    "RichTextBoxFilesTests.SaveFile_FolderMissing_RaisesAnError": {
+      "fails": "1 of 1 checks failed: an error from SaveFile into a folder that does not exist: expected True, got False"
+    },
+    "RichTextBoxLinksTests.LinkEvent_Click_GivesTheRangeOfTheLink": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 1 checks failed: LinkStart and LinkEnd of a click on the link at 4 to 22: Change | LinkEvent &H201 22 0 | SelChange 0 9 9 | LinkEvent &H202 22 0: expected True, got False"
+      }
+    },
+    "RichTextBoxLinksTests.ModifyProtected_GivesTheRangeOfTheChange": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 1 checks failed: SelStart and SelEnd of SelText over the character at 1: ModifyProtected 2 32761: expected True, got False"
+      }
+    },
+    "RichTextBoxTextTests.Typing_AfterALongerTextWasAssigned_IsLimitedToMaxLength": {
+      "fails": "1 of 2 checks failed: Text after typing five characters into \"ab\" with MaxLength 3, once Text was \"abcdef\": expected \"abx\", got \"abxxxx\""
+    },
+    "StatusBarTests.Add_InvalidStyle_Raises380AndAddsNothing": {
+      "fails": "2 of 3 checks failed: Count after the refused call: expected 1, got 2; Exists of the key of the refused call: expected False, got True"
+    },
+    "TabStripTests.Add_DuplicateKey_LeavesNoTabInTheWindow": {
+      "fails": "1 of 1 checks failed: the tabs of the window against Tabs.Count after the refused call: expected 2, got 3"
+    },
     "TextBoxWTests.GetLine_PastTheLastLine_Raises380": {
       "win32": "pass",
       "win64": {
@@ -81,6 +114,18 @@
     },
     "TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress": {
       "fails": "1 of 3 checks failed: NetAddressString of 192.168.0.1:8080: expected \"192.168.0.1\", got \"0.0.1.0\""
+    },
+    "ToolBarTests.Buttons_Add_DuplicateKey_AddsNothingToTheWindow": {
+      "fails": "1 of 1 checks failed: the buttons the window of the toolbar has after the refused Add: expected 1, got 2"
+    },
+    "ToolBarTests.Buttons_HeldAcrossTextAlignmentChange_StillReachTheirButtons": {
+      "fails": "2 of 2 checks failed: Enabled of the button after a variable that held it before TextAlignment changed is set to False: expected False, got True; Position of the button the variable held, after TextAlignment changed: expected 1, got 0"
+    },
+    "ToolBarTests.Buttons_HeldAcrossOrientationChange_StillReachTheirButtons": {
+      "fails": "1 of 1 checks failed: Position of the button the variable held, after Orientation changed: expected 1, got 0"
+    },
+    "ToolBarTests.Buttons_HeldAcrossRightToLeftChange_StillReachTheirButtons": {
+      "fails": "1 of 1 checks failed: Position of the button the variable held, after RightToLeft changed: expected 1, got 0"
     },
     "TreeViewTests.Root_OfANodeInALaterBranch_IsItsTopLevelAncestor": {
       "fails": "1 of 2 checks failed: Root of a node in the second branch: expected \"A\", got \"R\""
