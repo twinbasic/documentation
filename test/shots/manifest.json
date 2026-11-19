@@ -810,6 +810,30 @@
       "build": 1042,
       "scale": 1.5
     },
+    "Reference/Contributed/VBCCR18/Images/CCAppearanceConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CCBackStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CCBorderStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CCLeftRightAlignmentConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CCMousePointerConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/Images/CCVerticalAlignmentConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
     "Reference/Contributed/VBCCR18/Images/CheckBoxW.png": {
       "build": 1042,
       "scale": 1.5
@@ -863,6 +887,26 @@
       "scale": 1.5
     },
     "Reference/Contributed/VBCCR18/Images/WindowedLabel.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/TreeView/Images/Checkboxes.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/TreeView/Images/MultiSelect.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/TreeView/Images/TreeView.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/TreeView/Images/TvwLineStyleConstants.png": {
+      "build": 1042,
+      "scale": 1.5
+    },
+    "Reference/Contributed/VBCCR18/TreeView/Images/TvwVisualThemeConstants.png": {
       "build": 1042,
       "scale": 1.5
     },
