@@ -94,6 +94,8 @@ In this style [**Alignment**](#alignment), [**TextAlignment**](#textalignment), 
 
 [**PushLike**](#pushlike) is the other way to a button that stays down: it keeps the standard style, so the caption's alignment and the image list still apply, and Windows draws the button.
 
+![Three option buttons with the caption Photos drawn as buttons: with PushLike set to True and Value to False a plain button with the caption at its left, with PushLike set to True and Value to True the same button pressed and blue, and with Style set to vbButtonGraphical, Value to True and an icon as Picture a pressed blue button with the picture in the middle and the caption under it](Images/OptionButtonW_Styles.png){:width="621" height="179"}
+
 ## Drawing the control in code
 
 With [**DrawMode**](#drawmode) set to **OptDrawModeOwnerDraw** the control draws nothing. It raises [**OwnerDraw**](#ownerdraw) each time it has to be drawn, and the handler draws the whole control, its state included, on the device context the event gives it.

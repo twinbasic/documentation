@@ -55,6 +55,8 @@ In a program with visual styles the frame's line is drawn in the style of Window
 
 The frame fills itself with [**BackColor**](#backcolor), or, with [**Transparent**](#transparent) set to **True**, with a copy of what its container shows behind it.
 
+![Four frames with the caption Paper: with Alignment set to vbCenter the caption is in the middle of the top edge, with an icon as Picture a small folder is before the caption, with PictureAlignment set to CCLeftRightAlignmentRight as well it is after the caption, and with VisualStyles set to False the frame's line is darker](Images/FrameW_Looks.png){:width="621" height="287"}
+
 Properties
 ----------
 

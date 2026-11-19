@@ -164,7 +164,7 @@ ImageList1.ListImages("open").Draw ImageList1.Parent.hDC, 8, 8, ImlDrawTranspare
 ```
 
 <!-- test: ImageListTests.Draw_Transparent_IgnoresBackColor, ImageListTests.Draw_NoMask_DrawsTheMaskedPixelsBlack -->
-The transparent parts of the picture leave the device context as it is, unless the list's [**UseBackColor**](.#usebackcolor) is **True**: then they are filled with its [**BackColor**](.#backcolor), except with **ImlDrawTransparent**. With **ImlDrawNoMask** the pixels of a bitmap that had the mask color are drawn black.
+The transparent parts of the picture leave the device context as it is, unless the list's [**UseBackColor**](.#usebackcolor) is **True**: then they are filled with its [**BackColor**](.#backcolor), except with **ImlDrawTransparent**. With **ImlDrawNoMask** and **UseBackColor** **False**, the pixels of a bitmap that had the mask color are drawn black.
 <!-- /test -->
 
 ### ExtractIcon

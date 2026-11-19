@@ -155,6 +155,8 @@ End Sub
 
 The list is as high as its items, up to [**MaxDropDownItems**](#maxdropdownitems) of them, unless the program sets [**DropDownHeight**](#dropdownheight). It is as wide as the control unless [**DropDownWidth**](#dropdownwidth) is wider. [**UseListBackColor**](#uselistbackcolor) and [**UseListForeColor**](#uselistforecolor) give the list colors of its own, [**ListBackColor**](#listbackcolor) and [**ListForeColor**](#listforecolor).
 
+![A combo box that shows Kyoto with its list of six cities dropped down: with UseListBackColor set to True and ListBackColor to RGB(255, 255, 204) the list is pale yellow, and Kyoto is selected in it](Images/ComboBoxW_DroppedDown.png){:width="361" height="221"}
+
 ## Drawing the items
 
 With [**DrawMode**](#drawmode) set at design time to **CboDrawModeOwnerDrawFixed** or **CboDrawModeOwnerDrawVariable**, the control draws no item: it raises [**ItemDraw**](#itemdraw) for each item to show, in the list and in the field of a **CboStyleDropDownList** control, and the handler draws into the device context it is given. With **CboDrawModeOwnerDrawVariable** the items can differ in height, and the control first raises [**ItemMeasure**](#itemmeasure) for each item as it is added. The items still hold their texts.

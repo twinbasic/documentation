@@ -51,6 +51,8 @@ CommandLink1.Height = CommandLink1.GetIdealHeight()
 
 The arrow at the left gives way to a picture of the program's: the icon or bitmap in [**Picture**](#picture), or the picture of an [**ImageList**](ImageList/) control assigned to [**ImageList**](#imagelist). [**SetShield**](#setshield) puts the shield of an action that needs elevation there.
 
+![Three command links: with Hint empty the arrow and the caption Open the folder alone, with ImageList set to ImageList1 a small folder in place of the arrow and a note under the caption, and after SetShield True the shield of Windows in place of the arrow before Install for all users and its note](Images/CommandLink_Looks.png){:width="981" height="127"}
+
 ## Clicking the link
 
 The control raises [**Click**](#click) when the user clicks it with the left mouse button, presses the space key while it has the focus, or presses the Alt key with the character that follows an `&` in the [**Caption**](#caption). The link with [**Default**](#default) set raises it for the Enter key, and the one with [**Cancel**](#cancel) set for the Esc key, whichever control of the form has the focus.

@@ -51,6 +51,8 @@ The caption is drawn from the top left corner of the label, and a line break in 
 - [**SingleLine**](#singleline) draws the whole caption on one line, line breaks included.
 - [**AutoSize**](#autosize) changes the label's size to fit the caption whenever the caption, the font or a property that changes the layout is set.
 
+![Three labels, each outlined in gray, with a caption of two lines whose second line is too long for the label: with WordWrap set to False the second line is cut at the right edge, with WordWrap set to True it goes on in a third line, and with SingleLine set to True both lines are on one line, cut at the right edge](Images/LabelW_Lines.png){:width="621" height="129"}
+
 <!-- test: LabelWTests.WordWrap_WhileSingleLine_Raises383, LabelWTests.SingleLine_True_SetsWordWrapFalse -->
 **WordWrap** and **SingleLine** exclude each other. Setting **SingleLine** to **True** sets **WordWrap** to **False**, and setting **WordWrap** to **True** while **SingleLine** is **True** raises run-time error 383.
 <!-- /test -->
@@ -198,6 +200,8 @@ Syntax: *object*\_**Change**( )
 {: #lblellipsisformatconstants }
 
 The values of [**EllipsisFormat**](#ellipsisformat).
+
+![Four labels of one line, each outlined in gray, with a file path too long for them as the caption: in LblEllipsisFormatNone the path is cut at the right edge, in LblEllipsisFormatEnd and LblEllipsisFormatWord it ends in three dots, and in LblEllipsisFormatPath three dots take the place of its middle so that the file name shows](Images/LblEllipsisFormatConstants.png){:width="821" height="95"}
 
 | Member | Value | Description |
 |---|---|---|

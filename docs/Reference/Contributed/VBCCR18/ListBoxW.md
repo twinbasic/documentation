@@ -90,6 +90,8 @@ End With
 
 With **MultiSelect** at **vbMultiSelectSimple** a click or the Spacebar selects an item or removes its selection. With **vbMultiSelectExtended** the user selects a range with the Shift key and single items with the Ctrl key, as in Windows Explorer.
 
+![A list box of city names with MultiSelect set to vbMultiSelectExtended, in which Oslo, Kyoto and Nairobi are selected](Images/ListBoxW_MultiSelect.png){:width="281" height="161"}
+
 <!-- test: ListBoxWTests.ListIndex_MultiSelect_MovesTheFocusOnly, ListBoxWTests.SelectedIndices_HoldsTheIndexesInOrder, ListBoxWTests.SetSelRange_SelectsOrRemovesTheSelection -->
 [**Selected**](#selected) says whether an item is selected, and selects it or removes its selection. [**SelCount**](#selcount) is the number of selected items, [**SelectedIndices**](#selectedindices) returns their indexes, and [**SetSelRange**](#setselrange) selects a run of items in a single call. In such a list **ListIndex** is not the selection: it is the item with the focus rectangle, and an assignment moves the rectangle without selecting anything. **Text** is the text of that item.
 <!-- /test -->
@@ -126,6 +128,8 @@ Such a list selects one item at a time: **MultiSelect** stays **vbMultiSelectNon
 ## Columns and scrolling
 
 A list in one column scrolls up and down. With [**MultiColumn**](#multicolumn) set to **True** the items fill the control's height, go on in a next column, and the list scrolls sideways by columns; [**SetColumnWidth**](#setcolumnwidth) sets the width of the columns and [**ItemsPerColumn**](#itemspercolumn) returns how many items one holds.
+
+![A list box with MultiColumn set to True: city names in three columns of three, and a horizontal scroll bar for the columns further right](Images/ListBoxW_MultiColumn.png){:width="341" height="161"}
 
 [**TopIndex**](#topindex) is the first item shown, and the control raises [**Scroll**](#scroll) when it changes. A list in one column whose items are wider than the control gets a horizontal scroll bar from [**HorizontalExtent**](#horizontalextent).
 

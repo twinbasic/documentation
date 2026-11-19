@@ -45,6 +45,8 @@ End Sub
 
 The handler is called often, for the items in view each time the list is drawn, so it must be quick and must not change the list.
 
+![A virtual combo box with ListCount set to 100000 and its list dropped down, scrolled with TopIndex to 50000: it shows Row 50,001 to Row 50,009, the texts that a GetVirtualItem handler gives, and the thumb of its scroll bar is halfway down](Images/VirtualCombo_DroppedDown.png){:width="321" height="271"}
+
 <!-- test: VirtualComboTests.List_RaisesGetVirtualItem, VirtualComboTests.List_NoHandler_IsEmpty, VirtualComboTests.ListCount_Assigned_RemovesTheSelectionAndKeepsTheText -->
 The control keeps no item text. Without a handler every item is empty. When the data changes, the program sets **ListCount** again if the number of items changed and calls [**Refresh**](Common#refresh). An assignment to **ListCount** leaves no item selected, and leaves the text in the text box as it is.
 <!-- /test -->

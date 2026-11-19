@@ -87,7 +87,7 @@ The address of the link. **String**. It is the `HREF` of the link's mark in the 
 ### Visited
 {: .no_toc }
 
-Whether the link is drawn in the color of a link that the user has followed. **Boolean**. The control never sets it: a [**LinkActivate**](.#linkactivate) handler does.
+Whether the link is marked as one that the user has followed: the `LIS_VISITED` state of the link control of Windows. **Boolean**. The control never sets it: a [**LinkActivate**](.#linkactivate) handler does. With visual styles, Windows draws a visited link in the same color as the others.
 
 ## See Also
 

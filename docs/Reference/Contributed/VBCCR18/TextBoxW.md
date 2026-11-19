@@ -70,6 +70,8 @@ Debug.Print TextBoxW1.Text
 
 A box for a password shows one character in place of each character of the text: the one in [**PasswordChar**](#passwordchar), or the dot that Windows uses when [**UseSystemPasswordChar**](#usesystempasswordchar) is **True**. **Text** returns the real text in both cases.
 
+![Two text boxes that hold the text secret: with PasswordChar set to an asterisk they show six asterisks, and with UseSystemPasswordChar set to True six black dots](Images/TextBoxW_Password.png){:width="461" height="99"}
+
 <!-- test: TextBoxWTests.OverTypeMode_WithoutAllowOverType_StaysFalse, TextBoxWTests.Typing_OverTypeMode_ReplacesTheNextCharacter, TextBoxWTests.InsertKey_AllowOverType_TogglesOverTypeMode -->
 With [**AllowOverType**](#allowovertype) set to **True** the Insert key switches [**OverTypeMode**](#overtypemode) on and off. While it is on, a character that the user types replaces the character after the insertion point; at the end of a line it is added as usual.
 <!-- /test -->
@@ -92,6 +94,8 @@ If TextBoxW1.CanUndo Then TextBoxW1.Undo
 ## Several lines
 
 With [**MultiLine**](#multiline) set to **True** the box holds several lines, separated by a carriage return and a line feed (**vbCrLf**). [**ScrollBars**](#scrollbars) gives it scroll bars. A box with no horizontal scroll bar wraps a line that is too long, without changing the text.
+
+![A text box with MultiLine set to True and ScrollBars to vbVertical: a short letter whose long line is wrapped over three lines, and a vertical scroll bar for the lines below](Images/TextBoxW_MultiLine.png){:width="321" height="179"}
 
 <!-- test: TextBoxWTests.GetLine_ReturnsTheLineOfThatNumber, TextBoxWTests.GetLine_Zero_IsTheLineOfTheInsertionPoint, TextBoxWTests.GetLineFromChar_ReturnsTheLineNumber -->
 The methods that work on lines count them from 1. [**GetLineCount**](#getlinecount) returns the number of lines, [**GetLine**](#getline) the text of one, and [**GetLineFromChar**](#getlinefromchar) the line that a character is on. [**ScrollToLine**](#scrolltoline) brings a line to the top of the box. A line here is a line as the box shows it, so a long line that the box has wrapped counts as several.
@@ -121,6 +125,8 @@ On a form that has a default button, the Enter key presses that button. A multi-
 ## A prompt and a balloon tip
 
 [**CueBanner**](#cuebanner) is a text that a box of one line shows in grey while it is empty, to say what belongs in it. It is not part of **Text**. [**ShowBalloonTip**](#showballoontip) shows a balloon that points at the insertion point, for a message about what the user typed. Both need a program with visual styles.
+
+![An empty text box with CueBanner set to Search, which shows the word Search in grey](Images/TextBoxW_CueBanner.png){:width="261" height="119"}
 
 ```tb check_build
 TextBoxW1.CueBanner = "Search"

@@ -65,7 +65,7 @@ Debug.Print Len(LinkLabel1.Links(1).URL)
 
 ## What a link does
 
-The control opens nothing by itself. When the user clicks a link, or presses Enter while a link has the keyboard focus, the control raises [**LinkActivate**](#linkactivate) with the link, and the handler does the work. A link is not drawn as visited until the program sets its [**Visited**](LlbLink#visited).
+The control opens nothing by itself. When the user clicks a link, or presses Enter while a link has the keyboard focus, the control raises [**LinkActivate**](#linkactivate) with the link, and the handler does the work. A link is not marked as visited until the program sets its [**Visited**](LlbLink#visited).
 
 ```tb check_build
 Private Sub LinkLabel1_LinkActivate(ByVal Link As LlbLink, ByVal Reason As LlbLinkActivateReasonConstants)
@@ -96,6 +96,8 @@ Windows draws a link in its link color, underlined. Three properties and an even
 
 - [**UnderlineCold**](#underlinecold) and [**UnderlineHot**](#underlinehot) say whether a link is underlined while the pointer is elsewhere and while it is over the link. The second has an effect only with [**HotTracking**](#hottracking) set to **True**, which makes the link under the pointer the *hot* one.
 - [**LinkForeColor**](#linkforecolor) is raised each time a link is drawn, with its color, which the handler can change.
+
+![Three link labels with the caption Read the documentation or ask a question: with the defaults both links are blue and underlined, with the Enabled of the second link set to False that link is gray, and with UnderlineCold set to False neither link is underlined](Images/LinkLabel_Looks.png){:width="521" height="149"}
 
 ```tb check_build
 Private Sub LinkLabel1_LinkForeColor(ByVal Link As LlbLink, RGBColor As Long)

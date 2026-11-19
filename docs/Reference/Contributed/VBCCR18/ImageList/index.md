@@ -180,6 +180,8 @@ Debug.Print Icon.Type = vbPicTypeIcon
 ' True
 ```
 
+![A page and the arrow of a shortcut, each drawn from the list with ListImages("file") and ListImages("arrow"), and beside them the icon that Overlay("file", "arrow") returns: the page with the arrow over its bottom left corner](Images/ImageList_Overlay.png){:width="561" height="107"}
+
 Properties
 ----------
 
@@ -308,13 +310,15 @@ The values of [**ColorDepth**](#colordepth): the number of bits for each pixel.
 
 The values of the *Style* argument of the [**Draw**](ImlListImage#draw) method of a picture. The members can be added together.
 
+![A picture of a folder drawn with each style over a chequered ground, in two rows. With UseBackColor set to False: ImlDrawNormal and ImlDrawTransparent show the ground round the folder, ImlDrawSelected covers the folder with every other pixel blue, ImlDrawFocus with one pixel in four blue, and ImlDrawNoMask fills the transparent parts black. With UseBackColor set to True and BackColor to vbYellow, the transparent parts are yellow in every style but ImlDrawTransparent, ImlDrawNoMask included](Images/ImlDrawConstants.png){:width="931" height="231"}
+
 | Member | Value | Description |
 |---|---|---|
 | **ImlDrawNormal**{: #ImlDrawConstants_ImlDrawNormal } | 1 | The picture as the list holds it: its transparent parts are filled with [**BackColor**](#backcolor) while [**UseBackColor**](#usebackcolor) is **True**. |
 | **ImlDrawTransparent**{: #ImlDrawConstants_ImlDrawTransparent } | 2 | The transparent parts are left as they are on the device context, whatever **UseBackColor** is. |
 | **ImlDrawSelected**{: #ImlDrawConstants_ImlDrawSelected } | 4 | The picture mixed half and half with the highlight color of Windows, as a selected icon is shown. |
 | **ImlDrawFocus**{: #ImlDrawConstants_ImlDrawFocus } | 8 | The picture mixed with a quarter of the highlight color. |
-| **ImlDrawNoMask**{: #ImlDrawConstants_ImlDrawNoMask } | 16 | The picture without its transparent parts: the pixels of a bitmap that had the mask color are drawn black. |
+| **ImlDrawNoMask**{: #ImlDrawConstants_ImlDrawNoMask } | 16 | The picture without its transparent parts: the pixels of a bitmap that had the mask color are drawn black, or in [**BackColor**](#backcolor) when [**UseBackColor**](#usebackcolor) is **True**. |
 
 ## See Also
 

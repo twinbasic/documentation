@@ -83,6 +83,8 @@ ProgressBar1.MarqueeAnimation = True
 | `{2}` | [**Max**](#max) |
 | `{3}` | the part of the range done, as a whole number from 0 to 100 |
 
+![Two progress bars with a text in the middle: with Text set to {3} % and Value to 60 the bar shows 60 %, and with Text set to {0} of {2} files, Value to 42 and Max to 120 it shows 42 of 120 files](Images/ProgressBar_Text.png){:width="461" height="115"}
+
 ## On the taskbar
 
 With [**ShowInTaskBar**](#showintaskbar) set to **True**, the taskbar button of the window the control is in shows the same progress: the part of the range done, in green, red or yellow by [**State**](#state), or the moving light of a task of unknown length while a marquee is animated.
@@ -260,6 +262,8 @@ The values of [**Scrolling**](#scrolling).
 {: #prbstateconstants }
 
 The values of [**State**](#state).
+
+![Three progress bars at 60 per cent: green in PrbStateNormal, red in PrbStateError and yellow in PrbStatePaused](Images/PrbStateConstants.png){:width="621" height="95"}
 
 | Member | Value | Description |
 |---|---|---|

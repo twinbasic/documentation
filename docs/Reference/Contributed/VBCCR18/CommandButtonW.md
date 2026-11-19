@@ -79,6 +79,8 @@ End Sub
 
 [**SplitButtonGlyph**](#splitbuttonglyph) puts a picture in place of the arrow. [**SplitButtonNoSplit**](#splitbuttonnosplit) removes the line between the two parts.
 
+![Three split buttons with the caption Save: with SplitButton set to True the arrow is at the right after a line, with SplitButtonAlignment set to CCLeftRightAlignmentLeft it is at the left, and with SplitButtonNoSplit set to True the arrow is at the right with no line](Images/CommandButtonW_SplitButton.png){:width="921" height="123"}
+
 <!-- test: CommandButtonWTests.DroppedDown_True_RaisesDropDown, CommandButtonWTests.DroppedDown_WithoutSplitButton_DoesNothing -->
 Setting [**DroppedDown**](#droppeddown) to **True** does what a click on the arrow does: the arrow part goes down, **DropDown** is raised, and the arrow part comes up again when the handler returns. On a button that is not a split button it does nothing.
 
@@ -391,6 +393,8 @@ Syntax: *object*\_**OwnerDraw**( **ByVal** *DisplayAsDefault* **As Boolean**, **
 {: #cmdimagelistalignmentconstants }
 
 The values of [**ImageListAlignment**](#imagelistalignment).
+
+![Five tall command buttons with the caption Save and a picture of a disk from an image list: in CmdImageListAlignmentLeft the picture is at the left edge, in CmdImageListAlignmentRight at the right edge, in CmdImageListAlignmentTop at the top edge with the caption below the middle, in CmdImageListAlignmentBottom at the bottom edge with the caption above the middle, and in CmdImageListAlignmentCenter in the middle over the caption](Images/CmdImageListAlignmentConstants.png){:width="1021" height="139"}
 
 | Member | Value | Description |
 |---|---|---|

@@ -47,6 +47,8 @@ The text of the window, as the `GetWindowText` function of Windows returns it, i
 
 A window cannot let what is behind it show through as a **LabelW** with a transparent background does. [**Transparent**](#transparent) comes near it: the label copies what its container draws at its place and draws the caption over the copy.
 
+![Two windowed labels with the caption Paper size over a hatched ground that the form draws: with Transparent set to False the label is a plain box over the hatch, and with Transparent set to True the hatch shows behind the caption](Images/WindowedLabel_Transparent.png){:width="381" height="135"}
+
 ## Lines, wrapping and size
 
 The caption is drawn from the top left corner of the label, and a line break in it (**vbCrLf**) starts a new line. Three properties change that:

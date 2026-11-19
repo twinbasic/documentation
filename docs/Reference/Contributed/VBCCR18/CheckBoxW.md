@@ -38,6 +38,8 @@ Of the [common members](Common), the control has those under [Name and place](Co
 
 [**Value**](#value) is the state of the box: **vbUnchecked**, **vbChecked** or **vbGrayed**. The user changes it with a click on the control, with the space key while the control has the focus, and with the Alt key and the character that follows an `&` in the [**Caption**](#caption).
 
+![Three check boxes with the caption Remember me: with Value set to vbUnchecked the box is empty, with vbChecked it has a tick, and with vbGrayed it is filled with a square](Images/CheckBoxW_Value.png){:width="561" height="99"}
+
 <!-- test: CheckBoxWTests.Click_ByTheUser_ChecksAndUnchecks, CheckBoxWTests.Click_ByTheUser_OnGrayed_Unchecks -->
 Each of these checks an unchecked box and unchecks a checked or a grayed one. Only the program makes the box grayed.
 <!-- /test -->
@@ -89,6 +91,8 @@ With [**Style**](#style) set to **vbButtonGraphical** the control is a push butt
 In this style [**Alignment**](#alignment), [**TextAlignment**](#textalignment), [**VerticalAlignment**](#verticalalignment), [**WordWrap**](#wordwrap), [**PushLike**](#pushlike) and [**ImageList**](#imagelist) have no effect.
 
 [**PushLike**](#pushlike) is the other way to a button that stays down: it keeps the standard style, so the caption's alignment and the image list still apply, and Windows draws the button.
+
+![Three check boxes with the caption Photos drawn as buttons: with PushLike set to True and Value to vbUnchecked a plain button with the caption at its left, with PushLike set to True and Value to vbChecked the same button pressed and blue, and with Style set to vbButtonGraphical, Value to vbChecked and an icon as Picture a pressed blue button with the picture in the middle and the caption under it](Images/CheckBoxW_Styles.png){:width="621" height="179"}
 
 ## Drawing the control in code
 
