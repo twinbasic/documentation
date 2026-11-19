@@ -62,35 +62,35 @@ Each of these is the VB6 control of the same name without the `W`, with text in 
 
 | Control | Shows | VB6 library |
 |---|---|---|
-| **Animation** | a silent AVI clip | `MSCOMCT2.OCX` |
+| [**Animation**](Animation) | a silent AVI clip | `MSCOMCT2.OCX` |
 | [**CoolBar**](CoolBar/) | bands that hold other controls, which the user moves and resizes | `COMCT332.OCX` |
-| **DTPicker** | a date or a time, with a drop-down calendar | `MSCOMCT2.OCX` |
+| [**DTPicker**](DTPicker) | a date or a time, with a drop-down calendar | `MSCOMCT2.OCX` |
 | [**ImageCombo**](ImageCombo/) | a drop-down list whose items have pictures | `MSCOMCTL.OCX` |
 | [**ImageList**](ImageList/) | nothing: it holds the pictures other controls show | `MSCOMCTL.OCX` |
 | [**ListView**](ListView/) | items as icons, a list, tiles or a report with columns | `MSCOMCTL.OCX` |
-| **MonthView** | a calendar of one or more months | `MSCOMCT2.OCX` |
+| [**MonthView**](MonthView) | a calendar of one or more months | `MSCOMCT2.OCX` |
 | [**ProgressBar**](ProgressBar) | progress through a range | `MSCOMCTL.OCX` |
 | [**RichTextBox**](RichTextBox/) | formatted text, edited | `RICHTX32.OCX` |
-| **Slider** | a value in a range, set by a thumb on a track | `MSCOMCTL.OCX` |
+| [**Slider**](Slider) | a value in a range, set by a thumb on a track | `MSCOMCTL.OCX` |
 | [**StatusBar**](StatusBar/) | panels of text and pictures along the bottom of a form | `MSCOMCTL.OCX` |
-| **SysInfo** | nothing: it reports events and facts of the system | `SYSINFO.OCX` |
+| [**SysInfo**](SysInfo) | nothing: it reports events and facts of the system | `SYSINFO.OCX` |
 | [**TabStrip**](TabStrip/) | a row of tabs | `MSCOMCTL.OCX` |
 | [**ToolBar**](ToolBar/) | a row of buttons | `MSCOMCTL.OCX` |
 | [**TreeView**](TreeView/) | a tree of nodes that expand and collapse | `MSCOMCTL.OCX` |
-| **UpDown** | a pair of arrow buttons that change a value | `MSCOMCT2.OCX` |
+| [**UpDown**](UpDown) | a pair of arrow buttons that change a value | `MSCOMCT2.OCX` |
 
-The **CommonDialog** class shows the Windows common dialogs, as the CommonDialog control of `COMDLG32.OCX` does. It is a class, not a control: a program makes one with **New**.
+The [**CommonDialog**](CommonDialog) class shows the Windows common dialogs, as the CommonDialog control of `COMDLG32.OCX` does. It is a class, not a control: a program makes one with **New**.
 
 ## Controls that VB6 does not have
 
 - [**CommandLink**](CommandLink) -- a button with a title, a note under it and an arrow
 - [**FontCombo**](FontCombo) -- a drop-down list of the fonts installed
-- **HotKey** -- a box that takes a key combination
-- **IPAddress** -- a box for an IPv4 address, in four fields
+- [**HotKey**](HotKey) -- a box that takes a key combination
+- [**IPAddress**](IPAddress) -- a box for an IPv4 address, in four fields
 - [**LinkLabel**](LinkLabel/) -- text with links in it
-- **MCIWnd** -- a player for sound and video files
+- [**MCIWnd**](MCIWnd) -- a player for sound and video files
 - [**Pager**](Pager) -- a control that scrolls another control too large for its place
-- **SpinBox** -- a text box for a number, with arrow buttons
+- [**SpinBox**](SpinBox) -- a text box for a number, with arrow buttons
 - [**VirtualCombo**](VirtualCombo) -- a drop-down list whose items the program supplies when they are shown
 - [**VListBox**](VListBox) -- a list box whose items the program supplies when they are shown
 - [**WindowedLabel**](WindowedLabel) -- text on the form, in a window of its own

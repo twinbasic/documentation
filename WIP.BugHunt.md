@@ -126,6 +126,16 @@ narrowed to a UserControl of our own.
   extender properties, so none showed it. Not settled: whether the IDE writes something more
   for a UserControl's own properties (set Style in the designer, save, compare the `.tbform`
   with make-shots'), or twinBASIC ignores them. The ImageCombo styles picture waits for this.
+- **A UserControl's own property is not reached through `As Control`.** VBCCR18's
+  `UpDown.BuddyProperty = "Text"` with a TextBoxW buddy raises 380: its Let checks the name
+  through `Dim BuddyControl As Control` (UpDown.ctl.twin 786-829), and only the extender's
+  members (Tag, ToolTipText, Width) pass. NOTE and failing case on UpDown.md
+  (`UpDownTests.BuddyProperty_Text_ShowsTheValue`). Not narrowed to a UserControl of our own;
+  VB6 not checked.
+- **MCIWnd's string getters give Windows twice the buffer's length**: `LenB(Buffer)` (512) for a
+  256-character buffer, where the MCIWnd messages take a count of characters
+  (MCIWnd.ctl.twin 1288, 1303, 1339, 1375, 1439, 1464). A value over 255 characters would be
+  written past the string. The package's, not twinBASIC's; not reproduced.
 
 ### Late binding (from the VBCCR18 work)
 
@@ -136,6 +146,11 @@ narrowed to a UserControl of our own.
   print error 438. Found from VBCCR18's Pager: `BuddyControl = <a Collection>` hangs in
   `ControlIsValid`'s `Control.Container`. VB6, expected to raise 438, not checked; a reproducer under
   `bugs/` is the next step (WIP.BugHunt.md's steps).
+- **`CallByName obj, "", VbGet`** (the default member, by an empty name) raises 438. Found from
+  VBCCR18's `UpDown.SyncBuddy = True`, which reads the buddy's default property so
+  (UpDown.ctl.twin 831-866) and raises 380; NOTE and failing case on UpDown.md
+  (`UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy`). Whether VB6 accepts an empty
+  name is not checked: that decides whether this is a defect.
 
 ### WinNativeCommonCtls
 
