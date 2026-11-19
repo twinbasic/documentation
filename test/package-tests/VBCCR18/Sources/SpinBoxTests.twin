@@ -175,6 +175,19 @@ Module SpinBoxTests
     End Sub
 
     [TestCase]
+    Public Sub NumberStyle_Hexadecimal_SmallRange_ShowsFourDigits()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.SpinBox1.Max = 1000
+        f.SpinBox1.NumberStyle = SpbNumberStyleHexadecimal
+        f.SpinBox1.Value = 255
+        Expect.AreEqual "0x00FF", f.SpinBox1.Text, "Text of 255 in hexadecimal, Max 1000"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
     Public Sub ThousandsSeparator_False_ShowsNoSeparator()
         Expect.Begin
         Dim f As HostForm

@@ -129,6 +129,23 @@ Module MainModule
             Case "strips": Set f = frmStrips
             Case "tbrtextalign": Set f = frmTbrTextAlign
             Case "tbsstyle": Set f = frmTbsStyle
+            Case "dates": Set f = frmDates
+            Case "spins": Set f = frmSpins
+            Case "media": Set f = frmMedia
+            Case "dtpcheckbox": Set f = frmDtpCheckBox
+            Case "dtpformats": Set f = frmDtpFormats
+            Case "dtpdropped": Set f = frmDtpDropped
+            Case "mvmonths": Set f = frmMvMonths
+            Case "mvmultiselect": Set f = frmMvMultiSelect
+            Case "mvviews": Set f = frmMvViews
+            Case "udorientation": Set f = frmUdOrientation
+            Case "spbstyles": Set f = frmSpbStyles
+            Case "sldticks": Set f = frmSldTicks
+            Case "sldselect": Set f = frmSldSelect
+            Case "hkstates": Set f = frmHkStates
+            Case "ipastates": Set f = frmIpaStates
+            Case "anilook": Set f = frmAniLook
+            Case "mcilook": Set f = frmMciLook
             Case Else: Set f = frmButtons
         End Select
         Load f
@@ -158,6 +175,23 @@ Module MainModule
             Case "strips": Strips f
             Case "tbrtextalign": ToolBarTextAlignments f
             Case "tbsstyle": TabStripStyles f
+            Case "dates": Dates f
+            Case "spins": Spins f
+            Case "media": Media f
+            Case "dtpcheckbox": PickerCheckBoxes f
+            Case "dtpformats": PickerFormats f
+            Case "dtpdropped": PickerDropped f
+            Case "mvmonths": MonthViewMonths f
+            Case "mvmultiselect": MonthViewMultiSelect f
+            Case "mvviews": MonthViewViews f
+            Case "udorientation": UpDownOrientations f
+            Case "spbstyles": SpinBoxStyles f
+            Case "sldticks": SliderTicks f
+            Case "sldselect": SliderSelection f
+            Case "hkstates": HotKeyStates f
+            Case "ipastates": AddressStates f
+            Case "anilook": AnimationLooks f
+            Case "mcilook": MCIWndLooks f
             Case Else: Err.Raise 5, , "no sheet named " & scene
         End Select
         f.Show
@@ -504,6 +538,479 @@ Module MainModule
             Text f, Choose(i + 1, "TbsStyleTabs", "TbsStyleButtons", "TbsStyleFlatButtons") & " (" & i & ")", x, 16 + H + 8, COLUMN
         Next
     End Sub
+
+    ' ---------------------------------------------------------------- dates, numbers and media
+
+    ' Every date and time of these pictures is set here: none is read from the clock. A month
+    ' view and the calendar of a date picker mark the current day, with a circle and a line at
+    ' their bottom, so both are switched off, and the control's own today is this date too.
+    Private Function TheDay() As Date
+        Return DateSerial(2026, 3, 15) + TimeSerial(10, 30, 0)
+    End Function
+
+    Private Sub NoToday(ByVal mv As Object)
+        mv.Today = DateSerial(2026, 3, 15)
+        mv.ShowToday = False
+        mv.ShowTodayCircle = False
+    End Sub
+
+    ' A date picker with its date in ISO order, which no language changes, and its calendar
+    ' without the current day.
+    Private Sub PickerDate(ByVal dp As Object, Optional ByVal Format As String = "yyyy-MM-dd")
+        dp.CalendarShowToday = False
+        dp.CalendarShowTodayCircle = False
+        dp.Format = DtpFormatCustom
+        dp.CustomFormat = Format
+        dp.Value = TheDay()
+    End Sub
+
+    ' A date picker above a month view, both on 15 March 2026.
+    Private Sub Dates(ByVal f As Form)
+        FitClient f, 400, 400
+        Dim dp As Object = Place(f, "DTPicker1", MARGIN, MARGIN, 160, 24)
+        PickerDate dp
+        Dim y As Single = MARGIN + 24 + MARGIN
+        Dim mv As Object = Place(f, "MonthView1", MARGIN, y, 200, 160, "")
+        NoToday mv
+        mv.Value = TheDay()
+        Clip "MonthView", MARGIN, y, mv.Width, mv.Height
+        FitClient f, 2 * MARGIN + IIf(mv.Width > 160, mv.Width, 160), y + mv.Height + MARGIN
+    End Sub
+
+    ' An up-down control beside the text box whose number it changes, a spin box, a slider, a
+    ' hot key box and an IP address box.
+    Private Sub Spins(ByVal f As Form)
+        Const W As Single = 200
+        FitClient f, 2 * MARGIN + W, 400
+        Dim y As Single = MARGIN
+        Place(f, "TextBoxW1", MARGIN, y, 60, 24, "").Text = "5"
+        Dim ud As Object = Place(f, "UpDown1", MARGIN + 60, y, 17, 24, "")
+        ud.Value = 5
+        Clip "UpDown", MARGIN, y, 60 + ud.Width, 24
+        y += 24 + MARGIN
+        Place(f, "SpinBox1", MARGIN, y, 80, 24).Value = 40
+        y += 24 + MARGIN
+        Dim sl As Object = Place(f, "Slider1", MARGIN, y, W, 32, "")
+        sl.Min = 0
+        sl.Max = 10
+        sl.TickFrequency = 1
+        sl.Value = 4
+        Clip "Slider", MARGIN, y, W, sl.Height
+        y += sl.Height + MARGIN
+        Dim hk As Object = Place(f, "HotKey1", MARGIN, y, 160, 24)
+        hk.Value(vbCtrlMask Or vbAltMask) = vbKeyF5
+        y += 24 + MARGIN
+        Place(f, "IPAddress1", MARGIN, y, 140, 24).Text = "192.168.0.1"
+        y += 24 + MARGIN
+        FitClient f, 2 * MARGIN + W, y
+    End Sub
+
+    ' The folder of the files the program writes: that of the signals, or the temporary folder
+    ' when no tool runs the program.
+    Private Function MediaFolder() As String
+        If Len(Signals()) Then Return Signals()
+        Return Environ$("TEMP")
+    End Function
+
+    ' An animation with the first frame of a small silent clip, and a player with a silent
+    ' sound file open. Nothing plays.
+    Private Sub Media(ByVal f As Form)
+        FitClient f, 400, 400
+        Dim an As Object = Place(f, "Animation1", MARGIN, MARGIN, 48, 48, "")
+        an.Center = True
+        an.BackStyle = CCBackStyleOpaque
+        an.LoadFile WriteSampleClip(MediaFolder() & "\clip.avi")
+        Clip "Animation", MARGIN, MARGIN, an.Width, an.Height
+        Dim y As Single = MARGIN + an.Height + MARGIN
+        Dim mw As Object = Place(f, "MCIWnd1", MARGIN, y, 240, 60, "")
+        Dim wav As String = MediaFolder() & "\silence.wav"
+        WriteSilentWav wav
+        mw.FileName = wav
+        Clip "MCIWnd", MARGIN, y, mw.Width, mw.Height
+        FitClient f, 2 * MARGIN + IIf(mw.Width > an.Width, mw.Width, an.Width), y + mw.Height + MARGIN
+    End Sub
+
+    ' A date picker with a check box, checked and not.
+    Private Sub PickerCheckBoxes(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "CheckBox", 2 * COLUMN + 20, 16 + 24 + 8 + 20
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            Dim dp As Object = Place(f, "DTPicker" & (i + 1), x + 20, 16, COLUMN - 40, 24, "")
+            dp.CheckBox = True
+            PickerDate dp
+            If i = 1 Then dp.Value = Null
+            Text f, Choose(i + 1, "Value = 2026-03-15", "Value = Null"), x, 16 + 24 + 8, COLUMN
+        Next
+    End Sub
+
+    ' Two custom formats: a date and a time, and a time with the arrow buttons.
+    Private Sub PickerFormats(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "CustomFormat", 2 * COLUMN + 20, 16 + 24 + 8 + 20
+        Dim dp As Object = Place(f, "DTPicker1", 10 + 30, 16, COLUMN - 60, 24, "")
+        PickerDate dp, "yyyy-MM-dd HH:mm"
+        Text f, """yyyy-MM-dd HH:mm""", 10, 16 + 24 + 8, COLUMN
+        Set dp = Place(f, "DTPicker2", 10 + COLUMN + 30, 16, COLUMN - 60, 24, "")
+        dp.UpDown = True
+        PickerDate dp, "HH:mm"
+        Text f, """HH:mm"", UpDown = True", 10 + COLUMN, 16 + 24 + 8, COLUMN
+    End Sub
+
+    ' A date picker with its calendar dropped down.
+    Private Sub PickerDropped(ByVal f As Form)
+        Const W As Single = 200
+        Settings f, "DTPicker", W + 40, 30 + 24 + 16
+        Text f, "DroppedDown = True", 0, 8, W + 40
+        Dim dp As Object = Place(f, "DTPicker1", 20, 30, W, 24, "")
+        PickerDate dp
+        Set Dropped = dp
+    End Sub
+
+    ' A month view placed at (20, 16) with a label under it, and the form fitted round it.
+    Private Sub UnderLabel(ByVal f As Form, ByVal mv As Object, ByVal x As Single, ByVal Column As Single, _
+            ByVal Label As String)
+        mv.Move x + (Column - mv.Width) / 2, 16
+        Text f, Label, x, 16 + mv.Height + 8, Column
+    End Sub
+
+    ' Two months down, with week numbers and Monday first. Down, not across: the page warns
+    ' that a MonthColumns of 2 or more shows one month fewer across than it says (1.8.136.0),
+    ' and in this program it showed as many as it says, so a picture of months across would
+    ' disagree with the page either way.
+    Private Sub MonthViewMonths(ByVal f As Form)
+        Settings f, "MonthRows", 400, 600
+        Dim mv As Object = Place(f, "MonthView1", 20, 16, 200, 160, "")
+        NoToday mv
+        mv.MonthRows = 2
+        mv.ShowWeekNumbers = True
+        mv.StartOfWeek = 1
+        mv.Value = TheDay()
+        Dim w As Single = mv.Width + 40
+        If w < 320 Then w = 320
+        FitClient f, w, 16 + mv.Height + 8 + 40
+        UnderLabel f, mv, 0, w, "MonthRows = 2, ShowWeekNumbers = True"
+        Text f, "StartOfWeek = 1", 0, 16 + mv.Height + 8 + 20, w
+    End Sub
+
+    ' Five days selected, from 10 to 14 March.
+    Private Sub MonthViewMultiSelect(ByVal f As Form)
+        Settings f, "MultiSelect", 400, 300
+        Dim mv As Object = Place(f, "MonthView1", 20, 16, 200, 160, "")
+        mv.MultiSelect = True
+        NoToday mv
+        mv.Value = TheDay()
+        mv.SetSelRange DateSerial(2026, 3, 10), DateSerial(2026, 3, 14)
+        Dim w As Single = mv.Width + 40
+        If w < 300 Then w = 300
+        FitClient f, w, 16 + mv.Height + 8 + 20
+        UnderLabel f, mv, 0, w, "SetSelRange 2026-03-10, 2026-03-14"
+    End Sub
+
+    ' The months of 2026 and the years of its decade.
+    Private Sub MonthViewViews(ByVal f As Form)
+        Settings f, "View", 500, 300
+        Dim mvs(1) As Object
+        Dim column As Single
+        Dim i As Long
+        For i = 0 To 1
+            Set mvs(i) = Place(f, "MonthView" & (i + 1), 20, 16, 200, 160, "")
+            NoToday mvs(i)
+            mvs(i).Value = TheDay()
+            mvs(i).View = i + 1
+            If mvs(i).Width + 40 > column Then column = mvs(i).Width + 40
+        Next
+        FitClient f, 2 * column + 20, 16 + mvs(0).Height + 8 + 20
+        For i = 0 To 1
+            UnderLabel f, mvs(i), 10 + i * column, column, Choose(i + 1, "MvwViewYear", "MvwViewDecade") & " (" & (i + 1) & ")"
+        Next
+    End Sub
+
+    ' The two Orientation values of an up-down control.
+    Private Sub UpDownOrientations(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "Orientation", 2 * COLUMN + 20, 16 + 40 + 8 + 20
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * COLUMN
+            Dim ud As Object = Place(f, "UpDown" & (i + 1), x, 16, 17, 40, "")
+            ud.Orientation = i
+            If i = 1 Then ud.Move x, 26, 40, 20
+            ud.Move x + (COLUMN - ud.Width) / 2, 16 + (40 - ud.Height) / 2
+            Text f, Choose(i + 1, "UdnOrientationVertical", "UdnOrientationHorizontal") & " (" & i & ")", x, 16 + 40 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A spin box with its arrows at the left and its number at the right, one in hexadecimal,
+    ' and one that groups its digits by thousands.
+    Private Sub SpinBoxStyles(ByVal f As Form)
+        Const COLUMN As Single = 260
+        Settings f, "SpinBox", 3 * COLUMN + 20, 16 + 24 + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim sb As Object = Place(f, "SpinBox" & (i + 1), x + 70, 16, COLUMN - 140, 24, "")
+            Select Case i
+                Case 0
+                    sb.Alignment = CCLeftRightAlignmentLeft
+                    sb.TextAlignment = vbRightJustify
+                    sb.Value = 40
+                    Text f, "Alignment = CCLeftRightAlignmentLeft", x, 16 + 24 + 8, COLUMN
+                    Text f, "TextAlignment = vbRightJustify", x, 16 + 24 + 8 + 20, COLUMN
+                Case 1
+                    sb.Max = 1000
+                    sb.NumberStyle = SpbNumberStyleHexadecimal
+                    sb.Value = 255
+                    Text f, "NumberStyle = SpbNumberStyleHexadecimal", x, 16 + 24 + 8, COLUMN
+                    Text f, "Value = 255", x, 16 + 24 + 8 + 20, COLUMN
+                Case 2
+                    sb.Max = 100000
+                    sb.ThousandsSeparator = True
+                    sb.Value = 12345
+                    Text f, "ThousandsSeparator = True", x, 16 + 24 + 8, COLUMN
+                    Text f, "Value = 12345", x, 16 + 24 + 8 + 20, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' The four TickStyle values of a slider from 0 to 10 at 4.
+    Private Sub SliderTicks(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Settings f, "TickStyle", 4 * COLUMN + 20, 16 + 45 + 8 + 20
+        Dim i As Long
+        For i = 0 To 3
+            Dim x As Single = 10 + i * COLUMN
+            Dim sl As Object = Place(f, "Slider" & (i + 1), x + 15, 16, COLUMN - 30, 45, "")
+            sl.Min = 0
+            sl.Max = 10
+            sl.TickFrequency = 1
+            sl.TickStyle = i
+            sl.Value = 4
+            Text f, Choose(i + 1, "SldTickStyleBottomRight", "SldTickStyleTopLeft", "SldTickStyleBoth", "SldTickStyleNone") & _
+                " (" & i & ")", x, 16 + 45 + 8, COLUMN
+        Next
+    End Sub
+
+    ' A slider from 0 to 10 with the part from 3 to 7 selected and the thumb at 5.
+    Private Sub SliderSelection(ByVal f As Form)
+        Const W As Single = 360
+        Settings f, "SelectRange", W, 16 + 32 + 8 + 20
+        Dim sl As Object = Place(f, "Slider1", 20, 16, W - 40, 32, "")
+        sl.Min = 0
+        sl.Max = 10
+        sl.TickFrequency = 1
+        sl.SelectRange = True
+        sl.SelStart = 3
+        sl.SelLength = 4
+        sl.Value = 5
+        Text f, "SelectRange = True, SelStart = 3, SelLength = 4", 0, 16 + sl.Height + 8, W
+        FitClient f, W, 16 + sl.Height + 8 + 20
+    End Sub
+
+    ' A hot key box with no key, one disabled, and one with a single border and a pale yellow
+    ' background.
+    Private Sub HotKeyStates(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "HotKey", 3 * COLUMN + 20, 16 + 24 + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim hk As Object = Place(f, "HotKey" & (i + 1), x + 30, 16, COLUMN - 60, 24, "")
+            Select Case i
+                Case 0
+                    Text f, "Value = 0", x, 16 + 24 + 8, COLUMN
+                Case 1
+                    hk.Value(vbCtrlMask Or vbAltMask) = vbKeyF5
+                    hk.Enabled = False
+                    Text f, "Enabled = False", x, 16 + 24 + 8, COLUMN
+                Case 2
+                    hk.Value(vbCtrlMask Or vbShiftMask) = vbKeyS
+                    hk.BorderStyle = CCBorderStyleSingle
+                    hk.BackColor = RGB(255, 255, 204)
+                    Text f, "BorderStyle = CCBorderStyleSingle", x, 16 + 24 + 8, COLUMN
+                    Text f, "BackColor = RGB(255, 255, 204)", x, 16 + 24 + 8 + 20, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' An IP address box with no address, one locked with a single border, and one disabled.
+    Private Sub AddressStates(ByVal f As Form)
+        Const COLUMN As Single = 220
+        Settings f, "IPAddress", 3 * COLUMN + 20, 16 + 24 + 8 + 40
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim ip As Object = Place(f, "IPAddress" & (i + 1), x + 40, 16, COLUMN - 80, 24, "")
+            Select Case i
+                Case 0
+                    Text f, "Text = """"", x, 16 + 24 + 8, COLUMN
+                Case 1
+                    ip.Text = "10.0.1.2"
+                    ip.Locked = True
+                    ip.BorderStyle = CCBorderStyleSingle
+                    Text f, "Locked = True", x, 16 + 24 + 8, COLUMN
+                    Text f, "BorderStyle = CCBorderStyleSingle", x, 16 + 24 + 8 + 20, COLUMN
+                Case 2
+                    ip.Text = "192.168.0.1"
+                    ip.Enabled = False
+                    Text f, "Enabled = False", x, 16 + 24 + 8, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' The first frame of the clip at the top left corner and in the middle, and with the
+    ' clip's background left out in front of a pale yellow BackColor.
+    Private Sub AnimationLooks(ByVal f As Form)
+        Const COLUMN As Single = 200
+        Const H As Single = 48
+        Settings f, "Animation", 3 * COLUMN + 20, 16 + H + 8 + 40
+        Dim clipFile As String = WriteSampleClip(MediaFolder() & "\clip.avi")
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Dim an As Object = Place(f, "Animation" & (i + 1), x + (COLUMN - 64) / 2, 16, 64, H, "")
+            an.Center = (i > 0)
+            an.BackStyle = IIf(i < 2, CCBackStyleOpaque, CCBackStyleTransparent)
+            an.BackColor = IIf(i < 2, vbButtonFace, RGB(255, 255, 204))
+            an.LoadFile clipFile
+            Select Case i
+                Case 0
+                    Text f, "Center = False", x, 16 + H + 8, COLUMN
+                    Text f, "BackStyle = CCBackStyleOpaque", x, 16 + H + 8 + 20, COLUMN
+                Case 1
+                    Text f, "Center = True", x, 16 + H + 8, COLUMN
+                    Text f, "BackStyle = CCBackStyleOpaque", x, 16 + H + 8 + 20, COLUMN
+                Case 2
+                    Text f, "BackStyle = CCBackStyleTransparent", x, 16 + H + 8, COLUMN
+                    Text f, "BackColor = RGB(255, 255, 204)", x, 16 + H + 8 + 20, COLUMN
+            End Select
+        Next
+    End Sub
+
+    ' A player with a record button, one with a title bar, and one without its menu button,
+    ' each with a silent sound file open. Nothing plays.
+    Private Sub MCIWndLooks(ByVal f As Form)
+        Const COLUMN As Single = 280
+        Settings f, "MCIWnd", 3 * COLUMN + 20, 300
+        Dim mws(2) As Object, i As Long, tallest As Single
+        For i = 0 To 2
+            Dim x As Single = 10 + i * COLUMN
+            Set mws(i) = Place(f, "MCIWnd" & (i + 1), x + 20, 16, COLUMN - 40, 60, "")
+            Select Case i
+                Case 0: mws(i).Record = True
+                Case 1: mws(i).Caption = MciCaptionNamePosMode
+                Case 2: mws(i).Menu = False
+            End Select
+            Dim wav As String = MediaFolder() & "\" & Choose(i + 1, "silence-1.wav", "silence.wav", "silence-3.wav")
+            WriteSilentWav wav
+            mws(i).FileName = wav
+            If mws(i).Height > tallest Then tallest = mws(i).Height
+        Next
+        FitClient f, 3 * COLUMN + 20, 16 + tallest + 8 + 20
+        For i = 0 To 2
+            Text f, Choose(i + 1, "Record = True", "Caption = MciCaptionNamePosMode", "Menu = False"), 10 + i * COLUMN, _
+                16 + tallest + 8, COLUMN
+        Next
+    End Sub
+
+    ' A silent AVI clip of three frames of 16 by 16 pixels, each a single gray, written to Path,
+    ' which it returns: the clip of the Animation page's samples (WriteSampleClip).
+    Private Function WriteSampleClip(ByVal Path As String) As String
+        Const Frames As Long = 3, FrameBytes As Long = 768
+        Dim b(0 To 2607) As Byte
+        Dim p As Long, i As Long, j As Long
+        ClipTag b, p, "RIFF": Clip32 b, p, 2600: ClipTag b, p, "AVI "
+        ClipTag b, p, "LIST": Clip32 b, p, 192: ClipTag b, p, "hdrl"
+        ClipTag b, p, "avih": Clip32 b, p, 56
+        Clip32 b, p, 100000: Clip32 b, p, 7800: Clip32 b, p, 0: Clip32 b, p, &H10&
+        Clip32 b, p, Frames: Clip32 b, p, 0: Clip32 b, p, 1: Clip32 b, p, FrameBytes
+        Clip32 b, p, 16: Clip32 b, p, 16
+        For i = 1 To 4: Clip32 b, p, 0: Next
+        ClipTag b, p, "LIST": Clip32 b, p, 116: ClipTag b, p, "strl"
+        ClipTag b, p, "strh": Clip32 b, p, 56
+        ClipTag b, p, "vids": ClipTag b, p, "DIB "
+        Clip32 b, p, 0: Clip16 b, p, 0: Clip16 b, p, 0: Clip32 b, p, 0
+        Clip32 b, p, 1: Clip32 b, p, 10: Clip32 b, p, 0: Clip32 b, p, Frames
+        Clip32 b, p, FrameBytes: Clip32 b, p, -1: Clip32 b, p, 0
+        Clip16 b, p, 0: Clip16 b, p, 0: Clip16 b, p, 16: Clip16 b, p, 16
+        ClipTag b, p, "strf": Clip32 b, p, 40
+        Clip32 b, p, 40: Clip32 b, p, 16: Clip32 b, p, 16
+        Clip16 b, p, 1: Clip16 b, p, 24: Clip32 b, p, 0: Clip32 b, p, FrameBytes
+        For i = 1 To 4: Clip32 b, p, 0: Next
+        ClipTag b, p, "LIST": Clip32 b, p, 2332: ClipTag b, p, "movi"
+        For i = 0 To Frames - 1
+            ClipTag b, p, "00db": Clip32 b, p, FrameBytes
+            For j = 0 To FrameBytes - 1
+                b(p) = (i * 100 + 50) And &HFF&
+                p = p + 1
+            Next
+        Next
+        ClipTag b, p, "idx1": Clip32 b, p, 48
+        For i = 0 To Frames - 1
+            ClipTag b, p, "00db": Clip32 b, p, &H10&
+            Clip32 b, p, 4 + i * 776: Clip32 b, p, FrameBytes
+        Next
+        If Len(Dir$(Path)) > 0 Then Kill Path
+        Dim n As Integer = FreeFile
+        Open Path For Binary Access Write As #n
+        Put #n, , b
+        Close #n
+        Return Path
+    End Function
+
+    Private Sub Clip32(b() As Byte, ByRef p As Long, ByVal v As Long)
+        b(p) = v And &HFF&
+        b(p + 1) = (v \ &H100&) And &HFF&
+        b(p + 2) = (v \ &H10000) And &HFF&
+        b(p + 3) = (v \ &H1000000) And &HFF&
+        p = p + 4
+    End Sub
+
+    Private Sub Clip16(b() As Byte, ByRef p As Long, ByVal v As Long)
+        b(p) = v And &HFF&
+        b(p + 1) = (v \ &H100&) And &HFF&
+        p = p + 2
+    End Sub
+
+    Private Sub ClipTag(b() As Byte, ByRef p As Long, ByVal tag As String)
+        Dim i As Long
+        For i = 1 To 4
+            b(p) = Asc(Mid$(tag, i, 1))
+            p = p + 1
+        Next
+    End Sub
+
+    ' A WAV file of a tenth of a second of silence, 8-bit mono samples at 8000 Hz, each 128:
+    ' the file of the MCIWnd page's samples (WriteSilentWav).
+    Private Sub WriteSilentWav(ByVal Path As String)
+        Const Samples As Long = 800
+        Dim Header As String = "RIFF" & MkLong(36 + Samples) & "WAVEfmt " & MkLong(16) & _
+            MkWord(1) & MkWord(1) & MkLong(8000) & MkLong(8000) & MkWord(1) & MkWord(8) & _
+            "data" & MkLong(Samples)
+        Dim Bytes() As Byte
+        ReDim Bytes(0 To Len(Header) + Samples - 1)
+        Dim i As Long
+        For i = 1 To Len(Header)
+            Bytes(i - 1) = Asc(Mid$(Header, i, 1))
+        Next
+        For i = Len(Header) To UBound(Bytes)
+            Bytes(i) = 128
+        Next
+        If Len(Dir$(Path)) > 0 Then Kill Path
+        Dim n As Integer = FreeFile
+        Open Path For Binary Access Write As #n
+        Put #n, 1, Bytes
+        Close #n
+    End Sub
+
+    Private Function MkLong(ByVal Value As Long) As String
+        Return MkWord(Value And &HFFFF&) & MkWord((Value \ &H10000) And &HFFFF&)
+    End Function
+
+    Private Function MkWord(ByVal Value As Long) As String
+        Return Chr$(Value And &HFF&) & Chr$((Value \ &H100&) And &HFF&)
+    End Function
 
     ' The bars' timers stopped again while the form waits.
     Private Sub KeepStill()

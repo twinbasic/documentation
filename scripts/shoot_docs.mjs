@@ -12359,6 +12359,8 @@ const xCalendarShots = [
 const VBCCR_SHOTS = path.join(REPO_ROOT, "test", "shots", "vbccr");
 // The windows a scene shows besides its form: a combo box's dropped-down list.
 const VBCCR_POPUPS = /^ComboLBox$/;
+// The window of a date picker's dropped calendar.
+const VBCCR_CALENDAR = /^DropDown$/;
 const vbccrClip = (control, sheet) =>
   clipShot(`Reference/Contributed/VBCCR18/Images/${control}.png`, "vbccr", sheet, control);
 const vbccrShots = [
@@ -12411,6 +12413,29 @@ const vbccrShots = [
     ["ToolBar/Images/TbrTextAlignConstants", "tbrtextalign"],
     ["TabStrip/Images/TbsStyleConstants", "tbsstyle"],
   ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/${name}.png`, "vbccr", scene, NO_POPUPS)),
+  // DTPicker and MonthView from the sheet dates; UpDown (with its text box), SpinBox, Slider,
+  // HotKey and IPAddress from spins; Animation and MCIWnd from media, each with a file the
+  // program writes; and the settings of each, a whole form each. The dropped calendar of a
+  // DTPicker is its window DropDown, laid over the form.
+  ...["DTPicker", "MonthView"].map((c) => vbccrClip(c, "dates")),
+  ...["UpDown", "SpinBox", "Slider", "HotKey", "IPAddress"].map((c) => vbccrClip(c, "spins")),
+  ...["Animation", "MCIWnd"].map((c) => vbccrClip(c, "media")),
+  ...[
+    ["DTPicker_CheckBox", "dtpcheckbox"],
+    ["DTPicker_Formats", "dtpformats"],
+    ["MonthView_Months", "mvmonths"],
+    ["MonthView_MultiSelect", "mvmultiselect"],
+    ["MonthView_Views", "mvviews"],
+    ["UdnOrientationConstants", "udorientation"],
+    ["SpinBox_Styles", "spbstyles"],
+    ["SldTickStyleConstants", "sldticks"],
+    ["Slider_SelectRange", "sldselect"],
+    ["HotKey_States", "hkstates"],
+    ["IPAddress_States", "ipastates"],
+    ["Animation_Look", "anilook"],
+    ["MCIWnd_Look", "mcilook"],
+  ].map(([name, scene]) => sceneShot(`Reference/Contributed/VBCCR18/Images/${name}.png`, "vbccr", scene, NO_POPUPS)),
+  sceneShot("Reference/Contributed/VBCCR18/Images/DTPicker_DroppedDown.png", "vbccr", "dtpdropped", VBCCR_CALENDAR),
 ];
 
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
