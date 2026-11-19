@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 278 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 558 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -301,6 +301,230 @@ Module RunAll
         Expect.EndCase "CommonTests.OLEDropMode_Automatic_Raises380", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        FontComboTests.Defaults_OfANewControl
+        Expect.EndCase "FontComboTests.Defaults_OfANewControl", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Style_AtRunTime_Raises382
+        Expect.EndCase "FontComboTests.Style_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Style_NotAMember_Raises380
+        Expect.EndCase "FontComboTests.Style_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.IntegralHeight_AtRunTime_Raises382
+        Expect.EndCase "FontComboTests.IntegralHeight_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.MaxDropDownItems_OutOfRange_Raises380
+        Expect.EndCase "FontComboTests.MaxDropDownItems_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.MaxLength_Negative_Raises380
+        Expect.EndCase "FontComboTests.MaxLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.DropDownWidth_Negative_Raises380
+        Expect.EndCase "FontComboTests.DropDownWidth_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.DropDownWidth_Assigned_WidensTheList
+        Expect.EndCase "FontComboTests.DropDownWidth_Assigned_WidensTheList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.SelText_DropDownList_Raises380
+        Expect.EndCase "FontComboTests.SelText_DropDownList_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.GetIdealHorizontalExtent_ListWithFonts_IsGreaterThanZero
+        Expect.EndCase "FontComboTests.GetIdealHorizontalExtent_ListWithFonts_IsGreaterThanZero", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "FontComboTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ContextMenu_FromTheKeyboard_GivesMinusOne
+        Expect.EndCase "FontComboTests.ContextMenu_FromTheKeyboard_GivesMinusOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FontPitch_Fixed_ListsSomeOfTheFonts
+        Expect.EndCase "FontComboTests.FontPitch_Fixed_ListsSomeOfTheFonts", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FontPitch_Changed_BuildsTheListAgain
+        Expect.EndCase "FontComboTests.FontPitch_Changed_BuildsTheListAgain", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FontPitch_NotAMember_Raises380
+        Expect.EndCase "FontComboTests.FontPitch_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FontType_NotAMember_Raises380
+        Expect.EndCase "FontComboTests.FontType_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.List_NoSuchEntry_Raises5
+        Expect.EndCase "FontComboTests.List_NoSuchEntry_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ItemData_NoSuchEntry_Raises381
+        Expect.EndCase "FontComboTests.ItemData_NoSuchEntry_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ItemData_Assigned_IsKept
+        Expect.EndCase "FontComboTests.ItemData_Assigned_IsKept", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.TopIndex_OutOfRange_Raises380
+        Expect.EndCase "FontComboTests.TopIndex_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ListIndex_Assigned_SetsTextAndRaisesClick
+        Expect.EndCase "FontComboTests.ListIndex_Assigned_SetsTextAndRaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ListIndex_MinusOne_RemovesTheSelection
+        Expect.EndCase "FontComboTests.ListIndex_MinusOne_RemovesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ListIndex_NoSuchEntry_Raises380
+        Expect.EndCase "FontComboTests.ListIndex_NoSuchEntry_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Text_DropDownList_Assigned_SelectsTheFont
+        Expect.EndCase "FontComboTests.Text_DropDownList_Assigned_SelectsTheFont", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Text_DropDownList_UnknownName_Raises383
+        Expect.EndCase "FontComboTests.Text_DropDownList_UnknownName_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FindItem_WholeNameOrBeginning
+        Expect.EndCase "FontComboTests.FindItem_WholeNameOrBeginning", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FindItem_StartsAfterIndex_AndWraps
+        Expect.EndCase "FontComboTests.FindItem_StartsAfterIndex_AndWraps", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.FindItem_IndexOutOfRange_Raises381
+        Expect.EndCase "FontComboTests.FindItem_IndexOutOfRange_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.SelectItem_SelectsTheFontThatBeginsWithTheText
+        Expect.EndCase "FontComboTests.SelectItem_SelectsTheFontThatBeginsWithTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.SelectItem_NoMatch_ReturnsMinusOne
+        Expect.EndCase "FontComboTests.SelectItem_NoMatch_ReturnsMinusOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.SelectItem_IndexOutOfRange_Raises381
+        Expect.EndCase "FontComboTests.SelectItem_IndexOutOfRange_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RecentMax_OutOfRange_Raises380
+        Expect.EndCase "FontComboTests.RecentMax_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Recent_UserPicksAFont_IsAddedAtTheTop
+        Expect.EndCase "FontComboTests.Recent_UserPicksAFont_IsAddedAtTheTop", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Recent_PicksBeyondRecentMax_DropTheOldest
+        Expect.EndCase "FontComboTests.Recent_PicksBeyondRecentMax_DropTheOldest", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Recent_OriginalOfARecentFont_MovesToTheTop
+        Expect.EndCase "FontComboTests.Recent_OriginalOfARecentFont_MovesToTheTop", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Recent_APickedRecentFont_IsNotMoved
+        Expect.EndCase "FontComboTests.Recent_APickedRecentFont_IsNotMoved", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.Recent_ListIndexAssigned_AddsNothing
+        Expect.EndCase "FontComboTests.Recent_ListIndexAssigned_AddsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RecentMax_Lowered_DropsTheOldest
+        Expect.EndCase "FontComboTests.RecentMax_Lowered_DropsTheOldest", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.SaveRecent_ReturnsTheNamesMostRecentFirst
+        Expect.EndCase "FontComboTests.SaveRecent_ReturnsTheNamesMostRecentFirst", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_Names_BecomeTheRecentFonts
+        Expect.EndCase "FontComboTests.RestoreRecent_Names_BecomeTheRecentFonts", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_UnknownNames_AreSkipped
+        Expect.EndCase "FontComboTests.RestoreRecent_UnknownNames_AreSkipped", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_UnknownNameBeforeAKnownOne_KeepsTheKnownOnes
+        Expect.EndCase "FontComboTests.RestoreRecent_UnknownNameBeforeAKnownOne_KeepsTheKnownOnes", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_NamesBeyondRecentMax_AreNotTaken
+        Expect.EndCase "FontComboTests.RestoreRecent_NamesBeyondRecentMax_AreNotTaken", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_RecentMaxZero_KeepsTheFonts
+        Expect.EndCase "FontComboTests.RestoreRecent_RecentMaxZero_KeepsTheFonts", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_NotAnArray_Raises380
+        Expect.EndCase "FontComboTests.RestoreRecent_NotAnArray_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_TwoDimensionalArray_Raises5
+        Expect.EndCase "FontComboTests.RestoreRecent_TwoDimensionalArray_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.RestoreRecent_UnallocatedArray_Raises91
+        Expect.EndCase "FontComboTests.RestoreRecent_UnallocatedArray_Raises91", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.ClearRecent_RemovesTheRecentFonts
+        Expect.EndCase "FontComboTests.ClearRecent_RemovesTheRecentFonts", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_Assigned_ListsTheSizesOfTheSelectedFont
+        Expect.EndCase "FontComboTests.BuddyControl_Assigned_ListsTheSizesOfTheSelectedFont", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_NoSelectedFont_HasNoSizes
+        Expect.EndCase "FontComboTests.BuddyControl_NoSelectedFont_HasNoSizes", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_SelectedSize_IsKept
+        Expect.EndCase "FontComboTests.BuddyControl_SelectedSize_IsKept", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.SelectItem_UpdatesTheBuddy
+        Expect.EndCase "FontComboTests.SelectItem_UpdatesTheBuddy", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_Object_IsReturned
+        Expect.EndCase "FontComboTests.BuddyControl_Object_IsReturned", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_Nothing_RemovesTheBuddy
+        Expect.EndCase "FontComboTests.BuddyControl_Nothing_RemovesTheBuddy", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_NotAFontCombo_Raises35610
+        Expect.EndCase "FontComboTests.BuddyControl_NotAFontCombo_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FontComboTests.BuddyControl_AnotherType_Raises13
+        Expect.EndCase "FontComboTests.BuddyControl_AnotherType_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         FrameWTests.Container_Set_PutsTheControlInTheFrame
         Expect.EndCase "FrameWTests.Container_Set_PutsTheControlInTheFrame", Err.Number, Err.Description
         Expect.StartCase
@@ -323,6 +547,302 @@ Module RunAll
         Err.Clear
         FrameWTests.Appearance_SetsForeColor
         Expect.EndCase "FrameWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Defaults_OfANewControl
+        Expect.EndCase "ImageComboTests.Defaults_OfANewControl", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Style_AtRunTime_Raises382
+        Expect.EndCase "ImageComboTests.Style_AtRunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Style_NotAMember_Raises380
+        Expect.EndCase "ImageComboTests.Style_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.AllowImageHighlight_OutOfRange_Raises380
+        Expect.EndCase "ImageComboTests.AllowImageHighlight_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.EllipsisFormat_OutOfRange_Raises380
+        Expect.EndCase "ImageComboTests.EllipsisFormat_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Indentation_Negative_Raises380
+        Expect.EndCase "ImageComboTests.Indentation_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Indentation_OfTheControl_IsTheIndentationOfNewItems
+        Expect.EndCase "ImageComboTests.Indentation_OfTheControl_IsTheIndentationOfNewItems", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_WithAnIndentation_OverridesTheControls
+        Expect.EndCase "ImageComboTests.Add_WithAnIndentation_OverridesTheControls", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.MaxDropDownItems_OutOfRange_Raises380
+        Expect.EndCase "ImageComboTests.MaxDropDownItems_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.MaxLength_Negative_Raises380
+        Expect.EndCase "ImageComboTests.MaxLength_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.MaxLength_Zero_LimitsTheTextTo259
+        Expect.EndCase "ImageComboTests.MaxLength_Zero_LimitsTheTextTo259", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Text_LongerThanMaxLength_IsCut
+        Expect.EndCase "ImageComboTests.Text_LongerThanMaxLength_IsCut", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Locked_TextCanStillBeAssigned
+        Expect.EndCase "ImageComboTests.Locked_TextCanStillBeAssigned", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.GetItemHeight_PicturesHigherThanTheText_IsAtLeastThePictureHeight
+        Expect.EndCase "ImageComboTests.GetItemHeight_PicturesHigherThanTheText_IsAtLeastThePictureHeight", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.ImageList_Object_IsReturned
+        Expect.EndCase "ImageComboTests.ImageList_Object_IsReturned", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.ImageList_Handle_IsReturned
+        Expect.EndCase "ImageComboTests.ImageList_Handle_IsReturned", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.ImageList_EmptyList_IsNotTaken
+        Expect.EndCase "ImageComboTests.ImageList_EmptyList_IsNotTaken", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.ImageList_NotAnImageList_Raises35610
+        Expect.EndCase "ImageComboTests.ImageList_NotAnImageList_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.ImageList_AnotherType_Raises13
+        Expect.EndCase "ImageComboTests.ImageList_AnotherType_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_ImageKey_WithAHandleAsImageList_Raises35601
+        Expect.EndCase "ImageComboTests.Add_ImageKey_WithAHandleAsImageList_Raises35601", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_ImageKey_WithoutAnImageList_Raises35601
+        Expect.EndCase "ImageComboTests.Add_ImageKey_WithoutAnImageList_Raises35601", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_ImageNumber_IsNotCheckedAgainstTheImageList
+        Expect.EndCase "ImageComboTests.Add_ImageNumber_IsNotCheckedAgainstTheImageList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_ImageNegative_Raises35600
+        Expect.EndCase "ImageComboTests.Add_ImageNegative_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_AtAnIndex_MovesTheLaterItemsUp
+        Expect.EndCase "ImageComboTests.Add_AtAnIndex_MovesTheLaterItemsUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "ImageComboTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_DuplicateKey_Raises457
+        Expect.EndCase "ImageComboTests.Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Add_NegativeIndentation_AddsNothing
+        Expect.EndCase "ImageComboTests.Add_NegativeIndentation_AddsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Item_NumberOutOfRange_Raises9
+        Expect.EndCase "ImageComboTests.Item_NumberOutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Item_UnknownKey_Raises5
+        Expect.EndCase "ImageComboTests.Item_UnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Item_ByKey_IgnoresCase
+        Expect.EndCase "ImageComboTests.Item_ByKey_IgnoresCase", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Exists_SaysWhetherTheListHasTheNumberOrKey
+        Expect.EndCase "ImageComboTests.Exists_SaysWhetherTheListHasTheNumberOrKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Remove_RenumbersTheLaterItems
+        Expect.EndCase "ImageComboTests.Remove_RenumbersTheLaterItems", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Remove_NoSuchItem_RaisesTheErrorOfItem
+        Expect.EndCase "ImageComboTests.Remove_NoSuchItem_RaisesTheErrorOfItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Clear_LeavesTheText
+        Expect.EndCase "ImageComboTests.Clear_LeavesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Remove_SelectedItem_LeavesTheText
+        Expect.EndCase "ImageComboTests.Remove_SelectedItem_LeavesTheText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Text_Assigned_SelectsNoItem
+        Expect.EndCase "ImageComboTests.Text_Assigned_SelectsNoItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Selected_True_PutsTheTextInTheTextBox
+        Expect.EndCase "ImageComboTests.Selected_True_PutsTheTextInTheTextBox", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Selected_True_RaisesChangeThenClick
+        Expect.EndCase "ImageComboTests.Selected_True_RaisesChangeThenClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Selected_AlreadySelected_RaisesNoClick
+        Expect.EndCase "ImageComboTests.Selected_AlreadySelected_RaisesNoClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Selected_False_RemovesTheSelection
+        Expect.EndCase "ImageComboTests.Selected_False_RemovesTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Selected_FalseOnAnotherItem_ChangesNothingAndRaisesNoClick
+        Expect.EndCase "ImageComboTests.Selected_FalseOnAnotherItem_ChangesNothingAndRaisesNoClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.SelectedItem_Nothing_RaisesChangeAndClick
+        Expect.EndCase "ImageComboTests.SelectedItem_Nothing_RaisesChangeAndClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Text_Assigned_RaisesChange
+        Expect.EndCase "ImageComboTests.Text_Assigned_RaisesChange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Key_Down_SelectsTheNextItemAndRaisesClick
+        Expect.EndCase "ImageComboTests.Key_Down_SelectsTheNextItemAndRaisesClick", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.BeginEdit_FocusToTheTextBox_IsRaised
+        Expect.EndCase "ImageComboTests.BeginEdit_FocusToTheTextBox_IsRaised", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.EndEdit_Return_GivesTheSelectedItemAndTheReason
+        Expect.EndCase "ImageComboTests.EndEdit_Return_GivesTheSelectedItemAndTheReason", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.EndEdit_Escape_GivesReason3
+        Expect.EndCase "ImageComboTests.EndEdit_Escape_GivesReason3", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.EndEdit_LostFocus_GivesReason1
+        Expect.EndCase "ImageComboTests.EndEdit_LostFocus_GivesReason1", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.DroppedDown_True_RaisesDropDownThenEndEdit
+        Expect.EndCase "ImageComboTests.DroppedDown_True_RaisesDropDownThenEndEdit", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.DroppedDown_False_RaisesCloseUp
+        Expect.EndCase "ImageComboTests.DroppedDown_False_RaisesCloseUp", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.TopItem_NoItems_Raises9
+        Expect.EndCase "ImageComboTests.TopItem_NoItems_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.TopItem_Nothing_Raises380
+        Expect.EndCase "ImageComboTests.TopItem_Nothing_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.TopItem_Assigned_ScrollsAndRaisesScroll
+        Expect.EndCase "ImageComboTests.TopItem_Assigned_ScrollsAndRaisesScroll", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.FindItem_WholeTextOrPartOfIt
+        Expect.EndCase "ImageComboTests.FindItem_WholeTextOrPartOfIt", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.FindItem_StartsAtIndex
+        Expect.EndCase "ImageComboTests.FindItem_StartsAtIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.FindItem_Wrap_GoesOnFromTheTop
+        Expect.EndCase "ImageComboTests.FindItem_Wrap_GoesOnFromTheTop", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.FindItem_IndexOutOfRange_Raises380
+        Expect.EndCase "ImageComboTests.FindItem_IndexOutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.MouseMove_XAndY_AreInTwips
+        Expect.EndCase "ImageComboTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Image_Assigned_ChangesImageAndImageIndex
+        Expect.EndCase "ImageComboTests.Image_Assigned_ChangesImageAndImageIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Image_UnknownKey_Raises35601
+        Expect.EndCase "ImageComboTests.Image_UnknownKey_Raises35601", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Image_Negative_Raises35600
+        Expect.EndCase "ImageComboTests.Image_Negative_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Image_Number_IsNotCheckedAgainstTheImageList
+        Expect.EndCase "ImageComboTests.Image_Number_IsNotCheckedAgainstTheImageList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.SelImage_Assigned_ChangesSelImageIndex
+        Expect.EndCase "ImageComboTests.SelImage_Assigned_ChangesSelImageIndex", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.SelImage_Negative_Raises35600
+        Expect.EndCase "ImageComboTests.SelImage_Negative_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.SelImage_Key_Raises13
+        Expect.EndCase "ImageComboTests.SelImage_Key_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.SelImage_KeyGivenToAdd_CanBeRead
+        Expect.EndCase "ImageComboTests.SelImage_KeyGivenToAdd_CanBeRead", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Key_Assigned_RenamesTheItem
+        Expect.EndCase "ImageComboTests.Key_Assigned_RenamesTheItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Key_Empty_TakesTheKeyAway
+        Expect.EndCase "ImageComboTests.Key_Empty_TakesTheKeyAway", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Key_OfAnotherItem_Raises457
+        Expect.EndCase "ImageComboTests.Key_OfAnotherItem_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Tag_NewItem_IsAnEmptyString
+        Expect.EndCase "ImageComboTests.Tag_NewItem_IsAnEmptyString", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Text_OfAnItem_IsCutTo259
+        Expect.EndCase "ImageComboTests.Text_OfAnItem_IsCutTo259", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Text_OfTheSelectedItem_Assigned_ChangesTheTextBox
+        Expect.EndCase "ImageComboTests.Text_OfTheSelectedItem_Assigned_ChangesTheTextBox", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Item_AfterRemove_KeepsItsOldNumber
+        Expect.EndCase "ImageComboTests.Item_AfterRemove_KeepsItsOldNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ImageComboTests.Data_NewItem_IsZeroAndAssignedIsKept
+        Expect.EndCase "ImageComboTests.Data_NewItem_IsZeroAndAssignedIsKept", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         ImageListTests.ImageWidth_NewList_IsZero
@@ -713,6 +1233,330 @@ Module RunAll
         Expect.EndCase "ListBoxWTests.MouseMove_XAndY_AreInTwips", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        ListViewColumnsTests.Remove_LaterColumnsShowTheSubitemsOfTheirNumber
+        Expect.EndCase "ListViewColumnsTests.Remove_LaterColumnsShowTheSubitemsOfTheirNumber", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.ColumnOrder_IsTheIndexesInPositionOrder
+        Expect.EndCase "ListViewColumnsTests.ColumnOrder_IsTheIndexesInPositionOrder", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.ColumnOrder_NumberOutOfRange_Raises381
+        Expect.EndCase "ListViewColumnsTests.ColumnOrder_NumberOutOfRange_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Checked_WithCheckBox_RaisesColumnCheck
+        Expect.EndCase "ListViewColumnsTests.Checked_WithCheckBox_RaisesColumnCheck", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Checked_WithoutCheckBox_StaysFalse
+        Expect.EndCase "ListViewColumnsTests.Checked_WithoutCheckBox_StaysFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.ColumnFilterChangedTimeout_Zero_Raises380
+        Expect.EndCase "ListViewColumnsTests.ColumnFilterChangedTimeout_Zero_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Item_NumberOutOfRange_Raises9
+        Expect.EndCase "ListViewColumnsTests.Item_NumberOutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Item_UnknownKey_Raises5
+        Expect.EndCase "ListViewColumnsTests.Item_UnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "ListViewColumnsTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Add_DuplicateKey_Raises457
+        Expect.EndCase "ListViewColumnsTests.Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Add_NegativeWidth_AddsNoColumn
+        Expect.EndCase "ListViewColumnsTests.Add_NegativeWidth_AddsNoColumn", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Add_AlignmentNotAMember_AddsNoColumn
+        Expect.EndCase "ListViewColumnsTests.Add_AlignmentNotAMember_AddsNoColumn", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.FilterValue_NoValue_IsNull
+        Expect.EndCase "ListViewColumnsTests.FilterValue_NoValue_IsNull", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.FilterValue_NumberForTextFilter_Raises13
+        Expect.EndCase "ListViewColumnsTests.FilterValue_NumberForTextFilter_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Position_OutOfRange_Raises380
+        Expect.EndCase "ListViewColumnsTests.Position_OutOfRange_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewColumnsTests.Width_Negative_Raises380
+        Expect.EndCase "ListViewColumnsTests.Width_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Group_Assigned_PutsTheItemInTheGroup
+        Expect.EndCase "ListViewGroupsTests.Group_Assigned_PutsTheItemInTheGroup", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Icon_SetsTheIconOfItsOwnGroup
+        Expect.EndCase "ListViewGroupsTests.Icon_SetsTheIconOfItsOwnGroup", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Add_DuplicateKey_AddsNoGroup
+        Expect.EndCase "ListViewGroupsTests.Add_DuplicateKey_AddsNoGroup", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "ListViewGroupsTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Groups_Clear_KeepsGroupView
+        Expect.EndCase "ListViewGroupsTests.Groups_Clear_KeepsGroupView", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Collapsed_Assigned_RaisesGroupCollapsedChanged
+        Expect.EndCase "ListViewGroupsTests.Collapsed_Assigned_RaisesGroupCollapsedChanged", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.GroupSubsetCount_Negative_Raises380
+        Expect.EndCase "ListViewGroupsTests.GroupSubsetCount_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewGroupsTests.Sorted_True_SortsThePositions
+        Expect.EndCase "ListViewGroupsTests.Sorted_True_SortsThePositions", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Add_AtAnIndex_MovesTheLaterItemsDown
+        Expect.EndCase "ListViewItemsTests.Add_AtAnIndex_MovesTheLaterItemsDown", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Remove_RenumbersTheLaterItems
+        Expect.EndCase "ListViewItemsTests.Remove_RenumbersTheLaterItems", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Item_ByKey_IgnoresCase
+        Expect.EndCase "ListViewItemsTests.Item_ByKey_IgnoresCase", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Item_NumberOutOfRange_Raises35600
+        Expect.EndCase "ListViewItemsTests.Item_NumberOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Item_UnknownKey_Raises5
+        Expect.EndCase "ListViewItemsTests.Item_UnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Add_IndexOutOfRange_Raises35600
+        Expect.EndCase "ListViewItemsTests.Add_IndexOutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Add_DuplicateKey_Raises457
+        Expect.EndCase "ListViewItemsTests.Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Add_IconKeyWithoutImageList_Raises35601
+        Expect.EndCase "ListViewItemsTests.Add_IconKeyWithoutImageList_Raises35601", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Exists_SaysWhetherTheItemIsThere
+        Expect.EndCase "ListViewItemsTests.Exists_SaysWhetherTheItemIsThere", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Key_OfAnotherItem_Raises457
+        Expect.EndCase "ListViewItemsTests.Key_OfAnotherItem_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Width_Assigned_Raises383
+        Expect.EndCase "ListViewItemsTests.Width_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.Tag_NewItem_IsAnEmptyString
+        Expect.EndCase "ListViewItemsTests.Tag_NewItem_IsAnEmptyString", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.ForeColor_New_IsTheControlsForeColor
+        Expect.EndCase "ListViewItemsTests.ForeColor_New_IsTheControlsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.ResetForeColors_GivesBackTheControlsForeColor
+        Expect.EndCase "ListViewItemsTests.ResetForeColors_GivesBackTheControlsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.SubItems_NoColumnForIt_Raises380
+        Expect.EndCase "ListViewItemsTests.SubItems_NoColumnForIt_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.SubItems_Assigned_AddsTheSubitemsBefore
+        Expect.EndCase "ListViewItemsTests.SubItems_Assigned_AddsTheSubitemsBefore", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.SubItems_LongText_IsReturnedWhole
+        Expect.EndCase "ListViewItemsTests.SubItems_LongText_IsReturnedWhole", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.TileViewIndices_ZeroIndex_Raises381
+        Expect.EndCase "ListViewItemsTests.TileViewIndices_ZeroIndex_Raises381", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.ListSubItems_Item_OutOfRange_Raises9
+        Expect.EndCase "ListViewItemsTests.ListSubItems_Item_OutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.ListSubItems_Add_DuplicateKey_Raises457
+        Expect.EndCase "ListViewItemsTests.ListSubItems_Add_DuplicateKey_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewItemsTests.ListSubItem_Width_Assigned_Raises383
+        Expect.EndCase "ListViewItemsTests.ListSubItem_Width_Assigned_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.Add_FirstItem_IsSelectedAndFocused
+        Expect.EndCase "ListViewSelectionTests.Add_FirstItem_IsSelectedAndFocused", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.AutoSelectFirstItem_False_FocusesTheFirstItemOnly
+        Expect.EndCase "ListViewSelectionTests.AutoSelectFirstItem_False_FocusesTheFirstItemOnly", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.Selected_Assigned_RaisesItemSelectAndItemFocus
+        Expect.EndCase "ListViewSelectionTests.Selected_Assigned_RaisesItemSelectAndItemFocus", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.SelectedItem_IsTheFocusedItem
+        Expect.EndCase "ListViewSelectionTests.SelectedItem_IsTheFocusedItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.SelectedItem_Nothing_KeepsTheSelection
+        Expect.EndCase "ListViewSelectionTests.SelectedItem_Nothing_KeepsTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.Checked_Assigned_RaisesItemCheckOnce
+        Expect.EndCase "ListViewSelectionTests.Checked_Assigned_RaisesItemCheckOnce", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.Checkboxes_True_UnchecksEveryItem
+        Expect.EndCase "ListViewSelectionTests.Checkboxes_True_UnchecksEveryItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.GhostedIndices_HoldsTheGhostedItems
+        Expect.EndCase "ListViewSelectionTests.GhostedIndices_HoldsTheGhostedItems", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSelectionTests.HoverSelectionTime_Zero_Raises380
+        Expect.EndCase "ListViewSelectionTests.HoverSelectionTime_Zero_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.Sorted_True_SortsByText
+        Expect.EndCase "ListViewSortingTests.Sorted_True_SortsByText", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.SortType_Numeric_SortsByValue
+        Expect.EndCase "ListViewSortingTests.SortType_Numeric_SortsByValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.Sorted_AddedItem_GoesToItsPlace
+        Expect.EndCase "ListViewSortingTests.Sorted_AddedItem_GoesToItsPlace", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.Sorted_SortKeySubitem_AddedItemIsNotSorted
+        Expect.EndCase "ListViewSortingTests.Sorted_SortKeySubitem_AddedItemIsNotSorted", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.SortKey_Negative_Raises380
+        Expect.EndCase "ListViewSortingTests.SortKey_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.FindItem_Partial_FindsTheStart
+        Expect.EndCase "ListViewSortingTests.FindItem_Partial_FindsTheStart", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.FindItem_IndexPastTheEnd_Raises380
+        Expect.EndCase "ListViewSortingTests.FindItem_IndexPastTheEnd_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewSortingTests.FindSubItem_Partial_FindsTextInside
+        Expect.EndCase "ListViewSortingTests.FindSubItem_Partial_FindsTextInside", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.Redraw_False_KeepsTheItems
+        Expect.EndCase "ListViewTests.Redraw_False_KeepsTheItems", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.Icons_ImageList_IsTheImageList
+        Expect.EndCase "ListViewTests.Icons_ImageList_IsTheImageList", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.Icons_OtherObject_Raises35610
+        Expect.EndCase "ListViewTests.Icons_OtherObject_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.Arrange_NotAMember_Raises380
+        Expect.EndCase "ListViewTests.Arrange_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.View_NotAMember_Raises380
+        Expect.EndCase "ListViewTests.View_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.ColumnWidth_NotInListView_Raises394
+        Expect.EndCase "ListViewTests.ColumnWidth_NotInListView_Raises394", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.TileViewLines_21_Raises380
+        Expect.EndCase "ListViewTests.TileViewLines_21_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.IMEMode_NotAMember_Raises380
+        Expect.EndCase "ListViewTests.IMEMode_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.LabelEdit_NotAMember_Raises380
+        Expect.EndCase "ListViewTests.LabelEdit_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.VirtualMode_RunTime_Raises382
+        Expect.EndCase "ListViewTests.VirtualMode_RunTime_Raises382", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.VirtualListItems_NotVirtual_Raises91
+        Expect.EndCase "ListViewTests.VirtualListItems_NotVirtual_Raises91", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.VirtualDisabledInfos_Negative_Raises380
+        Expect.EndCase "ListViewTests.VirtualDisabledInfos_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.VirtualItemCount_Negative_Raises380
+        Expect.EndCase "ListViewTests.VirtualItemCount_Negative_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.InsertMark_After_IsKept
+        Expect.EndCase "ListViewTests.InsertMark_After_IsKept", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.Picture_Assigned_TurnsDoubleBufferOff
+        Expect.EndCase "ListViewTests.Picture_Assigned_TurnsDoubleBufferOff", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.BackColor_None_Raises380
+        Expect.EndCase "ListViewTests.BackColor_None_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.WorkAreas_Remove_RenumbersTheLaterAreas
+        Expect.EndCase "ListViewTests.WorkAreas_Remove_RenumbersTheLaterAreas", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.WorkAreas_Item_OutOfRange_Raises35600
+        Expect.EndCase "ListViewTests.WorkAreas_Item_OutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        ListViewTests.WorkAreas_Add_ZeroWidth_Raises380
+        Expect.EndCase "ListViewTests.WorkAreas_Add_ZeroWidth_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         OptionButtonWTests.Click_RaisedWhenValueBecomesTrue
         Expect.EndCase "OptionButtonWTests.Click_RaisedWhenValueBecomesTrue", Err.Number, Err.Description
         Expect.StartCase
@@ -943,6 +1787,282 @@ Module RunAll
         Err.Clear
         TextBoxWTests.ValidateNetAddress_Empty_Raises380
         Expect.EndCase "TextBoxWTests.ValidateNetAddress_Empty_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_Relationships_PlaceTheNewNode
+        Expect.EndCase "TreeViewTests.Add_Relationships_PlaceTheNewNode", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_NoRelative_GoesToTheRootLevel
+        Expect.EndCase "TreeViewTests.Add_NoRelative_GoesToTheRootLevel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_DuplicateKey_Raises457_AddsNothing
+        Expect.EndCase "TreeViewTests.Add_DuplicateKey_Raises457_AddsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_RelativeUnknownKey_Raises5
+        Expect.EndCase "TreeViewTests.Add_RelativeUnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_RelativeNumberOutOfRange_Raises9
+        Expect.EndCase "TreeViewTests.Add_RelativeNumberOutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_RelativeOfAnotherType_Raises13
+        Expect.EndCase "TreeViewTests.Add_RelativeOfAnotherType_Raises13", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Add_Image_NumberAndKey
+        Expect.EndCase "TreeViewTests.Add_Image_NumberAndKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Image_KeyWithoutAnImageListControl_Raises35601
+        Expect.EndCase "TreeViewTests.Image_KeyWithoutAnImageListControl_Raises35601", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Style_WithoutPicture_TakesTheImageListFromTheWindow
+        Expect.EndCase "TreeViewTests.Style_WithoutPicture_TakesTheImageListFromTheWindow", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.ImageList_TakesAControlANameOrAHandle
+        Expect.EndCase "TreeViewTests.ImageList_TakesAControlANameOrAHandle", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.ImageList_EmptyList_IsNotTaken
+        Expect.EndCase "TreeViewTests.ImageList_EmptyList_IsNotTaken", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.ImageList_NotAnImageList_Raises
+        Expect.EndCase "TreeViewTests.ImageList_NotAnImageList_Raises", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Index_IsTheOrderOfAddition
+        Expect.EndCase "TreeViewTests.Nodes_Index_IsTheOrderOfAddition", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Index_AfterRemove_IsRenumbered
+        Expect.EndCase "TreeViewTests.Nodes_Index_AfterRemove_IsRenumbered", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Item_KeyIgnoresCase
+        Expect.EndCase "TreeViewTests.Nodes_Item_KeyIgnoresCase", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Item_NumberOutOfRange_Raises9
+        Expect.EndCase "TreeViewTests.Nodes_Item_NumberOutOfRange_Raises9", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Item_UnknownKey_Raises5
+        Expect.EndCase "TreeViewTests.Nodes_Item_UnknownKey_Raises5", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Exists_SaysWhetherTheTreeHasTheNumberOrKey
+        Expect.EndCase "TreeViewTests.Nodes_Exists_SaysWhetherTheTreeHasTheNumberOrKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Remove_RemovesTheChildrenToo
+        Expect.EndCase "TreeViewTests.Nodes_Remove_RemovesTheChildrenToo", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Remove_RemovedNode_IsEmpty
+        Expect.EndCase "TreeViewTests.Nodes_Remove_RemovedNode_IsEmpty", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Nodes_Clear_RemovesEveryNode
+        Expect.EndCase "TreeViewTests.Nodes_Clear_RemovesEveryNode", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Key_Assigned_ChangesTheKey
+        Expect.EndCase "TreeViewTests.Key_Assigned_ChangesTheKey", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Key_Duplicate_Raises457
+        Expect.EndCase "TreeViewTests.Key_Duplicate_Raises457", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Child_Set_Raises383
+        Expect.EndCase "TreeViewTests.Child_Set_Raises383", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Root_OfANodeInALaterBranch_IsItsTopLevelAncestor
+        Expect.EndCase "TreeViewTests.Root_OfANodeInALaterBranch_IsItsTopLevelAncestor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Text_LongerThan259_IsReadBackWhole
+        Expect.EndCase "TreeViewTests.Text_LongerThan259_IsReadBackWhole", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.FullPath_UsesThePathSeparator
+        Expect.EndCase "TreeViewTests.FullPath_UsesThePathSeparator", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.PathSeparator_AnyString_IsUsedByFullPath
+        Expect.EndCase "TreeViewTests.PathSeparator_AnyString_IsUsedByFullPath", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Tag_HoldsAnyValue
+        Expect.EndCase "TreeViewTests.Tag_HoldsAnyValue", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.NodeColors_MinusOne_FollowsTheTree
+        Expect.EndCase "TreeViewTests.NodeColors_MinusOne_FollowsTheTree", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Enabled_False_ReadsFalse
+        Expect.EndCase "TreeViewTests.Enabled_False_ReadsFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.CheckBox_False_TakesTheBoxAway
+        Expect.EndCase "TreeViewTests.CheckBox_False_TakesTheBoxAway", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Move_KeepsTheStateAndTheChildren
+        Expect.EndCase "TreeViewTests.Move_KeepsTheStateAndTheChildren", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Move_NoRelative_GoesToTheRootLevel
+        Expect.EndCase "TreeViewTests.Move_NoRelative_GoesToTheRootLevel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Move_IntoItsOwnBranch_Raises35614
+        Expect.EndCase "TreeViewTests.Move_IntoItsOwnBranch_Raises35614", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Parent_Set_MovesTheNodeAsFirstChild
+        Expect.EndCase "TreeViewTests.Parent_Set_MovesTheNodeAsFirstChild", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Parent_SetToNothing_Raises35610
+        Expect.EndCase "TreeViewTests.Parent_SetToNothing_Raises35610", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Expanded_Change_RaisesTheEvents
+        Expect.EndCase "TreeViewTests.Expanded_Change_RaisesTheEvents", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Expanded_NodeWithoutChildren_IsRememberedUntilItGetsOne
+        Expect.EndCase "TreeViewTests.Expanded_NodeWithoutChildren_IsRememberedUntilItGetsOne", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Expanded_BeforeExpandCancelled_LeavesTheNodeCollapsed
+        Expect.EndCase "TreeViewTests.Expanded_BeforeExpandCancelled_LeavesTheNodeCollapsed", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Visible_ClosedBranch_IsFalse
+        Expect.EndCase "TreeViewTests.Visible_ClosedBranch_IsFalse", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Selected_Change_RaisesTheEvents
+        Expect.EndCase "TreeViewTests.Selected_Change_RaisesTheEvents", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Selected_BeforeSelectCancelled_KeepsTheSelection
+        Expect.EndCase "TreeViewTests.Selected_BeforeSelectCancelled_KeepsTheSelection", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Selected_False_KeepsTheSelectedItem
+        Expect.EndCase "TreeViewTests.Selected_False_KeepsTheSelectedItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Selected_True_OpensTheBranchesAbove
+        Expect.EndCase "TreeViewTests.Selected_True_OpensTheBranchesAbove", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.SelectedNodes_ProgramSelecting_ListsTheNewestFirst
+        Expect.EndCase "TreeViewTests.SelectedNodes_ProgramSelecting_ListsTheNewestFirst", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.SelectedNodes_MultiSelectNone_Raises91
+        Expect.EndCase "TreeViewTests.SelectedNodes_MultiSelectNone_Raises91", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.MultiSelect_Changed_KeepsOnlyTheFocusedNode
+        Expect.EndCase "TreeViewTests.MultiSelect_Changed_KeepsOnlyTheFocusedNode", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.SelectedNodes_Item_OutOfRange_Raises35600
+        Expect.EndCase "TreeViewTests.SelectedNodes_Item_OutOfRange_Raises35600", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.SelectedNodes_Exists_SaysWhetherTheNumberIsInTheRange
+        Expect.EndCase "TreeViewTests.SelectedNodes_Exists_SaysWhetherTheNumberIsInTheRange", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.AnchorItem_SetAndCleared
+        Expect.EndCase "TreeViewTests.AnchorItem_SetAndCleared", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Checked_Change_RaisesTheEvents
+        Expect.EndCase "TreeViewTests.Checked_Change_RaisesTheEvents", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Checked_BeforeCheckCancelled_KeepsTheState
+        Expect.EndCase "TreeViewTests.Checked_BeforeCheckCancelled_KeepsTheState", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.StartLabelEdit_RaisesBeforeLabelEdit
+        Expect.EndCase "TreeViewTests.StartLabelEdit_RaisesBeforeLabelEdit", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.StartLabelEdit_LabelEditDisabled_StartsNothing
+        Expect.EndCase "TreeViewTests.StartLabelEdit_LabelEditDisabled_StartsNothing", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Sorted_SortsTheRootLevel
+        Expect.EndCase "TreeViewTests.Sorted_SortsTheRootLevel", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Sorted_OfANode_SortsItsChildren
+        Expect.EndCase "TreeViewTests.Sorted_OfANode_SortsItsChildren", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Sorted_NodeAddedLater_TakesItsSortedPlace
+        Expect.EndCase "TreeViewTests.Sorted_NodeAddedLater_TakesItsSortedPlace", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.NodeSortOrder_NotAMember_Raises380
+        Expect.EndCase "TreeViewTests.NodeSortOrder_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.NodeSortType_NotAMember_Raises380
+        Expect.EndCase "TreeViewTests.NodeSortType_NotAMember_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.HitTest_GivesTheNodeUnderThePosition
+        Expect.EndCase "TreeViewTests.HitTest_GivesTheNodeUnderThePosition", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.FirstVisible_OfAnyNode_IsTheTopItem
+        Expect.EndCase "TreeViewTests.FirstVisible_OfAnyNode_IsTheTopItem", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.TopItem_Set_ScrollsTheNodeToTheTop
+        Expect.EndCase "TreeViewTests.TopItem_Set_ScrollsTheNodeToTheTop", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.TopItem_SetToNothing_Raises380
+        Expect.EndCase "TreeViewTests.TopItem_SetToNothing_Raises380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.LastVisible_OfAnyNode_IsTheLastShownNode
+        Expect.EndCase "TreeViewTests.LastVisible_OfAnyNode_IsTheLastShownNode", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.DropHighlight_SetAndCleared
+        Expect.EndCase "TreeViewTests.DropHighlight_SetAndCleared", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.InsertMark_SetAndRead
+        Expect.EndCase "TreeViewTests.InsertMark_SetAndRead", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Properties_NotAMember_Raise380
+        Expect.EndCase "TreeViewTests.Properties_NotAMember_Raise380", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        TreeViewTests.Defaults_OfANewTree
+        Expect.EndCase "TreeViewTests.Defaults_OfANewTree", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         VListBoxTests.List_RaisesGetVirtualItem

@@ -13,8 +13,10 @@ Module MainModule
     ' A sheet's form (frm<Sheet>, written by a generator) holds its controls, named as the
     ' designer names them. Every sheet lays its form out in pixels at 96 DPI (FitClient), with
     ' at least MARGIN pixels of the form's ground round each control, which the tool keeps
-    ' round a picture. No control takes the focus: a focused one draws a caret or a focus
-    ' rectangle.
+    ' round a picture. No control takes the focus, since a focused one draws a caret or a focus
+    ' rectangle, but a tree whose selected nodes a picture shows (FocusOn): a tree draws them in
+    ' the highlight color only while it has the focus, and in a mouse user's state it draws no
+    ' focus rectangle.
 
     Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
     Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
@@ -27,9 +29,50 @@ Module MainModule
     Private Const WM_CHANGEUISTATE As Long = &H127
     ' UIS_SET with UISF_HIDEFOCUS and UISF_HIDEACCEL: a mouse user's state.
     Private Const UI_MOUSE As Long = &H30001
+    Private Declare PtrSafe Function SetCursor Lib "user32" (ByVal hCursor As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetCursor Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function DrawIconEx Lib "user32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long, _
+        ByVal hIcon As LongPtr, ByVal cx As Long, ByVal cy As Long, ByVal istepIfAniCur As Long, _
+        ByVal hbrFlickerFreeDraw As LongPtr, ByVal diFlags As Long) As Long
+    Private Const WM_SETCURSOR As Long = &H20
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const HTCLIENT As Long = 1
+    Private Const DI_NORMAL As Long = 3
+
+    ' What the pictures of the trees are drawn with.
+    Private Type PICTDESC
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+    Private Type PicGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function CreatePen Lib "gdi32" (ByVal Style As Long, ByVal W As Long, ByVal Color As Long) As LongPtr
+    Private Declare PtrSafe Function Rectangle Lib "gdi32" (ByVal hDC As LongPtr, ByVal l As Long, ByVal t As Long, ByVal r As Long, ByVal b As Long) As Long
+    Private Declare PtrSafe Function Polygon Lib "gdi32" (ByVal hDC As LongPtr, ByRef Points As Any, ByVal Count As Long) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As PICTDESC, ByRef IID As PicGuid, _
+        ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+    ' The ground of a tree's picture, which the ImageList leaves out.
+    Private Const MASK As Long = &HFF00FF
 
     ' The ground between two controls, and round the outermost.
     Private Const MARGIN As Single = 16
+    ' A tree of the TreeView page's settings pictures is TREE_W pixels wide, in a column TREE_COLUMN wide.
+    Private Const TREE_COLUMN As Single = 260
+    Private Const TREE_W As Single = 200
 
     Private Type RECT
         Left As Long
@@ -51,6 +94,9 @@ Module MainModule
     ' The progress bars' timers that StillBars stopped, each Array(hWnd, id).
     Private BarTimers As New Collection
     Private Doing As String
+    ' The control given the focus once the form is shown, or Nothing: a tree draws its selected
+    ' nodes in the highlight color only while it has the focus.
+    Private FocusOn As Object
 
     Public Sub Main()
         ' Command$ is the command line as written, quotes included
@@ -60,6 +106,17 @@ Module MainModule
             Case "text": Set f = frmText
             Case "lists": Set f = frmLists
             Case "bars": Set f = frmBars
+            Case "appearance": Set f = frmAppearance
+            Case "borderstyle": Set f = frmBorderStyle
+            Case "backstyle": Set f = frmBackStyle
+            Case "alignment": Set f = frmAlignment
+            Case "valignment": Set f = frmVAlignment
+            Case "mousepointer": Set f = frmMousePointer
+            Case "views": Set f = frmViews
+            Case "tvlinestyle": Set f = frmTvLineStyle
+            Case "tvtheme": Set f = frmTvTheme
+            Case "tvcheckboxes": Set f = frmTvCheckboxes
+            Case "tvmultiselect": Set f = frmTvMultiSelect
             Case Else: Set f = frmButtons
         End Select
         Load f
@@ -70,6 +127,17 @@ Module MainModule
             Case "text": Texts f
             Case "lists": Lists f
             Case "bars": Bars f
+            Case "appearance": Appearances f
+            Case "borderstyle": BorderStyles f
+            Case "backstyle": BackStyles f
+            Case "alignment": Alignments f
+            Case "valignment": VerticalAlignments f
+            Case "mousepointer": MousePointers f
+            Case "views": Views f
+            Case "tvlinestyle": TreeLineStyles f
+            Case "tvtheme": TreeThemes f
+            Case "tvcheckboxes": TreeCheckboxes f
+            Case "tvmultiselect": TreeMultiSelect f
             Case Else: Err.Raise 5, , "no sheet named " & scene
         End Select
         f.Show
@@ -77,6 +145,11 @@ Module MainModule
         ' the state of a window a mouse user works in: no focus rectangle, no underlined access keys
         SendMessageW f.hWnd, WM_CHANGEUISTATE, UI_MOUSE, 0
         SetFocusAPI f.hWnd
+        If Not FocusOn Is Nothing Then
+            Doing = "focus"
+            SetFocusAPI FocusOn.hWnd
+            SendMessageW f.hWnd, WM_CHANGEUISTATE, UI_MOUSE, 0
+        End If
         f.Refresh
         DoEvents
         Doing = "after show"
@@ -189,7 +262,9 @@ Module MainModule
     ' before the light first runs, every timer is stopped (test/shots/commonctls does the same).
     Private Sub StillBars(ByVal f As Form)
         Dim t As Single = Timer
-        Do While Timer - t < 0.6
+        ' Long enough for the bar's growing animation to end: at 0.6 s a bar at 60 was once
+        ' drawn at 48.
+        Do While Timer - t < 1.5
             DoEvents
             Sleep 20
         Loop
@@ -204,6 +279,20 @@ Module MainModule
         Next
     End Sub
 
+    ' A tree view with pictures: Documents open, with two closed folders and three files, one
+    ' bold and one drawn gray, and Reports selected, in a tree that has the focus.
+    Private Sub Views(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 200, 2 * MARGIN + 118
+        TreeImages f
+        Dim tv As Object = Place(f, "TreeView1", MARGIN, MARGIN, 200, 118)
+        Set tv.ImageList = f.Controls("ImageList1")
+        Documents tv
+        tv.Nodes("notes").Bold = True
+        tv.Nodes("old").Enabled = False
+        tv.Nodes("reports").Selected = True
+        Set FocusOn = tv
+    End Sub
+
     ' The bars' timers stopped again while the form waits.
     Private Sub KeepStill()
         Dim t As Variant
@@ -211,6 +300,376 @@ Module MainModule
             KillTimer t(0), t(1)
         Next
     End Sub
+
+    ' ---------------------------------------------------------------- the settings
+
+    ' The pictures of the package's shared enumerations (Common.md): each a whole form, with a
+    ' control for each value, its value's name printed by the form under it.
+
+    ' The two Appearance values of a check box and a frame, without visual styles: with them,
+    ' both draw alike in either value.
+    Private Sub Appearances(ByVal f As Form)
+        Settings f, "Appearance", 2 * 170 + 20, 160
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 170
+            Dim name As String = Choose(i + 1, "CCAppearanceFlat", "CCAppearance3D") & " (" & i & ")"
+            With Place(f, "CheckBoxW" & (i + 1), x + 25, 16, 120, 20, "")
+                .VisualStyles = False
+                .Caption = "Remember me"
+                .Value = vbChecked
+                .Appearance = i
+            End With
+            Text f, name, x, 42, 170
+            With Place(f, "FrameW" & (i + 1), x + 15, 72, 140, 56, "")
+                .VisualStyles = False
+                .Caption = "Paper"
+                .Appearance = i
+            End With
+            Text f, name, x, 134, 170
+        Next
+    End Sub
+
+    ' The five BorderStyle values of a text box.
+    Private Sub BorderStyles(ByVal f As Form)
+        Settings f, "BorderStyle", 5 * 160 + 20, 72
+        Dim names As Variant = Array("CCBorderStyleNone", "CCBorderStyleSingle", "CCBorderStyleThin", _
+            "CCBorderStyleSunken", "CCBorderStyleRaised")
+        Dim i As Long
+        For i = 0 To 4
+            Dim x As Single = 10 + i * 160
+            With Place(f, "TextBoxW" & (i + 1), x + 20, 16, 120, 24, "")
+                .Text = "Ada Lovelace"
+                .BorderStyle = i
+            End With
+            Text f, names(i) & " (" & i & ")", x, 48, 160
+        Next
+    End Sub
+
+    ' The two BackStyle values of a label with a white BackColor, over a hatch the form draws.
+    ' LabelW is not moved (Kr00l/VBCCR#40): the generator of the forms gives each its place, in
+    ' the middle of its hatch.
+    Private Sub BackStyles(ByVal f As Form)
+        Settings f, "BackStyle", 2 * 180 + 20, 104
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 180
+            f.FillStyle = vbDiagonalCross
+            f.FillColor = RGB(150, 150, 150)
+            f.Line (x + 10, 12)-(x + 170, 72), RGB(150, 150, 150), B
+            With Place(f, "LabelW" & (i + 1), x + 25, 27, 130, 30, "", True)
+                .Caption = "Paper size"
+                .BackColor = vbWhite
+                .BackStyle = i
+            End With
+            Text f, Choose(i + 1, "CCBackStyleTransparent", "CCBackStyleOpaque") & " (" & i & ")", x, 80, 180
+        Next
+        f.FillStyle = vbFSTransparent
+    End Sub
+
+    ' The two Alignment values of a check box: its box at the left or the right of its caption.
+    Private Sub Alignments(ByVal f As Form)
+        Settings f, "Alignment", 2 * 180 + 20, 68
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * 180
+            With Place(f, "CheckBoxW" & (i + 1), x + 25, 16, 130, 20, "")
+                .Caption = "Remember me"
+                .Value = vbChecked
+                .Alignment = i
+            End With
+            Text f, Choose(i + 1, "CCLeftRightAlignmentLeft", "CCLeftRightAlignmentRight") & " (" & i & ")", x, 44, 180
+        Next
+    End Sub
+
+    ' The three VerticalAlignment values of a tall command button.
+    Private Sub VerticalAlignments(ByVal f As Form)
+        Settings f, "VerticalAlignment", 3 * 170 + 20, 112
+        Dim i As Long
+        For i = 0 To 2
+            Dim x As Single = 10 + i * 170
+            With Place(f, "CommandButtonW" & (i + 1), x + 25, 16, 120, 64, "")
+                .Caption = "Save"
+                .VerticalAlignment = i
+            End With
+            Text f, Choose(i + 1, "CCVerticalAlignmentTop", "CCVerticalAlignmentCenter", "CCVerticalAlignmentBottom") & _
+                " (" & i & ")", x, 88, 170
+        Next
+    End Sub
+
+    ' The MousePointer values, each the cursor a control shows for it: a hidden WindowedLabel
+    ' asked to set its cursor (WM_SETCURSOR, as when the mouse moves over it) with each value in
+    ' turn, and the cursor it set drawn on the form. A picture of the window holds no mouse
+    ' pointer. CCMousePointerCustom (99) is left out: it shows the control's MouseIcon.
+    Private Sub MousePointers(ByVal f As Form)
+        Const PER_ROW As Long = 4
+        Const COLUMN As Single = 210
+        ' a row: the cursor, its value's name close under it, and a wider gap to the next row,
+        ' since the drawn part of most cursors is at the top of their 32 pixels
+        Const ROW As Single = 70
+        ' the rows start 8 pixels below the top, and the last row's names end as far above the
+        ' bottom: 7 pixels below the height of their line, which has a pixel below its letters
+        Settings f, "MousePointer", PER_ROW * COLUMN + 10, 8 * ROW
+        FitClient f, PER_ROW * COLUMN + 10, 8 + 7 * ROW + 36 + f.TextHeight("A") + 7
+        Dim names As Variant = Array("CCMousePointerDefault", "CCMousePointerArrow", "CCMousePointerCrosshair", _
+            "CCMousePointerIbeam", "CCMousePointerHand", "CCMousePointerSizePointer", "CCMousePointerSizeNESW", _
+            "CCMousePointerSizeNS", "CCMousePointerSizeNWSE", "CCMousePointerSizeWE", "CCMousePointerUpArrow", _
+            "CCMousePointerHourglass", "CCMousePointerNoDrop", "CCMousePointerArrowHourglass", _
+            "CCMousePointerArrowQuestion", "CCMousePointerSizeAll", "CCMousePointerArrowCD", "CCMousePointerPin", _
+            "CCMousePointerPerson", "CCMousePointerPen", "CCMousePointerScrollN", "CCMousePointerScrollS", _
+            "CCMousePointerScrollE", "CCMousePointerScrollW", "CCMousePointerScrollNS", "CCMousePointerScrollWE", _
+            "CCMousePointerScrollNW", "CCMousePointerScrollNE", "CCMousePointerScrollSW", "CCMousePointerScrollSE", _
+            "CCMousePointerScrollAll")
+        Dim c As Object = f.Controls("WindowedLabel1")
+        c.Visible = False
+        Dim h As LongPtr = c.hWnd
+        Dim i As Long
+        For i = 0 To 30
+            Doing = names(i)
+            Dim x As Single = 10 + (i Mod PER_ROW) * COLUMN
+            Dim y As Single = 8 + (i \ PER_ROW) * ROW
+            c.MousePointer = i
+            SetCursor 0
+            SendMessageW h, WM_SETCURSOR, h, HTCLIENT Or WM_MOUSEMOVE * &H10000
+            Dim cursor As LongPtr = GetCursor()
+            If cursor = 0 Then Err.Raise 5, , "no cursor for MousePointer " & i
+            DrawIconEx f.hDC, (x + (COLUMN - 32) / 2) * Dpi(), y * Dpi(), cursor, 0, 0, 0, 0, DI_NORMAL
+            Text f, names(i) & " (" & i & ")", x, y + 36, COLUMN
+        Next
+        c.MousePointer = 0
+    End Sub
+
+    ' The TreeView page's settings pictures: each a whole form, a tree for each variant side by
+    ' side, its settings printed by the form under it.
+
+    ' The two LineStyle values of a tree of two roots in the default Style: with
+    ' TvwLineStyleRootLines the roots have lines and buttons too.
+    Private Sub TreeLineStyles(ByVal f As Form)
+        Const H As Single = 80
+        Settings f, "LineStyle", 2 * TREE_COLUMN + 20, 16 + H + 8 + 20
+        TreeImages f
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * TREE_COLUMN
+            Dim tv As Object = Place(f, "TreeView" & (i + 1), x + (TREE_COLUMN - TREE_W) / 2, 16, TREE_W, H, "")
+            Set tv.ImageList = f.Controls("ImageList1")
+            tv.LineStyle = i
+            Dim root As Object = Folder(tv, Nothing, "docs", "Documents", False)
+            Folder tv, root, "letters", "Letters"
+            tv.Nodes.Add root, TvwNodeRelationshipChild, "notes", "Notes.txt", "file"
+            root.Expanded = True
+            Dim pics As Object = Folder(tv, Nothing, "pictures", "Pictures", False)
+            tv.Nodes.Add pics, TvwNodeRelationshipChild, , "Holiday.jpg", "photo"
+            Text f, Choose(i + 1, "TvwLineStyleTreeLines", "TvwLineStyleRootLines") & " (" & i & ")", x, 16 + H + 8, TREE_COLUMN
+        Next
+    End Sub
+
+    ' The two VisualTheme values of a tree without lines whose selected row is highlighted whole.
+    ' Neither tree has the focus, so both draw the selection as a tree without it does.
+    Private Sub TreeThemes(ByVal f As Form)
+        Const H As Single = 118
+        Const TREE_TOP As Single = 16 + 2 * 18 + 8
+        Settings f, "VisualTheme", 2 * TREE_COLUMN + 20, TREE_TOP + H + 8 + 20
+        Text f, "Style = TvwStylePlusMinusPictureText, LineStyle = TvwLineStyleRootLines", 0, 12, 2 * TREE_COLUMN + 20
+        Text f, "FullRowSelect = True, HideSelection = False", 0, 12 + 18, 2 * TREE_COLUMN + 20
+        TreeImages f
+        Dim i As Long
+        For i = 0 To 1
+            Dim x As Single = 10 + i * TREE_COLUMN
+            Dim tv As Object = Place(f, "TreeView" & (i + 1), x + (TREE_COLUMN - TREE_W) / 2, TREE_TOP, TREE_W, H, "")
+            tv.Style = TvwStylePlusMinusPictureText
+            tv.LineStyle = TvwLineStyleRootLines
+            tv.FullRowSelect = True
+            tv.HideSelection = False
+            tv.VisualTheme = i
+            Set tv.ImageList = f.Controls("ImageList1")
+            Documents tv
+            tv.Nodes("reports").Selected = True
+            Text f, Choose(i + 1, "TvwVisualThemeStandard", "TvwVisualThemeExplorer") & " (" & i & ")", x, TREE_TOP + H + 8, TREE_COLUMN
+        Next
+    End Sub
+
+    ' A tree with check boxes: three nodes ticked, and one without a box.
+    Private Sub TreeCheckboxes(ByVal f As Form)
+        Const H As Single = 118
+        Settings f, "Checkboxes", TREE_COLUMN + 20, 16 + H + 8 + 2 * 18 + 4
+        Dim x As Single = 10
+        Dim tv As Object = Place(f, "TreeView1", x + (TREE_COLUMN - TREE_W) / 2, 16, TREE_W, H, "")
+        tv.Style = TvwStyleTreeLinesPlusMinusText
+        tv.Checkboxes = True
+        Dim root As Object = tv.Nodes.Add(, , "trip", "Packing list")
+        Dim item As Variant
+        For Each item In Array("Passport", "Tickets", "Charger", "Sun cream", "Phone numbers")
+            tv.Nodes.Add root, TvwNodeRelationshipChild, item, item
+        Next
+        root.Expanded = True
+        tv.Nodes("Passport").Checked = True
+        tv.Nodes("Tickets").Checked = True
+        tv.Nodes("Sun cream").Checked = True
+        tv.Nodes("Phone numbers").CheckBox = False
+        Text f, "Checkboxes = True", x, 16 + H + 8, TREE_COLUMN
+        Text f, "Style = TvwStyleTreeLinesPlusMinusText", x, 16 + H + 8 + 18, TREE_COLUMN
+    End Sub
+
+    ' A tree that selects several nodes, with three selected, in a tree that has the focus.
+    Private Sub TreeMultiSelect(ByVal f As Form)
+        Const H As Single = 118
+        Settings f, "MultiSelect", TREE_COLUMN + 20, 16 + H + 8 + 20
+        Dim x As Single = 10
+        Dim tv As Object = Place(f, "TreeView1", x + (TREE_COLUMN - TREE_W) / 2, 16, TREE_W, H, "")
+        TreeImages f
+        Set tv.ImageList = f.Controls("ImageList1")
+        tv.MultiSelect = TvwMultiSelectAll
+        Documents tv
+        tv.Nodes("letters").Selected = True
+        tv.Nodes("holiday").Selected = True
+        tv.Nodes("notes").Selected = True
+        Set FocusOn = tv
+        Text f, "MultiSelect = TvwMultiSelectAll", x, 16 + H + 8, TREE_COLUMN
+    End Sub
+
+    ' ---------------------------------------------------------------- the trees
+
+    ' The nodes of a tree: Documents, open, with the closed folders Letters and Reports and the
+    ' files Holiday.jpg, Notes.txt and Old notes.txt.
+    Private Sub Documents(ByVal tv As Object)
+        Dim root As Object = Folder(tv, Nothing, "docs", "Documents", False)
+        Folder tv, root, "letters", "Letters"
+        Folder tv, root, "reports", "Reports"
+        tv.Nodes.Add root, TvwNodeRelationshipChild, "holiday", "Holiday.jpg", "photo"
+        tv.Nodes.Add root, TvwNodeRelationshipChild, "notes", "Notes.txt", "file"
+        tv.Nodes.Add root, TvwNodeRelationshipChild, "old", "Old notes.txt", "file"
+        root.Expanded = True
+    End Sub
+
+    ' A folder node, at the root level when Parent is Nothing, with the open folder's picture while
+    ' it is expanded, and with WithFile a file in it, so that a closed folder has a button.
+    Private Function Folder(ByVal tv As Object, ByVal Parent As Object, ByVal Key As String, ByVal Caption As String, _
+            Optional ByVal WithFile As Boolean = True) As Object
+        Dim n As Object
+        If Parent Is Nothing Then
+            Set n = tv.Nodes.Add(, , Key, Caption, "folder")
+        Else
+            Set n = tv.Nodes.Add(Parent, TvwNodeRelationshipChild, Key, Caption, "folder")
+        End If
+        n.ExpandedImage = "open"
+        If WithFile Then tv.Nodes.Add n, TvwNodeRelationshipChild, , "Summary.txt", "file"
+        Return n
+    End Function
+
+    ' The ImageList of the form given four pictures of 16 pixels, drawn by the program: a folder,
+    ' an open folder, a page of text and a photo. Nothing is taken from the machine.
+    Private Sub TreeImages(ByVal f As Form)
+        Doing = "ImageList1"
+        Dim il As Object = f.Controls("ImageList1")
+        il.ImageWidth = 16
+        il.ImageHeight = 16
+        il.UseMaskColor = True
+        il.MaskColor = MASK
+        Dim i As Long
+        For i = 1 To 4
+            il.ListImages.Add , Choose(i, "folder", "open", "file", "photo"), Picture16(i)
+        Next
+    End Sub
+
+    ' One of the four pictures of TreeImages, on the ground MASK.
+    Private Function Picture16(ByVal Kind As Long) As StdPicture
+        Const EDGE As Long = &H2080B0        ' RGB(176, 128, 32), a folder's edge
+        Const PAPER As Long = &H60D0F8       ' RGB(248, 208, 96), a folder
+        Const BACK As Long = &H40B0E0        ' RGB(224, 176, 64), the back of an open folder
+        Const GREY As Long = &H808080
+        Dim screenDC As LongPtr = GetDC(0)
+        Dim dc As LongPtr = CreateCompatibleDC(screenDC)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(screenDC, 16, 16)
+        ReleaseDC 0, screenDC
+        Dim oldBmp As LongPtr = SelectObject(dc, bmp)
+        DrawBox dc, MASK, MASK, 0, 0, 16, 16
+        Select Case Kind
+            Case 1 ' a folder: its tab and its body
+                DrawBox dc, EDGE, PAPER, 1, 2, 8, 6
+                DrawBox dc, EDGE, PAPER, 1, 4, 15, 14
+            Case 2 ' an open folder: its back, and its front tilted open
+                DrawBox dc, EDGE, BACK, 1, 2, 8, 6
+                DrawBox dc, EDGE, BACK, 1, 4, 14, 14
+                DrawPolygon dc, EDGE, PAPER, Array(4, 7, 15, 7, 12, 13, 1, 13)
+            Case 3 ' a page of text
+                DrawBox dc, GREY, vbWhite, 3, 1, 14, 15
+                Dim y As Long
+                For y = 4 To 11 Step 2
+                    DrawBox dc, &HB0B0B0, &HB0B0B0, 5, y, 12, y + 1
+                Next
+            Case 4 ' a photo: the sky, a sun and green hills
+                DrawBox dc, GREY, &HF0C896, 1, 2, 15, 14           ' RGB(150, 200, 240)
+                DrawBox dc, &H28D2FA, &H28D2FA, 10, 4, 13, 7        ' RGB(250, 210, 40)
+                DrawPolygon dc, &H46A046, &H46A046, Array(2, 13, 2, 10, 6, 7, 9, 10, 12, 8, 14, 10, 14, 13)
+        End Select
+        SelectObject dc, oldBmp
+        DeleteDC dc
+        Dim desc As PICTDESC, iid As PicGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1 ' a bitmap
+        desc.Handle = bmp
+        ' IID_IPictureDisp, {7BF80981-BF32-101A-8BBB-00AA00300CAB}
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        If OleCreatePictureIndirect(desc, iid, 1, pic) <> 0 Then Err.Raise 5, , "no picture " & Kind
+        Return pic
+    End Function
+
+    ' A rectangle from (l, t) to just before (r, b), its edge in the color Pen and its inside in Fill.
+    Private Sub DrawBox(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal l As Long, ByVal t As Long, _
+            ByVal r As Long, ByVal b As Long)
+        Dim p As LongPtr = SelectObject(dc, CreatePen(0, 1, Pen))
+        Dim br As LongPtr = SelectObject(dc, CreateSolidBrush(Fill))
+        Rectangle dc, l, t, r, b
+        DeleteObject SelectObject(dc, br)
+        DeleteObject SelectObject(dc, p)
+    End Sub
+
+    ' A polygon through the points of Xy, pairs of x and y, drawn as DrawBox draws.
+    Private Sub DrawPolygon(ByVal dc As LongPtr, ByVal Pen As Long, ByVal Fill As Long, ByVal Xy As Variant)
+        Dim n As Long = (UBound(Xy) + 1) \ 2
+        Dim pts() As POINTAPI
+        ReDim pts(0 To n - 1)
+        Dim i As Long
+        For i = 0 To n - 1
+            pts(i).x = Xy(2 * i)
+            pts(i).y = Xy(2 * i + 1)
+        Next
+        Dim p As LongPtr = SelectObject(dc, CreatePen(0, 1, Pen))
+        Dim br As LongPtr = SelectObject(dc, CreateSolidBrush(Fill))
+        Polygon dc, pts(0), n
+        DeleteObject SelectObject(dc, br)
+        DeleteObject SelectObject(dc, p)
+    End Sub
+
+    ' A settings form: its caption, its client area Width by Height pixels at 96 DPI, and what
+    ' it prints kept (AutoRedraw).
+    Private Sub Settings(ByVal f As Form, ByVal Caption As String, ByVal Width As Single, ByVal Height As Single)
+        f.Caption = Caption
+        f.AutoRedraw = True
+        f.ForeColor = vbBlack
+        FitClient f, Width, Height
+    End Sub
+
+    ' Text printed on the form at (x, y), centred in a column Width wide when Width is given.
+    Private Sub Text(ByVal f As Form, ByVal s As String, ByVal x As Single, ByVal y As Single, Optional ByVal Width As Single = 0)
+        f.CurrentX = IIf(Width > 0, x + (Width - f.TextWidth(s)) / 2, x)
+        f.CurrentY = y
+        f.Print s
+    End Sub
+
+    ' Device pixels to a pixel at 96 DPI.
+    Private Function Dpi() As Single
+        Return 15 / Screen.TwipsPerPixelX
+    End Function
 
     ' ---------------------------------------------------------------- helpers
 

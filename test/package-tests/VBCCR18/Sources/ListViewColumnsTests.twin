@@ -1,0 +1,302 @@
+' ListViewColumnsTests: the columns of the ListView, their order, their check boxes and their
+' filters.
+[TestFixture]
+Module ListViewColumnsTests
+
+    Private Declare PtrSafe Function LvSend Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const HDM_GETITEMCOUNT As Long = &H1200&
+
+    ' A loaded form whose ListView1 is in the report view with the columns given, keyed by their
+    ' texts in small letters.
+    Private Function ReportForm(ParamArray Columns() As Variant) As HostForm
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.View = LvwViewReport
+        Dim i As Long
+        For i = 0 To UBound(Columns)
+            f.ListView1.ColumnHeaders.Add , LCase$(CStr(Columns(i))), CStr(Columns(i))
+        Next
+        Set ReportForm = f
+    End Function
+
+    [TestCase]
+    Public Sub Remove_LaterColumnsShowTheSubitemsOfTheirNumber()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size", "Type")
+        Dim it As LvwListItem
+        Set it = f.ListView1.ListItems.Add(, , "readme")
+        it.SubItems(1) = "2 KB"
+        it.SubItems(2) = "Text"
+        f.ListView1.ColumnHeaders.Remove "size"
+        Expect.AreEqual 1, f.ListView1.ColumnHeaders("type").SubItemIndex, "SubItemIndex of Type after removing Size"
+        Expect.AreEqual "2 KB", it.SubItems(1), "SubItems(1) after removing Size"
+        Expect.AreEqual 2, it.ListSubItems.Count, "ListSubItems.Count after removing Size"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColumnOrder_IsTheIndexesInPositionOrder()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size", "Type")
+        With f.ListView1
+            .ColumnHeaders("type").Position = 1
+            Dim v As Variant
+            v = .ColumnOrder
+            Expect.AreEqual "2 0 1", v(0) & " " & v(1) & " " & v(2), "ColumnOrder after Type.Position = 1"
+            Expect.AreEqual "Type", .ColumnHeaders.ItemFromPosition(1).Text, "ItemFromPosition(1) after Type.Position = 1"
+            Expect.AreEqual 3, .ColumnHeaders("type").Index, "Index of Type after Type.Position = 1"
+            .ColumnOrder = Empty
+            Expect.AreEqual 3, .ColumnHeaders("type").Position, "Position of Type after ColumnOrder = Empty"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColumnOrder_NumberOutOfRange_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size", "Type")
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ColumnOrder = Array(0, 1, 5)
+        Expect.AreEqual 381, Err.Number, "ColumnOrder = Array(0, 1, 5) of three columns"
+        Err.Clear
+        f.ListView1.ColumnOrder = 5
+        Expect.AreEqual 380, Err.Number, "ColumnOrder = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Checked_WithCheckBox_RaisesColumnCheck()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("All")
+        Dim sink As New ListViewColumnSink
+        Set sink.LV = f.ListView1
+        f.ListView1.AllowColumnCheckboxes = True
+        f.ListView1.ColumnHeaders(1).CheckBox = True
+        Rig.ClearLog
+        f.ListView1.ColumnHeaders(1).Checked = True
+        Expect.AreEqual "ColumnCheck All True", Rig.Events(), "the events of Checked = True on a column with a check box"
+        Expect.IsTrue f.ListView1.ColumnHeaders(1).Checked, "Checked after Checked = True"
+        Set sink.LV = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Checked_WithoutCheckBox_StaysFalse()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("All")
+        Dim sink As New ListViewColumnSink
+        Set sink.LV = f.ListView1
+        f.ListView1.AllowColumnCheckboxes = True
+        Rig.ClearLog
+        f.ListView1.ColumnHeaders(1).Checked = True
+        Expect.IsFalse f.ListView1.ColumnHeaders(1).Checked, "Checked after Checked = True on a column without a check box"
+        Expect.AreEqual "", Rig.Events(), "the events of Checked = True on a column without a check box"
+        Set sink.LV = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColumnFilterChangedTimeout_Zero_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ColumnFilterChangedTimeout = 0
+        Expect.AreEqual 380, Err.Number, "ColumnFilterChangedTimeout = 0"
+        Err.Clear
+        f.ListView1.ColumnFilterChangedTimeout = -2
+        Expect.AreEqual 380, Err.Number, "ColumnFilterChangedTimeout = -2"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumberOutOfRange_Raises9()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        Dim c As LvwColumnHeader
+        On Error Resume Next
+        Err.Clear
+        Set c = f.ListView1.ColumnHeaders(2)
+        Expect.AreEqual 9, Err.Number, "ColumnHeaders(2) of one column"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_UnknownKey_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        Dim c As LvwColumnHeader
+        Expect.AreEqual "Name", f.ListView1.ColumnHeaders("NAME").Text, "ColumnHeaders(""NAME"") of the key ""name"""
+        On Error Resume Next
+        Err.Clear
+        Set c = f.ListView1.ColumnHeaders("zz")
+        Expect.AreEqual 5, Err.Number, "ColumnHeaders(""zz"")"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        Dim c As LvwColumnHeader
+        On Error Resume Next
+        Err.Clear
+        Set c = f.ListView1.ColumnHeaders.Add(3, , "far")
+        Expect.AreEqual 35600, Err.Number, "ColumnHeaders.Add at Index 3 of one column"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.ColumnHeaders.Count, "ColumnHeaders.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_Raises457()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        Dim c As LvwColumnHeader
+        On Error Resume Next
+        Err.Clear
+        Set c = f.ListView1.ColumnHeaders.Add(, "NAME", "again")
+        Expect.AreEqual 457, Err.Number, "ColumnHeaders.Add with the key ""NAME"" next to ""name"""
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.ColumnHeaders.Count, "ColumnHeaders.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_NegativeWidth_AddsNoColumn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        Dim c As LvwColumnHeader
+        On Error Resume Next
+        Err.Clear
+        Set c = f.ListView1.ColumnHeaders.Add(, , "Size", -5)
+        Expect.AreEqual 380, Err.Number, "ColumnHeaders.Add with the width -5"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.ColumnHeaders.Count, "ColumnHeaders.Count after the refused Add"
+        Expect.AreEqual 1, CLng(LvSend(f.ListView1.hWndHeader, HDM_GETITEMCOUNT, 0, 0)), "the columns of the header after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_AlignmentNotAMember_AddsNoColumn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        Dim c As LvwColumnHeader
+        On Error Resume Next
+        Err.Clear
+        Set c = f.ListView1.ColumnHeaders.Add(, , "Size", , 7)
+        Expect.AreEqual 380, Err.Number, "ColumnHeaders.Add with the alignment 7"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.ColumnHeaders.Count, "ColumnHeaders.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FilterValue_NoValue_IsNull()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Size")
+        With f.ListView1
+            .UseColumnFilterBar = True
+            .ColumnHeaders(1).FilterType = LvwColumnHeaderFilterTypeNumber
+            Expect.IsTrue IsNull(.ColumnHeaders(1).FilterValue), "FilterValue of a new number filter is Null"
+            .ColumnHeaders(1).FilterValue = 42
+            Expect.AreEqual 42, .ColumnHeaders(1).FilterValue, "FilterValue after FilterValue = 42"
+            .ColumnHeaders(1).ClearFilter
+            Expect.IsTrue IsNull(.ColumnHeaders(1).FilterValue), "FilterValue after ClearFilter is Null"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FilterValue_NumberForTextFilter_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        f.ListView1.UseColumnFilterBar = True
+        f.ListView1.ColumnHeaders(1).FilterType = LvwColumnHeaderFilterTypeText
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ColumnHeaders(1).FilterValue = 5
+        Expect.AreEqual 13, Err.Number, "FilterValue = 5 on a text filter"
+        On Error GoTo 0
+        f.ListView1.ColumnHeaders(1).FilterValue = "ab"
+        Expect.AreEqual "ab", f.ListView1.ColumnHeaders(1).FilterValue, "FilterValue after FilterValue = ""ab"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Position_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name", "Size")
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ColumnHeaders(1).Position = 3
+        Expect.AreEqual 380, Err.Number, "Position = 3 of two columns"
+        Err.Clear
+        f.ListView1.ColumnHeaders(1).Position = 0
+        Expect.AreEqual 380, Err.Number, "Position = 0"
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.ColumnHeaders(1).Position, "Position after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Width_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm("Name")
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.ColumnHeaders(1).Width = -1
+        Expect.AreEqual 380, Err.Number, "Width = -1 on a column"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The ColumnCheck event of a ListView, written to Rig.Log.
+Class ListViewColumnSink
+
+    Public WithEvents LV As VBCCR18.ListView
+
+    Private Sub LV_ColumnCheck(ByVal ColumnHeader As LvwColumnHeader) Handles LV.ColumnCheck
+        Rig.Ev "ColumnCheck " & ColumnHeader.Text & " " & ColumnHeader.Checked
+    End Sub
+
+End Class

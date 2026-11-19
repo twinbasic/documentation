@@ -4,6 +4,24 @@
     "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher": {
       "fails": "1 of 2 checks failed: GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word: expected True, got False"
     },
+    "FontComboTests.RestoreRecent_UnknownNameBeforeAKnownOne_KeepsTheKnownOnes": {
+      "fails": "2 of 3 checks failed: the entries added to the list by RestoreRecent of two names with an unknown one between them: expected 2, got 1; the recent fonts after RestoreRecent of two names with an unknown one between them: expected \"Bahnschrift Light SemiCondensed Arial Narrow\", got \"Bahnschrift Light SemiCondensed Agency FB\""
+    },
+    "FontComboTests.RestoreRecent_RecentMaxZero_KeepsTheFonts": {
+      "fails": "2 of 2 checks failed: ListCount after RestoreRecent of one name with RecentMax 0: expected 252, got 251; List(0) after RestoreRecent of one name with RecentMax 0: expected \"Agency FB\", got \"Algerian\""
+    },
+    "FontComboTests.SelectItem_UpdatesTheBuddy": {
+      "fails": "1 of 1 checks failed: the sizes of the buddy after a font is selected with SelectItem: expected 16, got 0"
+    },
+    "ImageComboTests.Add_NegativeIndentation_AddsNothing": {
+      "fails": "1 of 3 checks failed: ComboItems.Count after the refused Add: expected 0, got 1"
+    },
+    "ImageComboTests.Selected_FalseOnAnotherItem_ChangesNothingAndRaisesNoClick": {
+      "fails": "1 of 2 checks failed: the number of Click events of Selected = False for an item that is not selected: expected 0, got 1"
+    },
+    "ImageComboTests.SelImage_KeyGivenToAdd_CanBeRead": {
+      "fails": "2 of 3 checks failed: reading SelImage of an item added with the SelImage key \"blue\": expected 0, got 13; SelImage of an item added with the SelImage key \"blue\": expected 3, got 0"
+    },
     "ImageListTests.Add_BitmapSmallerThanTheList_IsInTheWindowsList": {
       "fails": "3 of 3 checks failed: the pictures in the Windows image list of 32 by 32 after a bitmap of 16 by 16 is added: expected 1, got 0; the color the first item draws, a red bitmap of 16 by 16, after a blue one of 32 by 32 is added: expected 255, got 16711680; the color the second item draws, a blue bitmap of 32 by 32: expected 16711680, got 16777215"
     },
@@ -25,6 +43,27 @@
     "ListBoxWTests.HitTest_EmptyList_ReturnsMinus1": {
       "fails": "1 of 2 checks failed: HitTest(0, 0) of an empty list: expected -1, got 0"
     },
+    "ListViewColumnsTests.Add_NegativeWidth_AddsNoColumn": {
+      "fails": "1 of 3 checks failed: ColumnHeaders.Count after the refused Add: expected 1, got 2"
+    },
+    "ListViewColumnsTests.Add_AlignmentNotAMember_AddsNoColumn": {
+      "fails": "1 of 2 checks failed: ColumnHeaders.Count after the refused Add: expected 1, got 2"
+    },
+    "ListViewGroupsTests.Group_Assigned_PutsTheItemInTheGroup": {
+      "win32": "pass",
+      "win64": {
+        "fails": "2 of 3 checks failed: Group is Nothing after Set Group = a group: expected False, got True; ListItemCount of the group after an item joined it: expected 1, got 0"
+      }
+    },
+    "ListViewGroupsTests.Icon_SetsTheIconOfItsOwnGroup": {
+      "fails": "2 of 2 checks failed: the window's icon of the group given Icon = 3, added at Index 1: expected 2, got -1; the window's icon of the other group: expected -1, got 2"
+    },
+    "ListViewGroupsTests.Add_DuplicateKey_AddsNoGroup": {
+      "fails": "1 of 3 checks failed: the groups of the window after the refused Add: expected 1, got 2"
+    },
+    "ListViewItemsTests.SubItems_LongText_IsReturnedWhole": {
+      "fails": "1 of 2 checks failed: Len(SubItems(1)) of a subitem of 300 characters: expected 300, got 259"
+    },
     "TextBoxWTests.GetLine_PastTheLastLine_Raises380": {
       "win32": "pass",
       "win64": {
@@ -42,6 +81,15 @@
     },
     "TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress": {
       "fails": "1 of 3 checks failed: NetAddressString of 192.168.0.1:8080: expected \"192.168.0.1\", got \"0.0.1.0\""
+    },
+    "TreeViewTests.Root_OfANodeInALaterBranch_IsItsTopLevelAncestor": {
+      "fails": "1 of 2 checks failed: Root of a node in the second branch: expected \"A\", got \"R\""
+    },
+    "TreeViewTests.Text_LongerThan259_IsReadBackWhole": {
+      "fails": "2 of 2 checks failed: Len of Text for a node added with 300 characters: expected 300, got 259; Len of Text after 1000 characters were assigned: expected 1000, got 259"
+    },
+    "TreeViewTests.Expanded_BeforeExpandCancelled_LeavesTheNodeCollapsed": {
+      "fails": "1 of 2 checks failed: Expanded after Expanded = True with BeforeExpand cancelled: expected False, got True"
     },
     "VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
       "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectSimple on an empty list raises no error 380: expected True, got False"

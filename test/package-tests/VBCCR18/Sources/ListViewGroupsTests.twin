@@ -1,0 +1,243 @@
+' ListViewGroupsTests: the groups of the ListView and the items in them.
+[TestFixture]
+Module ListViewGroupsTests
+
+    Private Type LvgPictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+    Private Type LvgGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+    ' LVGROUP of Windows, with the members of version 6 of the common controls.
+    Private Type LvgGroup
+        cbSize As Long
+        Mask As Long
+        pszHeader As LongPtr
+        cchHeader As Long
+        pszFooter As LongPtr
+        cchFooter As Long
+        iGroupId As Long
+        StateMask As Long
+        State As Long
+        uAlign As Long
+        pszSubtitle As LongPtr
+        cchSubtitle As Long
+        pszTask As LongPtr
+        cchTask As Long
+        pszDescriptionTop As LongPtr
+        cchDescriptionTop As Long
+        pszDescriptionBottom As LongPtr
+        cchDescriptionBottom As Long
+        iTitleImage As Long
+        iExtendedImage As Long
+        iFirstItem As Long
+        cItems As Long
+        pszSubsetTitle As LongPtr
+        cchSubsetTitle As Long
+    End Type
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As LvgPictDesc, ByRef IID As LvgGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+    Private Declare PtrSafe Function LvSend Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function LvSendGroup Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByRef lParam As LvgGroup) As LongPtr
+    Private Const LVM_GETGROUPINFO As Long = &H1095&
+    Private Const LVM_GETGROUPCOUNT As Long = &H1098&
+    Private Const LVGF_TITLEIMAGE As Long = &H1000&
+
+    ' A bitmap of 16 by 16 pixels.
+    Private Function Bitmap() As StdPicture
+        Dim screenDC As LongPtr = GetDC(0)
+        Dim desc As LvgPictDesc, iid As LvgGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = CreateCompatibleBitmap(screenDC, 16, 16)
+        ReleaseDC 0, screenDC
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set Bitmap = pic
+    End Function
+
+    ' The icon of the group of an ID, as the window of the ListView holds it: its number in the
+    ' image list from 0, or -1 for none.
+    Private Function WindowGroupImage(ByVal LV As VBCCR18.ListView, ByVal ID As Long) As Long
+        Dim g As LvgGroup
+        g.cbSize = LenB(g)
+        g.Mask = LVGF_TITLEIMAGE
+        g.iTitleImage = -7
+        LvSendGroup LV.hWnd, LVM_GETGROUPINFO, ID, g
+        WindowGroupImage = g.iTitleImage
+    End Function
+
+    ' A loaded form whose ListView1 is in the report view with one column.
+    Private Function ReportForm() As HostForm
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.View = LvwViewReport
+        f.ListView1.ColumnHeaders.Add , , "Name"
+        Set ReportForm = f
+    End Function
+
+    [TestCase]
+    Public Sub Group_Assigned_PutsTheItemInTheGroup()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        Dim g As LvwGroup, it As LvwListItem
+        Set g = f.ListView1.Groups.Add(, "a", "First")
+        f.ListView1.GroupView = True
+        Set it = f.ListView1.ListItems.Add(, , "x")
+        Set it.Group = g
+        Expect.IsFalse it.Group Is Nothing, "Group is Nothing after Set Group = a group"
+        Expect.AreEqual 1, g.ListItemCount, "ListItemCount of the group after an item joined it"
+        Set it.Group = Nothing
+        Expect.AreEqual 0, g.ListItemCount, "ListItemCount of the group after Set Group = Nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Icon_SetsTheIconOfItsOwnGroup()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        f.ImageList1.ListImages.Add , , Bitmap()
+        f.ImageList1.ListImages.Add , , Bitmap()
+        f.ImageList1.ListImages.Add , , Bitmap()
+        Set f.ListView1.GroupIcons = f.ImageList1
+        Dim g1 As LvwGroup, g2 As LvwGroup
+        Set g1 = f.ListView1.Groups.Add(, , "First")
+        Set g2 = f.ListView1.Groups.Add(1, , "Zero")
+        g2.Icon = 3
+        Expect.AreEqual 2, WindowGroupImage(f.ListView1, g2.ID), "the window's icon of the group given Icon = 3, added at Index 1"
+        Expect.AreEqual -1, WindowGroupImage(f.ListView1, g1.ID), "the window's icon of the other group"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_DuplicateKey_AddsNoGroup()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        Dim g As LvwGroup
+        f.ListView1.Groups.Add , "b", "One"
+        On Error Resume Next
+        Err.Clear
+        Set g = f.ListView1.Groups.Add(, "B", "Two")
+        Expect.AreEqual 457, Err.Number, "Groups.Add with the key ""B"" next to ""b"""
+        On Error GoTo 0
+        Expect.AreEqual 1, f.ListView1.Groups.Count, "Groups.Count after the refused Add"
+        Expect.AreEqual 1, CLng(LvSend(f.ListView1.hWnd, LVM_GETGROUPCOUNT, 0, 0)), "the groups of the window after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_IndexOutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        Dim g As LvwGroup
+        On Error Resume Next
+        Err.Clear
+        Set g = f.ListView1.Groups.Add(2, , "far")
+        Expect.AreEqual 35600, Err.Number, "Groups.Add at Index 2 of no group"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListView1.Groups.Count, "Groups.Count after the refused Add"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Groups_Clear_KeepsGroupView()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        f.ListView1.Groups.Add , , "First"
+        f.ListView1.GroupView = True
+        f.ListView1.Groups.Clear
+        Expect.IsTrue f.ListView1.GroupView, "GroupView after Groups.Clear"
+        Expect.AreEqual 0, f.ListView1.Groups.Count, "Groups.Count after Groups.Clear"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Collapsed_Assigned_RaisesGroupCollapsedChanged()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        Dim sink As New ListViewGroupSink
+        Set sink.LV = f.ListView1
+        Dim g As LvwGroup
+        Set g = f.ListView1.Groups.Add(, , "First")
+        f.ListView1.GroupView = True
+        g.Collapsible = True
+        Rig.ClearLog
+        g.Collapsed = True
+        Expect.AreEqual "GroupCollapsedChanged First", Rig.Events(), "the events of Collapsed = True"
+        Expect.IsTrue g.Collapsed, "Collapsed after Collapsed = True"
+        Set sink.LV = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GroupSubsetCount_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.GroupSubsetCount = -1
+        Expect.AreEqual 380, Err.Number, "GroupSubsetCount = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListView1.GroupSubsetCount, "GroupSubsetCount after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sorted_True_SortsThePositions()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = ReportForm()
+        With f.ListView1.Groups
+            .Add , "b", "Beta"
+            .Add , "c", "Gamma"
+            .Add , "a", "Alpha"
+            .Sorted = True
+            Expect.AreEqual "1 2 3", .Item("a").Position & " " & .Item("b").Position & " " & .Item("c").Position, "the Position of Alpha, Beta and Gamma after Sorted = True"
+            Expect.AreEqual "Beta", .Item(1).Header, "Groups(1).Header after Sorted = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The group events of a ListView, written to Rig.Log.
+Class ListViewGroupSink
+
+    Public WithEvents LV As VBCCR18.ListView
+
+    Private Sub LV_GroupCollapsedChanged(ByVal Group As LvwGroup) Handles LV.GroupCollapsedChanged
+        Rig.Ev "GroupCollapsedChanged " & Group.Header
+    End Sub
+
+End Class

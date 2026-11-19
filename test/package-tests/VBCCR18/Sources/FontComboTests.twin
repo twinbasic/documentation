@@ -1,0 +1,1030 @@
+' FontComboTests: the FontCombo control: its list of fonts, the recent fonts, and the buddy that
+' lists the sizes. No case depends on which fonts are installed: each compares the list with
+' itself, or with the names it reads from it.
+[TestFixture]
+Module FontComboTests
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Private Const WM_COMMAND As Long = &H111
+    Private Const WM_CONTEXTMENU As Long = &H7B
+    Private Const WM_MOUSEMOVE As Long = &H200
+    Private Const CB_SETCURSEL As Long = &H14E
+    Private Const CBN_SELCHANGE_AS_WPARAM As Long = &H10000
+
+    ' The user picks the entry of an index: the combo box selects it and tells the control.
+    Private Sub Pick(ByVal Combo As VBCCR18.FontCombo, ByVal Index As Long)
+        SendMessageW Combo.hWnd, CB_SETCURSEL, Index, 0
+        SendMessageW Combo.hWndUserControl, WM_COMMAND, CBN_SELCHANGE_AS_WPARAM, Combo.hWnd
+    End Sub
+
+    ' The user picks a font from the complete list, below the recent fonts.
+    Private Sub PickByName(ByVal Combo As VBCCR18.FontCombo, ByVal Name As String)
+        Pick Combo, Combo.FindItem(Name, Combo.RecentCount - 1)
+    End Sub
+
+    ' The number of times an event is in the log.
+    Private Function CountOf(ByVal EventName As String) As Long
+        Dim parts() As String = Split(Rig.Events(), " | ")
+        Dim i As Long
+        For i = 0 To UBound(parts)
+            If parts(i) = EventName Then CountOf = CountOf + 1
+        Next
+    End Function
+
+    ' The last event of the log.
+    Private Function LastEvent() As String
+        Dim parts() As String = Split(Rig.Events(), " | ")
+        LastEvent = parts(UBound(parts))
+    End Function
+
+    ' ---- the control ----
+
+    [TestCase]
+    Public Sub Defaults_OfANewControl()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.FontCombo1
+            Expect.AreEqual 2, CLng(.Style), "Style of a new control"
+            Expect.AreEqual 0, CLng(.FontType), "FontType of a new control"
+            Expect.AreEqual 0, CLng(.FontPitch), "FontPitch of a new control"
+            Expect.IsFalse .ExtendedUI, "ExtendedUI of a new control"
+            Expect.AreEqual 9, CLng(.MaxDropDownItems), "MaxDropDownItems of a new control"
+            Expect.IsTrue .IntegralHeight, "IntegralHeight of a new control"
+            Expect.AreEqual 0, CLng(.MaxLength), "MaxLength of a new control"
+            Expect.IsTrue .AutoSelect, "AutoSelect of a new control"
+            Expect.IsFalse .AlwaysFindExact, "AlwaysFindExact of a new control"
+            Expect.AreEqual 0, CLng(.RecentMax), "RecentMax of a new control"
+            Expect.AreEqual 0, .RecentCount, "RecentCount of a new control"
+            Expect.AreEqual -1, .ListIndex, "ListIndex of a new control"
+            Expect.AreEqual "", .Text, "Text of a new control with the style FtcStyleDropDownList"
+            Expect.IsTrue .ListCount > 0, "ListCount of a new control is more than 0"
+            Expect.IsTrue .hWndEdit = 0, "hWndEdit of a control with the style FtcStyleDropDownList"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.Style = FtcStyleSimpleCombo
+        Expect.AreEqual 382, Err.Number, "Style = FtcStyleSimpleCombo at run time"
+        On Error GoTo 0
+        Expect.AreEqual 2, CLng(f.FontCombo1.Style), "Style after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.Style = 7
+        Expect.AreEqual 380, Err.Number, "Style = 7"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntegralHeight_AtRunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.IntegralHeight = False
+        Expect.AreEqual 382, Err.Number, "IntegralHeight = False at run time"
+        On Error GoTo 0
+        Expect.IsTrue f.FontCombo1.IntegralHeight, "IntegralHeight after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxDropDownItems_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.MaxDropDownItems = 0
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 0"
+        Err.Clear
+        f.FontCombo1.MaxDropDownItems = 31
+        Expect.AreEqual 380, Err.Number, "MaxDropDownItems = 31"
+        On Error GoTo 0
+        Expect.AreEqual 9, CLng(f.FontCombo1.MaxDropDownItems), "MaxDropDownItems after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxLength_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.MaxLength = -1
+        Expect.AreEqual 380, Err.Number, "MaxLength = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DropDownWidth_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.DropDownWidth = -1
+        Expect.AreEqual 380, Err.Number, "DropDownWidth = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DropDownWidth_Assigned_WidensTheList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.FontCombo1
+            .DropDownWidth = .Width + 2000
+            Expect.IsTrue Abs(.DropDownWidth - (.Width + 2000)) < 30, "DropDownWidth after Width + 2000 is assigned"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelText_DropDownList_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.FontCombo1.SelText
+        Expect.AreEqual 380, Err.Number, "reading SelText of a control with the style FtcStyleDropDownList"
+        Err.Clear
+        f.FontCombo1.SelText = "x"
+        Expect.AreEqual 380, Err.Number, "assigning SelText of a control with the style FtcStyleDropDownList"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetIdealHorizontalExtent_ListWithFonts_IsGreaterThanZero()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.FontCombo1.GetIdealHorizontalExtent > 0, "GetIdealHorizontalExtent of a list of fonts is more than 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_XAndY_AreInTwips()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FontComboSink
+        Set sink.Combo = f.FontCombo1
+        f.ScaleMode = vbPixels
+        Rig.ClearLog
+        ' The pointer moves to the pixel (10, 5) of the combo box.
+        SendMessageW f.FontCombo1.hWnd, WM_MOUSEMOVE, 0, &H5000A
+        Expect.AreEqual "MouseMove " & (10 * Screen.TwipsPerPixelX) & " " & (5 * Screen.TwipsPerPixelY), Rig.Events(), "MouseMove at the pixel (10, 5), on a form whose ScaleMode is vbPixels"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ContextMenu_FromTheKeyboard_GivesMinusOne()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FontComboSink
+        Set sink.Combo = f.FontCombo1
+        Rig.ClearLog
+        SendMessageW f.FontCombo1.hWnd, WM_CONTEXTMENU, f.FontCombo1.hWnd, -1
+        Expect.AreEqual "ContextMenu -1 -1", Rig.Events(), "the events of a request for the shortcut menu from the keyboard"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the list of fonts ----
+
+    [TestCase]
+    Public Sub FontPitch_Fixed_ListsSomeOfTheFonts()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim all As Long, fixed As Long
+        With f.FontCombo1
+            all = .ListCount
+            .FontPitch = FtcFontPitchFixed
+            fixed = .ListCount
+            Expect.IsTrue fixed > 0, "ListCount with FontPitch = FtcFontPitchFixed is more than 0"
+            Expect.IsTrue fixed <= all, "ListCount with FontPitch = FtcFontPitchFixed is not more than with FtcFontPitchAll"
+            .FontPitch = FtcFontPitchAll
+            Expect.AreEqual all, .ListCount, "ListCount after FontPitch is FtcFontPitchAll again"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontPitch_Changed_BuildsTheListAgain()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.FontCombo1
+            .ListIndex = 3
+            .FontPitch = FtcFontPitchVariable
+            Expect.AreEqual -1, .ListIndex, "ListIndex after FontPitch is changed with a font selected"
+            .ListIndex = 3
+            .FontType = FtcFontTypeBitmapTrueType
+            Expect.AreEqual -1, .ListIndex, "ListIndex after FontType is changed with a font selected"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontPitch_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.FontPitch = 5
+        Expect.AreEqual 380, Err.Number, "FontPitch = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontType_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.FontType = 5
+        Expect.AreEqual 380, Err.Number, "FontType = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub List_NoSuchEntry_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String
+        On Error Resume Next
+        Err.Clear
+        s = f.FontCombo1.List(99999)
+        Expect.AreEqual 5, Err.Number, "reading List(99999)"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ItemData_NoSuchEntry_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As LongPtr
+        On Error Resume Next
+        Err.Clear
+        n = f.FontCombo1.ItemData(99999)
+        Expect.AreEqual 381, Err.Number, "reading ItemData(99999)"
+        Err.Clear
+        f.FontCombo1.ItemData(99999) = 1
+        Expect.AreEqual 381, Err.Number, "ItemData(99999) = 1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ItemData_Assigned_IsKept()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.FontCombo1
+            Expect.AreEqual 0, CLng(.ItemData(1)), "ItemData(1) of a new control"
+            .ItemData(1) = 77
+            Expect.AreEqual 77, CLng(.ItemData(1)), "ItemData(1) after 77 is assigned"
+            Expect.AreEqual 0, CLng(.ItemData(0)), "ItemData(0) after ItemData(1) is assigned"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TopIndex_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.TopIndex = -1
+        Expect.AreEqual 380, Err.Number, "TopIndex = -1"
+        Err.Clear
+        f.FontCombo1.TopIndex = 99999
+        Expect.AreEqual 380, Err.Number, "TopIndex = 99999"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the selection and the text ----
+
+    [TestCase]
+    Public Sub ListIndex_Assigned_SetsTextAndRaisesClick()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FontComboSink
+        Set sink.Combo = f.FontCombo1
+        Dim name As String
+        name = f.FontCombo1.List(2)
+        Rig.ClearLog
+        f.FontCombo1.ListIndex = 2
+        Expect.AreEqual name, f.FontCombo1.Text, "Text after ListIndex = 2"
+        Expect.AreEqual 1, CountOf("Click"), "the number of Click events of ListIndex = 2"
+        Expect.AreEqual "Click", LastEvent(), "the last event of ListIndex = 2"
+        Rig.ClearLog
+        f.FontCombo1.ListIndex = 2
+        Expect.AreEqual 0, CountOf("Click"), "the number of Click events of ListIndex = 2 again"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_MinusOne_RemovesTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FontComboSink
+        Set sink.Combo = f.FontCombo1
+        f.FontCombo1.ListIndex = 2
+        Rig.ClearLog
+        f.FontCombo1.ListIndex = -1
+        Expect.AreEqual "", f.FontCombo1.Text, "Text after ListIndex = -1"
+        Expect.AreEqual 1, CountOf("Click"), "the number of Click events of ListIndex = -1"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ListIndex_NoSuchEntry_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.ListIndex = 99999
+        Expect.AreEqual 380, Err.Number, "ListIndex = 99999"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_DropDownList_Assigned_SelectsTheFont()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FontComboSink
+        Set sink.Combo = f.FontCombo1
+        Dim name As String
+        name = f.FontCombo1.List(0)
+        Rig.ClearLog
+        f.FontCombo1.Text = UCase$(name)
+        Expect.AreEqual name, f.FontCombo1.List(f.FontCombo1.ListIndex), "the font that is selected after its name is assigned to Text in capital letters"
+        Expect.AreEqual 1, CountOf("Click"), "the number of Click events of an assignment to Text"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_DropDownList_UnknownName_Raises383()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.Text = "no such font name"
+        Expect.AreEqual 383, Err.Number, "Text = ""no such font name"""
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_WholeNameOrBeginning()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim name As String, r As Long
+        name = f.FontCombo1.List(3)
+        With f.FontCombo1
+            r = .FindItem(name)
+            Expect.IsTrue r >= 0 And r <= 3, "FindItem of the name of the fourth entry is that entry or one before it"
+            Expect.AreEqual name, .List(r), "the name of the entry FindItem found"
+            Expect.AreEqual r, .FindItem(UCase$(name)), "FindItem of the name in capital letters"
+            Expect.IsTrue .FindItem(Left$(name, 2), , True) <= 3, "FindItem of the first two letters of the name, with Partial"
+            Expect.AreEqual -1, .FindItem("no such font"), "FindItem of a name that no entry has"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_StartsAfterIndex_AndWraps()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim name As String, r As Long
+        name = f.FontCombo1.List(2)
+        r = f.FontCombo1.FindItem(name, 2)
+        Expect.IsTrue r >= 0, "FindItem of the name of the third entry, from the index 2, goes round the list"
+        Expect.AreEqual name, f.FontCombo1.List(r), "the name of the entry FindItem found from the index 2"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindItem_IndexOutOfRange_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As Long
+        On Error Resume Next
+        Err.Clear
+        n = f.FontCombo1.FindItem("x", 99999)
+        Expect.AreEqual 381, Err.Number, "FindItem with the index 99999"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_SelectsTheFontThatBeginsWithTheText()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim sink As New FontComboSink
+        Set sink.Combo = f.FontCombo1
+        Dim name As String, r As Long
+        name = f.FontCombo1.List(3)
+        Rig.ClearLog
+        r = f.FontCombo1.SelectItem(Left$(name, 4))
+        Expect.IsTrue r >= 0, "SelectItem of the first four letters of a name finds an entry"
+        Expect.AreEqual r, f.FontCombo1.ListIndex, "ListIndex after SelectItem"
+        Expect.AreEqual 0, StrComp(Left$(f.FontCombo1.Text, 4), Left$(name, 4), vbTextCompare), "the first four letters of Text after SelectItem"
+        Expect.AreEqual 1, CountOf("Click"), "the number of Click events of SelectItem"
+        Set sink.Combo = Nothing
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_NoMatch_ReturnsMinusOne()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.FontCombo1.ListIndex = 3
+        Expect.AreEqual -1, f.FontCombo1.SelectItem("zzzz no such"), "SelectItem of a text that no name begins with"
+        Expect.AreEqual 3, f.FontCombo1.ListIndex, "ListIndex after a SelectItem that found nothing"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_IndexOutOfRange_Raises381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim n As Long
+        On Error Resume Next
+        Err.Clear
+        n = f.FontCombo1.SelectItem("x", 99999)
+        Expect.AreEqual 381, Err.Number, "SelectItem with the index 99999"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- recent fonts ----
+
+    [TestCase]
+    Public Sub RecentMax_OutOfRange_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.RecentMax = 10
+        Expect.AreEqual 380, Err.Number, "RecentMax = 10"
+        Err.Clear
+        f.FontCombo1.RecentMax = -1
+        Expect.AreEqual 380, Err.Number, "RecentMax = -1"
+        On Error GoTo 0
+        Expect.AreEqual 0, CLng(f.FontCombo1.RecentMax), "RecentMax after the refused assignments"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Recent_UserPicksAFont_IsAddedAtTheTop()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 2
+            before = .ListCount
+            a = .List(5)
+            b = .List(6)
+            PickByName f.FontCombo1, a
+            Expect.AreEqual 1, .RecentCount, "RecentCount after one pick"
+            Expect.AreEqual 1, .ListCount - before, "the entries added to the list by one pick"
+            Expect.AreEqual a, .List(0), "List(0) after the pick of a font"
+            Expect.AreEqual a, .Text, "Text after the pick of a font"
+            PickByName f.FontCombo1, b
+            Expect.AreEqual 2, .RecentCount, "RecentCount after two picks"
+            Expect.AreEqual b & " " & a, .List(0) & " " & .List(1), "the recent fonts after two picks, the last pick first"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Recent_PicksBeyondRecentMax_DropTheOldest()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, c As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 2
+            before = .ListCount
+            a = .List(5)
+            b = .List(6)
+            c = .List(7)
+            PickByName f.FontCombo1, a
+            PickByName f.FontCombo1, b
+            PickByName f.FontCombo1, c
+            Expect.AreEqual 2, .RecentCount, "RecentCount after three picks with RecentMax 2"
+            Expect.AreEqual 2, .ListCount - before, "the entries added to the list by three picks with RecentMax 2"
+            Expect.AreEqual c & " " & b, .List(0) & " " & .List(1), "the recent fonts after three picks with RecentMax 2"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Recent_OriginalOfARecentFont_MovesToTheTop()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 2
+            before = .ListCount
+            a = .List(5)
+            b = .List(6)
+            PickByName f.FontCombo1, a
+            PickByName f.FontCombo1, b
+            PickByName f.FontCombo1, a
+            Expect.AreEqual 2, .RecentCount, "RecentCount after a recent font is picked again from the complete list"
+            Expect.AreEqual 2, .ListCount - before, "the entries added to the list after a recent font is picked again"
+            Expect.AreEqual a & " " & b, .List(0) & " " & .List(1), "the recent fonts after a recent font is picked again from the complete list"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Recent_APickedRecentFont_IsNotMoved()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 2
+            before = .ListCount
+            a = .List(5)
+            b = .List(6)
+            PickByName f.FontCombo1, a
+            PickByName f.FontCombo1, b
+            Pick f.FontCombo1, 1
+            Expect.AreEqual 2, .RecentCount, "RecentCount after a recent font is picked"
+            Expect.AreEqual b & " " & a, .List(0) & " " & .List(1), "the recent fonts after the second one is picked"
+            Expect.AreEqual a, .Text, "Text after the second recent font is picked"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Recent_ListIndexAssigned_AddsNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.FontCombo1
+            .RecentMax = 2
+            .ListIndex = 10
+            Expect.AreEqual 0, .RecentCount, "RecentCount after ListIndex = 10"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RecentMax_Lowered_DropsTheOldest()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, c As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 3
+            before = .ListCount
+            a = .List(5)
+            b = .List(6)
+            c = .List(7)
+            PickByName f.FontCombo1, a
+            PickByName f.FontCombo1, b
+            PickByName f.FontCombo1, c
+            .RecentMax = 1
+            Expect.AreEqual 1, .RecentCount, "RecentCount after RecentMax is lowered to 1"
+            Expect.AreEqual 1, .ListCount - before, "the entries added to the list after RecentMax is lowered to 1"
+            Expect.AreEqual c, .List(0), "the recent font after RecentMax is lowered to 1"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveRecent_ReturnsTheNamesMostRecentFirst()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, v As Variant
+        With f.FontCombo1
+            .RecentMax = 3
+            Expect.IsTrue IsEmpty(.SaveRecent), "SaveRecent with no recent font is Empty"
+            a = .List(5)
+            b = .List(6)
+            PickByName f.FontCombo1, a
+            PickByName f.FontCombo1, b
+            v = .SaveRecent
+            Expect.IsTrue IsArray(v), "SaveRecent with recent fonts is an array"
+            Expect.AreEqual 0, LBound(v), "the lower bound of the array of SaveRecent"
+            Expect.AreEqual 1, UBound(v), "the upper bound of the array of SaveRecent with two recent fonts"
+            Expect.AreEqual b & " " & a, v(0) & " " & v(1), "the names of SaveRecent after two picks"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_Names_BecomeTheRecentFonts()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 3
+            before = .ListCount
+            a = .List(10)
+            b = .List(4)
+            .RestoreRecent Array(a, b)
+            Expect.AreEqual 2, .RecentCount, "RecentCount after RestoreRecent of two names"
+            Expect.AreEqual 2, .ListCount - before, "the entries added to the list by RestoreRecent of two names"
+            Expect.AreEqual a & " " & b, .List(0) & " " & .List(1), "the recent fonts after RestoreRecent of two names"
+            .RestoreRecent Array(b)
+            Expect.AreEqual 1, .RecentCount, "RecentCount after RestoreRecent of one name replaces them"
+            Expect.AreEqual b, .List(0), "the recent font after RestoreRecent of one name"
+            Expect.AreEqual 1, .ListCount - before, "the entries added to the list after RestoreRecent of one name"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_UnknownNames_AreSkipped()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 3
+            before = .ListCount
+            a = .List(10)
+            b = .List(4)
+            .RestoreRecent Array(a, "", b, "no such font")
+            Expect.AreEqual 2, .RecentCount, "RecentCount after RestoreRecent of two names, an empty one and an unknown one at the end"
+            Expect.AreEqual 2, .ListCount - before, "the entries added to the list by RestoreRecent of two names, an empty one and an unknown one at the end"
+            Expect.AreEqual a & " " & b, .List(0) & " " & .List(1), "the recent fonts after RestoreRecent skipped the empty and the unknown name"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_UnknownNameBeforeAKnownOne_KeepsTheKnownOnes()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, before As Long
+        With f.FontCombo1
+            .RecentMax = 3
+            before = .ListCount
+            a = .List(10)
+            b = .List(4)
+            .RestoreRecent Array(a, "no such font", b)
+            Expect.AreEqual 2, .RecentCount, "RecentCount after RestoreRecent of two names with an unknown one between them"
+            Expect.AreEqual 2, .ListCount - before, "the entries added to the list by RestoreRecent of two names with an unknown one between them"
+            Expect.AreEqual a & " " & b, .List(0) & " " & .List(1), "the recent fonts after RestoreRecent of two names with an unknown one between them"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_NamesBeyondRecentMax_AreNotTaken()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As String, b As String, c As String
+        With f.FontCombo1
+            .RecentMax = 2
+            a = .List(10)
+            b = .List(4)
+            c = .List(7)
+            .RestoreRecent Array(a, b, c)
+            Expect.AreEqual 2, .RecentCount, "RecentCount after RestoreRecent of three names with RecentMax 2"
+            Expect.AreEqual a & " " & b, .List(0) & " " & .List(1), "the recent fonts after RestoreRecent of three names with RecentMax 2"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_RecentMaxZero_KeepsTheFonts()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim first As String, before As Long
+        With f.FontCombo1
+            before = .ListCount
+            first = .List(0)
+            .RestoreRecent Array(.List(10))
+            Expect.AreEqual before, .ListCount, "ListCount after RestoreRecent of one name with RecentMax 0"
+            Expect.AreEqual first, .List(0), "List(0) after RestoreRecent of one name with RecentMax 0"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_NotAnArray_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.RestoreRecent 5
+        Expect.AreEqual 380, Err.Number, "RestoreRecent 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_TwoDimensionalArray_Raises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim m(1 To 2, 1 To 2) As String
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.RestoreRecent m
+        Expect.AreEqual 5, Err.Number, "RestoreRecent of an array of two dimensions"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RestoreRecent_UnallocatedArray_Raises91()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim e() As String
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.RestoreRecent e
+        Expect.AreEqual 91, Err.Number, "RestoreRecent of an array that is not allocated"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearRecent_RemovesTheRecentFonts()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim before As Long
+        With f.FontCombo1
+            .RecentMax = 3
+            before = .ListCount
+            .RestoreRecent Array(.List(10), .List(4))
+            .ClearRecent
+            Expect.AreEqual 0, .RecentCount, "RecentCount after ClearRecent"
+            Expect.AreEqual before, .ListCount, "ListCount after ClearRecent"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    ' ---- the buddy ----
+
+    [TestCase]
+    Public Sub BuddyControl_Assigned_ListsTheSizesOfTheSelectedFont()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        f.FontCombo1.BuddyControl = g.FontCombo1
+        f.FontCombo1.ListIndex = 4
+        Expect.AreEqual 16, g.FontCombo1.ListCount, "the sizes of the buddy after a TrueType font is selected"
+        Expect.AreEqual "8 72", g.FontCombo1.List(0) & " " & g.FontCombo1.List(15), "the first and the last size of the buddy"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_NoSelectedFont_HasNoSizes()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        f.FontCombo1.BuddyControl = g.FontCombo1
+        Expect.AreEqual 0, g.FontCombo1.ListCount, "the sizes of the buddy before a font is selected"
+        f.FontCombo1.ListIndex = 4
+        f.FontCombo1.ListIndex = -1
+        Expect.AreEqual 0, g.FontCombo1.ListCount, "the sizes of the buddy after the selection is removed"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_SelectedSize_IsKept()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        f.FontCombo1.BuddyControl = g.FontCombo1
+        f.FontCombo1.ListIndex = 4
+        g.FontCombo1.ListIndex = 3
+        Dim size As String
+        size = g.FontCombo1.Text
+        f.FontCombo1.ListIndex = 7
+        Expect.AreEqual size, g.FontCombo1.Text, "the size selected in the buddy after another font is selected"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectItem_UpdatesTheBuddy()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        f.FontCombo1.BuddyControl = g.FontCombo1
+        f.FontCombo1.SelectItem Left$(f.FontCombo1.List(3), 3)
+        Expect.AreEqual 16, g.FontCombo1.ListCount, "the sizes of the buddy after a font is selected with SelectItem"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_Object_IsReturned()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        Expect.AreEqual "Nothing", TypeName(f.FontCombo1.BuddyControl), "BuddyControl of a new control"
+        f.FontCombo1.BuddyControl = g.FontCombo1
+        Expect.AreEqual "FontCombo", TypeName(f.FontCombo1.BuddyControl), "TypeName of BuddyControl after a FontCombo is assigned"
+        Expect.IsTrue f.FontCombo1.BuddyControl.hWnd = g.FontCombo1.hWnd, "BuddyControl is the control that was assigned"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_Nothing_RemovesTheBuddy()
+        Expect.Begin
+        Dim f As HostForm, g As HostForm
+        Set f = Rig.NewForm()
+        Set g = Rig.NewForm()
+        f.FontCombo1.BuddyControl = g.FontCombo1
+        f.FontCombo1.ListIndex = 4
+        f.FontCombo1.BuddyControl = Nothing
+        Expect.AreEqual "Nothing", TypeName(f.FontCombo1.BuddyControl), "BuddyControl after Nothing is assigned"
+        Expect.AreEqual f.FontCombo1.ListCount, g.FontCombo1.ListCount, "the list of the former buddy after the buddy is removed, which lists the fonts again"
+        Unload g
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_NotAFontCombo_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.BuddyControl = f.ImageCombo1
+        Expect.AreEqual 35610, Err.Number, "BuddyControl = an ImageCombo"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuddyControl_AnotherType_Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.FontCombo1.BuddyControl = 5
+        Expect.AreEqual 13, Err.Number, "BuddyControl = 5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
+
+' The events of a FontCombo, written to Rig.Log.
+Class FontComboSink
+
+    Public WithEvents Combo As VBCCR18.FontCombo
+
+    Private Sub Combo_Click() Handles Combo.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Combo_Change() Handles Combo.Change
+        Rig.Ev "Change"
+    End Sub
+
+    Private Sub Combo_Scroll() Handles Combo.Scroll
+        Rig.Ev "Scroll"
+    End Sub
+
+    Private Sub Combo_ContextMenu(ByRef Handled As Boolean, ByVal X As Single, ByVal Y As Single) Handles Combo.ContextMenu
+        Rig.Ev "ContextMenu " & X & " " & Y
+    End Sub
+
+    Private Sub Combo_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Combo.MouseMove
+        Rig.Ev "MouseMove " & X & " " & Y
+    End Sub
+
+End Class

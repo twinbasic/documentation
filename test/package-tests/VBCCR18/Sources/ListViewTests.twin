@@ -1,0 +1,362 @@
+' ListViewTests: the views, the image lists, the work areas, virtual mode and the appearance of the
+' ListView. The items, the selection, the columns, the sorting and the groups have fixtures of
+' their own (ListViewItemsTests, ListViewSelectionTests, ListViewColumnsTests,
+' ListViewSortingTests, ListViewGroupsTests).
+[TestFixture]
+Module ListViewTests
+
+    Private Type LvtPictDesc
+        Size As Long
+        Kind As Long
+        Handle As LongPtr
+        Palette As LongPtr
+    End Type
+    Private Type LvtGuid
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal W As Long, ByVal H As Long) As LongPtr
+    Private Declare PtrSafe Function OleCreatePictureIndirect Lib "oleaut32" (ByRef Desc As LvtPictDesc, ByRef IID As LvtGuid, ByVal Own As Long, ByRef Pic As IPictureDisp) As Long
+
+    ' A bitmap of 16 by 16 pixels.
+    Private Function Bitmap() As StdPicture
+        Dim screenDC As LongPtr = GetDC(0)
+        Dim desc As LvtPictDesc, iid As LvtGuid, pic As IPictureDisp
+        desc.Size = LenB(desc)
+        desc.Kind = 1
+        desc.Handle = CreateCompatibleBitmap(screenDC, 16, 16)
+        ReleaseDC 0, screenDC
+        iid.Data1 = &H7BF80981
+        iid.Data2 = &HBF32
+        iid.Data3 = &H101A
+        iid.Data4(0) = &H8B
+        iid.Data4(1) = &HBB
+        iid.Data4(3) = &HAA
+        iid.Data4(5) = &H30
+        iid.Data4(6) = &HC
+        iid.Data4(7) = &HAB
+        OleCreatePictureIndirect desc, iid, 1, pic
+        Set Bitmap = pic
+    End Function
+
+    [TestCase]
+    Public Sub Redraw_False_KeepsTheItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListView1
+            .Redraw = False
+            .ListItems.Add , , "a"
+            .ListItems.Add , , "b"
+            Expect.AreEqual 2, .ListItems.Count, "ListItems.Count after two Add with Redraw False"
+            Expect.AreEqual "b", .ListItems(2).Text, "the second item's Text with Redraw False"
+            .Redraw = True
+            Expect.AreEqual 2, .ListItems.Count, "ListItems.Count after Redraw = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Icons_ImageList_IsTheImageList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ImageList1.ListImages.Add , , Bitmap()
+        Set f.ListView1.Icons = f.ImageList1
+        Expect.AreEqual "ImageList", TypeName(f.ListView1.Icons), "TypeName(Icons) after Set Icons = ImageList1"
+        f.ListView1.Icons = "no such list"
+        Expect.AreEqual "Nothing", TypeName(f.ListView1.Icons), "TypeName(Icons) after Icons = a name no image list has"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Icons_OtherObject_Raises35610()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        Set f.ListView1.Icons = f.ListView1
+        Expect.AreEqual 35610, Err.Number, "Set Icons = a ListView"
+        Err.Clear
+        f.ListView1.Icons = 1.5
+        Expect.AreEqual 13, Err.Number, "Icons = 1.5"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Arrange_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.Arrange = 9
+        Expect.AreEqual 380, Err.Number, "Arrange = 9"
+        On Error GoTo 0
+        Expect.AreEqual CLng(LvwArrangeNone), CLng(f.ListView1.Arrange), "Arrange after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub View_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.View = 9
+        Expect.AreEqual 380, Err.Number, "View = 9"
+        On Error GoTo 0
+        Expect.AreEqual CLng(LvwViewIcon), CLng(f.ListView1.View), "View after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColumnWidth_NotInListView_Raises394()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.ListView1.View = LvwViewReport
+        Dim w As Single
+        On Error Resume Next
+        Err.Clear
+        w = f.ListView1.ColumnWidth
+        Expect.AreEqual 394, Err.Number, "reading ColumnWidth in the report view"
+        Err.Clear
+        f.ListView1.ColumnWidth = 900
+        Expect.AreEqual 383, Err.Number, "ColumnWidth = 900 in the report view"
+        Err.Clear
+        f.ListView1.View = LvwViewList
+        f.ListView1.ColumnWidth = 0
+        Expect.AreEqual 380, Err.Number, "ColumnWidth = 0 in the list view"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TileViewLines_21_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.TileViewLines = 21
+        Expect.AreEqual 380, Err.Number, "TileViewLines = 21"
+        On Error GoTo 0
+        f.ListView1.TileViewLines = 20
+        Expect.AreEqual 20, f.ListView1.TileViewLines, "TileViewLines after TileViewLines = 20"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IMEMode_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.IMEMode = 11
+        Expect.AreEqual 380, Err.Number, "IMEMode = 11"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LabelEdit_NotAMember_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.LabelEdit = 3
+        Expect.AreEqual 380, Err.Number, "LabelEdit = 3"
+        On Error GoTo 0
+        Expect.AreEqual CLng(LvwLabelEditAutomatic), CLng(f.ListView1.LabelEdit), "LabelEdit after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VirtualMode_RunTime_Raises382()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.VirtualMode = True
+        Expect.AreEqual 382, Err.Number, "VirtualMode = True at run time"
+        On Error GoTo 0
+        Expect.IsFalse f.ListView1.VirtualMode, "VirtualMode after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VirtualListItems_NotVirtual_Raises91()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim v As LvwVirtualListItems
+        On Error Resume Next
+        Err.Clear
+        Set v = f.ListView1.VirtualListItems
+        Expect.AreEqual 91, Err.Number, "VirtualListItems while VirtualMode is False"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VirtualDisabledInfos_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.VirtualDisabledInfos = -1
+        Expect.AreEqual 380, Err.Number, "VirtualDisabledInfos = -1"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VirtualItemCount_Negative_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.VirtualItemCount = -1
+        Expect.AreEqual 380, Err.Number, "VirtualItemCount = -1"
+        Err.Clear
+        f.ListView1.VirtualItemCount = 100000001
+        Expect.AreEqual 380, Err.Number, "VirtualItemCount = 100000001"
+        On Error GoTo 0
+        f.ListView1.VirtualItemCount = 50
+        Expect.AreEqual 50, f.ListView1.VirtualItemCount, "VirtualItemCount after VirtualItemCount = 50, not in virtual mode"
+        Expect.AreEqual 0, f.ListView1.ListItems.Count, "ListItems.Count after VirtualItemCount = 50, not in virtual mode"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertMark_After_IsKept()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim After As Boolean
+        With f.ListView1
+            .View = LvwViewReport
+            .ColumnHeaders.Add , , "Name"
+            .ListItems.Add , , "alpha"
+            .ListItems.Add , , "beta"
+            Set .InsertMark(True) = .ListItems(1)
+            Expect.AreEqual "alpha", .InsertMark(After).Text, "InsertMark after Set InsertMark(True) = item 1"
+            Expect.IsTrue After, "After of InsertMark after Set InsertMark(True) = item 1"
+            Set .InsertMark = Nothing
+            Expect.IsTrue .InsertMark Is Nothing, "InsertMark after Set InsertMark = Nothing"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Picture_Assigned_TurnsDoubleBufferOff()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListView1
+            Expect.IsTrue .DoubleBuffer, "DoubleBuffer of a new control"
+            Set .Picture = Bitmap()
+            Expect.IsFalse .DoubleBuffer, "DoubleBuffer after Set Picture = a bitmap"
+            .PictureWatermark = True
+            Expect.IsTrue .DoubleBuffer, "DoubleBuffer after PictureWatermark = True"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BackColor_None_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.BackColor = -1
+        Expect.AreEqual 380, Err.Number, "BackColor = -1"
+        On Error GoTo 0
+        Expect.AreEqual CLng(vbWindowBackground), CLng(f.ListView1.BackColor), "BackColor after the refused assignment"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WorkAreas_Remove_RenumbersTheLaterAreas()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.ListView1
+            .View = LvwViewIcon
+            .WorkAreas.Add 0, 0, 1500, 1500
+            .WorkAreas.Add 1500, 0, 1500, 1500
+            Expect.AreEqual 2, .WorkAreas.Count, "WorkAreas.Count after two Add"
+            .WorkAreas.Remove 1
+            Expect.AreEqual 1, .WorkAreas.Count, "WorkAreas.Count after Remove 1"
+            Expect.IsTrue .WorkAreas(1).Left > 1000, "WorkAreas(1).Left after Remove 1 is the second area's"
+            .WorkAreas.Clear
+            Expect.AreEqual 0, .WorkAreas.Count, "WorkAreas.Count after Clear"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WorkAreas_Item_OutOfRange_Raises35600()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim a As LvwWorkArea
+        On Error Resume Next
+        Err.Clear
+        Set a = f.ListView1.WorkAreas(1)
+        Expect.AreEqual 35600, Err.Number, "WorkAreas(1) with no work area"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WorkAreas_Add_ZeroWidth_Raises380()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.ListView1.WorkAreas.Add 0, 0, 0, 100
+        Expect.AreEqual 380, Err.Number, "WorkAreas.Add with a width of 0"
+        Err.Clear
+        f.ListView1.WorkAreas.Add 0, 0, 100, 100, 5
+        Expect.AreEqual 35600, Err.Number, "WorkAreas.Add at Index 5 with no work area"
+        On Error GoTo 0
+        Expect.AreEqual 0, f.ListView1.WorkAreas.Count, "WorkAreas.Count after the refused calls"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

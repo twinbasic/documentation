@@ -12364,6 +12364,26 @@ const vbccrShots = [
   ...["TextBoxW", "LabelW", "WindowedLabel", "LinkLabel", "FrameW"].map((c) => vbccrClip(c, "text")),
   ...["ListBoxW", "VListBox", "ComboBoxW", "VirtualCombo"].map((c) => vbccrClip(c, "lists")),
   vbccrClip("ProgressBar", "bars"),
+  // the settings pictures of the shared enumerations (Common.md): a whole form each
+  ...[
+    ["CCAppearanceConstants", "appearance"],
+    ["CCBorderStyleConstants", "borderstyle"],
+    ["CCBackStyleConstants", "backstyle"],
+    ["CCLeftRightAlignmentConstants", "alignment"],
+    ["CCVerticalAlignmentConstants", "valignment"],
+    ["CCMousePointerConstants", "mousepointer"],
+  ].map(([e, scene]) => sceneShot(`Reference/Contributed/VBCCR18/Images/${e}.png`, "vbccr", scene, NO_POPUPS)),
+  // the TreeView, whose pages are a folder of their own with its pictures beside them, as
+  // VBFlexGrid's are: the control from the sheet views, and its settings a whole form each
+  clipShot("Reference/Contributed/VBCCR18/TreeView/Images/TreeView.png", "vbccr", "views", "TreeView"),
+  ...[
+    ["TvwLineStyleConstants", "tvlinestyle"],
+    ["TvwVisualThemeConstants", "tvtheme"],
+    ["Checkboxes", "tvcheckboxes"],
+    ["MultiSelect", "tvmultiselect"],
+  ].map(([name, scene]) =>
+    sceneShot(`Reference/Contributed/VBCCR18/TreeView/Images/${name}.png`, "vbccr", scene, NO_POPUPS),
+  ),
 ];
 
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
