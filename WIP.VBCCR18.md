@@ -89,7 +89,9 @@ without a page in bold, with no link; link it when its page exists.
   that raises 382 at run time (ImageCombo's Style) needs a bag. The bag: `EAEAEAEA`, two Longs,
   then per property its VARTYPE (Integer), the name's length in characters (Integer), a hash of
   the name (Long; `foo` is `&H980DE06E`), a Long not yet understood, the name in UTF-16, and the
-  value. A value changed in place in a bag the IDE wrote is read (Foo 5 to 7).
+  value. A value changed in place in a bag the IDE wrote is read (Foo 5 to 7). **The bag is
+  `EAEAEAEA` followed by `PropertyBag.Contents`**, byte for byte, for a `New PropertyBag` given the
+  same `WriteProperty` calls in the same order: a fixture's bag is made that way, by a run.
 - Found by the pictures, and now on the pages:
   - **A built program needs the visual-styles manifest** (the landing page, *Adding a control
     to a form*). Without it `ComCtlsSupportLevel` is 0, LinkLabel and CommandLink make no window
