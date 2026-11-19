@@ -104,6 +104,9 @@
 //   xcalendar   test/shots/xcalendar, XCalendarShots, with the TWINSERV package xCalendar
 //               embedded as vbflexgrid's is: the xCalendar section's pictures of its control,
 //               taken as the programs setup's are
+//   vbccr       test/shots/vbccr, VBCCRShots, with the TWINSERV package VBCCR18 embedded: the
+//               VBCCR18 section's picture of each control, cut out of a form of several
+//               controls (a sheet), without the form's frame
 //   dialogs     test/shots/dialogs, DialogShots, with the TWINSERV packages VBComDlg and
 //               AutoCompleteLib embedded: the dialogs of a CommonDialog, taken as the vb setup's
 //               MsgBox is, and an AutoComplete's suggestion list laid over its form
@@ -2011,6 +2014,10 @@ const SETUPS = {
   xcalendar: {
     start: (run) => startWithPackages(run, XCALENDAR_SHOTS),
     prepare: (run) => preparePrograms(run, "XCalendarShots"),
+  },
+  vbccr: {
+    start: (run) => startWithPackages(run, VBCCR_SHOTS),
+    prepare: (run) => preparePrograms(run, "VBCCRShots"),
   },
   dialogs: {
     start: (run) => startWithPackages(run, DIALOG_SHOTS),
@@ -11704,7 +11711,7 @@ async function windowPicture(desktop, hwnd, name, file, { active = false } = {})
       }
     }
   }
-  return { picture: crop(picture, info.frame), dpi: info.dpi, frame: info.frame };
+  return { picture: crop(picture, info.frame), dpi: info.dpi, frame: info.frame, client: info.client };
 }
 
 // A window with the menu its menu bar opens: the window's picture, and the menu's window (a
@@ -11984,6 +11991,69 @@ const sceneRuns = (out, setup, scenes, popups, perRow = scenes.length) => ({
     const shown = [];
     for (const scene of scenes) shown.push(await scenePicture(ctx, setup, scene, popups));
     return inRows(shown, perRow);
+  },
+});
+
+// A sheet: a scene whose form holds several controls, taken once for a setup's run and cut into
+// a picture for each. The program writes the file "clips" before "shown": a line for each
+// picture, its name and its left, top, width and height in pixels of the form's client area at
+// 96 DPI. A setup's shots share its `ctx`, so the sheet's capture is kept there by scene.
+const SHEETS = new WeakMap();
+// The ground of the form kept round a clip, in pixels at 96 DPI.
+const CLIP_MARGIN = 6;
+
+function sheetOf(ctx, scene) {
+  if (!SHEETS.has(ctx)) SHEETS.set(ctx, new Map());
+  const taken = SHEETS.get(ctx);
+  if (!taken.has(scene)) {
+    const sheet = withProgram(ctx, scene, async (dir, w) => {
+      const error = path.join(dir, "error");
+      if (existsSync(error)) throw new Error(`sheet ${scene}: ${readFileSync(error, "utf8").trim()}`);
+      const clips = new Map(
+        readFileSync(path.join(dir, "clips"), "utf8")
+          .split(/\r?\n/)
+          .map((line) => line.trim().split(/\s+/))
+          .filter((parts) => parts.length === 5)
+          .map(([name, ...box]) => [name, box.map(Number)]),
+      );
+      const p = await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "form.png"), { active: true });
+      return { p, clips };
+    });
+    // a sheet that failed is taken again by the next shot that asks for it
+    sheet.catch(() => taken.delete(scene));
+    taken.set(scene, sheet);
+  }
+  return taken.get(scene);
+}
+
+// The part `name` of the sheet `scene`, with CLIP_MARGIN of the form's ground round it and no
+// more than the client area holds: a control's picture without its form's frame.
+const clipShot = (out, setup, scene, name) => ({
+  out,
+  setup,
+  once: true,
+  window: true,
+  async take(ctx) {
+    const { p, clips } = await sheetOf(ctx, scene);
+    const box = clips.get(name);
+    if (!box) throw new Error(`sheet ${scene} has no clip named ${name}: it has ${[...clips.keys()].join(", ")}`);
+    const k = p.dpi / 96;
+    const [x, y, w, h] = box;
+    // the client area within the picture, which is the capture cut to its visible frame
+    const [cl, ct, cr, cb] = [
+      p.client[0] - p.frame[0],
+      p.client[1] - p.frame[1],
+      p.client[2] - p.frame[0],
+      p.client[3] - p.frame[1],
+    ];
+    const rect = [
+      Math.max(cl, cl + Math.floor((x - CLIP_MARGIN) * k)),
+      Math.max(ct, ct + Math.floor((y - CLIP_MARGIN) * k)),
+      Math.min(cr, cl + Math.ceil((x + w + CLIP_MARGIN) * k)),
+      Math.min(cb, ct + Math.ceil((y + h + CLIP_MARGIN) * k)),
+    ];
+    if (rect[2] <= rect[0] || rect[3] <= rect[1]) throw new Error(`the clip ${name} of ${scene} is outside its form`);
+    return { png: encodePng(crop(p.picture, rect)), scale: k, window: true };
   },
 });
 
@@ -12274,6 +12344,22 @@ const xCalendarShots = [
   xCalendarShot("Enabled", "enabled"),
   xCalendarShot("GridCellEffect", "effects"),
   xCalendarShot("Sample", "sample"),
+];
+
+// ---- vbccr: test/shots/vbccr, VBCCRShots, the VBCCR18 section's picture of each control, with
+// the TWINSERV package VBCCR18 embedded as vbflexgrid embeds VBFLXGRD18. A scene is a sheet, a
+// form of several controls, and each picture is one control cut out of it (clipShot), without
+// the form's frame.
+
+const VBCCR_SHOTS = path.join(REPO_ROOT, "test", "shots", "vbccr");
+const vbccrClip = (control, sheet) =>
+  clipShot(`Reference/Contributed/VBCCR18/Images/${control}.png`, "vbccr", sheet, control);
+const vbccrShots = [
+  ...["CheckBoxW", "OptionButtonW", "CommandButtonW", "CommandLink"].map((c) => vbccrClip(c, "buttons")),
+  // LabelW is on the sheet and has no picture yet: it draws nothing there (WIP.VBCCR18.md)
+  ...["TextBoxW", "WindowedLabel", "LinkLabel", "FrameW"].map((c) => vbccrClip(c, "text")),
+  ...["ListBoxW", "VListBox", "ComboBoxW", "VirtualCombo"].map((c) => vbccrClip(c, "lists")),
+  vbccrClip("ProgressBar", "bars"),
 ];
 
 // ---- dialogs: test/shots/dialogs, DialogShots, the VBComDlg and AutoCompleteLib sections'
@@ -15951,6 +16037,7 @@ const SHOTS = [
   ...cefShots,
   ...waynesShots,
   ...xCalendarShots,
+  ...vbccrShots,
   ...comDlgShots,
   ...tbIdeShots,
   ...codeLensShots,
@@ -16063,6 +16150,7 @@ const JOB_SECONDS = {
   cef: 40,
   waynes: 90,
   xcalendar: 40,
+  vbccr: 40,
   dialogs: 60,
   tbide: 40,
   "tbide-sample10": 30,

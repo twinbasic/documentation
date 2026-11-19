@@ -1,0 +1,276 @@
+Module MainModule
+
+    ' The program behind the VBCCR18 section's pictures of its controls (scripts/shoot_docs.mjs,
+    ' setup vbccr). Its command line names the sheet: a form with several controls on it, each
+    ' as a program would use it. The tool takes the form once and cuts each control's picture out
+    ' of it, by the rectangles the program writes to the file "clips": a line for each picture,
+    ' its name and its left, top, width and height in pixels of the form's client area at 96 DPI.
+    ' TB_SHOT_SIGNALS, when it is set, names the folder of that file, through which the tool and
+    ' the program also take turns: the program writes "shown" once its form is drawn and in the
+    ' state the pictures show, and ends when "end" appears or the form is closed. The texts are
+    ' the fixture's own: nothing is read from the machine.
+    '
+    ' A sheet's form (frm<Sheet>, written by a generator) holds its controls, named as the
+    ' designer names them. Every sheet lays its form out in pixels at 96 DPI (FitClient), with
+    ' at least MARGIN pixels of the form's ground round each control, which the tool keeps
+    ' round a picture. No control takes the focus: a focused one draws a caret or a focus
+    ' rectangle.
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function SetFocusAPI Lib "user32" Alias "SetFocus" (ByVal hWnd As LongPtr) As LongPtr
+    Private Const WM_NCACTIVATE As Long = &H86
+    Private Const WM_CHANGEUISTATE As Long = &H127
+    ' UIS_SET with UISF_HIDEFOCUS and UISF_HIDEACCEL: a mouse user's state.
+    Private Const UI_MOUSE As Long = &H30001
+
+    ' The ground between two controls, and round the outermost.
+    Private Const MARGIN As Single = 16
+
+    ' The lines of "clips".
+    Private Clips As String
+    ' The progress bars' timers that StillBars stopped, each Array(hWnd, id).
+    Private BarTimers As New Collection
+    Private Doing As String
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        Dim f As Form
+        Select Case scene
+            Case "text": Set f = frmText
+            Case "lists": Set f = frmLists
+            Case "bars": Set f = frmBars
+            Case Else: Set f = frmButtons
+        End Select
+        Load f
+        On Error GoTo Failed
+        Doing = "set up"
+        Select Case scene
+            Case "buttons": Buttons f
+            Case "text": Texts f
+            Case "lists": Lists f
+            Case "bars": Bars f
+            Case Else: Err.Raise 5, , "no sheet named " & scene
+        End Select
+        f.Show
+        Activate f
+        ' the state of a window a mouse user works in: no focus rectangle, no underlined access keys
+        SendMessageW f.hWnd, WM_CHANGEUISTATE, UI_MOUSE, 0
+        SetFocusAPI f.hWnd
+        f.Refresh
+        DoEvents
+        Doing = "after show"
+        If scene = "bars" Then StillBars f
+        f.Refresh
+        DoEvents
+        Sleep 200
+        DoEvents
+    Shown:
+        On Error GoTo 0
+        Signal "clips", Clips
+        Signal "shown"
+        If WaitFor("end", f) Then Unload f
+        Exit Sub
+    Failed:
+        ' The tool fails the pictures with this text, rather than wait for a form that never shows.
+        Signal "error", "error " & Err.Number & " in " & scene & " (" & Doing & "): " & Err.Description
+        f.Show
+        Resume Shown
+    End Sub
+
+    ' ---------------------------------------------------------------- the sheets
+
+    ' A check box, two option buttons, a command button and a command link.
+    Private Sub Buttons(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 300, 400
+        Dim y As Single = MARGIN
+        With Place(f, "CheckBoxW1", MARGIN, y, 150, 20)
+            .Caption = "Remember me"
+            .Value = vbChecked
+        End With
+        y += 20 + MARGIN
+        With Place(f, "OptionButtonW1", MARGIN, y, 150, 20, "")
+            .Caption = "Portrait"
+            .Value = True
+        End With
+        Place(f, "OptionButtonW2", MARGIN, y + 24, 150, 20, "").Caption = "Landscape"
+        Clip "OptionButtonW", MARGIN, y, 150, 44
+        y += 44 + MARGIN
+        Place(f, "CommandButtonW1", MARGIN, y, 96, 28).Caption = "Save"
+        y += 28 + MARGIN
+        ' the height of a caption and a hint of two lines: GetIdealHeight gives that of a hint
+        ' on one line, whatever the control's width
+        With Place(f, "CommandLink1", MARGIN, y, 300, 78)
+            .Caption = "Install the update now"
+            .Hint = "The program closes, installs the update and starts again."
+        End With
+        FitClient f, 2 * MARGIN + 300, y + 78 + MARGIN
+    End Sub
+
+    ' A text box, the two labels, a link label and a frame.
+    ' The form gets its size once, before anything is placed: LabelW is a windowless control,
+    ' and one placed before the form's scale changes is drawn about a pixel high (BETA 1042).
+    Private Sub Texts(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 280, 6 * MARGIN + 24 + 18 + 18 + 18 + 80
+        Dim y As Single = MARGIN
+        Place(f, "TextBoxW1", MARGIN, y, 200, 24).Text = "Ada Lovelace"
+        y += 24 + MARGIN
+        Place(f, "LabelW1", MARGIN, y, 200, 18).Caption = "Name of the author:"
+        y += 18 + MARGIN
+        Place(f, "WindowedLabel1", MARGIN, y, 200, 18).Caption = "Ready to print"
+        y += 18 + MARGIN
+        Place(f, "LinkLabel1", MARGIN, y, 280, 18).Caption = "Read the <A>documentation</A> or <A>ask a question</A>."
+        y += 18 + MARGIN
+        Place(f, "FrameW1", MARGIN, y, 200, 80).Caption = "Paper"
+    End Sub
+
+    ' A list box, a virtual list box, a combo box and a virtual combo box.
+    Private Sub Lists(ByVal f As Form)
+        Const W As Single = 160
+        FitClient f, 3 * MARGIN + 2 * W, 400
+        Dim cities As Variant = Array("Oslo", "Lima", "Kyoto", "Nairobi", "Quito", "Perth")
+        Dim i As Long
+        Dim lb As Object = Place(f, "ListBoxW1", MARGIN, MARGIN, W, 100, "")
+        For i = 0 To UBound(cities)
+            lb.AddItem cities(i)
+        Next
+        lb.ListIndex = 1
+        Clip "ListBoxW", MARGIN, MARGIN, W, lb.Height
+        Dim vl As Object = Place(f, "VListBox1", 2 * MARGIN + W, MARGIN, W, 100, "")
+        vl.ListCount = 100000
+        vl.TopIndex = 50000
+        vl.ListIndex = 50002
+        Clip "VListBox", 2 * MARGIN + W, MARGIN, W, vl.Height
+        Dim y As Single = MARGIN + IIf(lb.Height > vl.Height, lb.Height, vl.Height) + MARGIN
+        Dim cb As Object = Place(f, "ComboBoxW1", MARGIN, y, W, 24, "")
+        For i = 0 To UBound(cities)
+            cb.AddItem cities(i)
+        Next
+        cb.ListIndex = 2
+        Clip "ComboBoxW", MARGIN, y, W, cb.Height
+        Dim vc As Object = Place(f, "VirtualCombo1", 2 * MARGIN + W, y, W, 24, "")
+        vc.ListCount = 100000
+        vc.ListIndex = 4
+        Clip "VirtualCombo", 2 * MARGIN + W, y, W, vc.Height
+        y += IIf(cb.Height > vc.Height, cb.Height, vc.Height) + MARGIN
+        FitClient f, 3 * MARGIN + 2 * W, y
+    End Sub
+
+    ' A progress bar.
+    Private Sub Bars(ByVal f As Form)
+        FitClient f, 2 * MARGIN + 240, 2 * MARGIN + 20
+        Place(f, "ProgressBar1", MARGIN, MARGIN, 240, 20).Value = 60
+    End Sub
+
+    ' The bars still: a progress bar drawn with visual styles animates its bar (its growth to a
+    ' new value, and a light that runs along a bar in the normal state) with timers of its own
+    ' window, and a picture needs a still frame. Once the bars have grown to their values, and
+    ' before the light first runs, every timer is stopped (test/shots/commonctls does the same).
+    Private Sub StillBars(ByVal f As Form)
+        Dim t As Single = Timer
+        Do While Timer - t < 0.6
+            DoEvents
+            Sleep 20
+        Loop
+        Dim c As Object
+        For Each c In f.Controls
+            If TypeName(c) = "ProgressBar" Then
+                Dim id As Long
+                For id = 0 To 1000
+                    If KillTimer(c.hWnd, id) Then BarTimers.Add Array(c.hWnd, id)
+                Next
+            End If
+        Next
+    End Sub
+
+    ' The bars' timers stopped again while the form waits.
+    Private Sub KeepStill()
+        Dim t As Variant
+        For Each t In BarTimers
+            KillTimer t(0), t(1)
+        Next
+    End Sub
+
+    ' ---------------------------------------------------------------- helpers
+
+    ' The control `Name` of the form, placed and shown, and its picture's rectangle written
+    ' under `ClipName`: the control's class when left out, and none when "".
+    Private Function Place(ByVal f As Form, ByVal Name As String, ByVal x As Single, ByVal y As Single, _
+            ByVal w As Single, ByVal h As Single, Optional ByVal ClipName As String = "*") As Object
+        Doing = Name
+        Dim c As Object = f.Controls(Name)
+        c.Move x, y, w, h
+        c.TabStop = False
+        c.Visible = True
+        If ClipName = "*" Then ClipName = TypeName(c)
+        If Len(ClipName) Then Clip ClipName, x, y, w, h
+        Return c
+    End Function
+
+    Private Sub Clip(ByVal Name As String, ByVal x As Single, ByVal y As Single, ByVal w As Single, ByVal h As Single)
+        Clips = Clips & Name & " " & Str$(x) & " " & Str$(y) & " " & Str$(w) & " " & Str$(h) & vbLf
+    End Sub
+
+    ' The form's client area made Width by Height pixels at 96 DPI, and its scale those pixels.
+    Private Sub FitClient(ByVal f As Form, ByVal Width As Single, ByVal Height As Single)
+        f.ScaleMode = vbTwips
+        f.Width = f.Width + (Width * 15 - f.ScaleWidth)
+        f.Height = f.Height + (Height * 15 - f.ScaleHeight)
+        f.Scale (0, 0)-(Width, Height)
+    End Sub
+
+    ' Makes the form the active window, as it is when a person starts the program. On the
+    ' tool's private desktop, which has no input, the foreground is not dependable, so while
+    ' the form waits it draws its frame as the active window's whenever it is not the
+    ' foreground window.
+    Private Sub Activate(ByVal f As Form)
+        SetForegroundWindow f.hWnd
+        DoEvents
+        KeepActive f
+    End Sub
+
+    Private Sub KeepActive(ByVal f As Form)
+        If f.Visible And GetForegroundWindow() <> f.hWnd Then SendMessageW f.hWnd, WM_NCACTIVATE, 1, 0
+    End Sub
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Private Sub Signal(ByVal Name As String, Optional ByVal Text As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        If Len(Text) Then Print #n, Text
+        Close #n
+    End Sub
+
+    ' Waits until the signal is there (True), or until the form is closed (False).
+    Private Function WaitFor(ByVal Name As String, ByVal f As Form) As Boolean
+        Do
+            If Len(Signals()) Then
+                If Len(Dir$(Signals() & "\" & Name)) Then Return True
+            End If
+            If Not IsLoaded(f) Then Return False
+            KeepActive f
+            KeepStill
+            DoEvents
+            Sleep 50
+        Loop
+    End Function
+
+    Private Function IsLoaded(ByVal f As Form) As Boolean
+        Dim g As Object
+        For Each g In Forms
+            If g Is f Then Return True
+        Next
+        Return False
+    End Function
+
+End Module
