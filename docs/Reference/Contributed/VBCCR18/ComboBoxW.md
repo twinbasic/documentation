@@ -15,6 +15,8 @@ symbols:
 
 A **ComboBoxW** is a text box joined to a list of text items: the user types a text or picks an item from the list, which drops down under the text box or stays open below it.
 
+![A drop-down combo box that shows Kyoto](Images/ComboBoxW.png){:width="172" height="35"}
+
 ```tb check_build check_run arch=win32,win64
 ComboBoxW1.AddItem "Oslo"
 ComboBoxW1.AddItem "Lima"

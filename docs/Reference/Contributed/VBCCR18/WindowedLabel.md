@@ -13,6 +13,8 @@ symbols:
 
 A **WindowedLabel** is a text that the program shows on a form and the user cannot edit, in a window of its own. It is the [**LabelW**](LabelW) control with a window.
 
+![The text Ready to print on the ground of its form](Images/WindowedLabel.png){:width="212" height="30"}
+
 ```tb check_build check_run arch=win32,win64
 WindowedLabel1.AutoSize = False
 WindowedLabel1.Width = 600

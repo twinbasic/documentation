@@ -140,6 +140,53 @@ Module LabelWTests
         Expect.Done
     End Sub
 
+    ' A label in a back color of its own, on a form that is shown: it is drawn where the designer
+    ' put it, and must be drawn at its new place once it is moved. The form is made large enough
+    ' for every control, and the label is moved under all of them.
+    [TestCase]
+    Public Sub Moved_IsDrawnAtItsNewPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Width = 800 * 15
+        f.Height = 600 * 15
+        Dim c As Object
+        Set c = f.Controls("LabelW1")
+        f.LabelW1.Caption = ""
+        f.LabelW1.BackColor = vbRed
+        f.Show
+        f.Refresh
+        DoEvents
+        Expect.IsTrue RedPixels(f, c) > 0, "a label that was not moved is drawn in its back color"
+        c.Top = 420 * 15
+        f.Refresh
+        DoEvents
+        Expect.AreEqual 420, CLng(c.Top / 15), "Top of the label after Top = 420 pixels"
+        Expect.IsTrue RedPixels(f, c) > 0, "a label whose Top was set is drawn in its back color at its new place"
+        Unload f
+        Expect.Done
+    End Sub
+
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+
+    ' How many pixels of the form are red where the form says the control is, every third pixel
+    ' looked at.
+    Private Function RedPixels(ByVal f As Form, ByVal c As Object) As Long
+        Dim hDC As LongPtr, x As Long, y As Long
+        Dim tx As Single, ty As Single
+        tx = Screen.TwipsPerPixelX
+        ty = Screen.TwipsPerPixelY
+        hDC = GetDC(f.hWnd)
+        For y = c.Top / ty To (c.Top + c.Height) / ty - 1 Step 3
+            For x = c.Left / tx To (c.Left + c.Width) / tx - 1 Step 3
+                If GetPixel(hDC, x, y) = vbRed Then RedPixels = RedPixels + 1
+            Next
+        Next
+        ReleaseDC f.hWnd, hDC
+    End Function
+
 End Module
 
 ' The events of a LabelW, written to Rig.Log.

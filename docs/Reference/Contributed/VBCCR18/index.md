@@ -41,6 +41,8 @@ Debug.Print ProgressBar1.Value; Len(TextBoxW1.Text); AscW(TextBoxW1.Text)
 
 Add the package to the project as [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) describes. The **Standard EXE (+VBCCR)** template of the [New Project](../../../IDE/Starting/New-Project) dialog makes a project that references it already. The controls are then in the [Toolbox](../../../IDE/Project/Toolbox): select one and draw it on the form. In code it is named as any other control on the form is, **ProgressBar1** for the first **ProgressBar**.
 
+The controls are those of Windows, and Windows draws them in its current visual style only in a program that has the [visual styles manifest](../../../IDE/Projects/Adding-Files#visual-styles-manifest) among its resources. The **Standard EXE (+VBCCR)** template adds it; in another project, add it before building. In a program built without it the controls are drawn in the classic style, and the two that Windows has only with visual styles, [**CommandLink**](CommandLink#a-program-without-visual-styles) and [**LinkLabel**](LinkLabel/), make no window and show diagonal lines in their place.
+
 Several controls have the name of a control of the [WinNativeCommonCtls](../../WinNativeCommonCtls/) package: **DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView** and **UpDown**. In a project that references both packages, a declaration names the package as well: `Dim Bar As VBCCR18.ProgressBar`.
 
 ## Controls in place of the VB6 intrinsic controls

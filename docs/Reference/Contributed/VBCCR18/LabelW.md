@@ -13,6 +13,8 @@ symbols:
 
 A **LabelW** is a text that the program shows on a form and the user cannot edit. It has no window of its own: the form, or the container it is in, draws it.
 
+![The text Name of the author: on the ground of its form](Images/LabelW.png){:width="212" height="30"}
+
 ```tb check_build check_run arch=win32,win64
 Dim OldWidth As Single
 LabelW1.Caption = "Name:"
@@ -27,6 +29,10 @@ Debug.Print LabelW1.Width > OldWidth     ' the label has grown with its caption
 The control stands in place of the [**Label**](../../VB/Label/) of the VB package, the label of VB6. It holds its caption in Unicode, and adds [**SingleLine**](#singleline), [**EllipsisFormat**](#ellipsisformat) with [**DisplayedCaption**](#displayedcaption), [**MimicTextBox**](#mimictextbox), and borders other than a single line.
 
 Of the [common members](Common), the control has those under [Name and place](Common#name-and-place) but **HelpContextID**, [**Font**](Common#font) and [**FontQuality**](Common#fontquality), [Mouse](Common#mouse), [Dragging the control](Common#dragging-the-control), [OLE drag and drop](Common#ole-drag-and-drop) and [Right-to-left](Common#right-to-left) but **RightToLeftLayout**. It has no window, so it has neither **hWnd** nor **hWndUserControl**, and it never takes the focus, so it has no keyboard events.
+
+<!-- test: LabelWTests.Moved_IsDrawnAtItsNewPlace -->
+> [!WARNING] 1.8.136.0
+> A label that the program moves is no longer drawn. Once [**Left** or **Top**](Common#height-left-top-width) is set, or **Move** is called, the label reports its new place and shows nothing, there or where it was. A label is drawn while it stays where the designer put it. A [**WindowedLabel**](WindowedLabel), which has a window, can be moved.
 
 * TOC
 {:toc}

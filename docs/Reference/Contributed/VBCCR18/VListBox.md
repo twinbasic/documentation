@@ -13,6 +13,8 @@ symbols:
 
 A **VListBox** is a list box that holds no items: the program tells it how many items there are, and supplies the text of an item in an event each time the control shows it.
 
+![A list box that shows rows 50,001 to 50,005 of a long list, row 50,003 selected, the thumb of its scroll bar halfway down](Images/VListBox.png){:width="172" height="98"}
+
 ```tb check_build check_run arch=win32,win64
 VListBox1.ListCount = 100000
 VListBox1.ListIndex = 99999

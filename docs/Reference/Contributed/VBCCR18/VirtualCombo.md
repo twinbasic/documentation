@@ -14,6 +14,8 @@ symbols:
 
 A **VirtualCombo** is a combo box that holds no items: the program tells it how many items there are, and supplies the text of an item in an event each time the control shows it.
 
+![A drop-down combo box that shows Row 5](Images/VirtualCombo.png){:width="172" height="35"}
+
 ```tb check_build check_run arch=win32,win64
 VirtualCombo1.ListCount = 100000
 VirtualCombo1.Text = "any text"

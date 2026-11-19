@@ -14,6 +14,8 @@ symbols:
 
 An **OptionButtonW** is an option button: a round button with a caption beside it, one of several in a container of which the user selects one. It can show a picture, look like a push button that stays down while it is selected, and leave its drawing to the program.
 
+![Two option buttons, one under the other: Portrait, which is selected, and Landscape](Images/OptionButtonW.png){:width="162" height="56"}
+
 ```tb check_build check_run arch=win32,win64
 OptionButtonW1.Caption = "&Metric " & ChrW$(&H3A9)     ' the caption is Unicode: a Greek capital omega
 Debug.Print OptionButtonW1.Value

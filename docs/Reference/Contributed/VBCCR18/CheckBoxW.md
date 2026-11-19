@@ -14,6 +14,8 @@ symbols:
 
 A **CheckBoxW** is a check box: a small box with a caption beside it, which the user checks and unchecks, and which the program can also show grayed. It can show a picture, look like a push button that stays down while it is checked, and leave its drawing to the program.
 
+![A check box, ticked, with the caption Remember me](Images/CheckBoxW.png){:width="162" height="32"}
+
 ```tb check_build check_run arch=win32,win64
 CheckBoxW1.Caption = "&Remember " & ChrW$(&H3A9)     ' the caption is Unicode: a Greek capital omega
 CheckBoxW1.Value = vbChecked

@@ -15,6 +15,8 @@ symbols:
 
 A **ProgressBar** is a bar that fills as a task advances through a range. It can also run as a marquee for a task of unknown length, show a normal, an error or a paused state, draw a text over the bar, and repeat its progress on the form's taskbar button.
 
+![A progress bar filled to 60 per cent](Images/ProgressBar.png){:width="252" height="32"}
+
 ```tb check_build check_run arch=win32,win64
 ProgressBar1.Min = 0
 ProgressBar1.Max = 250

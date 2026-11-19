@@ -14,6 +14,8 @@ symbols:
 
 A **CommandButtonW** is a push button with a caption, which the user clicks to start an action. It can show a picture beside its caption, have a second part with an arrow that opens a menu, show the shield of an action that needs elevation, and leave its drawing to the program.
 
+![A command button with the caption Save](Images/CommandButtonW.png){:width="108" height="40"}
+
 ```tb check_build check_run arch=win32,win64
 CommandButtonW1.Caption = "&Save " & ChrW$(&H3A9)      ' the caption is Unicode: a Greek capital omega
 CommandButtonW1.Default = True                         ' the Enter key clicks it

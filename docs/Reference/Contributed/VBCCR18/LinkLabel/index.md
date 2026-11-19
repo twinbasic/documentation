@@ -13,6 +13,8 @@ symbols:
 
 A **LinkLabel** is a text with links in it, which the user clicks or reaches with the Tab key as on a web page. The program says in an event what a link does.
 
+![A line of text in which the words documentation and ask a question are underlined links](../Images/LinkLabel.png){:width="292" height="30"}
+
 ```tb check_build check_run arch=win32,win64
 LinkLabel1.Caption = "Read the <A HREF=""https://example.com/docs"">documentation</A> or <A ID=""ask"">ask a question</A>."
 Debug.Print LinkLabel1.Links.Count

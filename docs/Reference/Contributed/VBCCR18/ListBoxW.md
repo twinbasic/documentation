@@ -14,6 +14,8 @@ symbols:
 
 A **ListBoxW** is a list of text items, in one column or several, from which the user selects one item or many. Each item can have a check box or an option button.
 
+![A list box of city names with a scroll bar, its second item, Lima, selected](Images/ListBoxW.png){:width="172" height="98"}
+
 ```tb check_build check_run arch=win32,win64
 ListBoxW1.AddItem "Oslo"
 ListBoxW1.AddItem "Lima"

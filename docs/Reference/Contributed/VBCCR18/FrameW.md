@@ -12,6 +12,8 @@ symbols:
 
 A **FrameW** is a rectangle with a caption in its top edge that holds other controls, to show that they belong together and to move, hide or disable them as one.
 
+![A frame with the caption Paper set in its top border](Images/FrameW.png){:width="212" height="92"}
+
 ```tb check_build
 FrameW1.Caption = "Search &options"
 Set TextBoxW1.Container = FrameW1        ' the text box is now in the frame

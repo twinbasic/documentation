@@ -16,6 +16,8 @@ symbols:
 
 A **TextBoxW** is a box in which the user types and edits text, on one line or on several. It can also show a prompt while it is empty, limit what is typed, check a network address, and take text and files that are dragged onto it.
 
+![A text box that holds the text Ada Lovelace](Images/TextBoxW.png){:width="212" height="36"}
+
 ```tb check_build check_run arch=win32,win64
 TextBoxW1.Text = "Hello world"
 TextBoxW1.SelStart = 6

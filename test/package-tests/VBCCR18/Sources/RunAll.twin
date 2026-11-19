@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBCCR18 1.8.136.0: 276 test cases"
+        Expect.StartRun "VBCCR18 1.8.136.0: 278 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -273,6 +273,10 @@ Module RunAll
         Expect.EndCase "CommandLinkTests.ImageList_OtherType_Raises13", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
+        CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher
+        Expect.EndCase "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
         CommonTests.Name_IsTheNameOnTheForm
         Expect.EndCase "CommonTests.Name_IsTheNameOnTheForm", Err.Number, Err.Description
         Expect.StartCase
@@ -519,6 +523,10 @@ Module RunAll
         Err.Clear
         LabelWTests.Appearance_SetsForeColor
         Expect.EndCase "LabelWTests.Appearance_SetsForeColor", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        LabelWTests.Moved_IsDrawnAtItsNewPlace
+        Expect.EndCase "LabelWTests.Moved_IsDrawnAtItsNewPlace", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         LinkLabelTests.Caption_Markup_MakesTheLinks

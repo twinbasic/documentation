@@ -1,6 +1,9 @@
 {
   "version": "1.8.136.0",
   "cases": {
+    "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher": {
+      "fails": "1 of 2 checks failed: GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word: expected True, got False"
+    },
     "ImageListTests.Add_BitmapSmallerThanTheList_IsInTheWindowsList": {
       "fails": "3 of 3 checks failed: the pictures in the Windows image list of 32 by 32 after a bitmap of 16 by 16 is added: expected 1, got 0; the color the first item draws, a red bitmap of 16 by 16, after a blue one of 32 by 32 is added: expected 255, got 16711680; the color the second item draws, a blue bitmap of 32 by 32: expected 16711680, got 16777215"
     },
@@ -9,6 +12,9 @@
     },
     "ImageListTests.Add_DuplicateKey_LeavesTheWindowsListAsItWas": {
       "fails": "1 of 1 checks failed: the pictures in the Windows image list of a list with one picture, after an Add that raised error 457 for its key: expected 1, got 2"
+    },
+    "LabelWTests.Moved_IsDrawnAtItsNewPlace": {
+      "fails": "1 of 3 checks failed: a label whose Top was set is drawn in its back color at its new place: expected True, got False"
     },
     "ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
       "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectExtended on an empty list raises no error 380: expected True, got False"

@@ -12,6 +12,8 @@ symbols:
 
 A **CommandLink** is a wide button with an arrow, a caption in a larger font and a note in smaller text under it: the button with which the dialogs of Windows offer a choice between a few actions and say what each one does.
 
+![A command link: an arrow, the caption Install the update now in large text, and under it a note in smaller text on two lines](Images/CommandLink.png){:width="312" height="90"}
+
 ```tb check_build check_run arch=win32,win64
 CommandLink1.Caption = "&Keep the changes"
 CommandLink1.Hint = "The file is saved under its present name."
@@ -35,13 +37,17 @@ Windows has the command link only for a program with visual styles. In a program
 
 ## Caption, note and picture
 
-[**Caption**](#caption) is the first line, and [**Hint**](#hint) the note under it, which Windows wraps over as many lines as the control's width needs. [**GetIdealHeight**](#getidealheight) gives the height at which both fit:
+[**Caption**](#caption) is the first line, and [**Hint**](#hint) the note under it, which Windows wraps over as many lines as the control's width needs. [**GetIdealHeight**](#getidealheight) gives the height at which the caption and a note of one line fit:
 
 ```tb check_build
 CommandLink1.Caption = "Install the update now"
-CommandLink1.Hint = "The program closes, installs the update and starts again. This takes about a minute."
+CommandLink1.Hint = "The program closes and starts again."
 CommandLink1.Height = CommandLink1.GetIdealHeight()
 ```
+
+<!-- test: CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher -->
+> [!NOTE] 1.8.136.0
+> **GetIdealHeight** does not count the lines that a note wraps to: it returns the same height for a note of one word and for one that the control's width breaks into three lines. A control given that height cuts off every line of the note after the first. For a longer note, set the height that shows it.
 
 The arrow at the left gives way to a picture of the program's: the icon or bitmap in [**Picture**](#picture), or the picture of an [**ImageList**](ImageList/) control assigned to [**ImageList**](#imagelist). [**SetShield**](#setshield) puts the shield of an action that needs elevation there.
 
@@ -145,7 +151,7 @@ Methods
 ### GetIdealHeight
 {: .no_toc }
 
-Returns the height at which the caption and the note fit, in the scale units of the control's container. **Single**.
+Returns the height at which the caption and a note of one line fit, in the scale units of the control's container. **Single**. See [Caption, note and picture](#caption-note-and-picture) for a note that wraps.
 
 Syntax: *object*.**GetIdealHeight**( ) **As Single**
 

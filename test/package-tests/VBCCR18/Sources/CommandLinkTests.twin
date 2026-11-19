@@ -122,6 +122,27 @@ Module CommandLinkTests
         Expect.Done
     End Sub
 
+    ' A note too long for one line at the control's width is wrapped, so the height at which the
+    ' caption and the note fit is more than with a note of one word.
+    [TestCase]
+    Public Sub GetIdealHeight_NoteThatWraps_IsHigher()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim c As Object
+        Set c = f.Controls("CommandLink1")
+        c.Width = 300 * 15
+        f.CommandLink1.Caption = "Install the update now"
+        f.CommandLink1.Hint = "Now."
+        Dim short As Single
+        short = f.CommandLink1.GetIdealHeight()
+        Expect.IsTrue short > 0, "GetIdealHeight with a note of one word is more than 0"
+        f.CommandLink1.Hint = "The program closes, installs the update and starts again. This takes about a minute, and nothing that is open is lost."
+        Expect.IsTrue f.CommandLink1.GetIdealHeight() > short, "GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word"
+        Unload f
+        Expect.Done
+    End Sub
+
 End Module
 
 ' The events of a CommandLink, written to Rig.Log.
