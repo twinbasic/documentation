@@ -2,7 +2,7 @@
   "format": 4,
   "package": "AutoCompleteLib",
   "project": "AutoCompleteLib",
-  "version": "1.0.3.0",
+  "version": "1.0.4.0",
   "types": [
     {
       "name": "AutoComplete",
