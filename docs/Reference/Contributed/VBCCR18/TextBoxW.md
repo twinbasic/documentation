@@ -155,8 +155,8 @@ End Sub
 
 With [**NetAddressValidator**](#netaddressvalidator) set to **True** the box is the network address control of Windows, which can tell whether its text is an IPv4 address, an IPv6 address or a DNS name. It needs a program with visual styles. [**NetAddressType**](#netaddresstype) says which kinds of address the box accepts.
 
-<!-- test: TextBoxWTests.ValidateNetAddress_DnsName_GivesTheName, TextBoxWTests.ValidateNetAddress_NotAnAddress_Raises5, TextBoxWTests.ValidateNetAddress_Empty_Raises380, TextBoxWTests.ValidateNetAddress_ValidatorOff_Raises5 -->
-[**ValidateNetAddress**](#validatenetaddress) checks the text. When the text is an address of an accepted kind, the method returns and [**NetAddressFormat**](#netaddressformat), [**NetAddressString**](#netaddressstring), [**NetAddressPortNumber**](#netaddressportnumber) and [**NetAddressPrefixLength**](#netaddressprefixlength) hold what it found. When it is not, the method raises run-time error 5, and [**ShowNetAddressErrorTip**](#shownetaddresserrortip) shows the user a balloon that says what is wrong. An empty box raises run-time error 380.
+<!-- test: TextBoxWTests.ValidateNetAddress_DnsName_GivesTheName, TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress, TextBoxWTests.ValidateNetAddress_NotAnAddress_Raises5, TextBoxWTests.ValidateNetAddress_Empty_Raises380, TextBoxWTests.ValidateNetAddress_ValidatorOff_Raises5 -->
+[**ValidateNetAddress**](#validatenetaddress) checks the text. When the text is an address of an accepted kind, the method returns and [**NetAddressFormat**](#netaddressformat), [**NetAddressString**](#netaddressstring), [**NetAddressPortNumber**](#netaddressportnumber) and [**NetAddressPrefixLength**](#netaddressprefixlength) hold what it found: for `192.168.0.1:8080`, **TxtNetAddressFormatIPv4**, `192.168.0.1` and 8080. When it is not, the method raises run-time error 5, and [**ShowNetAddressErrorTip**](#shownetaddresserrortip) shows the user a balloon that says what is wrong. An empty box raises run-time error 380.
 
 ```tb check_build check_run arch=win32,win64
 TextBoxW1.NetAddressValidator = True
@@ -175,10 +175,6 @@ Debug.Print Err.Number
 '  5
 ```
 <!-- /test -->
-
-<!-- test: TextBoxWTests.ValidateNetAddress_IPv4_GivesTheAddress -->
-> [!WARNING] 1.8.137.0
-> **NetAddressString** is wrong for an IPv4 address: after `192.168.0.1` it holds `0.0.1.0`. **NetAddressFormat**, **NetAddressPortNumber** and **NetAddressPrefixLength** are right, and so is **NetAddressString** for an IPv6 address and for a DNS name. A program that needs the IPv4 address reads **Text**.
 
 Properties
 ----------
@@ -296,7 +292,7 @@ The length of the network prefix in the text that the last [**ValidateNetAddress
 ### NetAddressString
 {: .no_toc }
 
-The address that the last [**ValidateNetAddress**](#validatenetaddress) found, without the port number and the prefix: a DNS name as it was typed, an IPv6 address written out in its eight groups. **String**, read-only. The [warning](#checking-a-network-address) above says what it holds for an IPv4 address.
+The address that the last [**ValidateNetAddress**](#validatenetaddress) found, without the port number and the prefix: a DNS name as it was typed, an IPv4 address as four numbers with dots between them, an IPv6 address written out in its eight groups. **String**, read-only.
 
 ### NetAddressType
 {: .no_toc }
@@ -337,13 +333,9 @@ Whether a character that the user types replaces the character after the inserti
 
 The character that the box shows in place of each character of its text. **String**. An empty string, the default, shows the text itself.
 
-<!-- test: TextBoxWTests.PasswordChar_TwoCharacters_Raises380 -->
-A string of more than one character raises run-time error 380. An assignment does nothing while [**UseSystemPasswordChar**](#usesystempasswordchar) is **True**.
+<!-- test: TextBoxWTests.PasswordChar_TwoCharacters_Raises380, TextBoxWTests.PasswordChar_NoneSet_IsAnEmptyString -->
+While the box has no password character, it returns an empty string, as the VB6 text box does. A string of more than one character raises run-time error 380. An assignment does nothing while [**UseSystemPasswordChar**](#usesystempasswordchar) is **True**.
 <!-- /test -->
-
-<!-- test: TextBoxWTests.PasswordChar_NoneSet_IsAnEmptyString -->
-> [!NOTE] 1.8.137.0
-> While the box has no password character, **PasswordChar** returns a string of one character with the code 0, not the empty string that the VB6 text box returns. A program tests `AscW(TextBoxW1.PasswordChar) = 0`.
 
 ### ScrollBars
 {: .no_toc }
@@ -455,7 +447,7 @@ Syntax: *object*.**GetLine**( *LineNumber* ) **As String**
 <!-- test: TextBoxWTests.GetLine_Negative_Raises380, TextBoxWTests.GetLine_PastTheLastLine_Raises380, TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380 -->
 A negative number, or a number greater than the number of lines, raises run-time error 380.
 
-> [!NOTE] 1.8.137.0
+> [!NOTE] 1.8.141.0
 > In a 64-bit program a number greater than the number of lines raises run-time error 6, *Overflow*, in **GetLine**, and [**ScrollToLine**](#scrolltoline) raises nothing and does not scroll.
 <!-- /test -->
 

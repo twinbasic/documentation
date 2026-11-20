@@ -321,13 +321,9 @@ Whether the items are laid out in columns and the list scrolls sideways. **Boole
 
 Whether the user can select several items, and how. A member of [**MultiSelectConstants**](../../VBRUN/Constants/MultiSelectConstants). Default: **vbMultiSelectNone**. See [Selecting several items](#selecting-several-items). Another value raises run-time error 380, and a value other than **vbMultiSelectNone** raises 383 in a list with check boxes or option buttons.
 
-<!-- test: ListBoxWTests.MultiSelect_AtRunTime_KeepsTheItemsAndTheSelection -->
-It can be assigned at run time, and the list keeps its items and its selected item.
+<!-- test: ListBoxWTests.MultiSelect_AtRunTime_KeepsTheItemsAndTheSelection, ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError, ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError -->
+It can be assigned at run time, and the list keeps its items and its selected item. An empty list accepts it too, and a list that selects several items accepts an assignment to **Sorted** while it is empty.
 <!-- /test -->
-
-<!-- test: ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError, ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError -->
-> [!NOTE] 1.8.137.0
-> An assignment of **vbMultiSelectSimple** or **vbMultiSelectExtended** at run time raises run-time error 380 while the list is empty, although the list then does select several items. While such a list is empty, an assignment to **AllowSelection**, **DisableNoScroll**, **MultiColumn**, **Sorted** or **UseTabStops** raises the same error and takes effect all the same. Add the items first, or set **MultiSelect** at design time.
 
 ### NewIndex
 {: .no_toc }
@@ -386,7 +382,7 @@ An assignment selects the item or removes its selection, and raises [**Click**](
 Whether [**AddItem**](#additem) without an index puts each new item in alphabetical order. **Boolean**. Default: **False**. An **AddItem** with an index puts the item at that index all the same.
 
 <!-- test: ListBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace -->
-> [!NOTE] 1.8.137.0
+> [!NOTE] 1.8.141.0
 > An assignment of **True** at run time does not sort the items already in the list, and the items added afterward are placed as if the list were sorted. Set **Sorted** before the first item is added.
 
 ### Style
@@ -498,7 +494,7 @@ Syntax: *object*.**HitTest**( *X*, *Y* )
 : *required* The position as two **Single** values, measured from the list's top left corner in the scale units of the control's container, as the OLE drag-and-drop events give it.
 
 <!-- test: ListBoxWTests.HitTest_EmptyList_ReturnsMinus1 -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.141.0
 > In an empty list the method returns 0, not -1, for a position where the first item would be.
 
 ### HitTestInsertMark

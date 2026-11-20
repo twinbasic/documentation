@@ -181,7 +181,7 @@ A node without children can be set to **Expanded** at once. It reads **True**, r
 <!-- /test -->
 
 <!-- test: TreeViewTests.Expanded_BeforeExpandCancelled_LeavesTheNodeCollapsed -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.141.0
 > A program that sets **Expanded** to **True** on a node with children that has never been open, and whose **BeforeExpand** handler sets *Cancel*, is told the node is open. The children stay hidden and **Expanded** reads **True**. Setting **Expanded** to **False** resets it, without events. A node that was open once and was closed is not affected: its **BeforeExpand** is honoured.
 
 ## Selecting nodes
@@ -340,7 +340,7 @@ Properties
 The edge of the form that the control is attached to, where it takes the form's whole width or height. A member of [**AlignConstants**](../../../VBRUN/Constants/AlignConstants). Default: **vbAlignNone**.
 
 <!-- test: sample treeview-align -->
-> [!NOTE] 1.8.137.0, BETA 1042
+> [!NOTE] 1.8.141.0, BETA 1042
 > twinBASIC has not implemented **Align**: an assignment compiles with the warning TB0009 and changes nothing, and the property goes on returning **vbAlignNone**. A program places and sizes the tree itself.
 
 ```tb probe check_run arch=win32,win64 id=treeview-align

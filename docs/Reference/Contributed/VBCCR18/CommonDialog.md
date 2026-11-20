@@ -42,10 +42,9 @@ It is a class, not a control: a program makes one with **New**, sets its propert
 
 ## The same class as VBComDlg's
 
-The [VBComDlg](../VBComDlg/) package is the same class, Krool's, as a package of its own, documented at [**CommonDialog**](../VBComDlg/CommonDialog). The two share all their code but one line:
+The [VBComDlg](../VBComDlg/) package is the same class, Krool's, as a package of its own, documented at [**CommonDialog**](../VBComDlg/CommonDialog). The two share their code:
 
 - **The same in both**: every property, method and event, with the same names, types and defaults, the same values refused with run-time error 380 and the same errors from the dialogs; and every enumeration, with the same members and values.
-- **The [ReplaceAll](#findnext-replace-replaceall) event**: this class raises it when the user clicks **Replace All** in the Replace dialog. VBComDlg's class never raises it.
 - **The package**: this class comes with the package's controls, and the [**MCIWnd**](MCIWnd) control uses it for its Open and Save As dialogs. VBComDlg is for a program that needs the dialogs and none of the controls.
 
 In a project that references both packages, a declaration names the package: `Dim Dlg As VBCCR18.CommonDialog`.

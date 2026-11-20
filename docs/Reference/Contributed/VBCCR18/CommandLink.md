@@ -46,7 +46,7 @@ CommandLink1.Height = CommandLink1.GetIdealHeight()
 ```
 
 <!-- test: CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher -->
-> [!NOTE] 1.8.137.0
+> [!NOTE] 1.8.141.0
 > **GetIdealHeight** does not count the lines that a note wraps to: it returns the same height for a note of one word and for one that the control's width breaks into three lines. A control given that height cuts off every line of the note after the first. For a longer note, set the height that shows it.
 
 The arrow at the left gives way to a picture of the program's: the icon or bitmap in [**Picture**](#picture), or the picture of an [**ImageList**](ImageList/) control assigned to [**ImageList**](#imagelist). [**SetShield**](#setshield) puts the shield of an action that needs elevation there.

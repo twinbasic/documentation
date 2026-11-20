@@ -26,7 +26,7 @@ Debug.Print UpDown1.Value
 '  10
 ```
 
-The control stands in place of the UpDown of the Microsoft common controls (`MSCOMCT2.OCX`). The [WinNativeCommonCtls](../../WinNativeCommonCtls/UpDown) package has an **UpDown** too; this one adds [**BuddyControl**](#buddycontrol) with [**BuddyProperty**](#buddyproperty), [**SyncBuddy**](#syncbuddy) and [**SyncFromBuddy**](#syncfrombuddy), [**Wrap**](#wrap), [**HotTracking**](#hottracking), [**NumberStyle**](#numberstyle), [**ThousandsSeparator**](#thousandsseparator) and the event [**BeforeChange**](#beforechange). The [**SpinBox**](SpinBox) is an **UpDown** that comes with a text box of its own.
+The control stands in place of the UpDown of the Microsoft common controls (`MSCOMCT2.OCX`). The [WinNativeCommonCtls](../../WinNativeCommonCtls/UpDown) package has an **UpDown** too; this one adds [**BuddyControl**](#buddycontrol) with [**BuddyProperty**](#buddyproperty), [**SyncBuddy**](#syncbuddy) and [**SyncFromBuddy**](#syncfrombuddy), [**SetAcceleration**](#setacceleration), [**Wrap**](#wrap), [**HotTracking**](#hottracking), [**NumberStyle**](#numberstyle), [**ThousandsSeparator**](#thousandsseparator) and the event [**BeforeChange**](#beforechange). The [**SpinBox**](SpinBox) is an **UpDown** that comes with a text box of its own.
 
 Of the [common members](Common), the control has those under [Name and place](Common#name-and-place) but **HelpContextID**, [Window handles](Common#window-handles), **VisualStyles**, [Mouse](Common#mouse) but its **Click** and **DblClick** events, [Dragging the control](Common#dragging-the-control), [OLE drag and drop](Common#ole-drag-and-drop) and [Right-to-left](Common#right-to-left), **RightToLeftLayout** included. It shows no text, so it has no **Font**. It never takes the focus, so it has no keyboard events and no **SetFocus**.
 
@@ -35,7 +35,7 @@ Of the [common members](Common), the control has those under [Name and place](Co
 
 ## The value
 
-[**Value**](#value) is the position, from [**Min**](#min) to [**Max**](#max): 0 to 10 for a new control. The user's click on an arrow adds [**Increment**](#increment) to it, or subtracts it, and while the button is held the value moves again and again.
+[**Value**](#value) is the position, from [**Min**](#min) to [**Max**](#max): 0 to 10 for a new control. The user's click on an arrow adds [**Increment**](#increment) to it, or subtracts it, and while the button is held the value moves again and again. [**SetAcceleration**](#setacceleration) makes the value move faster the longer the user holds a button.
 
 <!-- test: UpDownTests.Value_OutsideTheRange_IsTheNearestEnd, UpDownTests.Min_AboveMax_Raises380, UpDownTests.Max_BelowMin_Raises380, UpDownTests.Min_AboveValue_MovesTheValue -->
 A **Value** outside the range becomes the nearest end of it. A **Min** above **Max**, or a **Max** below **Min**, raises run-time error 380. A new **Min** above **Value**, or a new **Max** below it, moves **Value** to that end.
@@ -84,7 +84,7 @@ A **BuddyProperty**, or a **SyncBuddy** of **True**, with no buddy raises run-ti
 <!-- /test -->
 
 <!-- test: UpDownTests.BuddyProperty_Text_ShowsTheValue, UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy -->
-> [!NOTE] 1.8.137.0, BETA 1042
+> [!NOTE] 1.8.141.0, BETA 1042
 > **BuddyProperty** accepts only the properties that every control has on its form, such as **Tag**, **ToolTipText** and **Width**. A property of the buddy's own class, such as **Text** of a **TextBoxW**, raises run-time error 380, and so does **SyncBuddy** set to **True** without a **BuddyProperty**, which should take the buddy's default property. A program that wants the value in a text box assigns it in the **Change** event of the **UpDown**, or uses a [**SpinBox**](SpinBox).
 
 ```tb check_build
@@ -114,7 +114,7 @@ Whether the arrow under the mouse pointer is drawn highlighted. **Boolean**. Def
 ### Increment
 {: .no_toc }
 
-What a click on an arrow adds to or subtracts from [**Value**](#value). **Long**. Default: 1. It is not checked, so 0 and a negative number are accepted.
+What a click on an arrow adds to or subtracts from [**Value**](#value). **Long**. Default: 1. It is not checked, so 0 and a negative number are accepted. While [**SetAcceleration**](#setacceleration) has given a list, it reads the first increment of the list.
 
 ### Max
 {: .no_toc }
@@ -158,6 +158,31 @@ Whether the value goes round to the other end of the range when an arrow passes 
 
 Methods
 -------
+
+### SetAcceleration
+{: .no_toc }
+
+Makes the arrows add more the longer the user holds a button.
+
+Syntax: *object*.**SetAcceleration** *Delays*, *Increments*
+
+*Delays*
+: *required* An array of numbers: for each step, the seconds the button has been held before the step's increment starts.
+
+*Increments*
+: *required* An array of numbers of the same size: the increment of each step.
+
+<!-- test: UpDownTests.SetAcceleration_BadArrays_RaiseErrors, UpDownTests.SetAcceleration_Empty_RestoresIncrement -->
+The two arrays have one dimension and the same bounds, or the method raises run-time error 5. An array that is not an array, and is not **Empty**, raises 380, and an array that is not allocated raises 91. Two **Empty** values take the list away and bring back [**Increment**](#increment).
+<!-- /test -->
+
+<!-- test: UpDownTests.SetAcceleration_BadDelays_Raise381 -->
+The delays are 0 or more, each at least the one before it: a negative delay, or one smaller than the delay before it, raises run-time error 381.
+<!-- /test -->
+
+```tb check_build
+UpDown1.SetAcceleration Array(0, 2, 5), Array(1, 5, 20)    ' 1 at first, 5 after 2 s, 20 after 5 s
+```
 
 ### SyncFromBuddy
 {: .no_toc }

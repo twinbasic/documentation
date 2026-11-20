@@ -167,7 +167,7 @@ Calling **Init** with **AutoCompleteSourceNone**, or with any other value outsid
 If the internal `IAutoComplete2` object could not be created when the **AutoComplete** object was created, **Init** exits silently.
 
 <!-- test: InitTests.SecondCall_OnTheSameObject_Raises, InitTests.OneObjectForEachWindow_RaiseNothing -->
-> [!NOTE] 1.0.3.0
+> [!NOTE] 1.0.4.0
 > An **AutoComplete** object attaches to one window, once. A second call to **Init** on the same object, for the same window or for another, raises run-time error -2147467259 (Automation error) and attaches nothing. Create one **AutoComplete** object for each text box.
 
 ### Refresh

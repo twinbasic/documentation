@@ -91,7 +91,7 @@ A negative *Index*, and one greater than [**Count**](#count) + 1, raises run-tim
 <!-- /test -->
 
 <!-- test: TabStripTests.Add_DuplicateKey_LeavesNoTabInTheWindow -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.141.0
 > A call that raises error 457 for its key has already put its tab into the control's window. The collection is as it was, and the control draws a tab more than [**Count**](#count) says, one that no [**TbsTab**](TbsTab) stands for. A program asks [**Exists**](#exists) before it adds a tab with a key that the strip may have.
 
 ### Clear

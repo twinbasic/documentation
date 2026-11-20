@@ -1,12 +1,6 @@
 {
-  "version": "1.0.13.0",
+  "version": "1.0.15.0",
   "cases": {
-    "FindReplaceTests.ReplaceAll_ButtonRaisesEvent": {
-      "fails": "1 of 2 checks failed: ReplaceAll events raised by pressing Replace All: expected 1, got 0"
-    },
-    "FindReplaceTests.ReplaceAll_MessageRaisesEvent": {
-      "fails": "1 of 1 checks failed: ReplaceAll events raised by the message a Replace All press sends (FR_REPLACEALL): expected 1, got 0"
-    },
     "FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned": {
       "fails": "1 of 4 checks failed: ShowFolderBrowser with CdlBIFBrowseForPrinter, after OK with a printer selected, returns False or sets FileName to the printer (it returned True, FileName empty): expected True, got False"
     }

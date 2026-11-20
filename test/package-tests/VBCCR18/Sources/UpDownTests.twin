@@ -443,6 +443,63 @@ Module UpDownTests
         Expect.Done
     End Sub
 
+    [TestCase]
+    Public Sub SetAcceleration_BadArrays_RaiseErrors()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim e() As Long
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.SetAcceleration Array(1, 2), Array(5)
+        Expect.AreEqual 5, Err.Number, "SetAcceleration of arrays with other bounds"
+        Err.Clear
+        f.UpDown1.SetAcceleration 5, Array(5)
+        Expect.AreEqual 380, Err.Number, "SetAcceleration of a number"
+        Err.Clear
+        f.UpDown1.SetAcceleration e, Array(5)
+        Expect.AreEqual 91, Err.Number, "SetAcceleration of an array that is not allocated"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAcceleration_BadDelays_Raise381()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        Err.Clear
+        f.UpDown1.SetAcceleration Array(0, 5, 2), Array(1, 5, 20)
+        Expect.AreEqual 381, Err.Number, "SetAcceleration of delays out of order"
+        Err.Clear
+        f.UpDown1.SetAcceleration Array(-1, 2), Array(1, 5)
+        Expect.AreEqual 381, Err.Number, "SetAcceleration of a negative delay"
+        Err.Clear
+        f.UpDown1.SetAcceleration Array(0, 2, 2), Array(1, 5, 20)
+        Expect.AreEqual 0, Err.Number, "SetAcceleration of two equal delays"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAcceleration_Empty_RestoresIncrement()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        With f.UpDown1
+            .Increment = 3
+            .SetAcceleration Array(0, 2), Array(1, 10)
+            Expect.AreEqual 1, .Increment, "Increment with a list set"
+            .SetAcceleration Empty, Empty
+            Expect.AreEqual 3, .Increment, "Increment after two Empty"
+        End With
+        Unload f
+        Expect.Done
+    End Sub
+
 End Module
 
 ' The events of an UpDown, written to Rig.Log. With CancelClicks the handler of BeforeChange sets Delta to 0.

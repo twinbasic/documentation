@@ -171,7 +171,7 @@ A *Key* that another item has raises run-time error 457, and the list is as it w
 <!-- /test -->
 
 <!-- test: ImageComboTests.Add_NegativeIndentation_AddsNothing -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.141.0
 > A negative *Indentation* raises run-time error 380 after the item has been put into the collection. The collection then holds the item and the list of the control does not: [**Count**](#count) is one more than the control shows, and the item has no text. Give a value of 0 or more.
 
 ### Clear

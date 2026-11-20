@@ -67,7 +67,7 @@ Kill Path
 <!-- /test -->
 
 <!-- test: RichTextBoxFilesTests.SaveFile_FolderMissing_RaisesAnError -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.141.0
 > **SaveFile** raises no error when it cannot write the file, in a folder that does not exist, on a file that another program has open, or where the user may not write. Nothing is saved, and the program cannot tell. A program that must know checks the file afterwards, for example with [**FileLen**](../../../../Modules/FileSystem/FileLen) or [**Dir**](../../../../Modules/FileSystem/Dir).
 
 Properties

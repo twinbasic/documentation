@@ -82,7 +82,7 @@ The number by which Windows knows the group. **Long**, read-only. The groups of 
 The number or the key of the header's icon in the image list of [**GroupIcons**](Groups#groupicons). **Variant**. 0 when the group has none. An assignment takes a number or a key; a key that the image list does not have raises run-time error 35601.
 
 <!-- test: ListViewGroupsTests.Icon_SetsTheIconOfItsOwnGroup -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.141.0
 > An assignment draws the icon in the header of the group whose [**ID**](#id) is this group's [**Index**](#index). The two are the same while the groups are only added after one another. Once a group has been added in front of others or removed, the icon goes to another group's header, or to none, and this group's **Icon** still returns the value assigned. A program that gives its groups icons adds each group after the last one and removes none, and puts them in another order with [**Sorted**](LvwGroups#sorted).
 
 ### IconIndex
