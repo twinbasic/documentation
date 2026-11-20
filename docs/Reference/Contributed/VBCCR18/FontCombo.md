@@ -148,7 +148,7 @@ The buddy's list changes whenever the selection of this control changes by the u
 <!-- /test -->
 
 <!-- test: FontComboTests.SelectItem_UpdatesTheBuddy -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.140.0
 > A font selected with [**SelectItem**](#selectitem) does not change the list of the buddy, which then shows the sizes of the font selected before, or none. A program that uses a buddy selects a font with **ListIndex** or **Text**.
 
 ```tb hidden
@@ -493,11 +493,11 @@ An empty string, and a name that is not in the list, is skipped, and the names b
 <!-- /test -->
 
 <!-- test: FontComboTests.RestoreRecent_UnknownNameBeforeAKnownOne_KeepsTheKnownOnes -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.140.0
 > A name that the list does not have, followed by a name that it has, leaves the recent fonts wrong. [**RecentCount**](#recentcount) counts every name that was found, but the list gets no entry for the names after the unknown one, so the control takes the first fonts of the complete list for recent ones and draws them in the colors of the recent fonts. An array that [**SaveRecent**](#saverecent) returned on a machine with other fonts can hold such a name. A program removes the names that [**FindItem**](#finditem) does not find before it calls **RestoreRecent**.
 
 <!-- test: FontComboTests.RestoreRecent_RecentMaxZero_KeepsTheFonts -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.140.0
 > With [**RecentMax**](#recentmax) at 0, its default, **RestoreRecent** removes fonts from the list: as many from its top as the array has names, so that [**ListCount**](#listcount) is smaller and the first fonts are missing. A program sets **RecentMax** before it calls **RestoreRecent**.
 
 ### SaveRecent

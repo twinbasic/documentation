@@ -100,7 +100,7 @@ An assignment takes a number: a key raises run-time error 13. [**SelImageIndex**
 <!-- /test -->
 
 <!-- test: ImageComboTests.SelImage_KeyGivenToAdd_CanBeRead -->
-> [!NOTE] 1.8.137.0
+> [!NOTE] 1.8.140.0
 > A key that [**Add**](ImcComboItems#add) took for its *SelImage* gives the item the right picture, but reading **SelImage** then raises run-time error 13. [**SelImageIndex**](#selimageindex) gives the picture's number all the same.
 
 ### SelImageIndex

@@ -123,7 +123,7 @@ A picture is an icon or a bitmap. An icon of another size is scaled to the size 
 <!-- /test -->
 
 <!-- test: ImageListTests.Add_BitmapSmallerThanTheList_IsInTheWindowsList, ImageListTests.Add_BitmapWiderThanTheList_AddsOnePicture -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.140.0
 > A bitmap smaller than the pictures of the list is not stored. The collection gets its [**ImlListImage**](ImlListImage) all the same, and from then on the items and the pictures do not match: that item draws the picture added after it, and the last item draws nothing. A bitmap wider than the pictures of the list is cut: its left part is the picture, and the rest stays in the image list of Windows as further pictures after the last one.
 
 <!-- test: ImageListTests.Clear_ResetsTheSizeAndTheHandle, ImageListTests.Remove_LastPicture_ResetsTheSizeAndTheHandle -->

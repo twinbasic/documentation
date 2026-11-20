@@ -1,5 +1,5 @@
 {
-  "version": "1.8.137.0",
+  "version": "1.8.140.0",
   "cases": {
     "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher": {
       "fails": "1 of 2 checks failed: GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word: expected True, got False"
@@ -39,12 +39,6 @@
     },
     "LabelWTests.Moved_IsDrawnAtItsNewPlace": {
       "fails": "1 of 3 checks failed: a label whose Top was set is drawn in its back color at its new place: expected True, got False"
-    },
-    "ListBoxWTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
-      "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectExtended on an empty list raises no error 380: expected True, got False"
-    },
-    "ListBoxWTests.Sorted_AssignedToAnEmptyMultiSelectList_RaisesNoError": {
-      "fails": "1 of 2 checks failed: Sorted = True on an empty list that selects several items raises no error 380: expected True, got False"
     },
     "ListBoxWTests.HitTest_EmptyList_ReturnsMinus1": {
       "fails": "1 of 2 checks failed: HitTest(0, 0) of an empty list: expected -1, got 0"
@@ -141,9 +135,6 @@
     },
     "UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy": {
       "fails": "2 of 2 checks failed: SyncBuddy = True: expected 0, got 380; the Text of the buddy after Value = 7: expected \"7\", got \"TextBoxW1\""
-    },
-    "VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError": {
-      "fails": "1 of 2 checks failed: MultiSelect = vbMultiSelectSimple on an empty list raises no error 380: expected True, got False"
     },
     "VListBoxTests.HitTest_EmptyList_ReturnsMinus1": {
       "fails": "1 of 2 checks failed: HitTest(0, 0) of an empty list: expected -1, got 0"

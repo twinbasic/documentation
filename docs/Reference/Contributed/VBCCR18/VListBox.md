@@ -205,13 +205,9 @@ Whether the items are laid out in columns and the list scrolls sideways. **Boole
 
 Whether the user can select several items, and how. A member of [**MultiSelectConstants**](../../VBRUN/Constants/MultiSelectConstants). Default: **vbMultiSelectNone**. See [Selecting several items](ListBoxW#selecting-several-items). Another value raises run-time error 380.
 
-<!-- test: VListBoxTests.MultiSelect_AtRunTime_KeepsListCount -->
-It can be assigned at run time, and the list keeps its **ListCount**.
+<!-- test: VListBoxTests.MultiSelect_AtRunTime_KeepsListCount, VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError -->
+It can be assigned at run time, and the list keeps its **ListCount**. An empty list accepts it too.
 <!-- /test -->
-
-<!-- test: VListBoxTests.MultiSelect_AssignedToAnEmptyList_RaisesNoError -->
-> [!NOTE] 1.8.137.0
-> An assignment of **vbMultiSelectSimple** or **vbMultiSelectExtended** at run time raises run-time error 380 while the list is empty, although the list then does select several items. Set **ListCount** first, or set **MultiSelect** at design time.
 
 ### OLEDragDropScroll
 {: .no_toc }
@@ -308,7 +304,7 @@ Syntax: *object*.**HitTest**( *X*, *Y* )
 : *required* The position as two **Single** values, measured from the list's top left corner in the scale units of the control's container, as the OLE drag-and-drop events give it.
 
 <!-- test: VListBoxTests.HitTest_EmptyList_ReturnsMinus1 -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.140.0
 > In an empty list the method returns 0, not -1, for a position where the first item would be.
 
 ### HitTestInsertMark

@@ -100,7 +100,7 @@ A negative *Index*, and one greater than [**Count**](#count) + 1, raises run-tim
 <!-- /test -->
 
 <!-- test: ListViewGroupsTests.Add_DuplicateKey_AddsNoGroup -->
-> [!WARNING] 1.8.137.0
+> [!WARNING] 1.8.140.0
 > A call that raises error 457 for its *Key* has already given the control the group. The collection is as it was, and the control shows a group with that header that no **LvwGroup** stands for, which the program cannot remove but with [**Clear**](#clear). A program asks [**Exists**](#exists) before it adds a group with a key that the collection may have.
 
 ### Clear
