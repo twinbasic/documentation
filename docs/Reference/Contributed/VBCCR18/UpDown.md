@@ -84,7 +84,7 @@ A **BuddyProperty**, or a **SyncBuddy** of **True**, with no buddy raises run-ti
 <!-- /test -->
 
 <!-- test: UpDownTests.BuddyProperty_Text_ShowsTheValue, UpDownTests.SyncBuddy_True_UsesTheDefaultPropertyOfTheBuddy -->
-> [!NOTE] 1.8.140.0, BETA 1042
+> [!NOTE] 1.8.141.0, BETA 1042
 > **BuddyProperty** accepts only the properties that every control has on its form, such as **Tag**, **ToolTipText** and **Width**. A property of the buddy's own class, such as **Text** of a **TextBoxW**, raises run-time error 380, and so does **SyncBuddy** set to **True** without a **BuddyProperty**, which should take the buddy's default property. A program that wants the value in a text box assigns it in the **Change** event of the **UpDown**, or uses a [**SpinBox**](SpinBox).
 
 ```tb check_build

@@ -128,7 +128,7 @@ Debug.Print ToolBar1.Buttons(1).Key
 <!-- /test -->
 
 <!-- test: ToolBarTests.Buttons_HeldAcrossTextAlignmentChange_StillReachTheirButtons, ToolBarTests.Buttons_HeldAcrossOrientationChange_StillReachTheirButtons, ToolBarTests.Buttons_HeldAcrossRightToLeftChange_StillReachTheirButtons -->
-> [!WARNING] 1.8.140.0
+> [!WARNING] 1.8.141.0
 > A change of [**TextAlignment**](#textalignment), of [**Orientation**](#orientation) that turns the buttons to the other direction, and any assignment to [**RightToLeft**](../Common#righttoleft), [**RightToLeftLayout**](../Common#righttoleftlayout) or [**RightToLeftMode**](../Common#righttoleftmode), makes the toolbar window again and gives each button a new [**TbrButton**](TbrButton) object. A variable that held a button before the change does not reach it afterwards: its **Position** is 0, and what the program sets on it is lost. The program gets the button again from [**Buttons**](#buttons-1) after such a change.
 
 <!-- test: ToolBarTests.Buttons_HeldAcrossStyleChange_StillReachTheirButtons -->
@@ -258,7 +258,7 @@ Properties
 The edge of the form that the control is attached to, where it takes the form's whole width or height. A member of [**AlignConstants**](../../../VBRUN/Constants/AlignConstants). Default: **vbAlignNone**.
 
 <!-- test: sample toolbar-align -->
-> [!NOTE] 1.8.140.0, BETA 1042
+> [!NOTE] 1.8.141.0, BETA 1042
 > twinBASIC has not implemented **Align**: an assignment compiles with the warning TB0009 and changes nothing, and the property goes on returning **vbAlignNone**. A program places and sizes the toolbar itself.
 
 ```tb probe check_run arch=win32,win64 id=toolbar-align

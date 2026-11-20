@@ -44,7 +44,7 @@ End With
 [**Groups**](#groups) returns the groups as an [**LvwGroups**](LvwGroups) collection, and its [**Add**](LvwGroups#add) method adds one, with the text of its header and of its footer. Each group is an [**LvwGroup**](LvwGroup). An item joins a group by its [**Group**](LvwListItem#group), and leaves it when that is set to **Nothing**.
 
 <!-- test: ListViewGroupsTests.Group_Assigned_PutsTheItemInTheGroup -->
-> [!WARNING] 1.8.140.0
+> [!WARNING] 1.8.141.0
 > In a 64-bit program an item cannot join a group: an assignment to its **Group** does nothing, **Group** returns **Nothing**, and every group's [**ListItemCount**](LvwGroup#listitemcount) is 0. The groups themselves, their headers and their states, work.
 
 The control shows the groups while [**GroupView**](#groupview) is **True**, in every view but the list view. With **GroupView** **False** the items are shown as they would be without groups, and the groups keep their items.

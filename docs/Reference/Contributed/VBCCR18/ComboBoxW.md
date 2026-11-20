@@ -411,7 +411,7 @@ The selected text of the text box. **String**. An assignment replaces the select
 Whether [**AddItem**](#additem) without an index puts each new item in alphabetical order. **Boolean**. Default: **False**. An **AddItem** with an index puts the item at that index all the same.
 
 <!-- test: ComboBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace -->
-> [!NOTE] 1.8.140.0
+> [!NOTE] 1.8.141.0
 > An assignment of **True** at run time does not sort the items already in the list, and the items added afterward are placed as if the list were sorted. Set **Sorted** before the first item is added.
 
 ### Style

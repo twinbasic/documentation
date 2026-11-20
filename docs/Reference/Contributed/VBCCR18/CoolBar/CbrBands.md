@@ -115,7 +115,7 @@ An *Index* below 0, and one above [**Count**](#count) + 1, raises run-time error
 <!-- /test -->
 
 <!-- test: CoolBarTests.Bands_Add_DuplicateKey_AddsNothingToTheWindow -->
-> [!WARNING] 1.8.140.0
+> [!WARNING] 1.8.141.0
 > A call that raises error 457 for its key has already put its band into the cool bar. The collection is as it was, and the cool bar shows one band more than [**Count**](#count) says, which no **CbrBand** reaches. A program asks [**Exists**](#exists) before it adds a band with a key that the cool bar may have.
 
 ### Clear

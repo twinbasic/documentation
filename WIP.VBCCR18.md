@@ -31,7 +31,7 @@ without a page in bold, with no link; link it when its page exists.
 
 ## The package
 
-- 1.8.140.0 compiles on BETA 1042 for win32 and win64, embedded with its own copy of OLEGuids.
+- 1.8.141.0 compiles on BETA 1042 for win32 and win64, embedded with its own copy of OLEGuids.
 - The controls are the classes marked `[COMControl]`. Each is a VB6 UserControl that makes a
   window of Windows' own control inside itself, so `hWnd` (that window) and `hWndUserControl`
   differ.

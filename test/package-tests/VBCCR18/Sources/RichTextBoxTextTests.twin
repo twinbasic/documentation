@@ -302,12 +302,11 @@ Module RichTextBoxTextTests
     End Sub
 
     [TestCase]
-    Public Sub PasswordChar_NoneSet_IsCharacterZero()
+    Public Sub PasswordChar_NoneSet_IsAnEmptyString()
         Expect.Begin
         Dim f As HostForm
         Set f = Rig.NewForm()
-        Expect.AreEqual 1, Len(f.RichTextBox1.PasswordChar), "Len(PasswordChar) of a new control"
-        Expect.AreEqual 0, AscW(f.RichTextBox1.PasswordChar & "x"), "AscW(PasswordChar) of a new control"
+        Expect.AreEqual 0, Len(f.RichTextBox1.PasswordChar), "Len(PasswordChar) of a box with no password character"
         Unload f
         Expect.Done
     End Sub

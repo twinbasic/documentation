@@ -2,7 +2,7 @@
   "format": 4,
   "package": "VBCCR18",
   "project": "VBCCR18",
-  "version": "1.8.140.0",
+  "version": "1.8.141.0",
   "types": [
     {
       "name": "Animation",
@@ -22108,7 +22108,8 @@
         {"name":"Format","vis":"public","signature":"Format As Integer"},
         {"name":"sin_family","vis":"public","signature":"sin_family As Integer"},
         {"name":"sin_port","vis":"public","signature":"sin_port As Integer"},
-        {"name":"sin_addr","vis":"public","signature":"sin_addr As Long"},
+        {"name":"sin_addrHi","vis":"public","signature":"sin_addrHi As Integer"},
+        {"name":"sin_addrLo","vis":"public","signature":"sin_addrLo As Integer"},
         {"name":"sin_zero","vis":"public","signature":"sin_zero(0 To (8 - 1)) As Byte"}
       ],
       "members": []
