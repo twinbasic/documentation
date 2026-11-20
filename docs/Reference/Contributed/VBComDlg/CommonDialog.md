@@ -612,7 +612,7 @@ The dialog with [**RootFolder**](#rootfolder) set to the path of a folder named 
 ![Two Browse For Folder dialogs, each showing the text Choose the folder for the reports. above a tree whose root is the folder Projects, holding the folders Invoices, Reports and Templates, with Reports selected. The left one is small and has only OK and Cancel. The right one, in the new style, is larger and has a Folder box showing Reports, a Make New Folder button, OK and Cancel.](Images/ShowFolderBrowser.png){:width="892" height="635"}
 
 <!-- test: FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned -->
-> [!WARNING] 1.0.13.0
+> [!WARNING] 1.0.15.0
 > With **CdlBIFBrowseForComputer** or **CdlBIFBrowseForPrinter**, the method returns **True** after the user selects a computer or a printer, but [**FileName**](#filename) and [**FileTitle**](#filetitle) are empty: the class reads the selection as a file system path, and a computer or a printer has none. The name of the selection is not available. To let the user choose a printer, use [**ShowPrinter**](#showprinter), which sets [**PrinterName**](#printername).
 
 ### ShowHelp
@@ -682,7 +682,7 @@ Opens a modeless Replace dialog and returns the dialog's window handle. Returns 
 Syntax: *object*.**ShowReplace** ( ) **As LongPtr**
 
 <!-- test: FindReplaceTests.Replace_WithoutHook_Raised -->
-Works identically to [**ShowFind**](#showfind), with the addition that the [**Replace**](#replace) event fires when the user clicks **Replace**, and the [**ReplaceAll**](#replaceall) event is declared for **Replace All** (but see the note under that event). The dialog starts with the current [**ReplaceWith**](#replacewith) text, and **ReplaceWith** is updated before each event. If the dialog cannot be created, the method raises **CdlBufferLengthZero** (36848) when the *Find what* or *Replace with* buffer is invalid.
+Works identically to [**ShowFind**](#showfind), with the addition that the [**Replace**](#replace) event fires when the user clicks **Replace**, and the [**ReplaceAll**](#replaceall) event when the user clicks **Replace All**. The dialog starts with the current [**ReplaceWith**](#replacewith) text, and **ReplaceWith** is updated before each event. If the dialog cannot be created, the method raises **CdlBufferLengthZero** (36848) when the *Find what* or *Replace with* buffer is invalid.
 <!-- /test -->
 
 ### ShowSave
@@ -825,13 +825,13 @@ Syntax: *object*\_**Replace**( )
 ### ReplaceAll
 {: .no_toc }
 
-Declared for the **Replace All** button of the Replace dialog.
+Raised when the user clicks **Replace All** in the Replace dialog.
 
 Syntax: *object*\_**ReplaceAll**( )
 
 <!-- test: FindReplaceTests.ReplaceAll_ButtonRaisesEvent, FindReplaceTests.ReplaceAll_MessageRaisesEvent, FindReplaceTests.ReplaceAll_MessageForReplaceRaisesReplace, FindReplaceTests.ReplaceAll_ButtonRaisesNoOtherEvent -->
-> [!NOTE] 1.0.13.0
-> The class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
+[**FindWhat**](#findwhat), [**ReplaceWith**](#replacewith), and [**Flags**](#flags) are updated before the event fires. A click on **Replace All** raises this event only, not [**Replace**](#replace) or [**FindNext**](#findnext).
+<!-- /test -->
 
 ## Example
 

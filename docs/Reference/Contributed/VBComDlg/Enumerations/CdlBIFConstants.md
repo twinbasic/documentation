@@ -35,7 +35,7 @@ The enumeration is declared inside the [**CommonDialog**](../CommonDialog) class
 | **CdlBIFBrowseFileJunctions**{: #CdlBIFBrowseFileJunctions } | `&H10000` | The user can browse into items that act as folders, such as a library or a compressed file with the extension `.zip`. |
 
 <!-- test: FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned -->
-> [!WARNING] 1.0.13.0
+> [!WARNING] 1.0.15.0
 > With **CdlBIFBrowseForComputer** or **CdlBIFBrowseForPrinter**, [**ShowFolderBrowser**](../CommonDialog#showfolderbrowser) returns **True** after the user selects a computer or a printer, but [**FileName**](../CommonDialog#filename) and [**FileTitle**](../CommonDialog#filetitle) are empty: the class reads the selection as a file system path, and a computer or a printer has none. The name of the selection is not available. To let the user choose a printer, use [**ShowPrinter**](../CommonDialog#showprinter), which sets [**PrinterName**](../CommonDialog#printername).
 
 ## Used by
