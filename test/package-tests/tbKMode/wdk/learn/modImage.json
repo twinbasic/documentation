@@ -326,6 +326,11 @@
  },
  {
   "kind": "Enum",
+  "name": "ImageMachineType",
+  "url": null
+ },
+ {
+  "kind": "Enum",
   "name": "FPO_FRAME",
   "url": null
  },
@@ -479,11 +484,6 @@
  {
   "kind": "Enum",
   "name": "ImageLoadConfigGuardFlags",
-  "url": null
- },
- {
-  "kind": "Enum",
-  "name": "ImageMachineType",
   "url": null
  },
  {

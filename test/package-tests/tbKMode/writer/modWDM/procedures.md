@@ -210,13 +210,9 @@ Syntax: **InterlockedAdd64** *Addend*, *Value*
 *Value*
 : *required* A **LongLong**: the value to add.
 
-<!-- test: KernelHelperTests.InterlockedAdd64_AddsTheValue, KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree -->
-Each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), passes it with *Addend* and *Value* to [**ExInterlockedAddLargeInteger**](#ExInterlockedAddLargeInteger), which acquires and releases it, and then calls [**KeReleaseSpinLock**](#KeReleaseSpinLock) with it. The procedure is a **Sub**: it returns nothing, where the WDK's `InterlockedAdd64`, a compiler intrinsic, returns the sum. The package describes it as not usable in a 32-bit driver.
+<!-- test: KernelHelperTests.InterlockedAdd64_AddsTheValue, KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree, KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas -->
+Each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock) and passes it with *Addend* and *Value* to [**ExInterlockedAddLargeInteger**](#ExInterlockedAddLargeInteger), which acquires and releases it; the IRQL is left as it was. The procedure is a **Sub**: it returns nothing, where the WDK's `InterlockedAdd64`, a compiler intrinsic, returns the sum. The package describes it as not usable in a 32-bit driver.
 <!-- /test -->
-
-<!-- test: KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas -->
-> [!WARNING] 0.3.0.6
-> **InterlockedAdd64** calls **KeReleaseSpinLock** with a lock that it never acquired and an IRQL of 0. **KeReleaseSpinLock** sets the IRQL to the one it is given, so a call made at `APC_LEVEL` or `DISPATCH_LEVEL` returns at `PASSIVE_LEVEL`, and the driver goes on at an IRQL lower than the one it was at. A driver calls **ExInterlockedAddLargeInteger** itself, with a spin lock that it has initialized with **KeInitializeSpinLock**.
 
 ### InterlockedIncrement
 {: #InterlockedIncrement }
@@ -230,16 +226,12 @@ Syntax (32-bit): **InterlockedIncrement**( *Addend* )
 *Addend*
 : *required* A **Long**, passed by reference: the variable to increment.
 
-<!-- test: KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree, KernelHelperTests.InterlockedIncrement_IncrementsTheValue -->
-In a 64-bit build **InterlockedIncrement** is a **Sub** of the package: each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), passes it to [**ExInterlockedAddUlong**](#ExInterlockedAddUlong) with *Addend* and 1, which acquires and releases it, and then calls [**KeReleaseSpinLock**](#KeReleaseSpinLock) with it, as [**InterlockedAdd64**](#InterlockedAdd64) does. In a 32-bit build it is a **Declare** of the kernel's `InterlockedIncrement`, a `__fastcall` routine there, which returns the incremented value. The WDK's [**InterlockedIncrement**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement) is a compiler intrinsic that returns the incremented value.
+<!-- test: KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree, KernelHelperTests.InterlockedIncrement_IncrementsTheValue, KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas -->
+In a 64-bit build **InterlockedIncrement** is a **Sub** of the package: each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock) and passes it to [**ExInterlockedAddUlong**](#ExInterlockedAddUlong) with *Addend* and 1, which acquires and releases it, as [**InterlockedAdd64**](#InterlockedAdd64) does. In a 32-bit build it is a **Declare** of the kernel's `InterlockedIncrement`, a `__fastcall` routine there, which returns the incremented value. The WDK's [**InterlockedIncrement**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement) is a compiler intrinsic that returns the incremented value.
 <!-- /test -->
 
-<!-- test: KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas -->
-> [!WARNING] 0.3.0.6
-> In a 64-bit driver **InterlockedIncrement** calls **KeReleaseSpinLock** with a lock that it never acquired and an IRQL of 0, as **InterlockedAdd64** does: a call made at `APC_LEVEL` or `DISPATCH_LEVEL` returns at `PASSIVE_LEVEL`. A driver calls **ExInterlockedAddUlong** itself, with a spin lock that it has initialized with **KeInitializeSpinLock**.
-
 <!-- test: compile InterlockedIncrementReturnsTheValue -->
-> [!NOTE] 0.3.0.6
+> [!NOTE] 0.3.0.8
 > In a 64-bit build **InterlockedIncrement** is a **Sub**, so `n = InterlockedIncrement(v)` is refused with TB5033. In a 32-bit build it compiles.
 
 ### IoAcquireRemoveLock
@@ -820,11 +812,9 @@ Syntax: **KeAcquireSpinLock**( *SpinLock* )
 *SpinLock*
 : *required* A **LongPtr**, passed by reference: the spin lock, as [**KeInitializeSpinLock**](#KeInitializeSpinLock) initialized it.
 
-In a 64-bit build the function calls [**KeAcquireSpinLockRaiseToDpc**](#KeAcquireSpinLockRaiseToDpc) and returns what it returns. In a 32-bit build it is a **Declare** of `KfAcquireSpinLock` of `hal.dll`. The WDK's `KeAcquireSpinLock` macro writes the IRQL to a second argument instead of returning it.
-
 <!-- test: KernelHelperTests.KeAcquireSpinLock_PassesTheLock -->
-> [!WARNING] 0.3.0.6
-> In a 32-bit driver `KfAcquireSpinLock` is a `__fastcall` routine, which takes the lock in a register, but the package declares it without `FastCall` and calls it as a `__stdcall` routine, which pushes the lock on the stack. The routine acquires some other spin lock than the driver's. A driver declares `KfAcquireSpinLock` itself, `FastCall` and with `Lib "hal.dll"`.
+In a 64-bit build the function calls [**KeAcquireSpinLockRaiseToDpc**](#KeAcquireSpinLockRaiseToDpc) and returns what it returns. In a 32-bit build it is a `FastCall` **Declare** of `KfAcquireSpinLock` of `hal.dll`, a `__fastcall` routine: see the warning under [Building a driver](.#building-a-driver). The WDK's `KeAcquireSpinLock` macro writes the IRQL to a second argument instead of returning it.
+<!-- /test -->
 
 ### KeQuerySystemTime
 {: #KeQuerySystemTime }
@@ -893,8 +883,4 @@ Syntax: **RtlFailFast** *code*
 *code*
 : *required* A **Long**: the reason, such as `FAST_FAIL_CORRUPT_LIST_ENTRY` of [**RTL_FAST_FAIL**](#RTL_FAST_FAIL).
 
-The procedure is `Naked` and `CDecl`. The WDK's `RtlFailFast`, the intrinsic `__fastfail`, loads *code* into ECX and raises `int 29h`.
-
-<!-- test: none -- the procedure ends the system, so no program can call it and see the reason it gives; its code is two instructions, read from the package's source -->
-> [!NOTE] 0.3.0.6
-> The procedure's code is `mov ecx, 7` and `int 29h`: it raises the fast fail with the reason 7, `FAST_FAIL_FATAL_APP_EXIT`, whatever *code* is, so the bug check names that reason. [**FatalListEntryError**](#FatalListEntryError) passes `FAST_FAIL_CORRUPT_LIST_ENTRY`, 3.
+The procedure is `Naked` and `CDecl`. As the WDK's `RtlFailFast`, the intrinsic `__fastfail`, does, it loads *code* into ECX and raises `int 29h`, so the bug check names *code* as the reason. [**FatalListEntryError**](#FatalListEntryError) passes `FAST_FAIL_CORRUPT_LIST_ENTRY`, 3.

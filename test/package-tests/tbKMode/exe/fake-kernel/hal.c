@@ -1,6 +1,6 @@
 /*
  * A user-mode stand-in for the 32-bit hal.dll, for tbKMode's exe cases: the routines the x86
- * kernel's hal.dll exports and the package's 32-bit Declares name there (from tbKMode 0.3.0.6). Each
+ * kernel's hal.dll exports and the package's 32-bit Declares name there (from tbKMode 0.3.0.8). Each
  * passes its call to the routine of the same name in the stand-in for ntoskrnl.exe (ntoskrnl.c),
  * which records it, so that the cases read one record whichever file the Declare names. It is
  * never a kernel and starts nothing. Built by ../prepare.mjs for x86 only: the x64 kernel exports

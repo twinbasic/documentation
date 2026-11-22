@@ -1,9 +1,9 @@
 ' Calls the Declares of the package that name, in a 32-bit build, routines the 32-bit ntoskrnl.exe
 ' does not export: those the 32-bit hal.dll exports (the fast mutexes, the IRQL routines,
-' KfAcquireSpinLock, which KeAcquireSpinLock names, and KeReleaseSpinLock), which the package names
-' there from 0.3.0.6, KeLowerIrql, which names KfLowerIrql of ntoskrnl.exe, and the Rtl...BitsEx
-' routines, which no 32-bit file exports. The 64-bit kernel exports each of them, or the package's
-' 64-bit procedure calls one it does.
+' KfAcquireSpinLock, which KeAcquireSpinLock names, KfLowerIrql, which KeLowerIrql names from
+' 0.3.0.8, and KeReleaseSpinLock), which the package names there. The Rtl...BitsEx routines, which
+' no 32-bit file exports, are declared in a 64-bit build only from 0.3.0.8, and called in one only.
+' The 64-bit kernel exports each of them, or the package's 64-bit procedure calls one it does.
 Module Driver
     Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
         Dim fm As FAST_MUTEX
@@ -17,16 +17,18 @@ Module Driver
         Dim spinLock As LongPtr
         irql = KeAcquireSpinLock(spinLock)
         KeReleaseSpinLock spinLock, irql
-        Dim bm As RTL_BITMAP_EX
-        ' A buffer of 64 bits; an array would be a SAFEARRAY, which a driver cannot have.
-        Dim bits As LongLong
-        RtlInitializeBitMapEx bm, bits, 64
-        RtlClearAllBitsEx bm
-        RtlSetBitEx bm, 1
-        RtlClearBitEx bm, 1
-        Dim b As Byte = RtlTestBitEx(bm, 1)
-        Dim n As LongLong = RtlFindSetBitsEx(bm, 1, 0)
-        n = RtlFindSetBitsAndClearEx(bm, 1, 0)
+        #If Win64 Then
+            Dim bm As RTL_BITMAP_EX
+            ' A buffer of 64 bits; an array would be a SAFEARRAY, which a driver cannot have.
+            Dim bits As LongLong
+            RtlInitializeBitMapEx bm, bits, 64
+            RtlClearAllBitsEx bm
+            RtlSetBitEx bm, 1
+            RtlClearBitEx bm, 1
+            Dim b As Byte = RtlTestBitEx(bm, 1)
+            Dim n As LongLong = RtlFindSetBitsEx(bm, 1, 0)
+            n = RtlFindSetBitsAndClearEx(bm, 1, 0)
+        #End If
         Return STATUS_SUCCESS
     End Function
 End Module

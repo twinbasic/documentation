@@ -53,10 +53,13 @@ const byName = (a, b) => a.toLowerCase().localeCompare(b.toLowerCase());
 
 /** The public names of a module by section, with the members the tables need. */
 function packageNames(api, module) {
-  const mod = api.types.find((t) => t.kind === "module" && t.name === module);
-  const members = (mod?.members ?? []).filter((m) => m.vis === "public");
+  // The page holds every Module of the module's file: tbKMode 0.3.0.8 declares ImageMachineType in
+  // a Module SuppressedWarnings of modImage.twin, to turn a warning off.
+  const mods = api.types.filter((t) => t.kind === "module" && t.file === `${module}.twin`);
+  const group = new Set(mods.map((t) => t.name));
+  const members = mods.flatMap((t) => t.members ?? []).filter((m) => m.vis === "public");
   const unique = (list) => [...new Set(list.map((x) => x.name))];
-  const typesOf = (kind) => unique(api.types.filter((t) => t.in === module && t.kind === kind && t.vis === "public"));
+  const typesOf = (kind) => unique(api.types.filter((t) => group.has(t.in) && t.kind === kind && t.vis === "public"));
   // A name that is a procedure in one build and a Declare in another (modWDM's InterlockedIncrement)
   // is a procedure.
   const procedures = unique(members.filter((m) => !m.declare && (m.kind === "sub" || m.kind === "function")));

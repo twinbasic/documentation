@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0.6",
+  "version": "0.3.0.8",
   "cases": {
     "InterlockedIncrementReturnsTheValue": {
       "win32": "pass",
@@ -15,25 +15,8 @@
         "fails": "expected an error on WDMCompileTests.twin line 99, got none; the compiler reported TB5033 wdmcompiletests.twin:42"
       }
     },
-    "ImageFieldTests.MachineTypes_EqualTheMachineField": {
-      "fails": "2 of 3 checks failed: IMAGE_FILE_HEADER.Machine of an AMD64 image (&H8664) = IMAGE_FILE_MACHINE_AMD64: expected True, got False; IMAGE_FILE_HEADER.Machine of an ARM64 image (&HAA64) = IMAGE_FILE_MACHINE_ARM64: expected True, got False"
-    },
     "WDMExportTests.Declares_NameExportsOfTheKernel": {
-      "fails": "2 of 297 checks failed: the x64 kernel exports ExFreePool2: expected True, got False; the x64 kernel exports RtlFreeSid: expected True, got False"
-    },
-    "WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer": {
-      "win32": {
-        "fails": "2 of 2 checks failed: size of OB_PRE_OPERATION_INFORMATION.Parameters (a POB_PRE_OPERATION_PARAMETERS in wdm.h): expected 4, got 16; LenB of OB_PRE_OPERATION_INFORMATION: expected 24, got 36"
-      },
-      "win64": {
-        "fails": "2 of 2 checks failed: size of OB_PRE_OPERATION_INFORMATION.Parameters (a POB_PRE_OPERATION_PARAMETERS in wdm.h): expected 8, got 24; LenB of OB_PRE_OPERATION_INFORMATION: expected 40, got 56"
-      }
-    },
-    "WDMLayoutTests.DEVICE_OBJECT_Layout": {
-      "win32": {
-        "fails": "1 of 26 checks failed: offset of DEVICE_OBJECT.Queue: expected 52, got 49"
-      },
-      "win64": "pass"
+      "fails": "1 of 296 checks failed: the x64 kernel exports ExFreePool2: expected True, got False"
     },
     "WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout": {
       "win32": {
@@ -46,35 +29,8 @@
     "WDMLayoutTests.KUSER_SHARED_DATA_Layout": {
       "fails": "1 of 51 checks failed: LenB of KUSER_SHARED_DATA: expected 1848, got 824"
     },
-    "WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout": {
-      "win32": "pass",
-      "win64": {
-        "fails": "1 of 2 checks failed: LenB of NPAGED_LOOKASIDE_LIST: expected 128, got 144"
-      }
-    },
-    "WDMLayoutTests.SE_SID_Layout": {
-      "fails": "1 of 2 checks failed: LenB of SE_SID: expected 68, got 60"
-    },
-    "WDMValueTests.Constants_Values": {
-      "fails": "1 of 227 checks failed: SECURITY_MAX_SID_SIZE: expected 68, got 60"
-    },
     "KernelHelperTests.BareNames_CallTheModulesProcedures": {
       "fails": "3 of 3 checks failed: the string after a call of LCase with no module name: expected \"kernel mode\", got \"Kernel Mode\"; the string after a call of UCase with no module name: expected \"KERNEL MODE\", got \"Kernel Mode\"; InStr with no module name, against modWDM.InStr: expected 8, got 0"
-    },
-    "KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas": {
-      "fails": "1 of 1 checks failed: the spin locks released that KeAcquireSpinLock had not acquired: expected 0, got 1"
-    },
-    "KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas": {
-      "win32": "pass",
-      "win64": {
-        "fails": "1 of 1 checks failed: the spin locks released that KeAcquireSpinLock had not acquired: expected 0, got 1"
-      }
-    },
-    "KernelHelperTests.KeAcquireSpinLock_PassesTheLock": {
-      "win32": {
-        "fails": "1 of 2 checks failed: the spin lock the routine received: expected \"the argument\", got \"something else\""
-      },
-      "win64": "pass"
     },
     "KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp": {
       "win32": {

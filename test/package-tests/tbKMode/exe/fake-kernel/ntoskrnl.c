@@ -171,31 +171,13 @@ static void record(const char *name, ULONG_PTR a, ULONG_PTR b) {
 }
 
 /* KfAcquireSpinLock, the x86 hal.dll's __fastcall routine that the package's 32-bit KeAcquireSpinLock
-   names (the stand-in for hal.dll jumps here). It reads the lock from ECX. The package declares it
-   without FastCall (tbKMode 0.3.0.6), whose call pushes the lock: this records ECX, where the
-   routine reads the lock, and the address pushed, and pops the 4 bytes pushed, so that the exe goes
-   on. Once the package declares it FastCall, this must pop nothing (`ret 0`). The x64 kernel has no
-   such routine; the x64 build exports one so that both builds share ntoskrnl.def. */
-#ifdef _M_IX86
-static void __stdcall record_std(const char *name, ULONG_PTR a, ULONG_PTR b) { record(name, a, b); }
-static const char nm_KfAcquireSpinLock[] = "KfAcquireSpinLock";
-
-__declspec(naked) void KfAcquireSpinLock(void) {
-  __asm {
-    push dword ptr [esp + 4]
-    push ecx
-    push offset nm_KfAcquireSpinLock
-    call record_std
-    xor eax, eax
-    ret 4
-  }
-}
-#else
+   names (the stand-in for hal.dll jumps here). It reads the lock from ECX; from tbKMode 0.3.0.8 the
+   package declares it FastCall. The x64 kernel has no such routine; the x64 build exports one so
+   that both builds share ntoskrnl.def. */
 UCHAR __fastcall KfAcquireSpinLock(ULONG_PTR *lock) {
   record("KfAcquireSpinLock", (ULONG_PTR)lock, 0);
   return 0;
 }
-#endif
 
 /* Records the lock it was given, and Addend and Value, and adds as the kernel's does. */
 ULONG __fastcall ExInterlockedAddUlong(ULONG *addend, ULONG value, ULONG_PTR *lock) {

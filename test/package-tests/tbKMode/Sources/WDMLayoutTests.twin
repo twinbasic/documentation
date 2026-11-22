@@ -1731,7 +1731,11 @@ Module WDMLayoutTests
         Expect.Begin
         Dim t As OB_PRE_OPERATION_INFORMATION
         Dim b As LongPtr = VarPtr(t)
-        ' Variable-length in C: its size is not compared.
+        #If Win64 Then
+            Expect.AreEqual 40, LenB(t), "LenB of OB_PRE_OPERATION_INFORMATION"
+        #Else
+            Expect.AreEqual 24, LenB(t), "LenB of OB_PRE_OPERATION_INFORMATION"
+        #End If
         Expect.AreEqual 0, Off(b, VarPtr(t.Operation)), "offset of OB_PRE_OPERATION_INFORMATION.Operation"
         Expect.AreEqual 4, Off(b, VarPtr(t.KernelHandle)), "offset of OB_PRE_OPERATION_INFORMATION.KernelHandle"
         Expect.AreEqual 8, Off(b, VarPtr(t.Object)), "offset of OB_PRE_OPERATION_INFORMATION.Object"
@@ -1746,9 +1750,22 @@ Module WDMLayoutTests
             Expect.AreEqual 16, Off(b, VarPtr(t.CallContext)), "offset of OB_PRE_OPERATION_INFORMATION.CallContext"
         #End If
         #If Win64 Then
-            Expect.AreEqual 32, Off(b, VarPtr(t.Parameters(0))), "offset of OB_PRE_OPERATION_INFORMATION.Parameters"
+            Expect.AreEqual 32, Off(b, VarPtr(t.Parameters)), "offset of OB_PRE_OPERATION_INFORMATION.Parameters"
         #Else
-            Expect.AreEqual 20, Off(b, VarPtr(t.Parameters(0))), "offset of OB_PRE_OPERATION_INFORMATION.Parameters"
+            Expect.AreEqual 20, Off(b, VarPtr(t.Parameters)), "offset of OB_PRE_OPERATION_INFORMATION.Parameters"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OB_PRE_OPERATION_PARAMETERS_Layout()
+        Expect.Begin
+        Dim t As OB_PRE_OPERATION_PARAMETERS
+        Dim b As LongPtr = VarPtr(t)
+        #If Win64 Then
+            Expect.AreEqual 24, LenB(t), "LenB of OB_PRE_OPERATION_PARAMETERS"
+        #Else
+            Expect.AreEqual 16, LenB(t), "LenB of OB_PRE_OPERATION_PARAMETERS"
         #End If
         Expect.Done
     End Sub

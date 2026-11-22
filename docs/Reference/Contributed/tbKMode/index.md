@@ -2,29 +2,18 @@
 title: tbKMode Package
 parent: Experimental Packages
 has_toc: false
-indexed_from: 0.3.0.6
+indexed_from: 0.3.0.8
 permalink: /tB/Packages/Contributed/tbKMode/
 ---
 
 # tbKMode Package
 {: .no_toc }
 
-**Author:** fafalone. **Version:** 0.3.0.6. **On GitHub:** [fafalone/tbKMode](https://github.com/fafalone/tbKMode).
+**Author:** fafalone. **Version:** 0.3.0.8. **On GitHub:** [fafalone/tbKMode](https://github.com/fafalone/tbKMode).
 
 Declarations for writing a Windows kernel-mode driver in twinBASIC.
 
 The **tbKMode** contributed package declares types, routines, constants and macros of the Windows Driver Kit (WDK), from its headers `wdm.h`, `ntddk.h`, `ntifs.h`, `fltkernel.h`, `ntdddisk.h`, `mountmgr.h` and `ntimage.h`, for a driver built as a `.sys` file. It covers a part of the WDK: its author describes it as a start, to be extended by each project that uses it.
-
-<!-- test: WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, KernelHelperTests.KeAcquireSpinLock_PassesTheLock, probe x86exports, KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas, KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas, ImageFieldTests.MachineTypes_EqualTheMachineField -->
-> [!WARNING] 0.3.0.6
-> The package compiles, and a driver can be built with it, but some of its declarations do not match the WDK, and fail with no error. The main ones:
->
-> - [**OB_PRE_OPERATION_INFORMATION**](modWDM#OB_PRE_OPERATION_INFORMATION) has another layout than the C structure, so that its **Parameters** holds other data: see [modWDM](modWDM#types).
-> - [**InterlockedAdd64**](modWDM#InterlockedAdd64), and in a 64-bit driver [**InterlockedIncrement**](modWDM#InterlockedIncrement), release a spin lock that they never acquired, which lowers the IRQL of their caller to `PASSIVE_LEVEL`.
-> - In a 32-bit driver, [**KeAcquireSpinLock**](modWDM#KeAcquireSpinLock) calls its routine in another calling convention than the one of `hal.dll`, and [**KeLowerIrql**](modWDM#KeLowerIrql) and the `Rtl...BitsEx` routines name routines that the 32-bit kernel does not export: see [modWDM](modWDM#declares).
-> - The members of [**ImageMachineType**](modImage#ImageMachineType) above `&H7FFF` are not equal to the **Machine** field of an image that holds them.
->
-> Each page states the defects of its own declarations, in a warning or a note below its table or in the section of the procedure.
 
 * TOC
 {:toc}
@@ -44,7 +33,7 @@ The package's own procedures are compiled with the package's settings, not the d
 
 <!-- test: bug declare-fastcall-static-binding-32bit, KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ObDereferenceObject_PassesTheObject, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResource_ReleasesTheResource, KernelHelperTests.InterlockedIncrement_IncrementsTheValue, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ExReleaseResourceLite_PassesTheResource, KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments -->
 > [!WARNING] BETA 1042
-> In a 32-bit driver no call of a `FastCall` declaration reaches its routine as it should. With **Runtime Binding Of DLL Declares** set to **No**, as a driver has it and as the package sets it for its own declarations, twinBASIC calls a `FastCall` declaration without its arguments in the registers where a `__fastcall` routine reads them: the routine works on other values, and the driver's stack is left wrong. The 32-bit kernel exports many routines as `__fastcall`, among them **IofCallDriver**, which [**IoCallDriver**](modWDM#IoCallDriver) calls, **ObfDereferenceObject**, the fast mutexes, **KfRaiseIrql** and **InterlockedIncrement**, and the package declares each of them `FastCall`. A 64-bit driver is not affected: it has one calling convention.
+> In a 32-bit driver no call of a `FastCall` declaration reaches its routine as it should. With **Runtime Binding Of DLL Declares** set to **No**, as a driver has it and as the package sets it for its own declarations, twinBASIC calls a `FastCall` declaration without its arguments in the registers where a `__fastcall` routine reads them: the routine works on other values, and the driver's stack is left wrong. The 32-bit kernel exports many routines as `__fastcall`, among them **IofCallDriver**, which [**IoCallDriver**](modWDM#IoCallDriver) calls, **ObfDereferenceObject**, **KfAcquireSpinLock**, which [**KeAcquireSpinLock**](modWDM#KeAcquireSpinLock) calls, the fast mutexes, **KfRaiseIrql** and **InterlockedIncrement**, and the package declares each of them `FastCall`. A 64-bit driver is not affected: it has one calling convention.
 
 The [Build Output Path](../../../IDE/Project-Settings#build-output-path) ends in `.sys` in place of `.${FileExtension}`. A driver is built for the architecture of the Windows it runs on: the kernel runs no 32-bit code on 64-bit Windows. [Project Types](../../../../Features/Project-Configuration/Project-Types#kernel-mode-drivers) says more about kernel-mode projects.
 
@@ -53,7 +42,7 @@ The [Build Output Path](../../../IDE/Project-Settings#build-output-path) ends in
 **modWDM** has procedures named [**LCase**](modWDM#LCase), [**UCase**](modWDM#UCase), [**InStr**](modWDM#InStr) and [**MsgBox**](modWDM#MsgBox), as VBA's functions are. They take the addresses of null-terminated strings, since a driver works on the kernel's strings, and the package's changelog calls them overrides of VBA's.
 
 <!-- test: KernelHelperTests.BareNames_CallTheModulesProcedures, compile MsgBoxBareNameIsTheModules -->
-> [!WARNING] 0.3.0.6
+> [!WARNING] 0.3.0.8
 > A call of one of these names without a module name calls VBA's function, not the package's. `LCase(StrPtr(s))` and `UCase(StrPtr(s))` leave the string as it was, `InStr(StrPtr(a), StrPtr(b))` returns 0 when *a* holds *b*, and `MsgBox "text"` compiles as VBA's **MsgBox**. A driver writes the module name to call the package's procedures: `modWDM.LCase`, `modWDM.UCase`, `modWDM.InStr` and `modWDM.MsgBox`.
 
 ## Modules

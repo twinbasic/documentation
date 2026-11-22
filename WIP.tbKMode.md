@@ -22,10 +22,15 @@ about the package beyond its pages; the rules for every contributed package are 
   writer joins: the snapshot keeps no `#If` of an alias). A name that is a procedure in one build and
   a Declare in the other (InterlockedIncrement, KeAcquireSpinLock, KeQuerySystemTime) is a `###`
   section in `procedures.md` with a syntax for each build.
-- **Callouts** are labelled with the package version (`0.3.0.6`) or `timeless`, each backed by
+- **Callouts** are labelled with the package version (`0.3.0.8`) or `timeless`, each backed by
   cases or the probe; the one about twinBASIC itself, under *Building a driver*, is labelled `BETA
   1042` and names its reproducer, `bugs/declare-fastcall-static-binding-32bit`.
 - The owner reviewed the 0.3.0.5 pages, the verifier's included (2026-11-17).
+- **A page holds every Module of its file** (0.3.0.8): ImageMachineType moved into a Module
+  SuppressedWarnings of modImage.twin, under `[IgnoreWarnings(TB0012)]`, so the writer and
+  `wdk/api.mjs` take a module's names from every Module whose file is `<Module>.twin`, and
+  modImage's page lists it. Its members above `&H7FFF` are Integer literals from 0.3.0.8, the
+  16-bit convention, so the `values` of `verifier/config/tbKMode.json` give their negative values.
 - **A declaration right for the kit the package was written from is no defect**: modSysInfo follows
   the 10.0.22621 SDK (`POLICY_AUDIT_SUBCATEGORY_COUNT` 59, no `FileFsGuidInformation`), and its cases
   check that kit's values (`wdk/modSysInfo.json`, `values` and `sizes`). From 0.3.0.6 the load
@@ -70,11 +75,13 @@ package*). Each folder's README says how.
   `tbrun --beside` copies them into the exe's folder, where the loader finds them before System32;
   a routine the exe imports that a stand-in lacks stops the exe from starting (0xC0000139), so a
   routine a new case reaches is added to the stand-in and its `.def`. A routine called in the wrong
-  convention gets an x86 naked stand-in that pops what the defective caller pushed; its comment
-  says what to change once fixed (KfAcquireSpinLock, 0.3.0.6). **A 32-bit exe ends at its first
-  FastCall case** (twinBASIC BETA 1042, `bugs/declare-fastcall-static-binding-32bit`): those cases
-  are last in the file and record *no result*; the cases that call no FastCall Declare come before
-  them.
+  convention gets an x86 naked stand-in that pops what the defective caller pushed, and a comment
+  that says what to change once fixed (none from 0.3.0.8, which declares KfAcquireSpinLock
+  FastCall). **A 32-bit exe ends at its first FastCall case** (twinBASIC BETA 1042,
+  `bugs/declare-fastcall-static-binding-32bit`): those cases are last in the file and record *no
+  result*; the cases that call no FastCall Declare come before them. The first of them,
+  KeAcquireSpinLock_PassesTheLock, passes on 0.3.0.8 (two runs): ECX holds the lock's address at the
+  call, but the call leaves the stack 4 bytes off, and the next case ends the exe.
 - `probe/`: builds small drivers with `tbbuild --build` and judges their import tables with the
   verifier's `checkDriver`; it backs the landing page's warning on the package's own settings.
 - `verifier/`: published as `tbKMode-verifier.zip` (its page, `Verifier.md`). `check` checks each
@@ -129,12 +136,13 @@ posts them. #1 (modFltMgr, modDisk) and #2 (modSysInfo) were answered by 0.3.0.5
 `tbkmode-issue-2-comment.md`). #3 (the package's Settings) and #4 (the declarations of modWDM and modImage) are filed
 (2026-11-17), from `tbkmode-issue-3.md` and `tbkmode-issue-4.md`. 0.3.0.6 answered #3 (its Settings
 set the five) and most of #4; fafalone's replies on #2 and #4 decided the conventions above. The
-reply to #4 on 0.3.0.6 is drafted in `tbkmode-issue-4-comment.md`.
+reply to #4 on 0.3.0.6 is drafted in `tbkmode-issue-4-comment.md`. 0.3.0.8 fixed every item of
+its list (1-12); what is left is IO_DRIVER_CREATE_CONTEXT.SiloContext, KUSER_SHARED_DATA (fine as it
+is) and the names shared with VBA.
 
 ## Leads, not on the pages
 
-In [WIP.BugHunt.md](WIP.BugHunt.md#tbkmode): RtlFailFast's fixed reason (on the page as a NOTE
-marked `none`), `SE_SELF_RELATIVE` `&H8000&` against the Integer `Control` field, and MmCopyMemory's
-4-byte *NumberOfBytes* in a 64-bit build, which the verifier reports and no page states yet. Omissions, not defects: newer
+In [WIP.BugHunt.md](WIP.BugHunt.md#tbkmode): `SE_SELF_RELATIVE` `&H8000&` against the Integer
+`Control` field. Omissions, not defects: newer
 members missing from `IMAGE_DEBUG_EX_CH` and `ImageMachineType`, `SYMBOLIC_LINK_SET`; optional
 pointers declared `ByRef` (the `ByVal vbNullPtr` paragraph covers them).

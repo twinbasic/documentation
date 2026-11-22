@@ -12,7 +12,7 @@ Module WDMFieldTests
     Public Sub OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer()
         Expect.Begin
         Dim t As OB_PRE_OPERATION_INFORMATION
-        Dim n As Long = (UBound(t.Parameters) - LBound(t.Parameters) + 1) * LenB(t.Parameters(0))
+        Dim n As Long = LenB(t.Parameters)
         Expect.AreEqual CLng(LenB(Of LongPtr)), n, "size of OB_PRE_OPERATION_INFORMATION.Parameters (a POB_PRE_OPERATION_PARAMETERS in wdm.h)"
         #If Win64 Then
             Expect.AreEqual 40, LenB(t), "LenB of OB_PRE_OPERATION_INFORMATION"

@@ -480,27 +480,6 @@ Module KernelHelperTests
         Expect.Done
     End Sub
 
-    ' KeAcquireSpinLock acquires the lock whose address it is given: in a 64-bit build the package's
-    ' function calls KeAcquireSpinLockRaiseToDpc; in a 32-bit build it is a Declare of hal.dll's
-    ' KfAcquireSpinLock, a __fastcall routine that reads the address from ECX. Not FastCall, so the
-    ' call is made whatever the binding; the stand-ins record what they receive.
-    [TestCase]
-    Public Sub KeAcquireSpinLock_PassesTheLock()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        Dim lock As LongPtr
-        KeInitializeSpinLock lock
-        FakeKernel_ResetCall
-        Dim irql As KIRQL = KeAcquireSpinLock(lock)
-        #If Win64 Then
-            Expect.AreEqual "KeAcquireSpinLockRaiseToDpc", LastCall(), "the routine KeAcquireSpinLock calls"
-        #Else
-            Expect.AreEqual "KfAcquireSpinLock", LastCall(), "the routine KeAcquireSpinLock calls"
-        #End If
-        Expect.AreEqual "the argument", Got(0, VarPtr(lock)), "the spin lock the routine received"
-        Expect.Done
-    End Sub
-
     ' The WDK's RtlCheckBit is 1 when bit BitPosition of the bitmap's buffer is set, counted from the
     ' lowest bit of its first ULONG. The package's reads the buffer with CopyMemory (RtlMoveMemory),
     ' which the stand-in moves as the kernel does.
@@ -561,6 +540,27 @@ Module KernelHelperTests
         GetMem b(0), p, n
         Return StrConv(b, vbUnicode)
     End Function
+
+    ' KeAcquireSpinLock acquires the lock whose address it is given: in a 64-bit build the package's
+    ' function calls KeAcquireSpinLockRaiseToDpc; in a 32-bit build it is a FastCall Declare of
+    ' hal.dll's KfAcquireSpinLock, a __fastcall routine that reads the address from ECX. The
+    ' stand-ins record what they receive.
+    [TestCase]
+    Public Sub KeAcquireSpinLock_PassesTheLock()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        Dim lock As LongPtr
+        KeInitializeSpinLock lock
+        FakeKernel_ResetCall
+        Dim irql As KIRQL = KeAcquireSpinLock(lock)
+        #If Win64 Then
+            Expect.AreEqual "KeAcquireSpinLockRaiseToDpc", LastCall(), "the routine KeAcquireSpinLock calls"
+        #Else
+            Expect.AreEqual "KfAcquireSpinLock", LastCall(), "the routine KeAcquireSpinLock calls"
+        #End If
+        Expect.AreEqual "the argument", Got(0, VarPtr(lock)), "the spin lock the routine received"
+        Expect.Done
+    End Sub
 
     [TestCase]
     Public Sub IoCallDriver_PassesTheDeviceAndTheIrp()

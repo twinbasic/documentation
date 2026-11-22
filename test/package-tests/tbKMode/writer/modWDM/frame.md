@@ -33,37 +33,32 @@ A parameter that C declares optional, and that is a structure passed by referenc
 
 {{table:declares}}
 
-<!-- test: KernelHelperTests.KeAcquireSpinLock_PassesTheLock -->
-> [!WARNING] 0.3.0.6
-> In a 32-bit driver [**KeAcquireSpinLock**](#KeAcquireSpinLock) is a declaration of `KfAcquireSpinLock` of `hal.dll`, a `__fastcall` routine that takes the lock in a register, but the package declares it without `FastCall` and calls it as a `__stdcall` routine, which pushes the lock on the stack. The routine acquires some other spin lock than the driver's, and the call leaves the stack 4 bytes off. A 64-bit driver is not affected.
+<!-- test: probe x86exports -->
+In a 32-bit build the routines that the 32-bit kernel has in `hal.dll`, such as `KfAcquireSpinLock` and `KfLowerIrql`, which [**KeAcquireSpinLock**](#KeAcquireSpinLock) and **KeLowerIrql** call there, are declarations of `hal.dll`. **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx** are declared in a 64-bit build only, since no 32-bit file exports them.
+<!-- /test -->
 
-<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, probe x86exports -->
-> [!NOTE] 0.3.0.6
-> The 64-bit kernel of Windows 10 version 22H2 does not export **RtlFreeSid**, and **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says. A driver imports only the routines that it calls, so a driver that calls neither is not affected; one that calls **RtlFreeSid**, or **ExFreePool2** on Windows 10, does not load.
->
-> A 32-bit driver has more of them. In a 32-bit build **KeLowerIrql** names `KfLowerIrql` of `ntoskrnl.exe`, which only the 32-bit `hal.dll` exports, and no 32-bit file exports **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx**. A 32-bit driver that calls any of them does not load; it calls **KfLowerIrql** in place of **KeLowerIrql**. The 64-bit kernel exports all of them.
+<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel -->
+> [!NOTE] 0.3.0.8
+> **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says: the 64-bit kernel of Windows 10 version 22H2 does not export it. A driver imports only the routines that it calls, so a driver that does not call it is not affected; one that calls it on Windows 10 does not load.
 
 ## Types
 
 <!-- test: {{cases:WDMLayoutTests}} -->
-Each structure that the WDK's kernel-mode headers declare has the size of its C structure, and its fields are at the C fields' offsets, in a 32-bit and in a 64-bit build, apart from those of the warning and the note below.
+Each structure that the WDK's kernel-mode headers declare has the size of its C structure, and its fields are at the C fields' offsets, in a 32-bit and in a 64-bit build, apart from those of the note below.
 
 {{table:types}}
 <!-- /test -->
 
-<!-- test: WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout -->
-> [!WARNING] 0.3.0.6
-> **OB_PRE_OPERATION_INFORMATION.Parameters** is a **Byte** array of the size of the parameters' union where wdm.h has a pointer to the union: 16 bytes where the pointer is 4 in a 32-bit build, and 24 where it is 8 in a 64-bit one. The structure is 36 bytes where C's is 24, and 56 where C's is 40. The array starts at the pointer's offset, so its first 4 or 8 bytes are the pointer, and the rest is past the end of the structure the kernel passes. A driver that reads the parameters reads them at the address in the first 4 or 8 bytes.
+<!-- test: WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout, WDMLayoutTests.OB_PRE_OPERATION_PARAMETERS_Layout -->
+**OB_PRE_OPERATION_INFORMATION.Parameters** is the address of the parameters, as in wdm.h. The C type it points to is a union of **OB_PRE_CREATE_HANDLE_INFORMATION** and **OB_PRE_DUPLICATE_HANDLE_INFORMATION**, which **OB_PRE_OPERATION_PARAMETERS** declares as the larger of the two: a driver reads **DesiredAccess** and **OriginalDesiredAccess** of either from it, and **SourceProcess** and **TargetProcess** when the operation is `OB_OPERATION_HANDLE_DUPLICATE`.
+<!-- /test -->
 
-<!-- test: WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout, WDMLayoutTests.DEVICE_OBJECT_Layout, WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout, WDMLayoutTests.SE_SID_Layout, WDMLayoutTests.KUSER_SHARED_DATA_Layout -->
-> [!NOTE] 0.3.0.6
-> These structures differ from the C structures in size, and one in the start of a field:
+<!-- test: WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout, WDMLayoutTests.KUSER_SHARED_DATA_Layout -->
+> [!NOTE] 0.3.0.8
+> These structures are smaller than the C structures:
 >
-> - In a 32-bit build **DEVICE_OBJECT.Queue** starts 3 bytes before C's **Queue**, at offset 49 where C's is at 52: its first 3 bytes are the padding after **StackSize**. Its other fields are at their places, and a 64-bit build has C's layout.
 > - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. The package declares the field under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1`, as the WDK does, but defines no `NTDDI_VERSION`, and a project's conditional constants do not reach a package's code, so the field is never there. Its other fields are at their places.
 > - **KUSER_SHARED_DATA** ends at **Cookie**: it is 824 bytes where the WDK's is 1848, and has none of the WDK's fields after **Cookie**. Its other fields are at their places.
-> - In a 64-bit build **NPAGED_LOOKASIDE_LIST** is 144 bytes where C's is 128: its padding array, **align**, follows the **GENERAL_LOOKASIDE**, which already has C's size. A 32-bit build has C's size.
-> - **SE_SID** is a buffer of **SECURITY_MAX_SID_SIZE** bytes, 60, where C's is 68 (see the note under [Constants](#constants)), so it cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
 
 ## Aliases
 
@@ -88,10 +83,6 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 <!-- test: WDMValueTests.Constants_Values -->
 The limits of the 16-bit types hold the bits of the C value in an **Integer**, as the package's fields of those types are **Integers**: **MAXUINT16**, **MAXUSHORT**, **MAXWORD**, **USHRT_MAX** and **_UI16_MAX** are `&HFFFF`, -1, and **MINSHORT** is `&H8000`, -32768. Each equals a field that holds the bits of a `USHORT` of 65535, or a `SHORT` of -32768, but not the **Long** 65535 or 32768. **SCHAR_MIN** is the **Byte** `&H80`, 128, the bits of C's -128, as the package takes a `char` as a **Byte**.
 <!-- /test -->
-
-<!-- test: WDMValueTests.Constants_Values -->
-> [!NOTE] 0.3.0.6
-> **SECURITY_MAX_SID_SIZE** is 60, where the WDK's is 68: a buffer of that size cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
 
 ## Variables
 

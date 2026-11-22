@@ -168,22 +168,15 @@ Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).
 
 ### tbKMode
 
-tbKMode 0.3.0.6, BETA 1042, met while moving its section to that version. Neither is checked.
+BETA 1042: met while moving the section to 0.3.0.6, and still in 0.3.0.8, which fixed the other
+two leads of 0.3.0.6 (RtlFailFast's fixed reason, MmCopyMemory's 4-byte *NumberOfBytes*).
 
-- **RtlFailFast** (modWDM.twin line 5837) is a `cdecl naked` Sub whose code is `mov ecx, 7` then
-  `int 29h`: it loads 7 (`FAST_FAIL_FATAL_APP_EXIT`), not its *code* argument, so
-  **FatalListEntryError**, which passes `FAST_FAIL_CORRUPT_LIST_ENTRY` (3), raises 7. The WDK's
-  `RtlFailFast` is `__fastfail(Code)`. Read from the source only: a case would end the process.
-  **Page affected**: modWDM's sections of **RtlFailFast** and **FatalListEntryError**.
-- **SE_SELF_RELATIVE** (`SECURITY_DESCRIPTOR_CONTROL`, modWDM.twin line 4954) is `&H8000&`, a
+- **SE_SELF_RELATIVE** (`SECURITY_DESCRIPTOR_CONTROL`, modWDM.twin line 4964) is `&H8000&`, a
   Long 32768, which an Integer cannot hold: **SECURITY_DESCRIPTOR.Control** (line 236) and the
   *Control* of RtlGetControlSecurityDescriptor and RtlSetControlSecurityDescriptor (lines
-  5155-5156) are Integers, so assigning the flag to one may raise overflow, and comparing one with
-  it is never true. Not run.
-- **MmCopyMemory** (modWDM.twin line 5354) takes *NumberOfBytes* `ByVal As Long`, where the WDK's
-  routine takes a `SIZE_T`: 8 bytes in a 64-bit build, passed in a register whose high 32 bits the
-  call may leave as they were. The verifier's `check` reports it (0.3.0.5 and 0.3.0.6); no case and
-  no page states it. **Page affected**: modWDM's Declares, if it is a defect.
+  5164-5165) are Integers, so assigning the flag to one may raise overflow, and comparing one with
+  it is never true. Not run. By the package's convention for 16-bit values (0.3.0.8's
+  ImageMachineType) it would be `&H8000`.
 
 ### User-defined types (from the GdiPlus work)
 

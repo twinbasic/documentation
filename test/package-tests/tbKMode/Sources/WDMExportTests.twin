@@ -41,7 +41,7 @@ Module WDMExportTests
         s &= "RtlCompareUnicodeString RtlCompareUnicodeStrings RtlCopyBitMap RtlCopyUnicodeString RtlCreateHeap RtlCreateSecurityDescriptor RtlDeriveCapabilitySidsFromName RtlDestroyHeap "
         s &= "RtlDuplicateUnicodeString RtlEqualUnicodeString RtlExtractBitMap RtlFindClearBits RtlFindClearBitsAndSet RtlFindClearRuns RtlFindExportedRoutineByName RtlFindFirstRunClear "
         s &= "RtlFindLastBackwardRunClear RtlFindLeastSignificantBit RtlFindLongestRunClear RtlFindMostSignificantBit RtlFindNextForwardRunClear RtlFindSetBits RtlFindSetBitsAndClear RtlFindSetBitsAndClearEx "
-        s &= "RtlFindSetBitsEx RtlFreeHeap RtlFreeSid RtlFreeUnicodeString RtlGUIDFromString RtlGetControlSecurityDescriptor RtlGetDaclSecurityDescriptor RtlGetSaclSecurityDescriptor "
+        s &= "RtlFindSetBitsEx RtlFreeHeap RtlFreeUnicodeString RtlGUIDFromString RtlGetControlSecurityDescriptor RtlGetDaclSecurityDescriptor RtlGetSaclSecurityDescriptor "
         s &= "RtlGetVersion RtlImageDirectoryEntryToData RtlImageNtHeader RtlInitUnicodeString RtlInitializeBitMap RtlInitializeBitMapEx RtlInitializeSid RtlInitializeSidEx "
         s &= "RtlInterlockedClearBitRun RtlInterlockedSetBitRun RtlIsElevatedRid RtlIsNameLegalDOS8Dot3 RtlLengthSecurityDescriptor RtlLocalTimeToSystemTime RtlMoveMemory RtlNtStatusToDosError "
         s &= "RtlNumberOfClearBits RtlNumberOfClearBitsInRange RtlNumberOfSetBits RtlNumberOfSetBitsInRange RtlNumberOfSetBitsUlongPtr RtlQueryRegistryValues RtlSetAllBits RtlSetBit "
