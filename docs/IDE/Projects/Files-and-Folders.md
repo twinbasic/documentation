@@ -22,7 +22,7 @@ The commands that change files change the project in memory. Nothing reaches the
 
 A right click on a row opens the menu for the rows selected. A right click on a row that is not selected selects it first. A right click on the empty space below the tree opens the menu with nothing selected, and then only **Add** and **Export...** are available.
 
-![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="219" height="273"}
+![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="219" height="260"}
 
 An item that does not apply is greyed out, not hidden, except **Open** and **Open with**. The keys work when the tree has the focus in the file view.
 

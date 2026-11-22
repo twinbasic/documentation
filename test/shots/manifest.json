@@ -158,6 +158,36 @@
         ]
       }
     },
+    "IDE/AddIns/Images/AddIns_Menu.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/AddIns_Menu.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DataExplorer.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DataExplorer.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DataExplorer_Settings.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DataExplorer_Settings.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DiffCompare.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DiffCompare.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DiffCompare_Menu.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/DiffCompare_Menu.png": {
+      "build": 1045
+    },
     "IDE/AddIns/Images/Help_Find.png": {
       "build": 1034
     },
@@ -199,6 +229,18 @@
     },
     "IDE/AddIns/Images/Help_Window.png": {
       "build": 1033
+    },
+    "IDE/AddIns/Images/HexEditor.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/HexEditor.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/IcoEditor.light.png": {
+      "build": 1045
+    },
+    "IDE/AddIns/Images/IcoEditor.png": {
+      "build": 1045
     },
     "IDE/Building/Images/Console_Clean.light.png": {
       "build": 1042
@@ -456,6 +498,12 @@
     "IDE/Menu/Images/Menu_Window_Language.png": {
       "build": 1042
     },
+    "IDE/Menu/Images/Menu_Window_Theme.light.png": {
+      "build": 1045
+    },
+    "IDE/Menu/Images/Menu_Window_Theme.png": {
+      "build": 1045
+    },
     "IDE/Projects/Images/Export_Console.light.png": {
       "build": 1042
     },
@@ -467,6 +515,12 @@
     },
     "IDE/Projects/Images/References_Detail.png": {
       "build": 1042
+    },
+    "IDE/Projects/Images/RightClick-File.light.png": {
+      "build": 1045
+    },
+    "IDE/Projects/Images/RightClick-File.png": {
+      "build": 1045
     },
     "IDE/Projects/Images/Settings_Close.light.png": {
       "build": 1042,
