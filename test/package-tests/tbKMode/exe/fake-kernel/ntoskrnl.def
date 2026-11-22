@@ -15,6 +15,7 @@ EXPORTS
   KeInitializeEvent
   KeInitializeSpinLock
   KeAcquireSpinLockRaiseToDpc
+  KfAcquireSpinLock
   KeReleaseSpinLock
   ExInterlockedAddUlong
   ExInterlockedAddLargeInteger
@@ -22,6 +23,7 @@ EXPORTS
   IoReleaseRemoveLockEx
   IoReleaseRemoveLockAndWaitEx
   MmGetSystemRoutineAddress
+  MmMapLockedPagesSpecifyCache
   IofCallDriver
   ObfDereferenceObject
   ObCloseHandle
@@ -53,4 +55,6 @@ EXPORTS
   FakeKernel_LastArg
   FakeKernel_LockHeldAtEntry
   FakeKernel_RemoveLockFile
+  FakeKernel_UnmatchedReleases
+  FakeKernel_UnmatchedIrql
   FakeKernel_ResetCall

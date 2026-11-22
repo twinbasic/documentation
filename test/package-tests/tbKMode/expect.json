@@ -1,83 +1,25 @@
 {
-  "version": "0.3.0.5",
+  "version": "0.3.0.6",
   "cases": {
-    "ZwDuplicateObjectTakesTargetProcessHandle": {
-      "fails": "expected none on WDMCompileTests.twin line 9, got TB5103"
-    },
-    "IoCreateDeviceReturnsThePointer": {
-      "fails": "expected none on WDMCompileTests.twin line 16, got TB5001"
-    },
-    "ExTryToAcquireFastMutexReturnsWhetherAcquired": {
-      "fails": "expected none on WDMCompileTests.twin line 22, got TB5033"
-    },
-    "SeLocateProcessImageNameReturnsThePointer": {
-      "fails": "expected none on WDMCompileTests.twin line 29, got TB5001"
-    },
-    "ExInitializeNPagedLookasideListTakesTheList": {
-      "fails": "expected none on WDMCompileTests.twin line 36, got TB5001"
-    },
     "InterlockedIncrementReturnsTheValue": {
       "win32": "pass",
       "win64": {
         "fails": "expected none on WDMCompileTests.twin line 42, got TB5033"
       }
     },
-    "CmCallbackReleaseKeyObjectIDExTakesThePointer": {
-      "fails": "expected none on WDMCompileTests.twin line 50, got TB5001"
-    },
-    "IoReleaseRemoveLockAndWaitTakesALongPtrTag": {
-      "win32": "pass",
-      "win64": {
-        "fails": "expected none on WDMCompileTests.twin line 93, got TB5001"
-      }
-    },
     "MsgBoxBareNameIsTheModules": {
-      "fails": "expected an error on WDMCompileTests.twin line 99, got none"
-    },
-    "DbgPrintEx1TakesTheComponentAndTheLevel": {
-      "fails": "expected none on WDMCompileTests.twin line 108, got TB5103"
-    },
-    "DbgPrintEx2TakesTheComponentAndTheLevel": {
-      "fails": "expected none on WDMCompileTests.twin line 109, got TB5103"
-    },
-    "DbgPrintEx3TakesTheComponentAndTheLevel": {
-      "fails": "expected none on WDMCompileTests.twin line 110, got TB5103"
-    },
-    "ZwMapViewOfSectionTakesTheInheritDisposition": {
-      "fails": "expected none on WDMCompileTests.twin line 118, got TB5103"
-    },
-    "ExAllocatePool2TakesPoolFlags": {
-      "fails": "expected none on WDMCompileTests.twin line 125, got TB5079"
-    },
-    "RtlCompareUnicodeStringsTakesTheLengths": {
-      "fails": "expected none on WDMCompileTests.twin line 133, got TB5103"
+      "win32": {
+        "fails": "expected an error on WDMCompileTests.twin line 99, got none"
+      },
+      "win64": {
+        "fails": "expected an error on WDMCompileTests.twin line 99, got none; the compiler reported TB5033 wdmcompiletests.twin:42"
+      }
     },
     "ImageFieldTests.MachineTypes_EqualTheMachineField": {
       "fails": "2 of 3 checks failed: IMAGE_FILE_HEADER.Machine of an AMD64 image (&H8664) = IMAGE_FILE_MACHINE_AMD64: expected True, got False; IMAGE_FILE_HEADER.Machine of an ARM64 image (&HAA64) = IMAGE_FILE_MACHINE_ARM64: expected True, got False"
     },
-    "ImageLayoutTests.IMAGE_AUX_SYMBOL_Layout": {
-      "fails": "1 of 1 checks failed: offset of IMAGE_AUX_SYMBOL.TokenDef: expected 0, got 56"
-    },
-    "ImageLayoutTests.IMAGE_AUX_SYMBOL_EX_Layout": {
-      "fails": "2 of 2 checks failed: offset of IMAGE_AUX_SYMBOL_EX.TokenDef: expected 0, got 58; offset of IMAGE_AUX_SYMBOL_EX.rgbReserved: expected 18, got 76"
-    },
-    "ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY_Layout": {
-      "win32": {
-        "fails": "2 of 50 checks failed: offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessAffinityMask: expected 48, got 44; offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessHeapFlags: expected 44, got 48"
-      },
-      "win64": "pass"
-    },
-    "ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY32_Layout": {
-      "fails": "2 of 50 checks failed: offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessAffinityMask: expected 48, got 44; offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessHeapFlags: expected 44, got 48"
-    },
-    "ImageValueTests.IMAGE_STORAGE_CLASS_Values": {
-      "fails": "1 of 28 checks failed: IMAGE_SYM_CLASS_END_OF_FUNCTION: expected 255, got -1"
-    },
-    "ImageValueTests.Constants_Values": {
-      "fails": "4 of 34 checks failed: IMAGE_ARCHIVE_END: expected \"` \", got \"`\\n\"; IMAGE_ARCHIVE_PAD: expected \" \", got \"\\n\"; IMAGE_ARCHIVE_START: expected \"!<arch> \", got \"!<arch>\\n\"; UNWIND_HISTORY_TABLE_SIZE: expected 12, got 32"
-    },
     "WDMExportTests.Declares_NameExportsOfTheKernel": {
-      "fails": "28 of 321 checks failed: the x64 kernel exports ExFreePool2: expected True, got False; the x64 kernel exports KeQuerySystemTime: expected True, got False; the x64 kernel exports RtlAcquirePebLock: expected True, got False; the x64 kernel exports RtlAllocateAndInitializeSid: expected True, got False; the x64 kernel exports RtlCheckBit: expected True, got False; the x64 kernel exports RtlCreateServiceSid: expected True, got False; the x64 kernel exports RtlDefaultNpAcl: expected True, got False; the x64 kernel exports RtlEqualPrefixSid: expected True, got False; the x64 kernel exports RtlFreeSid: expected True, got False; the x64 kernel exports RtlGetCurrentPeb: expected True, got False; the x64 kernel exports RtlReleasePebLock: expected True, got False; the x64 kernel exports RtlUniform: expected True, got False; the x64 kernel exports ZwCompactKeys: expected True, got False; the x64 kernel exports ZwCompressKey: expected True, got False; the x64 kernel exports ZwCreateUserProcess: expected True, got False; the x64 kernel exports ZwFreezeRegistry: expected True, got False; the x64 kernel exports ZwInitializeRegistry: expected True, got False; the x64 kernel exports ZwLoadKey2: expected True, got False; the x64 kernel exports ZwLoadKey3: expected True, got False; the x64 kernel exports ZwLockRegistryKey: expected True, got False; the x64 kernel exports ZwNotifyChangeMultipleKeys: expected True, got False; the x64 kernel exports ZwQueryMultipleValueKey: expected True, got False; the x64 kernel exports ZwQueryOpenSubKeys: expected True, got False; the x64 kernel exports ZwQueryOpenSubKeysEx: expected True, got False; the x64 kernel exports ZwResumeProcess: expected True, got False; the x64 kernel exports ZwSaveMergedKeys: expected True, got False; the x64 kernel exports ZwSuspendProcess: expected True, got False; the x64 kernel exports ZwThawRegistry: expected True, got False"
+      "fails": "2 of 297 checks failed: the x64 kernel exports ExFreePool2: expected True, got False; the x64 kernel exports RtlFreeSid: expected True, got False"
     },
     "WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer": {
       "win32": {
@@ -87,52 +29,11 @@
         "fails": "2 of 2 checks failed: size of OB_PRE_OPERATION_INFORMATION.Parameters (a POB_PRE_OPERATION_PARAMETERS in wdm.h): expected 8, got 24; LenB of OB_PRE_OPERATION_INFORMATION: expected 40, got 56"
       }
     },
-    "WDMHelperTests.NT_ERROR_IsTrueForErrorStatusesOnly": {
-      "fails": "3 of 4 checks failed: NT_ERROR of STATUS_ACCESS_DENIED (&HC0000022): expected True, got False; NT_ERROR of STATUS_UNSUCCESSFUL (&HC0000001): expected True, got False; NT_ERROR of the warning STATUS_BUFFER_OVERFLOW (&H80000005): expected False, got True"
-    },
-    "WDMHelperTests.InitIOCTLs_SetsTheMountCodes": {
-      "fails": "2 of 2 checks failed: IOCTL_MOUNTMGR_QUERY_POINTS: expected 7143432, got 393224; IOCTL_MOUNTDEV_QUERY_DEVICE_NAME: expected 5046280, got 262152"
-    },
-    "WDMHelperTests.InitIOCTLs_SetsFormatTracks": {
-      "fails": "1 of 1 checks failed: IOCTL_DISK_FORMAT_TRACKS: expected 507928, got 0"
-    },
-    "WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow": {
-      "win32": {
-        "fails": "1 of 1 checks failed: the next location's offset from stack(0) (one IO_STACK_LOCATION below the current one): expected 0, got 32"
-      },
-      "win64": {
-        "fails": "1 of 1 checks failed: the next location's offset from stack(0) (one IO_STACK_LOCATION below the current one): expected 0, got 64"
-      }
-    },
-    "WDMHelperTests.IoSkipCurrentIrpStackLocation_MovesUpOneLocation": {
-      "win32": {
-        "fails": "1 of 2 checks failed: CurrentStackLocation's offset from stack(0) (one IO_STACK_LOCATION above stack(1)): expected 72, got 37"
-      },
-      "win64": {
-        "fails": "1 of 2 checks failed: CurrentStackLocation's offset from stack(0) (one IO_STACK_LOCATION above stack(1)): expected 144, got 73"
-      }
-    },
     "WDMLayoutTests.DEVICE_OBJECT_Layout": {
       "win32": {
         "fails": "1 of 26 checks failed: offset of DEVICE_OBJECT.Queue: expected 52, got 49"
       },
-      "win64": {
-        "fails": "2 of 26 checks failed: LenB of DEVICE_OBJECT: expected 336, got 328; offset of DEVICE_OBJECT.Queue: expected 80, got 77"
-      }
-    },
-    "WDMLayoutTests.IMAGE_INFO_Layout": {
-      "win32": {
-        "fails": "2 of 6 checks failed: offset of IMAGE_INFO.ImageBase: expected 4, got 0; offset of IMAGE_INFO.Properties: expected 0, got 4"
-      },
-      "win64": {
-        "fails": "6 of 6 checks failed: LenB of IMAGE_INFO: expected 40, got 32; offset of IMAGE_INFO.ImageBase: expected 8, got 0; offset of IMAGE_INFO.Properties: expected 0, got 8; offset of IMAGE_INFO.ImageSelector: expected 16, got 12; offset of IMAGE_INFO.ImageSize: expected 24, got 16; offset of IMAGE_INFO.ImageSectionNumber: expected 32, got 24"
-      }
-    },
-    "WDMLayoutTests.IMAGE_INFO_EX_Layout": {
-      "win32": "pass",
-      "win64": {
-        "fails": "2 of 4 checks failed: LenB of IMAGE_INFO_EX: expected 56, got 48; offset of IMAGE_INFO_EX.FileObject: expected 48, got 40"
-      }
+      "win64": "pass"
     },
     "WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout": {
       "win32": {
@@ -143,154 +44,101 @@
       }
     },
     "WDMLayoutTests.KUSER_SHARED_DATA_Layout": {
-      "fails": "4 of 39 checks failed: LenB of KUSER_SHARED_DATA: expected 1848, got 824; offset of KUSER_SHARED_DATA.Reserved2: expected 780, got 584; offset of KUSER_SHARED_DATA.SystemCall: expected 776, got 768; offset of KUSER_SHARED_DATA.SystemCallPad: expected 784, got 776"
+      "fails": "1 of 51 checks failed: LenB of KUSER_SHARED_DATA: expected 1848, got 824"
     },
     "WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout": {
-      "win32": {
-        "fails": "1 of 2 checks failed: LenB of NPAGED_LOOKASIDE_LIST: expected 80, got 192"
-      },
-      "win64": "pass"
-    },
-    "WDMLayoutTests.OB_POST_OPERATION_INFORMATION_Layout": {
       "win32": "pass",
       "win64": {
-        "fails": "2 of 8 checks failed: LenB of OB_POST_OPERATION_INFORMATION: expected 48, got 40; offset of OB_POST_OPERATION_INFORMATION.Parameters: expected 40, got 36"
+        "fails": "1 of 2 checks failed: LenB of NPAGED_LOOKASIDE_LIST: expected 128, got 144"
       }
     },
     "WDMLayoutTests.SE_SID_Layout": {
       "fails": "1 of 2 checks failed: LenB of SE_SID: expected 68, got 60"
     },
-    "WDMLayoutTests._GENERAL_LOOKASIDE_Layout": {
+    "WDMValueTests.Constants_Values": {
+      "fails": "1 of 227 checks failed: SECURITY_MAX_SID_SIZE: expected 68, got 60"
+    },
+    "KernelHelperTests.BareNames_CallTheModulesProcedures": {
+      "fails": "3 of 3 checks failed: the string after a call of LCase with no module name: expected \"kernel mode\", got \"Kernel Mode\"; the string after a call of UCase with no module name: expected \"KERNEL MODE\", got \"Kernel Mode\"; InStr with no module name, against modWDM.InStr: expected 8, got 0"
+    },
+    "KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas": {
+      "fails": "1 of 1 checks failed: the spin locks released that KeAcquireSpinLock had not acquired: expected 0, got 1"
+    },
+    "KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 1 checks failed: the spin locks released that KeAcquireSpinLock had not acquired: expected 0, got 1"
+      }
+    },
+    "KernelHelperTests.KeAcquireSpinLock_PassesTheLock": {
       "win32": {
-        "fails": "1 of 1 checks failed: LenB of _GENERAL_LOOKASIDE: expected 72, got 128"
+        "fails": "1 of 2 checks failed: the spin lock the routine received: expected \"the argument\", got \"something else\""
       },
       "win64": "pass"
     },
-    "WDMValueTests.MEMORY_CACHING_TYPE_Values": {
-      "fails": "1 of 8 checks failed: MmNotMapped: expected -1, got 7"
-    },
-    "WDMValueTests.POOL_TYPE_Values": {
-      "fails": "3 of 23 checks failed: DontUseThisType: expected 3, got 2; PagedPoolCacheAligned: expected 5, got 3; MaxPoolType: expected 7, got 4"
-    },
-    "WDMValueTests.ProcessAccessRights_Values": {
-      "fails": "1 of 2 checks failed: PROCESS_ALL_ACCESS: expected 2097151, got 2035711"
-    },
-    "WDMValueTests.Constants_Values": {
-      "fails": "12 of 205 checks failed: MAXUINT16: expected 65535, got -1; MAXUSHORT: expected 65535, got -1; MAXWORD: expected 65535, got -1; MINSHORT: expected 32768, got -32768; MOUNTDEVCONTROLTYPE: expected 77, got 4; MOUNTMGRCONTROLTYPE: expected 109, got 6; PS_ATTRIBUTE_NUMBER_MASK: expected 65535, got -1; RTL_QUERY_REGISTRY_TYPECHECK_MASK: expected -16777216, got 0; SCHAR_MIN: expected -128, got 128; SECURITY_MAX_SID_SIZE: expected 68, got 60; USHRT_MAX: expected 65535, got -1; _UI16_MAX: expected 65535, got -1"
-    },
-    "KernelHelperTests.InsertHeadList_LinksTheEntryAfterTheHead": {
-      "fails": "4 of 8 checks failed: a.Flink after the first insert: expected \"head\", got \"elsewhere\"; head.Blink after the first insert: expected \"a\", got \"head\"; b.Flink after the second insert: expected \"a\", got \"elsewhere\"; a.Blink after the second insert: expected \"b\", got \"head\""
-    },
-    "KernelHelperTests.InsertTailList_LinksTheEntryBeforeTheHead": {
-      "fails": "4 of 8 checks failed: head.Flink after the first insert: expected \"a\", got \"head\"; a.Blink after the first insert: expected \"head\", got \"elsewhere\"; a.Flink after the second insert: expected \"b\", got \"head\"; b.Blink after the second insert: expected \"a\", got \"elsewhere\""
-    },
-    "KernelHelperTests.RemoveListHead_UnlinksTheFirstEntry": {
-      "fails": "2 of 3 checks failed: head.Flink after the remove: expected \"b\", got \"elsewhere\"; b.Blink after the remove: expected \"head\", got \"a\""
-    },
-    "KernelHelperTests.IoCopyCurrentIrpStackLocationToNext_CopiesIntoTheLocationBelow": {
-      "fails": "10 of 14 checks failed: MajorFunction of the next location: expected 3, got 0; MinorFunction of the next location: expected 1, got 0; Flags of the next location: expected 2, got 0; DeviceObject of the next location: expected 4369, got 0; FileObject of the next location: expected 8738, got 0; Context of the next location (not copied): expected 21845, got 131331; MajorFunction of the current location (left alone): expected 3, got 0; MinorFunction of the current location (left alone): expected 1, got 0; Flags of the current location (left alone): expected 2, got 0; DeviceObject of the current location (left alone): expected 4369, got 8738"
-    },
-    "KernelHelperTests.IoSetCompletionRoutine_SetsTheLocationBelow": {
-      "win32": {
-        "fails": "5 of 6 checks failed: CompletionRoutine of the next location: expected 4660, got 0; Context of the next location: expected 22136, got -536870912; Control of the next location (SL_INVOKE_ON_SUCCESS, _ERROR and _CANCEL): expected 224, got 0; FileObject of the current location (left alone): expected 8738, got 4660; CompletionRoutine of the current location (left alone): expected 13107, got 22136"
-      },
-      "win64": {
-        "fails": "5 of 6 checks failed: CompletionRoutine of the next location: expected 4660, got 0; Context of the next location: expected 22136, got 3758096384; Control of the next location (SL_INVOKE_ON_SUCCESS, _ERROR and _CANCEL): expected 224, got 0; FileObject of the current location (left alone): expected 8738, got 4660; CompletionRoutine of the current location (left alone): expected 13107, got 22136"
-      }
-    },
-    "KernelHelperTests.InStr_ReturnsTheCharacterPosition": {
-      "fails": "1 of 2 checks failed: InStr of \"mode\" in \"kernel mode\": expected 8, got -14"
-    },
-    "KernelHelperTests.BareNames_CallTheModulesProcedures": {
-      "fails": "3 of 3 checks failed: the string after a call of LCase with no module name: expected \"kernel mode\", got \"Kernel Mode\"; the string after a call of UCase with no module name: expected \"KERNEL MODE\", got \"Kernel Mode\"; InStr with no module name, against modWDM.InStr: expected -14, got 0"
-    },
-    "KernelHelperTests.MsgBox_PassesTheTextAndTheTitle": {
-      "fails": "2 of 4 checks failed: the text of the box: expected \"The text\", got \"The title\"; the title of the box: expected \"The title\", got \"\""
-    },
-    "KernelHelperTests.ExInitializeFastMutex_InitializesAsTheWdkDoes": {
-      "fails": "1 of 6 checks failed: Count (FM_LOCK_BIT): expected 1, got 99"
-    },
-    "KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree": {
-      "fails": "1 of 1 checks failed: the spin lock ExInterlockedAddLargeInteger was given, at its call (0 free, 1 held, -1 not called): expected 0, got 1"
-    },
-    "KernelHelperTests.IoAcquireRemoveLock_PassesTheTagTheFileAndTheLine": {
-      "fails": "1 of 5 checks failed: the File IoAcquireRemoveLockEx received, read as the PCSTR the WDK declares (SOURCE_FILE is \"Driver.twin\"): expected \"Driver.twin\", got \"D\""
-    },
-    "KernelHelperTests.IoReleaseRemoveLockAndWait_PassesTheTag": {
-      "fails": "1 of 2 checks failed: the Tag IoReleaseRemoveLockAndWaitEx received (&H5A5A): expected \"the argument\", got \"something else\""
-    },
     "KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp": {
       "win32": {
-        "fails": "2 of 4 checks failed: the device object IofCallDriver received: expected \"the argument\", got \"something else\"; the IRP IofCallDriver received: expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
+      },
+      "win64": "pass"
+    },
+    "KernelHelperTests.ObDereferenceObject_PassesTheObject": {
+      "win32": {
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     },
     "KernelHelperTests.ExAcquireFastMutex_PassesTheMutex": {
       "win32": {
-        "fails": "1 of 2 checks failed: the FAST_MUTEX ExAcquireFastMutex received: expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     },
     "KernelHelperTests.ExReleaseFastMutex_PassesTheMutex": {
       "win32": {
-        "fails": "1 of 2 checks failed: the FAST_MUTEX ExReleaseFastMutex received: expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     },
     "KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex": {
       "win32": {
-        "fails": "1 of 2 checks failed: the FAST_MUTEX ExTryToAcquireFastMutex received: expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     },
     "KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead": {
       "win32": {
-        "fails": "1 of 2 checks failed: the list head the routine received (&H5000): expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
+      },
+      "win64": "pass"
+    },
+    "KernelHelperTests.ExReleaseResource_ReleasesTheResource": {
+      "win32": {
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     },
     "KernelHelperTests.InterlockedIncrement_IncrementsTheValue": {
       "win32": {
-        "fails": "1 of 1 checks failed: the variable after InterlockedIncrement of 41: expected 42, got 41"
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
-    },
-    "KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree": {
-      "win32": "pass",
-      "win64": {
-        "fails": "1 of 1 checks failed: the spin lock ExInterlockedAddUlong was given, at its call (0 free, 1 held, -1 not called): expected 0, got 1"
-      }
     },
     "KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource": {
       "win32": {
-        "fails": "1 of 2 checks failed: the ERESOURCE ExReleaseResourceAndLeaveCriticalRegion received: expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     },
-    "KernelHelperTests.ObCloseHandle_PassesTheHandle": {
+    "KernelHelperTests.ExReleaseResourceLite_PassesTheResource": {
       "win32": {
-        "fails": "1 of 2 checks failed: the handle ObCloseHandle received (&H5000): expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
-    },
-    "KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel": {
-      "fails": "1 of 1 checks failed: the routine that received the call, in the stand-in for ntoskrnl.exe: expected \"RtlDuplicateUnicodeString\", got \"\""
-    },
-    "KernelHelperTests.ExAllocatePool2_PassesTheSizeAndTheTag": {
-      "win32": {
-        "fails": "2 of 3 checks failed: the size ExAllocatePool2 received (64): expected \"the argument\", got \"something else\"; the tag ExAllocatePool2 received: expected \"the argument\", got \"something else\""
-      },
-      "win64": "pass"
-    },
-    "KernelHelperTests.RtlFindFirstRunClear_ReturnsTheStartingIndex": {
-      "fails": "1 of 1 checks failed: the starting index RtlFindFirstRunClear wrote: expected 5, got 0"
-    },
-    "KernelHelperTests.RtlFindLongestRunClear_ReturnsTheStartingIndex": {
-      "fails": "1 of 1 checks failed: the starting index RtlFindLongestRunClear wrote: expected 5, got 0"
     },
     "KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments": {
       "win32": {
-        "fails": "2 of 3 checks failed: the Addend ExInterlockedAddUlong received: expected \"the argument\", got \"something else\"; the Value ExInterlockedAddUlong received (3): expected \"the argument\", got \"something else\""
+        "fails": "no result: the exe exited with code -1073741819"
       },
       "win64": "pass"
     }

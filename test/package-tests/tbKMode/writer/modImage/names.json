@@ -5,8 +5,8 @@
     "ANON_OBJECT_HEADER_V2": "As **ANON_OBJECT_HEADER**, version 2 or later: with **Flags**, and the size and offset of the CLR metadata the object holds.",
     "FPO_DATA": "The frame-pointer-omission information of one function, in an image's debug information: its code's offset and size, the sizes of its locals and parameters, and in **Flags** the C bit fields: prolog size, saved registers, SEH, EBP use and the frame type (**FPO_FRAME**).",
     "IMAGE_ARCHIVE_MEMBER_HEADER": "The header before each member of an archive (a `.lib` file): the member's name, date, user and group IDs, mode and size, each as text, and the two characters of **IMAGE_ARCHIVE_END**.",
-    "IMAGE_AUX_SYMBOL": "An auxiliary record after an **IMAGE_SYMBOL**: the details of a function, a file name, a section definition, a CLR token or a CRC, which C declares as a union. See the warning below.",
-    "IMAGE_AUX_SYMBOL_EX": "An auxiliary record after an **IMAGE_SYMBOL_EX**, in a `/bigobj` object file: a weak external, a file name, a section definition, a CLR token or a CRC, which C declares as a union. See the warning below.",
+    "IMAGE_AUX_SYMBOL": "An auxiliary record after an **IMAGE_SYMBOL**: the details of a function, a file name, a section definition, a CLR token or a CRC, which C declares as a union. Here it is the union's 18 bytes, **u**: a driver copies them into a structure of the member it reads, such as **IMAGE_AUX_SYMBOL_TOKEN_DEF**.",
+    "IMAGE_AUX_SYMBOL_EX": "An auxiliary record after an **IMAGE_SYMBOL_EX**, in a `/bigobj` object file: a weak external, a file name, a section definition, a CLR token or a CRC, which C declares as a union. Here it is the union's 20 bytes, **u**, which a driver copies into a structure of the member it reads.",
     "IMAGE_AUX_SYMBOL_TOKEN_DEF": "The auxiliary record of a CLR token definition: its type, `IMAGE_AUX_SYMBOL_TYPE_TOKEN_DEF`, and the index of its symbol in the symbol table.",
     "IMAGE_BASE_RELOCATION": "The header of one block of base relocations, in the `.reloc` section: the RVA of the page and the size of the block. The block's entries follow it, an **Integer** each, with the type (**IMAGE_REL_NS_BASED**) in the top 4 bits and the offset in the page in the other 12.",
     "IMAGE_BOUND_FORWARDER_REF": "A DLL that a bound import forwards to: its time stamp and the offset of its name from the start of the bound import directory.",
@@ -30,9 +30,8 @@
     "IMAGE_IMPORT_DESCRIPTOR": "One DLL of an image's import directory: **ChrctrsOrOrigThunk** holds the C union of **Characteristics** and **OriginalFirstThunk**, the RVA of the import lookup table, then come the time stamp, the forwarder chain, and the RVAs of the DLL's name and of its import address table. An entry of zeros ends the directory.",
     "IMAGE_LINENUMBER": "One COFF line number: **nType** holds the C union **Type**, the symbol table index of the function when **Linenumber** is 0 and the address of the line's code otherwise.",
     "IMAGE_LOAD_CONFIG_CODE_INTEGRITY": "The code integrity information in the load configuration directory: its flags, the catalog (`&HFFFF` when there is none) and the offset in the catalog.",
-    "IMAGE_LOAD_CONFIG_DIRECTORY": "As **IMAGE_LOAD_CONFIG_DIRECTORY32** in a 32-bit build and **IMAGE_LOAD_CONFIG_DIRECTORY64** in a 64-bit one. See the warning below.",
-    "IMAGE_LOAD_CONFIG_DIRECTORY32": "The load configuration directory of a 32-bit image: the heap settings, the security cookie, the safe exception handlers and the Control Flow Guard tables, among others. Each version of Windows adds fields, so its **Size** gives the bytes the image holds: the package's has the fields of WDK 10.0.22621, 192 bytes, and WDK 10.0.28000 adds **UmaFunctionPointers**. See the warning below.",
-    "IMAGE_LOAD_CONFIG_DIRECTORY64": "The load configuration directory of a 64-bit image: the heap settings, the security cookie and the Control Flow Guard tables, among others. Each version of Windows adds fields, so its **Size** gives the bytes the image holds: the package's has the fields of WDK 10.0.22621, 320 bytes, and WDK 10.0.28000 adds **UmaFunctionPointers**.",
+    "IMAGE_LOAD_CONFIG_DIRECTORY32": "The load configuration directory of a 32-bit image: the heap settings, the security cookie, the safe exception handlers and the Control Flow Guard tables, among others. Each version of Windows adds fields, so its **Size** gives the bytes the image holds: the package's has the fields of WDK 10.0.28000, 196 bytes, whose last, **UmaFunctionPointers**, WDK 10.0.22621 does not have.",
+    "IMAGE_LOAD_CONFIG_DIRECTORY64": "The load configuration directory of a 64-bit image: the heap settings, the security cookie and the Control Flow Guard tables, among others. Each version of Windows adds fields, so its **Size** gives the bytes the image holds: the package's has the fields of WDK 10.0.28000, 328 bytes, whose last, **UmaFunctionPointers**, WDK 10.0.22621 does not have.",
     "IMAGE_NT_HEADERS": "As **IMAGE_NT_HEADERS32** in a 32-bit build and **IMAGE_NT_HEADERS64** in a 64-bit one.",
     "IMAGE_NT_HEADERS32": "The headers of a 32-bit (PE32) image, at **IMAGE_DOS_HEADER.e_lfanew**: the signature **IMAGE_NT_SIGNATURE**, the file header and the 32-bit optional header.",
     "IMAGE_NT_HEADERS64": "The headers of a 64-bit (PE32+) image, at **IMAGE_DOS_HEADER.e_lfanew**: the signature **IMAGE_NT_SIGNATURE**, the file header and the 64-bit optional header.",
@@ -64,6 +63,9 @@
     "UNWIND_HISTORY_TABLE": "A cache of function table lookups that a caller of the unwind routines passes from one call to the next: the count, the search hints, the range of addresses it covers and the entries. winnt.h declares it for x64 and ARM code only. See the note below.",
     "UNWIND_HISTORY_TABLE_ENTRY": "One entry of an **UNWIND_HISTORY_TABLE**: the base address of an image and the address of a function's **RUNTIME_FUNCTION** in it."
   },
+  "aliases": {
+    "IMAGE_LOAD_CONFIG_DIRECTORY": "**IMAGE_LOAD_CONFIG_DIRECTORY64** in a 64-bit build and **IMAGE_LOAD_CONFIG_DIRECTORY32** in a 32-bit one: the load configuration directory of an image of the driver's own kind."
+  },
   "enums": {
     "FPO_FRAME": "The frame types of the **cbFrame** bits in **FPO_DATA.Flags**: `FRAME_FPO`, `FRAME_TRAP`, `FRAME_TSS` and `FRAME_NONFPO`.",
     "IMAGE_AUX_SYMBOL_TYPE": "The types of an auxiliary token record, **IMAGE_AUX_SYMBOL_TOKEN_DEF.bAuxType**: `IMAGE_AUX_SYMBOL_TYPE_TOKEN_DEF`.",
@@ -88,10 +90,10 @@
     "IMAGE_RELOC_TYPE_PPC": "The COFF relocation types of a PowerPC object file, for **IMAGE_RELOCATION.nType**, such as `IMAGE_REL_PPC_ADDR32` and `IMAGE_REL_PPC_REL24`, with `IMAGE_REL_PPC_TYPEMASK` and flag bits such as `IMAGE_REL_PPC_NEG`.",
     "IMAGE_RELOC_TYPE_SH3": "The COFF relocation types of a Hitachi SH3 object file, for **IMAGE_RELOCATION.nType**, such as `IMAGE_REL_SH3_DIRECT32`, with the `IMAGE_REL_SHM_` types and the flag `IMAGE_REL_SH_NOMODE`.",
     "IMAGE_SECTION_VALUES": "The special section numbers of **IMAGE_SYMBOL.SectionNumber**, `IMAGE_SYM_UNDEFINED`, `IMAGE_SYM_ABSOLUTE` and `IMAGE_SYM_DEBUG`, and the largest section numbers of **IMAGE_SYMBOL** and **IMAGE_SYMBOL_EX**.",
-    "IMAGE_STORAGE_CLASS": "The storage classes of **IMAGE_SYMBOL.StorageClass**, such as `IMAGE_SYM_CLASS_EXTERNAL`, `IMAGE_SYM_CLASS_STATIC` and `IMAGE_SYM_CLASS_FILE`. See the note below.",
+    "IMAGE_STORAGE_CLASS": "The storage classes of **IMAGE_SYMBOL.StorageClass**, such as `IMAGE_SYM_CLASS_EXTERNAL`, `IMAGE_SYM_CLASS_STATIC` and `IMAGE_SYM_CLASS_FILE`.",
     "IMAGE_SYM_TYPE": "The base types of a symbol, in the low 4 bits of **IMAGE_SYMBOL.Type** (**N_BTMASK**), such as `IMAGE_SYM_TYPE_NULL`, `IMAGE_SYM_TYPE_INT` and `IMAGE_SYM_TYPE_STRUCT`.",
     "IMAGE_SYM_TYPE_DERIVED": "The derived types of a symbol, in the bits of **IMAGE_SYMBOL.Type** above its base type (**N_TMASK**): `IMAGE_SYM_DTYPE_POINTER`, `IMAGE_SYM_DTYPE_FUNCTION` and `IMAGE_SYM_DTYPE_ARRAY`.",
-    "IMAGE_WEAK_EXTERN": "How the linker looks for the definition of a weak external, in its auxiliary record's search type (**IMAGE_AUX_SYMBOL_EX.Sym_WeakSearchType**), such as `IMAGE_WEAK_EXTERN_SEARCH_LIBRARY` and `IMAGE_WEAK_EXTERN_SEARCH_ALIAS`.",
+    "IMAGE_WEAK_EXTERN": "How the linker looks for the definition of a weak external, in its auxiliary record's search type, such as `IMAGE_WEAK_EXTERN_SEARCH_LIBRARY` and `IMAGE_WEAK_EXTERN_SEARCH_ALIAS`.",
     "ImageDirectories": "The indexes of the data directories in **IMAGE_OPTIONAL_HEADER.DataDirectory**, such as `IMAGE_DIRECTORY_ENTRY_EXPORT`, `IMAGE_DIRECTORY_ENTRY_IMPORT` and `IMAGE_DIRECTORY_ENTRY_BASERELOC`.",
     "ImageDllCharacteristics": "The `IMAGE_DLLCHARACTERISTICS_` flags of the optional header's **DllCharacteristics**, such as `IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE`, `IMAGE_DLLCHARACTERISTICS_NX_COMPAT` and `IMAGE_DLLCHARACTERISTICS_WDM_DRIVER`, with the reserved `IMAGE_LIBRARY_` flags.",
     "ImageFileCharacteristics": "The `IMAGE_FILE_` flags of **IMAGE_FILE_HEADER.Characteristics**, such as `IMAGE_FILE_EXECUTABLE_IMAGE`, `IMAGE_FILE_LARGE_ADDRESS_AWARE` and `IMAGE_FILE_DLL`.",
@@ -101,12 +103,12 @@
     "ImageSubsystemType": "The `IMAGE_SUBSYSTEM_` values of the optional header's **Subsystem**: the subsystem an image runs in, such as `IMAGE_SUBSYSTEM_NATIVE` for a driver and `IMAGE_SUBSYSTEM_WINDOWS_GUI`."
   },
   "consts": {
-    "IMAGE_ARCHIVE_END": "The two characters that end an archive member's header, **IMAGE_ARCHIVE_MEMBER_HEADER.EndHeader**: a backquote and a line feed. See the note below.",
+    "IMAGE_ARCHIVE_END": "The two characters that end an archive member's header, **IMAGE_ARCHIVE_MEMBER_HEADER.EndHeader**: a backquote and a line feed.",
     "IMAGE_ARCHIVE_HYBRIDMAP_MEMBER": "The **Name** of an archive's hybrid map member, `/<HYBRIDMAP>/` padded with spaces to 16 characters.",
     "IMAGE_ARCHIVE_LINKER_MEMBER": "The **Name** of an archive's linker members, `/` padded with spaces to 16 characters.",
     "IMAGE_ARCHIVE_LONGNAMES_MEMBER": "The **Name** of an archive's long names member, `//` padded with spaces to 16 characters.",
-    "IMAGE_ARCHIVE_PAD": "The line feed that pads an archive member to an even size. See the note below.",
-    "IMAGE_ARCHIVE_START": "The characters at the start of an archive (a `.lib` file): `!<arch>` and a line feed. See the note below.",
+    "IMAGE_ARCHIVE_PAD": "The line feed that pads an archive member to an even size.",
+    "IMAGE_ARCHIVE_START": "The characters at the start of an archive (a `.lib` file): `!<arch>` and a line feed.",
     "IMAGE_ARCHIVE_START_SIZE": "The number of characters of the signature at the start of an archive, **IMAGE_ARCHIVE_START**.",
     "IMAGE_DOS_SIGNATURE": "The **e_magic** of an **IMAGE_DOS_HEADER**: the characters `MZ`.",
     "IMAGE_NT_SIGNATURE": "The **Signature** of an **IMAGE_NT_HEADERS**: the characters `PE` and two zero bytes.",
@@ -135,6 +137,6 @@
     "N_TMASK2": "The bits of **IMAGE_SYMBOL.Type** that hold the first two derived types.",
     "N_TSHIFT": "The number of bits of one derived type in **IMAGE_SYMBOL.Type**: the shift that adds or removes one level of derivation.",
     "SIZEOF_RFPO_DATA": "The size in bytes of an `RFPO_DATA` record, which ntimage.h defines beside **FPO_DATA** and does not declare.",
-    "UNWIND_HISTORY_TABLE_SIZE": "The number of entries of **UNWIND_HISTORY_TABLE.Entry**. See the note below."
+    "UNWIND_HISTORY_TABLE_SIZE": "The number of entries of **UNWIND_HISTORY_TABLE.Entry**."
   }
 }

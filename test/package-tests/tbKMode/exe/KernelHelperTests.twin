@@ -1,8 +1,8 @@
 ' modWDM's procedures that call the kernel, run in a built exe against fake-kernel/, a user-mode
-' stand-in for ntoskrnl.exe that prepare.mjs builds and names in TBKMODE_FAKE_KERNEL. Every case
-' first loads it by that full path and checks that it is the module named ntoskrnl.exe, so that the
-' package's Lib "ntoskrnl.exe" Declares resolve to it; a case that cannot do so fails and calls no
-' helper. The stand-in moves memory and strings as the kernel does, and records what the kernel's
+' stand-in for ntoskrnl.exe (and, in a 32-bit build, hal.dll) that prepare.mjs builds and tbrun
+' copies beside the exe, where the loader finds it for the package's Lib "ntoskrnl.exe" Declares,
+' which the exe imports. Every case first checks that the module named ntoskrnl.exe is the
+' stand-in; a case that cannot tell fails and calls no helper. The stand-in moves memory and strings as the kernel does, and records what the kernel's
 ' other routines are given. Each case checks what the WDK's macro or routine of the same name does.
 ' The package's MsgBox, InStr and LCase are called as modWDM's, since they have VBA's names.
 [TestFixture]
@@ -10,6 +10,7 @@ Module KernelHelperTests
 
     Private Declare PtrSafe Function LoadLibraryW Lib "kernel32" (ByVal lpLibFileName As LongPtr) As LongPtr
     Private Declare PtrSafe Function GetModuleHandleW Lib "kernel32" (ByVal lpModuleName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetProcAddress Lib "kernel32" (ByVal hModule As LongPtr, ByVal lpProcName As String) As LongPtr
     Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
     Private Declare PtrSafe Sub GetMem Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, ByVal Source As LongPtr, ByVal Length As LongPtr)
 
@@ -27,20 +28,28 @@ Module KernelHelperTests
     Private Declare PtrSafe Function FakeKernel_LockHeldAtEntry Lib "ntoskrnl.exe" () As Long
     Private Declare PtrSafe Function FakeKernel_RemoveLockFile Lib "ntoskrnl.exe" () As LongPtr
     Private Declare PtrSafe Sub FakeKernel_ResetCall Lib "ntoskrnl.exe" ()
+    Private Declare PtrSafe Function FakeKernel_UnmatchedReleases Lib "ntoskrnl.exe" () As Long
     Private Declare PtrSafe Function lstrlenA Lib "kernel32" (ByVal lpString As LongPtr) As Long
 
     Private loaded As Boolean
 
-    ' Loads the stand-in by its full path, once; true only when the module named ntoskrnl.exe in
-    ' this process is that file and says it is the stand-in.
+    ' True only when the module named ntoskrnl.exe in this process is the stand-in, which exports
+    ' FakeKernel_IsFake and says so. The exe imports it from its own folder, where tbrun put it;
+    ' when nothing of that name is loaded (a package that binds its Declares at run time), it is
+    ' loaded by the full path TBKMODE_FAKE_KERNEL names. The real kernel exports no
+    ' FakeKernel_IsFake, and is never called.
     Private Function FakeLoaded() As Boolean
         If loaded Then Return True
-        Dim file As String = Environ$("TBKMODE_FAKE_KERNEL")
-        If Len(file) = 0 Then Return False
-        If VBA.LCase$(Right$(file, 13)) <> "\ntoskrnl.exe" Then Return False
-        Dim h As LongPtr = LoadLibraryW(StrPtr(file))
-        If h = 0 Then Return False
-        If GetModuleHandleW(StrPtr("ntoskrnl.exe")) <> h Then Return False
+        Dim h As LongPtr = GetModuleHandleW(StrPtr("ntoskrnl.exe"))
+        If h = 0 Then
+            Dim file As String = Environ$("TBKMODE_FAKE_KERNEL")
+            If Len(file) = 0 Then Return False
+            If VBA.LCase$(Right$(file, 13)) <> "\ntoskrnl.exe" Then Return False
+            h = LoadLibraryW(StrPtr(file))
+            If h = 0 Then Return False
+            If GetModuleHandleW(StrPtr("ntoskrnl.exe")) <> h Then Return False
+        End If
+        If GetProcAddress(h, "FakeKernel_IsFake") = 0 Then Return False
         loaded = FakeKernel_IsFake() = 1
         Return loaded
     End Function
@@ -117,17 +126,17 @@ Module KernelHelperTests
 
     ' head <-> a <-> b, linked by hand; removing the head entry leaves head <-> b.
     [TestCase]
-    Public Sub RemoveListHead_UnlinksTheFirstEntry()
+    Public Sub RemoveHeadList_UnlinksTheFirstEntry()
         Expect.Begin
         If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
         Dim head As LIST_ENTRY, a As LIST_ENTRY, b As LIST_ENTRY
         head.Flink = VarPtr(a): head.Blink = VarPtr(b)
         a.Flink = VarPtr(b): a.Blink = VarPtr(head)
         b.Flink = VarPtr(head): b.Blink = VarPtr(a)
-        Dim removed As LIST_ENTRY = RemoveListHead(head)
+        Dim removed As LongPtr = RemoveHeadList(head)
         Expect.AreEqual "b", Which(head.Flink, VarPtr(head), VarPtr(a), VarPtr(b)), "head.Flink after the remove"
         Expect.AreEqual "head", Which(b.Blink, VarPtr(head), VarPtr(a), VarPtr(b)), "b.Blink after the remove"
-        Expect.AreEqual "b", Which(removed.Flink, VarPtr(head), VarPtr(a), VarPtr(b)), "Flink of the entry returned (a's)"
+        Expect.AreEqual "a", Which(removed, VarPtr(head), VarPtr(a), VarPtr(b)), "the entry returned"
         Expect.Done
     End Sub
 
@@ -328,22 +337,54 @@ Module KernelHelperTests
         Expect.Done
     End Sub
 
+    ' The WDK's InterlockedAdd64 changes no IRQL. KeReleaseSpinLock sets the IRQL to the one it is
+    ' given, so a release of a lock that was never acquired lowers its caller's IRQL; the stand-in
+    ' counts those releases.
+    [TestCase]
+    Public Sub InterlockedAdd64_LeavesTheIrqlAsItWas()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        FakeKernel_ResetCall
+        Dim v As LongLong = 40
+        InterlockedAdd64 v, 2
+        Expect.AreEqual 0&, FakeKernel_UnmatchedReleases(), "the spin locks released that KeAcquireSpinLock had not acquired"
+        Expect.Done
+    End Sub
+
+    ' In a 64-bit build InterlockedIncrement is a Sub with a spin lock, as InterlockedAdd64 is; in a
+    ' 32-bit build it is a Declare of the kernel's routine, which takes no lock.
+    [TestCase]
+    Public Sub InterlockedIncrement_LeavesTheIrqlAsItWas()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        #If Win64 Then
+            FakeKernel_ResetCall
+            Dim v As Long = 41
+            InterlockedIncrement v
+            Expect.AreEqual 0&, FakeKernel_UnmatchedReleases(), "the spin locks released that KeAcquireSpinLock had not acquired"
+        #End If
+        Expect.Done
+    End Sub
+
     ' --- The remove locks: the WDK's IoAcquireRemoveLockEx, IoReleaseRemoveLockEx and
     ' IoReleaseRemoveLockAndWaitEx take the Tag as a PVOID value, and the first a PCSTR File and the
     ' Line. ---
 
+    ' SOURCE_FILE holds the file name as ANSI bytes, which the driver puts there: kernel mode has no
+    ' conversion of a String, and IoAcquireRemoveLockEx reads a PCSTR (fafalone, tbKMode#4). Here
+    ' StrConv makes them, as a user-mode program can.
     [TestCase]
     Public Sub IoAcquireRemoveLock_PassesTheTagTheFileAndTheLine()
         Expect.Begin
         If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
         Dim oldFile As String = SOURCE_FILE
-        SOURCE_FILE = "Driver.twin"
+        SOURCE_FILE = StrConv("Driver.twin", vbFromUnicode)
         FakeKernel_ResetCall
         Dim rl As IO_REMOVE_LOCK
         Dim r As Long = IoAcquireRemoveLock(rl, &H5A5A, 123)
         Expect.AreEqual "IoAcquireRemoveLockEx", LastCall(), "the routine IoAcquireRemoveLock calls"
         Expect.AreEqual "the argument", Got(0, &H5A5A), "the Tag IoAcquireRemoveLockEx received (&H5A5A)"
-        Expect.AreEqual "Driver.twin", AnsiText(FakeKernel_RemoveLockFile()), "the File IoAcquireRemoveLockEx received, read as the PCSTR the WDK declares (SOURCE_FILE is ""Driver.twin"")"
+        Expect.AreEqual "Driver.twin", AnsiText(FakeKernel_RemoveLockFile()), "the File IoAcquireRemoveLockEx received, read as the PCSTR the WDK declares (SOURCE_FILE holds the ANSI bytes of ""Driver.twin"")"
         Expect.AreEqual CLngPtr(123), FakeKernel_LastArg(1), "the Line IoAcquireRemoveLockEx received"
         Expect.AreEqual 0&, r, "what IoAcquireRemoveLock returns (IoAcquireRemoveLockEx's STATUS_SUCCESS)"
         SOURCE_FILE = oldFile
@@ -368,17 +409,141 @@ Module KernelHelperTests
         If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
         FakeKernel_ResetCall
         Dim rl As IO_REMOVE_LOCK
-        Dim tag As Long = &H5A5A
-        IoReleaseRemoveLockAndWait rl, tag, LenB(rl)
+        IoReleaseRemoveLockAndWait rl, &H5A5A
         Expect.AreEqual "IoReleaseRemoveLockAndWaitEx", LastCall(), "the routine IoReleaseRemoveLockAndWait calls"
         Expect.AreEqual "the argument", Got(0, &H5A5A), "the Tag IoReleaseRemoveLockAndWaitEx received (&H5A5A)"
+        Expect.Done
+    End Sub
+
+    ' ObCloseHandle is NTKERNELAPI without FASTCALL in wdm.h: in the x86 kernel a __stdcall routine,
+    ' which reads its arguments from the stack. An x64 build has one convention.
+    [TestCase]
+    Public Sub ObCloseHandle_PassesTheHandle()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        FakeKernel_ResetCall
+        Dim st As Long = ObCloseHandle(CLngPtr(&H5000), KernelMode)
+        Expect.AreEqual "ObCloseHandle", LastCall(), "the routine called"
+        Expect.AreEqual "the argument", Got(0, &H5000), "the handle ObCloseHandle received (&H5000)"
+        Expect.Done
+    End Sub
+
+    ' RtlDuplicateUnicodeString is a routine of the kernel, which ntoskrnl.exe exports; a driver
+    ' imports nothing from ntdll.dll, which the kernel does not load for it. The stand-in for
+    ' ntoskrnl.exe records the call.
+    [TestCase]
+    Public Sub RtlDuplicateUnicodeString_CallsTheKernel()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        Dim source As UNICODE_STRING, copy As UNICODE_STRING
+        Dim s As String = "kernel"
+        RtlInitUnicodeString source, StrPtr(s)
+        FakeKernel_ResetCall
+        Dim st As Long = RtlDuplicateUnicodeString(RTL_DUPLICATE_UNICODE_STRING_NULL_TERMINATE, source, copy)
+        Expect.AreEqual "RtlDuplicateUnicodeString", LastCall(), "the routine that received the call, in the stand-in for ntoskrnl.exe"
+        Expect.Done
+    End Sub
+
+    ' ExAllocatePool2 takes its Flags as a ULONG64 (wdm.h: POOL_FLAGS), then the size and the tag: in
+    ' a 32-bit build the flags take 8 bytes of the stack.
+    [TestCase]
+    Public Sub ExAllocatePool2_PassesTheSizeAndTheTag()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        FakeKernel_ResetCall
+        Dim p As LongPtr = ExAllocatePool2(POOL_FLAG_NON_PAGED, 64, &H6B6D7462)
+        Expect.AreEqual "ExAllocatePool2", LastCall(), "the routine called"
+        Expect.AreEqual "the argument", Got(0, 64), "the size ExAllocatePool2 received (64)"
+        Expect.AreEqual "the argument", Got(1, &H6B6D7462), "the tag ExAllocatePool2 received"
+        Expect.Done
+    End Sub
+
+    ' RtlFindFirstRunClear and RtlFindLongestRunClear write the run's first index through their
+    ' second parameter, a PULONG (wdm.h: _Out_ PULONG StartingIndex). The stand-in writes 5.
+    [TestCase]
+    Public Sub RtlFindFirstRunClear_ReturnsTheStartingIndex()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        Dim bm As RTL_BITMAP, start As Long
+        Dim n As Long = RtlFindFirstRunClear(bm, start)
+        Expect.AreEqual 5, start, "the starting index RtlFindFirstRunClear wrote"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RtlFindLongestRunClear_ReturnsTheStartingIndex()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        Dim bm As RTL_BITMAP, start As Long
+        Dim n As Long = RtlFindLongestRunClear(bm, start)
+        Expect.AreEqual 5, start, "the starting index RtlFindLongestRunClear wrote"
+        Expect.Done
+    End Sub
+
+    ' KeAcquireSpinLock acquires the lock whose address it is given: in a 64-bit build the package's
+    ' function calls KeAcquireSpinLockRaiseToDpc; in a 32-bit build it is a Declare of hal.dll's
+    ' KfAcquireSpinLock, a __fastcall routine that reads the address from ECX. Not FastCall, so the
+    ' call is made whatever the binding; the stand-ins record what they receive.
+    [TestCase]
+    Public Sub KeAcquireSpinLock_PassesTheLock()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        Dim lock As LongPtr
+        KeInitializeSpinLock lock
+        FakeKernel_ResetCall
+        Dim irql As KIRQL = KeAcquireSpinLock(lock)
+        #If Win64 Then
+            Expect.AreEqual "KeAcquireSpinLockRaiseToDpc", LastCall(), "the routine KeAcquireSpinLock calls"
+        #Else
+            Expect.AreEqual "KfAcquireSpinLock", LastCall(), "the routine KeAcquireSpinLock calls"
+        #End If
+        Expect.AreEqual "the argument", Got(0, VarPtr(lock)), "the spin lock the routine received"
+        Expect.Done
+    End Sub
+
+    ' The WDK's RtlCheckBit is 1 when bit BitPosition of the bitmap's buffer is set, counted from the
+    ' lowest bit of its first ULONG. The package's reads the buffer with CopyMemory (RtlMoveMemory),
+    ' which the stand-in moves as the kernel does.
+    [TestCase]
+    Public Sub RtlCheckBit_ReturnsTheBit()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        Dim bits(0 To 1) As Long
+        bits(0) = &H80000001
+        bits(1) = &H4
+        Dim bm As RTL_BITMAP
+        bm.SizeOfBitMap = 64
+        bm.Buffer = VarPtr(bits(0))
+        Expect.AreEqual 1, CLng(RtlCheckBit(bm, 0)), "bit 0"
+        Expect.AreEqual 0, CLng(RtlCheckBit(bm, 1)), "bit 1"
+        Expect.AreEqual 1, CLng(RtlCheckBit(bm, 31)), "bit 31"
+        Expect.AreEqual 0, CLng(RtlCheckBit(bm, 32)), "bit 32"
+        Expect.AreEqual 1, CLng(RtlCheckBit(bm, 34)), "bit 34"
+        Expect.Done
+    End Sub
+
+    ' In a 64-bit build InterlockedIncrement is a Sub that calls ExInterlockedAddUlong with a spin
+    ' lock (see InterlockedAdd64_CallsWithTheLockFree); in a 32-bit build it is a Declare of the
+    ' kernel's routine, which takes no lock, so there is nothing to check.
+    [TestCase]
+    Public Sub InterlockedIncrement_CallsWithTheLockFree()
+        Expect.Begin
+        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
+        #If Win64 Then
+            FakeKernel_ResetCall
+            Dim v As Long = 41
+            InterlockedIncrement v
+            Expect.AreEqual 0&, FakeKernel_LockHeldAtEntry(), "the spin lock ExInterlockedAddUlong was given, at its call (0 free, 1 held, -1 not called)"
+        #End If
         Expect.Done
     End Sub
 
     ' --- The routines the x86 kernel exports as __fastcall (wdm.h's FASTCALL): the stand-in's are
     ' __fastcall too, and record what they receive. Each case checks that a call through the
     ' package's Declare or helper gives the routine its arguments. Last in the file, since a call
-    ' made in the wrong convention can upset the exe's stack. ---
+    ' made in the wrong convention can upset the exe's stack: on BETA 1042 a 32-bit exe ends at the
+    ' first of them, since a FastCall Declare bound in the import table, as the package binds its
+    ' own, passes nothing in ECX and EDX (bugs/declare-fastcall-static-binding-32bit). ---
 
     ' What the last of these routines received, as a name: "the argument" when it is the address
     ' or value the case passed, "something else" otherwise.
@@ -492,22 +657,6 @@ Module KernelHelperTests
         Expect.Done
     End Sub
 
-    ' In a 64-bit build InterlockedIncrement is a Sub that calls ExInterlockedAddUlong with a spin
-    ' lock (see InterlockedAdd64_CallsWithTheLockFree); in a 32-bit build it is a Declare of the
-    ' kernel's routine, which takes no lock, so there is nothing to check.
-    [TestCase]
-    Public Sub InterlockedIncrement_CallsWithTheLockFree()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        #If Win64 Then
-            FakeKernel_ResetCall
-            Dim v As Long = 41
-            InterlockedIncrement v
-            Expect.AreEqual 0&, FakeKernel_LockHeldAtEntry(), "the spin lock ExInterlockedAddUlong was given, at its call (0 free, 1 held, -1 not called)"
-        #End If
-        Expect.Done
-    End Sub
-
     [TestCase]
     Public Sub ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource()
         Expect.Begin
@@ -531,71 +680,6 @@ Module KernelHelperTests
         ExReleaseResourceLite r
         Expect.AreEqual "ExReleaseResourceLite", LastCall(), "the routine called"
         Expect.AreEqual "the argument", Got(0, VarPtr(r)), "the ERESOURCE ExReleaseResourceLite received"
-        Expect.Done
-    End Sub
-
-    ' ObCloseHandle is NTKERNELAPI without FASTCALL in wdm.h: in the x86 kernel a __stdcall routine,
-    ' which reads its arguments from the stack. An x64 build has one convention.
-    [TestCase]
-    Public Sub ObCloseHandle_PassesTheHandle()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        FakeKernel_ResetCall
-        Dim st As Long = ObCloseHandle(CLngPtr(&H5000), KernelMode)
-        Expect.AreEqual "ObCloseHandle", LastCall(), "the routine called"
-        Expect.AreEqual "the argument", Got(0, &H5000), "the handle ObCloseHandle received (&H5000)"
-        Expect.Done
-    End Sub
-
-    ' RtlDuplicateUnicodeString is a routine of the kernel, which ntoskrnl.exe exports; a driver
-    ' imports nothing from ntdll.dll, which the kernel does not load for it. The stand-in for
-    ' ntoskrnl.exe records the call.
-    [TestCase]
-    Public Sub RtlDuplicateUnicodeString_CallsTheKernel()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        Dim source As UNICODE_STRING, copy As UNICODE_STRING
-        Dim s As String = "kernel"
-        RtlInitUnicodeString source, StrPtr(s)
-        FakeKernel_ResetCall
-        Dim st As Long = RtlDuplicateUnicodeString(RTL_DUPLICATE_UNICODE_STRING_NULL_TERMINATE, source, copy)
-        Expect.AreEqual "RtlDuplicateUnicodeString", LastCall(), "the routine that received the call, in the stand-in for ntoskrnl.exe"
-        Expect.Done
-    End Sub
-
-    ' ExAllocatePool2 takes its Flags as a ULONG64 (wdm.h: POOL_FLAGS), then the size and the tag: in
-    ' a 32-bit build the flags take 8 bytes of the stack.
-    [TestCase]
-    Public Sub ExAllocatePool2_PassesTheSizeAndTheTag()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        FakeKernel_ResetCall
-        Dim p As LongPtr = ExAllocatePool2(NonPagedPool, 64, &H6B6D7462)
-        Expect.AreEqual "ExAllocatePool2", LastCall(), "the routine called"
-        Expect.AreEqual "the argument", Got(0, 64), "the size ExAllocatePool2 received (64)"
-        Expect.AreEqual "the argument", Got(1, &H6B6D7462), "the tag ExAllocatePool2 received"
-        Expect.Done
-    End Sub
-
-    ' RtlFindFirstRunClear and RtlFindLongestRunClear write the run's first index through their
-    ' second parameter, a PULONG (wdm.h: _Out_ PULONG StartingIndex). The stand-in writes 5.
-    [TestCase]
-    Public Sub RtlFindFirstRunClear_ReturnsTheStartingIndex()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        Dim bm As RTL_BITMAP, start As Long
-        Dim n As Long = RtlFindFirstRunClear(bm, start)
-        Expect.AreEqual 5, start, "the starting index RtlFindFirstRunClear wrote"
-        Expect.Done
-    End Sub
-
-    [TestCase]
-    Public Sub RtlFindLongestRunClear_ReturnsTheStartingIndex()
-        Expect.Begin
-        If Not FakeLoaded() Then Expect.Fail "the stand-in for ntoskrnl.exe is not loaded": Expect.Done: Exit Sub
-        Dim bm As RTL_BITMAP, start As Long
-        Dim n As Long = RtlFindLongestRunClear(bm, start)
-        Expect.AreEqual 5, start, "the starting index RtlFindLongestRunClear wrote"
         Expect.Done
     End Sub
 

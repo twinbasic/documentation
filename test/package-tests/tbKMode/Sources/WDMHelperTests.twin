@@ -169,4 +169,19 @@ Module WDMHelperTests
         Expect.Done
     End Sub
 
+    ' NT_INFORMATION and NT_WARNING are true for the statuses whose two highest bits are 01 and 10:
+    ' the informational statuses, &H40000000 to &H7FFFFFFF, and the warnings, &H80000000 to
+    ' &HBFFFFFFF.
+    [TestCase]
+    Public Sub NT_INFORMATION_NT_WARNING_TestTheTwoHighestBits()
+        Expect.Begin
+        Expect.IsTrue NT_INFORMATION(&H40000000), "NT_INFORMATION of STATUS_OBJECT_NAME_EXISTS (&H40000000)"
+        Expect.IsFalse NT_INFORMATION(0), "NT_INFORMATION of STATUS_SUCCESS"
+        Expect.IsFalse NT_INFORMATION(&H80000005), "NT_INFORMATION of the warning STATUS_BUFFER_OVERFLOW (&H80000005)"
+        Expect.IsTrue NT_WARNING(&H80000005), "NT_WARNING of STATUS_BUFFER_OVERFLOW (&H80000005)"
+        Expect.IsFalse NT_WARNING(&HC0000022), "NT_WARNING of the error STATUS_ACCESS_DENIED (&HC0000022)"
+        Expect.IsFalse NT_WARNING(&H40000000), "NT_WARNING of the informational STATUS_OBJECT_NAME_EXISTS (&H40000000)"
+        Expect.Done
+    End Sub
+
 End Module

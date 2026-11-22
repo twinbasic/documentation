@@ -1,0 +1,9 @@
+; The exports of the user-mode stand-in for the 32-bit hal.dll (hal.c), undecorated as the
+; kernel's are. Each passes its call to the stand-in for ntoskrnl.exe.
+LIBRARY hal.dll
+EXPORTS
+  ExAcquireFastMutex
+  ExReleaseFastMutex
+  ExTryToAcquireFastMutex
+  KfAcquireSpinLock
+  KeReleaseSpinLock

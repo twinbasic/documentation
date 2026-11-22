@@ -1,0 +1,8 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 5,
+    "output": ["^RtlUlongByteSwap\\(&H12345678\\) = &H(?!78563412$)", "^--- exe: exit -1073741819"]
+  }
+}

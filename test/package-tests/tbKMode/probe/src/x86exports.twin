@@ -1,8 +1,9 @@
-' Calls the Declares of the package that name routines the 32-bit ntoskrnl.exe does not export:
-' those the 32-bit hal.dll exports (the fast mutexes, the IRQL routines, KeReleaseSpinLock), and
-' those no 32-bit file exports (KeAcquireSpinLockRaiseToDpc, which KeAcquireSpinLock names, and the
-' Rtl...BitsEx routines). The 64-bit kernel exports each of them. KfLowerIrql, which the package
-' declares in a 32-bit build only and marks [Unimplemented], is left out.
+' Calls the Declares of the package that name, in a 32-bit build, routines the 32-bit ntoskrnl.exe
+' does not export: those the 32-bit hal.dll exports (the fast mutexes, the IRQL routines,
+' KfAcquireSpinLock, which KeAcquireSpinLock names, and KeReleaseSpinLock), which the package names
+' there from 0.3.0.6, KeLowerIrql, which names KfLowerIrql of ntoskrnl.exe, and the Rtl...BitsEx
+' routines, which no 32-bit file exports. The 64-bit kernel exports each of them, or the package's
+' 64-bit procedure calls one it does.
 Module Driver
     Public Function DriverEntry(DriverObject As DRIVER_OBJECT, RegistryPath As UNICODE_STRING) As NTSTATUS
         Dim fm As FAST_MUTEX
@@ -12,6 +13,7 @@ Module Driver
         Dim irql As KIRQL = KeGetCurrentIrql()
         irql = KeRaiseIrqlToDpcLevel()
         irql = KfRaiseIrql(irql)
+        KeLowerIrql irql
         Dim spinLock As LongPtr
         irql = KeAcquireSpinLock(spinLock)
         KeReleaseSpinLock spinLock, irql

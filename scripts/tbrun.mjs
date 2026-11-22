@@ -35,6 +35,10 @@
 //                         capture what it writes with TbRun.Out, its exit code,
 //                         the fault the event log records for it, and the boxes
 //                         it opens, each closed with OK
+//       --beside <files>  with --exe, copy these files (comma-separated) into
+//                         the exe's folder before it starts, where the loader
+//                         looks first for a DLL the exe imports (tbKMode's
+//                         stand-ins for ntoskrnl.exe and hal.dll)
 //       --tests           do not build: judge the project's compile cases and
 //                         run its [TestCase] Subs, printing PASS or FAIL for
 //                         each (lib/tb-tests.mjs)
@@ -140,7 +144,16 @@
 //     a blunt enough instrument to need the guard rails in reapOrphans().
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  mkdirSync,
+  statSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -232,6 +245,8 @@ project's own test cases instead.
                       what it writes with TbRun.Out, its exit code, the fault
                       the event log records for it, and the boxes it opens,
                       each closed with OK
+  --beside <files>    with --exe, copy these files (comma-separated) into the
+                      exe's folder before it starts
   --tests             compile the project and do not build it: print PASS or
                       FAIL for each compile case (a line ending in the comment
                       ' CASE <Name>: <codes>, ' CASE <Name>: error or
@@ -284,6 +299,7 @@ const { values, positionals } = withUsageError(
         "compiler-options": { type: "string" },
         llvm: { type: "boolean", default: false },
         exe: { type: "boolean", default: false },
+        beside: { type: "string" },
         tests: { type: "boolean", default: false },
         only: { type: "string" },
         json: { type: "boolean", default: false },
@@ -301,6 +317,15 @@ const { values, positionals } = withUsageError(
 );
 if (values.help) printHelpAndExit(USAGE);
 
+// --beside's files, as absolute paths: none when it is not given.
+function besideFiles(list) {
+  return (list ?? "")
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean)
+    .map((f) => path.resolve(f));
+}
+
 // The values are read before anything starts.
 const { port, arch, seconds } = withUsageError(
   () => {
@@ -310,6 +335,9 @@ const { port, arch, seconds } = withUsageError(
     refuseTogether(values, ["llvm", "compiler-options"]);
     refuseTogether(values, ["exe", "tests"]);
     if (values.only !== undefined && !values.tests) throw new CliError("needs-option", "--only needs --tests");
+    if (values.beside !== undefined && !values.exe) throw new CliError("needs-option", "--beside needs --exe");
+    for (const f of besideFiles(values.beside))
+      if (!existsSync(f) || !statSync(f).isFile()) throw new CliError("bad-value", `--beside: no file ${f}`);
     return {
       port:
         values.port === undefined
@@ -855,6 +883,8 @@ async function runExe() {
   }
   const outFile = path.join(work, "exe-out.txt");
   rmSync(outFile, { force: true });
+  // Before it starts: a DLL the exe imports is looked for in its own folder first.
+  for (const f of besideFiles(values.beside)) copyFileSync(f, path.join(path.dirname(file), path.basename(f)));
   const since = Date.now();
   let run;
   try {

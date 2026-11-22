@@ -1,0 +1,19 @@
+Module Startup
+
+    ' RtlUlongByteSwap is __fastcall in the 32-bit ntdll.dll: it takes its argument in ECX and
+    ' returns its bytes in the opposite order.
+    Private Declare PtrSafe Function RtlUlongByteSwap FastCall Lib "ntdll" (ByVal Source As Long) As Long
+
+    Public Sub Main()
+        Dim r As Long = RtlUlongByteSwap(&H12345678)
+        Debug.Print "RtlUlongByteSwap(&H12345678) = &H" & Hex$(r)
+        Debug.Print "after the call"
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

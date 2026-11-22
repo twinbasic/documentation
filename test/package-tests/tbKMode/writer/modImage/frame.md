@@ -20,42 +20,38 @@ A structure whose name has no `32` or `64`, such as **IMAGE_NT_HEADERS**, **IMAG
 ## Types
 
 <!-- test: {{cases:ImageLayoutTests}} -->
-Each structure that the WDK's `ntimage.h` declares has the size of its C structure, and its fields are at the C fields' offsets, in a 32-bit and in a 64-bit build, apart from those of the warning and the note below.
+Each structure that the WDK's `ntimage.h` declares has the size of its C structure, and its fields are at the C fields' offsets, in a 32-bit and in a 64-bit build.
 
 {{table:types}}
 <!-- /test -->
 
-<!-- test: ImageLayoutTests.IMAGE_AUX_SYMBOL_Layout, ImageLayoutTests.IMAGE_AUX_SYMBOL_EX_Layout, ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY32_Layout, ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY_Layout -->
-> [!WARNING] 0.3.0.5
-> Three structures do not have the C structure's layout, so a driver that reads one from an image reads other data than the field it names. A driver declares each one itself, as `ntimage.h` has it.
->
-> - **IMAGE_AUX_SYMBOL** and **IMAGE_AUX_SYMBOL_EX** lay the members of C's union out one after another, where C has each of them at the start of the structure: only the first, the **Sym_** fields, is at its place, and **TokenDef** is at offset 56 in one and 58 in the other, where C's is at 0. Each is longer than C's structure, which is the size of one symbol table entry.
-> - **IMAGE_LOAD_CONFIG_DIRECTORY32**, and **IMAGE_LOAD_CONFIG_DIRECTORY** in a 32-bit build, has **ProcessAffinityMask** before **ProcessHeapFlags**, the order of the 64-bit structure: at offset 44 and 48 where C's are at 48 and 44.
+<!-- test: ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY32_Layout, ImageLayoutTests.IMAGE_LOAD_CONFIG_DIRECTORY64_Layout -->
+**IMAGE_LOAD_CONFIG_DIRECTORY32** and **IMAGE_LOAD_CONFIG_DIRECTORY64** have the fields of WDK 10.0.28000, whose last, **UmaFunctionPointers**, the 10.0.22621 headers do not have: they are 196 and 328 bytes, where 10.0.22621's are 192 and 320. An image's own directory may be shorter or longer, and its **Size** says how many bytes it holds.
+<!-- /test -->
 
+## Aliases
+
+{{table:aliases}}
 
 ## Enumerations
 
 <!-- test: {{cases:ImageValueTests}} -->
-Every member that `ntimage.h` declares has the value of its constant or enumerator of the same name, apart from those of the note below.
+Every member that `ntimage.h` declares has the value of its constant or enumerator of the same name.
 
 {{table:enums}}
 <!-- /test -->
 
 <!-- test: ImageFieldTests.MachineTypes_EqualTheMachineField -->
-> [!WARNING] 0.3.0.5
+> [!WARNING] 0.3.0.6
 > The members of **ImageMachineType** above `&H7FFF`, such as **IMAGE_FILE_MACHINE_AMD64** (`&H8664&`) and **IMAGE_FILE_MACHINE_ARM64** (`&HAA64&`), are positive **Long** values, but **IMAGE_FILE_HEADER.Machine** is an **Integer**, which holds them as negative numbers: `hdr.Machine = IMAGE_FILE_MACHINE_AMD64` is **False** for the header of an AMD64 image. A driver compares `hdr.Machine And &HFFFF&` with the constant.
-
-<!-- test: ImageValueTests.IMAGE_STORAGE_CLASS_Values -->
-> [!NOTE] 0.3.0.5
-> **IMAGE_SYM_CLASS_END_OF_FUNCTION** of **IMAGE_STORAGE_CLASS** is -1, where C's is `(UCHAR)-1`, 255. It is not equal to the **StorageClass** of a symbol, a **Byte**, that holds 255.
 
 ## Constants
 
-{{table:consts}}
-
 <!-- test: ImageValueTests.Constants_Values -->
-> [!NOTE] 0.3.0.5
-> **IMAGE_ARCHIVE_END**, **IMAGE_ARCHIVE_PAD** and **IMAGE_ARCHIVE_START** end in the two characters `\n`, a backslash and an `n`, where C's end in a line feed: a twinBASIC string has no escapes. A driver that compares them with the bytes of an archive writes `vbLf` in place of `\n`. **UNWIND_HISTORY_TABLE_SIZE** is 32, where the C headers' is 12, so **UNWIND_HISTORY_TABLE** has 32 entries where C's has 12. The other constants that `ntimage.h` declares have its values.
+The constants that `ntimage.h` declares have its values. **IMAGE_ARCHIVE_END**, **IMAGE_ARCHIVE_PAD** and **IMAGE_ARCHIVE_START** end in a line feed, `vbLf`, as C's do.
+<!-- /test -->
+
+{{table:consts}}
 
 ## Example
 

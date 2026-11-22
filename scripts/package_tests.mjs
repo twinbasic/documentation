@@ -403,8 +403,9 @@ function startServer(pkg) {
 }
 
 // The package's exe/prepare.mjs, when it has one: its default export, awaited with the
-// architecture, builds what the exe needs (tbKMode: a user-mode stand-in for ntoskrnl.exe) and
-// returns the variables that name it to the exe.
+// architecture, builds what the exe needs (tbKMode: user-mode stand-ins for ntoskrnl.exe and
+// hal.dll) and returns `{env, beside}`: the variables that name it to the exe, and the files tbrun
+// copies into the exe's folder, where the loader finds a DLL the exe imports before System32's.
 async function prepareExe(pkg, arch) {
   const file = path.join(ROOT, pkg, EXE_DIR, "prepare.mjs");
   if (!existsSync(file)) return {};
@@ -417,7 +418,8 @@ async function prepareExe(pkg, arch) {
 function exeCases(tree, arch, names, port, pkg, prepared = {}) {
   const args = [TBRUN, tree, "--exe", "--json", "--arch", arch, ...packageTimeoutArgs(pkg)];
   if (values.ide) args.push("--ide", values.ide);
-  const env = { ...process.env, ...prepared, ...(port ? { PACKAGE_TEST_PORT: port } : {}) };
+  if (prepared.beside?.length) args.push("--beside", prepared.beside.join(","));
+  const env = { ...process.env, ...prepared.env, ...(port ? { PACKAGE_TEST_PORT: port } : {}) };
   const r = spawnSync(process.execPath, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env });
   let run = null;
   try {
