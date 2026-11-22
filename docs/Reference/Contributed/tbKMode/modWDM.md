@@ -488,7 +488,7 @@ Each structure that the WDK's kernel-mode headers declare has the size of its C 
 > [!NOTE] 0.3.0.8
 > These structures are smaller than the C structures:
 >
-> - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. The package declares the field under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1`, as the WDK does, but defines no `NTDDI_VERSION`, and a project's conditional constants do not reach a package's code, so the field is never there. Its other fields are at their places.
+> - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. The package declares the field under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1`, as the WDK does, and leaves `NTDDI_VERSION` to the project that uses it. A project's conditional constants do not reach a package's code, so a driver that references the published package does not have the field. A copy of the package built with `NTDDI_VERSION` set to `NTDDI_WIN10_RS1` or later has it. Its other fields are at their places.
 > - **KUSER_SHARED_DATA** ends at **Cookie**: it is 824 bytes where the WDK's is 1848, and has none of the WDK's fields after **Cookie**. Its other fields are at their places.
 
 ## Aliases

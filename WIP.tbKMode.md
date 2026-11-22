@@ -7,8 +7,11 @@ about the package beyond its pages; the rules for every contributed package are 
 
 ## What the section decided (owner)
 
-- **Experimental**, with no second-agent reproduction (owner waived it): `parent: Experimental
-  Packages`, its line in `Experimental.md`, its folder in `_book.yml`'s `left_out:`.
+- **Contributed from 0.3.0.8** (owner, 2026-11-22): Experimental up to 0.3.0.6, with no
+  second-agent reproduction (owner waived it). 0.3.0.8 fixed every defect reported on #2, #3 and #4,
+  so it is `parent: Contributed Packages`, its line in `Contributed.md`, and its chapter in
+  `_book.yml` after VBComDlg's. Its remaining limits are stated in callouts: SiloContext,
+  KUSER_SHARED_DATA, ExFreePool2, the names shared with VBA, and twinBASIC's 32-bit FastCall defect.
 - **No driver is ever loaded, installed, signed or started.** Building one is allowed (the probe
   does), and so is reading a built one. Samples are compiled only (`check_build`), never run.
 - **Pages**: the landing page and one per module (modWDM, modFltMgr, modSysInfo, modDisk, modImage,
@@ -45,7 +48,9 @@ about the package beyond its pages; the rules for every contributed package are 
 - **IO_DRIVER_CREATE_CONTEXT.SiloContext stays a NOTE** (owner, 2026-11-22): fafalone answered on #4
   that it is under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1` as in the SDK, but the package defines no
   NTDDI_VERSION and a project's constants do not reach a package, so the field is never compiled;
-  the NOTE says why.
+  the NOTE says why. fafalone, on #4 after 0.3.0.6: `NTDDI_VERSION` is the project's to set, and
+  defining it in the package would be wrong once twinBASIC passes settings through; so the NOTE
+  also says that a copy of the package built with it set has the field.
 
 ## How the pages are written
 

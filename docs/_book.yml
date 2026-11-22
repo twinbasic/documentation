@@ -628,6 +628,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbKMode Package
+        subtitle: Declarations for writing a Windows kernel-mode driver
+        landing_page: /tB/Packages/Contributed/tbKMode/
+        page: /tB/Packages/Contributed/tbKMode/
+        landing_is_target: true
+        outline_closed: true
+
       - title: VBFLXGRD18 Package
         subtitle: The VBFlexGrid control, a grid with editing in cells, in place of MSFLXGRD.OCX
         landing_page: /tB/Packages/Contributed/VBFLXGRD18/
@@ -706,4 +713,3 @@ left_out:
       - /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
       - /tB/Packages/Contributed/TBMANLIB_Xml/
       - /tB/Packages/Contributed/WinReg/
-      - /tB/Packages/Contributed/tbKMode/

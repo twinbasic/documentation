@@ -1,6 +1,6 @@
 ---
 title: tbKMode Package
-parent: Experimental Packages
+parent: Contributed Packages
 has_toc: false
 indexed_from: 0.3.0.8
 permalink: /tB/Packages/Contributed/tbKMode/
@@ -60,7 +60,7 @@ The [Build Output Path](../../../IDE/Project-Settings#build-output-path) ends in
 - [tbKMode Writer](Writer) -- writes the module pages of this section
 - [Project Settings](../../../IDE/Project-Settings) -- the settings of a driver project
 - [Project Types](../../../../Features/Project-Configuration/Project-Types#kernel-mode-drivers) -- kernel-mode drivers in twinBASIC
-- [Experimental Packages](../../Experimental/) -- the packages from TWINSERV that are not yet ready for use in a program
+- [Contributed Packages](..) -- the other packages from TWINSERV
 
 ## Test cases
 

@@ -19,6 +19,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**Fmt**](Fmt/) -- **StringFormat**, a string built from a format string and values, in the style of C#'s **String.Format**
 - [**OLEGuids**](OLEGuids/) -- OLE and COM interfaces and structures in twinBASIC source, in place of `OLEGuids.tlb`
 - [**tbFileSysTools**](tbFileSysTools/) -- files, folders, drives and text streams, in place of the Scripting Runtime's **FileSystemObject**
+- [**tbKMode**](tbKMode/) -- declarations for writing a Windows kernel-mode driver: the Windows Driver Model, the Filter Manager, system information classes, disk structures and the PE image format
 - [**TBMANLIB_RES**](TBMANLIB_RES/) -- resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
 - [**tbProjPacker**](tbProjPacker/) -- a `.twinproj` or `.twinpack` file unpacked into a folder of source files, and packed again
 - [**tbRegExp**](tbRegExp/) -- regular expressions, in place of VBScript's **RegExp** object
