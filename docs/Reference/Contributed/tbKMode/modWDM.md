@@ -23,8 +23,8 @@ A pointer is a **LongPtr**. A parameter with no `ByVal` is passed by reference: 
 
 ## Declares
 
-<!-- test: KernelHelperTests.RtlCompareUnicodeString_OrdersTheStrings, KernelHelperTests.ObDereferenceObject_PassesTheObject, KernelHelperTests.ExReleaseResourceLite_PassesTheResource -->
-Every routine is in `ntoskrnl.exe`. Each declaration names it there, takes the routine's parameters and returns its result, and a routine that the 32-bit kernel exports as `__fastcall`, such as **ObDereferenceObject**, is declared `FastCall`, apart from those of the warnings and the note below.
+<!-- test: KernelHelperTests.RtlCompareUnicodeString_OrdersTheStrings, KernelHelperTests.ObDereferenceObject_PassesTheObject, KernelHelperTests.ExReleaseResourceLite_PassesTheResource, compile ZwDuplicateObjectTakesTargetProcessHandle, compile IoCreateDeviceReturnsThePointer, compile ExTryToAcquireFastMutexReturnsWhetherAcquired, compile SeLocateProcessImageNameReturnsThePointer, compile ExInitializeNPagedLookasideListTakesTheList, compile CmCallbackReleaseKeyObjectIDExTakesThePointer, compile DbgPrintEx1TakesTheComponentAndTheLevel, compile DbgPrintEx2TakesTheComponentAndTheLevel, compile DbgPrintEx3TakesTheComponentAndTheLevel, compile ZwMapViewOfSectionTakesTheInheritDisposition, compile ExAllocatePool2TakesPoolFlags, compile RtlCompareUnicodeStringsTakesTheLengths, KernelHelperTests.ExAllocatePool2_PassesTheSizeAndTheTag, KernelHelperTests.RtlFindFirstRunClear_ReturnsTheStartingIndex, KernelHelperTests.RtlFindLongestRunClear_ReturnsTheStartingIndex, KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel, KernelHelperTests.ObCloseHandle_PassesTheHandle, KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments, WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2, probe ordinal -->
+Every routine is in `ntoskrnl.exe`, but in a 32-bit build the fast mutexes and the IRQL and spin-lock routines, which the 32-bit kernel leaves to `hal.dll`, are declared there. Each declaration names its routine, takes the routine's parameters and returns its result, and a routine that the 32-bit kernel exports as `__fastcall`, such as **ObDereferenceObject**, is declared `FastCall`, apart from those of the warning and the note below. **ZwCreateUserProcess**, which the 64-bit kernel exports with no name, is declared `Alias "#2"`, its ordinal.
 <!-- /test -->
 
 <!-- test: compile ZwCreateKeyClassIsOptional, compile ZwCreateKeyTransactedClassIsOptional, compile ZwCreateRegistryTransactionObjAttributesIsOptional, compile ZwOpenProcessClientIDIsOptional -->
@@ -38,7 +38,7 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | **_wcsupr**{: #_wcsupr } | Converts a null-terminated wide string to uppercase in place and returns its address. The package's **UCase** calls it. |
 | [**CmCallbackGetKeyObjectID**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackgetkeyobjectid){: #CmCallbackGetKeyObjectID } | Returns the unique identifier and the name of a registry key object, for a registry callback. *ObjectName* receives the address of a **UNICODE_STRING**; from Windows 8 on, **CmCallbackGetKeyObjectIDEx** gives the key's current name. |
 | [**CmCallbackGetKeyObjectIDEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackgetkeyobjectidex){: #CmCallbackGetKeyObjectIDEx } | Returns the unique identifier and the name of a registry key object, for a registry callback. *ObjectName* receives the address of a **UNICODE_STRING** that **CmCallbackReleaseKeyObjectIDEx** frees. |
-| [**CmCallbackReleaseKeyObjectIDEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackreleasekeyobjectidex){: #CmCallbackReleaseKeyObjectIDEx } | Frees a key object name that **CmCallbackGetKeyObjectIDEx** returned. See the warning below. |
+| [**CmCallbackReleaseKeyObjectIDEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmcallbackreleasekeyobjectidex){: #CmCallbackReleaseKeyObjectIDEx } | Frees a key object name, the pointer that **CmCallbackGetKeyObjectIDEx** returned. |
 | [**CmGetBoundTransaction**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmgetboundtransaction){: #CmGetBoundTransaction } | Returns the transaction object that a registry key object is bound to, or 0 when the key is not part of a transaction, for a registry callback. |
 | [**CmGetCallbackVersion**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmgetcallbackversion){: #CmGetCallbackVersion } | Writes the major and minor version numbers of the configuration manager's registry callback feature into *Major* and *Minor*. |
 | [**CmRegisterCallback**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-cmregistercallback){: #CmRegisterCallback } | Registers a registry callback routine, passed with `AddressOf`, and fills *Cookie* with the value that identifies the registration. Obsolete since Windows Vista: use **CmRegisterCallbackEx**. |
@@ -52,9 +52,9 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**DbgPrint2**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprint){: #DbgPrint2 } | `DbgPrint`: as **DbgPrint1**, with two arguments. Pass each one as `ByVal`. |
 | [**DbgPrint3**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprint){: #DbgPrint3 } | `DbgPrint`: as **DbgPrint1**, with three arguments. Pass each one as `ByVal`. |
 | [**DbgPrintEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx } | Sends a message to the kernel debugger when the debug filter of the component *ComponentId* lets messages of *Level* through. *Format* is the address of a null-terminated ANSI string. |
-| [**DbgPrintEx1**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx1 } | `DbgPrintEx`: sends a formatted message with one argument to the kernel debugger. *Format* is the address of an ANSI format string. *Arg1* is `As Any`: pass a number or an address as `ByVal`, or the routine is given the variable's address. See the warning below. |
-| [**DbgPrintEx2**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx2 } | `DbgPrintEx`: as **DbgPrintEx1**, with two arguments. Pass each one as `ByVal`. See the warning below. |
-| [**DbgPrintEx3**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx3 } | `DbgPrintEx`: as **DbgPrintEx1**, with three arguments. Pass each one as `ByVal`. See the warning below. |
+| [**DbgPrintEx1**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx1 } | `DbgPrintEx`: sends a formatted message with one argument to the kernel debugger, for the component *ComponentId* at the importance *Level*. *Format* is the address of an ANSI format string. *Arg1* is `As Any`: pass a number or an address as `ByVal`, or the routine is given the variable's address. |
+| [**DbgPrintEx2**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx2 } | `DbgPrintEx`: as **DbgPrintEx1**, with two arguments. Pass each one as `ByVal`. |
+| [**DbgPrintEx3**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-dbgprintex){: #DbgPrintEx3 } | `DbgPrintEx`: as **DbgPrintEx1**, with three arguments. Pass each one as `ByVal`. |
 | [**EtwActivityIdControl**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwactivityidcontrol){: #EtwActivityIdControl } | Gets, sets or creates the activity identifier of the current thread through *ActivityId*, as *ControlCode*, an `EVENT_ACTIVITY_CTRL_` value, says. |
 | [**EtwEventEnabled**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etweventenabled){: #EtwEventEnabled } | Returns nonzero if the event that *EventDescriptor* describes is enabled for the ETW provider that *RegHandle* identifies. |
 | [**EtwProviderEnabled**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwproviderenabled){: #EtwProviderEnabled } | Returns nonzero if the ETW provider that *RegHandle* identifies is enabled for events of the given *Level* and *Keyword*. |
@@ -65,15 +65,16 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**EtwWriteEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwriteex){: #EtwWriteEx } | Writes an ETW event as **EtwWriteTransfer** does, with *Filter* naming the sessions that do not receive it, and *Flags*. |
 | [**EtwWriteString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwritestring){: #EtwWriteString } | Writes an ETW event that holds only a string, at the given *Level* and *Keyword*. *String* is the address of a null-terminated wide string, and *ActivityId* the address of a **UUID**, or 0. |
 | [**EtwWriteTransfer**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-etwwritetransfer){: #EtwWriteTransfer } | Writes an ETW transfer event, which links the activity *ActivityId* to *RelatedActivityId*, as **EtwWrite** writes an event. Each is the address of a **UUID**, or 0. |
-| [**ExAcquireFastMutex**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquirefastmutex){: #ExAcquireFastMutex } | Acquires a fast mutex for the calling thread, waiting until it is free, and raises the IRQL to `APC_LEVEL`. See the warning about 32-bit drivers below. |
+| [**ExAcquireFastMutex**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquirefastmutex){: #ExAcquireFastMutex } | Acquires a fast mutex for the calling thread, waiting until it is free, and raises the IRQL to `APC_LEVEL`. In a 32-bit build it is a routine of `hal.dll`. |
 | [**ExAcquireResourceExclusiveLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquireresourceexclusivelite){: #ExAcquireResourceExclusiveLite } | Acquires a resource for exclusive access by the calling thread. With *Wait* 0 it returns 0 at once if the resource is not free. |
 | [**ExAcquireResourceSharedLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquireresourcesharedlite){: #ExAcquireResourceSharedLite } | Acquires a resource for shared access by the calling thread. With *Wait* 0 it returns 0 at once if the resource cannot be shared now. |
 | [**ExAcquireSharedStarveExclusive**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquiresharedstarveexclusive){: #ExAcquireSharedStarveExclusive } | Acquires a resource for shared access without waiting for threads that are waiting for exclusive access. |
 | [**ExAcquireSharedWaitForExclusive**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exacquiresharedwaitforexclusive){: #ExAcquireSharedWaitForExclusive } | Acquires a resource for shared access only when shared access can be granted and no thread is waiting for exclusive access. |
-| [**ExAllocatePool2**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepool2){: #ExAllocatePool2 } | Allocates a block of pool memory with the given tag, filled with zeros, and returns its address, or 0. It replaces **ExAllocatePoolWithTag** from Windows 10 version 2004 on. See the warning below. |
-| [**ExAllocatePool3**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepool3){: #ExAllocatePool3 } | Allocates a block of pool memory as **ExAllocatePool2** does, with extended parameters, such as a priority, in an array of *ExtendedParametersCount* **POOL_EXTENDED_PARAMETER** entries. See the warning below. |
+| [**ExAllocatePool2**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepool2){: #ExAllocatePool2 } | Allocates a block of pool memory with the given tag, filled with zeros unless *Flags* has **POOL_FLAG_UNINITIALIZED**, and returns its address, or 0. *Flags* is a set of the `POOL_FLAG_` constants, such as **POOL_FLAG_NON_PAGED**. It replaces **ExAllocatePoolWithTag** from Windows 10 version 2004 on. |
+| [**ExAllocatePool3**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepool3){: #ExAllocatePool3 } | Allocates a block of pool memory as **ExAllocatePool2** does, with extended parameters, such as a priority, in an array of *ExtendedParametersCount* **POOL_EXTENDED_PARAMETER** entries. |
 | [**ExAllocatePoolWithTag**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtag){: #ExAllocatePoolWithTag } | Allocates a block of pool memory of the given type and tag and returns its address, or 0. Microsoft marks it obsolete in favour of `ExAllocatePool2`. |
 | [**ExAllocatePoolWithTagPriority**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtagpriority){: #ExAllocatePoolWithTagPriority } | Allocates a block of pool memory of the given type and tag, as **ExAllocatePoolWithTag** does, and returns its address, or 0. *Priority* says how important the request is when memory is low. |
+| [**ExDeleteNPagedLookasideList**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exdeletenpagedlookasidelist){: #ExDeleteNPagedLookasideList } | Deletes a lookaside list that **ExInitializeNPagedLookasideList** initialized, and frees the entries it still holds. |
 | [**ExDeleteResourceLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exdeleteresourcelite){: #ExDeleteResourceLite } | Deletes a resource from the system's resource list, before its memory is freed. |
 | [**ExEnterCriticalRegionAndAcquireResourceExclusive**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exentercriticalregionandacquireresourceexclusive){: #ExEnterCriticalRegionAndAcquireResourceExclusive } | Enters a critical region and acquires a resource for exclusive access by the calling thread. |
 | **ExEnterCriticalRegionAndAcquireResourceShared**{: #ExEnterCriticalRegionAndAcquireResourceShared } | Enters a critical region and acquires a resource for shared access, as its name shows. Not documented by Microsoft. |
@@ -81,7 +82,7 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**ExFreePool2**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2){: #ExFreePool2 } | Frees a block of pool memory that was allocated with the given tag; for a block of secure pool, the extended parameters say which pool. See the note below. |
 | [**ExFreePoolWithTag**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepoolwithtag){: #ExFreePoolWithTag } | Frees a block of pool memory that was allocated with the given tag. *P* is the block's address. |
 | [**ExGetPreviousMode**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exgetpreviousmode){: #ExGetPreviousMode } | Returns the previous processor mode of the current thread: `UserMode` when the request came from a user-mode program, `KernelMode` when it came from the kernel. |
-| [**ExInitializeNPagedLookasideList**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinitializenpagedlookasidelist){: #ExInitializeNPagedLookasideList } | Initializes a lookaside list of nonpaged entries of the given size. See the warning below. |
+| [**ExInitializeNPagedLookasideList**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinitializenpagedlookasidelist){: #ExInitializeNPagedLookasideList } | Initializes a lookaside list of nonpaged entries of the given size. |
 | [**ExInitializeResourceLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinitializeresourcelite){: #ExInitializeResourceLite } | Initializes a resource variable, which must be in nonpaged memory. |
 | [**ExInterlockedAddLargeInteger**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinterlockedaddlargeinteger){: #ExInterlockedAddLargeInteger } | Adds a 64-bit value to a variable as one atomic operation, under the given spin lock, and returns the variable's value before the addition. |
 | [**ExInterlockedAddUlong**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exinterlockedaddulong){: #ExInterlockedAddUlong } | Adds a 32-bit value to a variable as one atomic operation, under the given spin lock, and returns the variable's value before the addition. |
@@ -90,62 +91,61 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | **ExRaiseHardError**{: #ExRaiseHardError } | Raises a hard error with the given status and parameters, which can show a message box, and returns in *Response* the button the user chose. The package's **MsgBox** calls it. Not documented by Microsoft. |
 | [**ExRaiseStatus**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exraisestatus){: #ExRaiseStatus } | Raises an exception with the given status, for a structured exception handler to handle. |
 | [**ExReinitializeResourceLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreinitializeresourcelite){: #ExReinitializeResourceLite } | Reinitializes an existing resource variable, so that it can be used again. |
-| [**ExReleaseFastMutex**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleasefastmutex){: #ExReleaseFastMutex } | Releases a fast mutex that **ExAcquireFastMutex** or **ExTryToAcquireFastMutex** acquired, and restores the IRQL. See the warning about 32-bit drivers below. |
-| [**ExReleaseResourceAndLeaveCriticalRegion**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourceandleavecriticalregion){: #ExReleaseResourceAndLeaveCriticalRegion } | Releases a resource and leaves the critical region that one of the **ExEnterCriticalRegionAndAcquire** routines entered. See the warning about 32-bit drivers below. |
+| [**ExReleaseFastMutex**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleasefastmutex){: #ExReleaseFastMutex } | Releases a fast mutex that **ExAcquireFastMutex** or **ExTryToAcquireFastMutex** acquired, and restores the IRQL. In a 32-bit build it is a routine of `hal.dll`. |
+| [**ExReleaseResourceAndLeaveCriticalRegion**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourceandleavecriticalregion){: #ExReleaseResourceAndLeaveCriticalRegion } | Releases a resource and leaves the critical region that one of the **ExEnterCriticalRegionAndAcquire** routines entered. |
 | [**ExReleaseResourceForThreadLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourceforthreadlite){: #ExReleaseResourceForThreadLite } | Releases a resource that the given thread acquired. |
 | [**ExReleaseResourceLite**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exreleaseresourcelite){: #ExReleaseResourceLite } | Releases a resource that the calling thread owns. |
 | [**ExSetResourceOwnerPointer**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exsetresourceownerpointer){: #ExSetResourceOwnerPointer } | Sets the owner of a resource to the given pointer, so that another thread can release it. |
-| [**ExTryToAcquireFastMutex**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-extrytoacquirefastmutex){: #ExTryToAcquireFastMutex } | Acquires a fast mutex at once if it is free, as **ExAcquireFastMutex** does, without waiting. See the warning below. See the warning about 32-bit drivers below. |
+| [**ExTryToAcquireFastMutex**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-extrytoacquirefastmutex){: #ExTryToAcquireFastMutex } | Acquires a fast mutex at once if it is free, as **ExAcquireFastMutex** does, without waiting, and returns whether it acquired it. In a 32-bit build it is a routine of `hal.dll`. |
 | **FsRtlGetFileNameInformation**{: #FsRtlGetFileNameInformation } | Gets name information about a file object, as its name and parameters show. Not documented by Microsoft. |
 | [**FsRtlGetFileSize**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-_fsrtl_advanced_fcb_header-fsrtlgetfilesize){: #FsRtlGetFileSize } | Gets the size of a file, in bytes, into *FileSize*. |
 | [**FsRtlIsNameInExpression**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-_fsrtl_advanced_fcb_header-fsrtlisnameinexpression){: #FsRtlIsNameInExpression } | Tells whether a name matches a pattern that can contain wildcards. With *IgnoreCase* nonzero, the pattern must be in uppercase. |
 | [**FsRtlIsNameInUnUpcasedExpression**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-_fsrtl_advanced_fcb_header-fsrtlisnameinunupcasedexpression-r3){: #FsRtlIsNameInUnUpcasedExpression } | As **FsRtlIsNameInExpression**, but with *IgnoreCase* nonzero the pattern need not be in uppercase. |
 | [**FsRtlIsPagingFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-fsrtlispagingfile){: #FsRtlIsPagingFile } | Tells whether a file is a paging file: nonzero if it is. |
 | [**FsRtlIsSystemPagingFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-fsrtlissystempagingfile){: #FsRtlIsSystemPagingFile } | Tells whether a file is a paging file of the system: nonzero if it is. |
-| [**InterlockedPopEntrySList**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-expinterlockedpopentryslist){: #InterlockedPopEntrySList } | `ExpInterlockedPopEntrySList` in a 64-bit build: removes the first entry of a singly linked list as one atomic operation and returns its address, or 0 when the list is empty. See the warning about 32-bit drivers below. |
-| **IoAcquireRemoveLockEx**{: #IoAcquireRemoveLockEx } | Acquires a remove lock, so that the device is not removed while the driver works with it, and returns `STATUS_SUCCESS`, or `STATUS_DELETE_PENDING` when a remove is under way. *Tag* is `As Any`: pass it as `ByVal`; drivers usually call the package's procedure **IoAcquireRemoveLock**, which supplies the other arguments. |
+| [**InterlockedPopEntrySList**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-expinterlockedpopentryslist){: #InterlockedPopEntrySList } | `ExpInterlockedPopEntrySList` in a 64-bit build: removes the first entry of a singly linked list as one atomic operation and returns its address, or 0 when the list is empty. |
+| **IoAcquireRemoveLockEx**{: #IoAcquireRemoveLockEx } | Acquires a remove lock, so that the device is not removed while the driver works with it, and returns `STATUS_SUCCESS`, or `STATUS_DELETE_PENDING` when a remove is under way. *Tag*, a **LongPtr**, marks the acquisition; drivers usually call the package's procedure **IoAcquireRemoveLock**, which supplies the other arguments. |
 | [**IoAllocateDriverObjectExtension**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-ioallocatedriverobjectextension){: #IoAllocateDriverObjectExtension } | Allocates a context area for the driver object, identified by *ClientIdentificationAddress*, and returns its address in *DriverExtensionObject*. |
 | [**IoAttachDeviceToDeviceStack**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-ioattachdevicetodevicestack){: #IoAttachDeviceToDeviceStack } | Attaches the device object *SourceDevice* to the top of the device stack that holds *TargetDevice*, and returns the device object it was attached to, or 0. |
 | [**IoAttachDeviceToDeviceStackSafe**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-ioattachdevicetodevicestacksafe){: #IoAttachDeviceToDeviceStackSafe } | Attaches *SourceDevice* to the top of the device stack that holds *TargetDevice*, and writes the device object it was attached to into *AttachedToDeviceObject*. |
 | [**IoCompleteRequest**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocompleterequest){: #IoCompleteRequest } | Completes an IRP and returns it to the I/O manager, raising the priority of the waiting thread by *PriorityBoost*. |
-| [**IoCreateDevice**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocreatedevice){: #IoCreateDevice } | Creates a device object for the driver. See the warning below. |
+| [**IoCreateDevice**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocreatedevice){: #IoCreateDevice } | Creates a device object for the driver, and writes its address into *DeviceObject*. |
 | [**IoCreateSymbolicLink**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocreatesymboliclink){: #IoCreateSymbolicLink } | Creates a symbolic link, such as `\DosDevices\MyDevice`, to a device object's name, so that user-mode programs can open the device. |
 | [**IoDeleteDevice**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iodeletedevice){: #IoDeleteDevice } | Deletes a device object, for example when the driver unloads. *DeviceObject* is `As Any`: pass the address as `ByVal`. |
 | [**IoDeleteSymbolicLink**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iodeletesymboliclink){: #IoDeleteSymbolicLink } | Deletes a symbolic link that **IoCreateSymbolicLink** created. |
 | [**IoDetachDevice**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iodetachdevice){: #IoDetachDevice } | Detaches the driver's device object from the lower device object *TargetDevice*. |
-| [**IofCallDriver**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iofcalldriver){: #IofCallDriver } | Sends an IRP to the driver of a device object. Drivers call the package's procedure **IoCallDriver**, which calls it. See the warning about 32-bit drivers below. |
+| [**IofCallDriver**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iofcalldriver){: #IofCallDriver } | Sends an IRP to the driver of a device object. Drivers call the package's procedure **IoCallDriver**, which calls it. |
 | [**IoGetDriverObjectExtension**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iogetdriverobjectextension){: #IoGetDriverObjectExtension } | Returns the address of the context area that **IoAllocateDriverObjectExtension** allocated with the same *ClientIdentificationAddress*, or 0. |
 | [**IoGetRequestorProcess**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-iogetrequestorprocess){: #IoGetRequestorProcess } | Returns the process (an `EPROCESS` pointer) of the thread that started the I/O operation of an IRP. |
 | [**IoGetTopLevelIrp**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iogettoplevelirp){: #IoGetTopLevelIrp } | Returns the value of the current thread's `TopLevelIrp` field, which file systems set to track the IRP at the top of a recursive call. |
 | **IoInitializeRemoveLockEx**{: #IoInitializeRemoveLockEx } | Initializes a remove lock, which belongs in the device extension. Drivers usually call the package's procedure **IoInitializeRemoveLock**, which supplies *RemlockSize*. |
-| **IoReleaseRemoveLockAndWaitEx**{: #IoReleaseRemoveLockAndWaitEx } | Releases a remove lock and waits until every other holder has released it, before the device is removed. *Tag* is `As Any`: pass the tag the lock was acquired with as `ByVal`. |
-| **IoReleaseRemoveLockEx**{: #IoReleaseRemoveLockEx } | Releases a remove lock that **IoAcquireRemoveLockEx** acquired. *Tag* is `As Any`: pass the tag the lock was acquired with as `ByVal`; drivers usually call the package's procedure **IoReleaseRemoveLock**. |
+| **IoReleaseRemoveLockAndWaitEx**{: #IoReleaseRemoveLockAndWaitEx } | Releases a remove lock, given the *Tag* it was acquired with, and waits until every other holder has released it, before the device is removed; drivers usually call the package's procedure **IoReleaseRemoveLockAndWait**. |
+| **IoReleaseRemoveLockEx**{: #IoReleaseRemoveLockEx } | Releases a remove lock that **IoAcquireRemoveLockEx** acquired, given the *Tag* it was acquired with; drivers usually call the package's procedure **IoReleaseRemoveLock**. |
 | [**IoSetDeviceInterfaceState**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iosetdeviceinterfacestate){: #IoSetDeviceInterfaceState } | Enables or disables an instance of a registered device interface class, named by its symbolic link. |
 | [**IoThreadToProcess**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-iothreadtoprocess){: #IoThreadToProcess } | Returns the process (an `EPROCESS` pointer) that a thread belongs to. |
-| [**KeAcquireSpinLock**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keacquirespinlockraisetodpc){: #KeAcquireSpinLock } | `KeAcquireSpinLockRaiseToDpc`: Acquires a spin lock, raising the IRQL to `DISPATCH_LEVEL`, and returns the IRQL from before, which **KeReleaseSpinLock** takes back. The WDK's `KeAcquireSpinLock` macro writes that IRQL to a second argument instead. |
+| [**KeAcquireSpinLockRaiseToDpc**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keacquirespinlockraisetodpc){: #KeAcquireSpinLockRaiseToDpc } | Acquires a spin lock, raising the IRQL to `DISPATCH_LEVEL`, and returns the IRQL from before, which **KeReleaseSpinLock** takes back. Declared in a 64-bit build only, where **KeAcquireSpinLock** calls it. |
 | [**KeAttachProcess**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-keattachprocess){: #KeAttachProcess } | Attaches the current thread to the address space of a process (a `KPROCESS` pointer). Obsolete: use **KeStackAttachProcess**. |
 | [**KeDelayExecutionThread**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kedelayexecutionthread){: #KeDelayExecutionThread } | Puts the current thread into a wait, alertable or not, for *Interval*, in 100-nanosecond units: negative for a time relative to now, positive for an absolute time. |
 | [**KeDetachProcess**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-kedetachprocess){: #KeDetachProcess } | Detaches the current thread from the process that **KeAttachProcess** attached it to. Obsolete: use **KeUnstackDetachProcess**. |
-| [**KeGetCurrentIrql**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kegetcurrentirql){: #KeGetCurrentIrql } | Returns the current IRQL. |
+| [**KeGetCurrentIrql**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kegetcurrentirql){: #KeGetCurrentIrql } | Returns the current IRQL. In a 32-bit build it is a routine of `hal.dll`. |
 | [**KeInitializeEvent**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keinitializeevent){: #KeInitializeEvent } | Initializes a **KEVENT** as a notification or synchronization event, signaled or not signaled. |
 | [**KeInitializeSpinLock**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keinitializespinlock){: #KeInitializeSpinLock } | Initializes a spin lock variable, a **LongPtr**. The C routine returns nothing, so the **Long** it returns here has no meaning. |
-| [**KeLowerIrql**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kelowerirql){: #KeLowerIrql } | Restores the IRQL of the current processor to *NewIrql*, the value that **KeRaiseIrql** saved or **KfRaiseIrql** or **KeRaiseIrqlToDpcLevel** returned. Declared in a 64-bit build only; a 32-bit build has **KfLowerIrql**. |
-| [**KeQuerySystemTime**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kequerysystemtime-r1){: #KeQuerySystemTime } | Writes the current system time into *CurrentTime*, in 100-nanosecond units since 1 January 1601 (UTC). See the note below. |
+| [**KeLowerIrql**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kelowerirql){: #KeLowerIrql } | Restores the IRQL of the current processor to *NewIrql*, the value that **KeRaiseIrql** saved or **KfRaiseIrql** or **KeRaiseIrqlToDpcLevel** returned. In a 32-bit build it names `KfLowerIrql` of `ntoskrnl.exe`: see the note below. |
 | [**KeQuerySystemTimePrecise**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kequerysystemtimeprecise){: #KeQuerySystemTimePrecise } | Writes the current system time into *CurrentTime*, as **KeQuerySystemTime** does but more precisely. |
-| [**KeRaiseIrqlToDpcLevel**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keraiseirqltodpclevel){: #KeRaiseIrqlToDpcLevel } | Raises the IRQL of the current processor to `DISPATCH_LEVEL` and returns the IRQL from before, which **KeLowerIrql** takes back. |
-| [**KeReleaseSpinLock**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kereleasespinlock){: #KeReleaseSpinLock } | Releases a spin lock and restores the IRQL that **KeAcquireSpinLock** returned. |
+| [**KeRaiseIrqlToDpcLevel**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keraiseirqltodpclevel){: #KeRaiseIrqlToDpcLevel } | Raises the IRQL of the current processor to `DISPATCH_LEVEL` and returns the IRQL from before, which **KeLowerIrql** takes back. In a 32-bit build it is a routine of `hal.dll`. |
+| [**KeReleaseSpinLock**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kereleasespinlock){: #KeReleaseSpinLock } | Releases a spin lock and sets the IRQL to *NewIrql*, the IRQL that **KeAcquireSpinLock** returned. In a 32-bit build it is a routine of `hal.dll`. |
 | [**KeSetEvent**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kesetevent){: #KeSetEvent } | Sets an event to the signaled state and returns its previous state, nonzero if it was signaled. |
 | [**KeSetPriorityThread**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kesetprioritythread){: #KeSetPriorityThread } | Sets the priority of a thread (a `KTHREAD` pointer) and returns its old priority. |
 | [**KeStackAttachProcess**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-kestackattachprocess){: #KeStackAttachProcess } | Attaches the current thread to the address space of a process (a `KPROCESS` pointer) and saves the previous attach state in *ApcState*, for **KeUnstackDetachProcess**. |
 | [**KeUnstackDetachProcess**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-keunstackdetachprocess){: #KeUnstackDetachProcess } | Detaches the current thread from the process that **KeStackAttachProcess** attached it to, and restores the attach state saved in *ApcState*. |
 | [**KeWaitForSingleObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kewaitforsingleobject){: #KeWaitForSingleObject } | Waits until a dispatcher object, such as a **KEVENT**, is signaled, or until the timeout ends. *Timeout* is the address of a **LARGE_INTEGER** (negative for a time relative to now, in 100-nanosecond units), or 0 to wait with no limit. |
-| **KfLowerIrql**{: #KfLowerIrql } | Restores the IRQL of the current processor to *NewIrql*. Declared in a 32-bit build only, in place of **KeLowerIrql**, as the WDK's `KeLowerIrql` macro calls it there. The package marks it `[Unimplemented]`, so that a call of it gets the warning TB0009. |
-| **KfRaiseIrql**{: #KfRaiseIrql } | Raises the IRQL of the current processor to *NewIrql* and returns the IRQL from before, which **KeLowerIrql** takes back. The package's **KeRaiseIrql** calls it. |
+| **KfLowerIrql**{: #KfLowerIrql } | Restores the IRQL of the current processor to *NewIrql*. Declared in a 32-bit build only, where `hal.dll` exports it and the WDK's `KeLowerIrql` macro calls it. |
+| **KfRaiseIrql**{: #KfRaiseIrql } | Raises the IRQL of the current processor to *NewIrql* and returns the IRQL from before, which **KeLowerIrql** takes back. The package's **KeRaiseIrql** calls it. In a 32-bit build it is a routine of `hal.dll`. |
 | [**MmCopyMemory**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-mmcopymemory){: #MmCopyMemory } | Copies a range of virtual or physical memory, named by *SourceAddress* and *Flags*, into a buffer, and writes the number of bytes copied into *NumberOfBytesTransferred*. |
 | [**MmGetSystemRoutineAddress**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmgetsystemroutineaddress){: #MmGetSystemRoutineAddress } | Returns the address of a kernel or HAL routine by name, or 0 if this Windows has none. |
 | [**MmIsAddressValid**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-mmisaddressvalid){: #MmIsAddressValid } | Returns nonzero if reading or writing at a virtual address would not cause a page fault. Microsoft advises against using it. |
 | [**MmMapLockedPagesSpecifyCache**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmmaplockedpagesspecifycache){: #MmMapLockedPagesSpecifyCache } | Maps the physical pages that an MDL describes to a virtual address, with the cache type given, and returns that address. |
-| [**ObCloseHandle**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obclosehandle){: #ObCloseHandle } | Closes an object handle. *PreviousMode* is `KernelMode` for a kernel handle and `UserMode` for a handle of a user-mode program. See the warning about 32-bit drivers below. |
+| [**ObCloseHandle**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obclosehandle){: #ObCloseHandle } | Closes an object handle. *PreviousMode* is `KernelMode` for a kernel handle and `UserMode` for a handle of a user-mode program. |
 | [**ObDereferenceObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobject){: #ObDereferenceObject } | `ObfDereferenceObject`: Decrements an object's reference count, and deletes the object when it reaches zero. *Object* is the object's address. |
 | [**ObDereferenceObjectDeferDelete**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobjectdeferdelete){: #ObDereferenceObjectDeferDelete } | Decrements an object's reference count, as **ObDereferenceObject** does, but defers the object's deletion when the count reaches zero, to avoid deadlocks. |
 | [**ObDereferenceObjectDeferDeleteWithTag**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobjectdeferdeletewithtag){: #ObDereferenceObjectDeferDeleteWithTag } | As **ObDereferenceObjectDeferDelete**, and records the four-byte *Tag* for object reference tracing. |
@@ -160,7 +160,7 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**ObMakeTemporaryObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obmaketemporaryobject){: #ObMakeTemporaryObject } | Makes an object temporary, so that it is deleted once its last handle is closed. Microsoft reserves it for internal use. |
 | [**ObOpenObjectByPointer**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obopenobjectbypointer){: #ObOpenObjectByPointer } | Opens an object from a pointer to it and writes a handle to the object into *Handle*. |
 | [**ObQueryNameString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-obquerynamestring){: #ObQueryNameString } | Writes the name of an object, if it has one, into *ObjectNameInfo*, a buffer of *Length* bytes that holds an **OBJECT_NAME_INFORMATION** followed by the name's characters, and the size it needs into *ReturnLength*. |
-| [**ObReferenceObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobject){: #ObReferenceObject } | `ObfReferenceObject`: Increments an object's reference count, so that the object is not deleted while the driver uses it; release it with **ObDereferenceObject**. *Object* is the object's address. |
+| [**ObReferenceObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obfreferenceobject){: #ObReferenceObject } | `ObfReferenceObject`: Increments an object's reference count, so that the object is not deleted while the driver uses it; release it with **ObDereferenceObject**. *Object* is the object's address. |
 | [**ObReferenceObjectByHandle**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbyhandle){: #ObReferenceObjectByHandle } | Checks that a handle grants *DesiredAccess* to an object of type *ObjectType*, and writes a referenced pointer to the object into *Object*; release it with **ObDereferenceObject**. *ObjectType* is a value such as **PsProcessType** returns, or 0. |
 | [**ObReferenceObjectByHandleWithTag**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbyhandlewithtag){: #ObReferenceObjectByHandleWithTag } | As **ObReferenceObjectByHandle**, and records the four-byte *Tag* for object reference tracing; release the object with **ObDereferenceObjectWithTag**. |
 | [**ObReferenceObjectByPointer**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectbypointer){: #ObReferenceObjectByPointer } | Increments the reference count of an object, given its address, and fails with `STATUS_OBJECT_TYPE_MISMATCH` when *ObjectType* is not 0 and is not the object's type. |
@@ -190,42 +190,35 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**PsSetCreateThreadNotifyRoutine**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreatethreadnotifyroutine){: #PsSetCreateThreadNotifyRoutine } | Registers a callback routine that is called when a thread is created or deleted. |
 | [**PsSetCreateThreadNotifyRoutineEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetcreatethreadnotifyroutineex){: #PsSetCreateThreadNotifyRoutineEx } | Registers a callback routine that is called when a thread is created or deleted; *NotifyType* says which kind of callback *NotifyRoutine* is. |
 | [**PsSetLoadImageNotifyRoutine**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-pssetloadimagenotifyroutine){: #PsSetLoadImageNotifyRoutine } | Registers a callback routine that is called when an image is loaded or mapped into memory. |
-| **RtlAcquirePebLock**{: #RtlAcquirePebLock } | Acquires the lock of the current process's process environment block. Not documented by Microsoft. See the note below. |
-| [**RtlAllocateAndInitializeSid**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlallocateandinitializesid){: #RtlAllocateAndInitializeSid } | Allocates a security identifier (SID) with up to eight subauthorities and returns its address in *psid*, to be freed with **RtlFreeSid**. See the note below. |
 | [**RtlAllocateHeap**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlallocateheap){: #RtlAllocateHeap } | Allocates *Size* bytes from a heap and returns their address, or 0 when it fails. |
 | [**RtlAppendUnicodeStringToString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlappendunicodestringtostring){: #RtlAppendUnicodeStringToString } | Appends the string of *Source* to the string of *Destination*, within the buffer *Destination* already has. |
 | [**RtlAppendUnicodeToString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlappendunicodetostring){: #RtlAppendUnicodeToString } | Appends a null-terminated UTF-16 string to the string of *Destination*, within the buffer *Destination* already has. *Source* is `As Any`: pass the string's address as `ByVal StrPtr(...)`. |
 | [**RtlAreBitsClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlarebitsclear){: #RtlAreBitsClear } | Returns nonzero when the *Length* bits of a bitmap from bit *StartingIndex* are all clear. |
 | [**RtlAreBitsSet**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlarebitsset){: #RtlAreBitsSet } | Returns nonzero when the *Length* bits of a bitmap from bit *StartingIndex* are all set. |
-| [**RtlCheckBit**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcheckbit){: #RtlCheckBit } | Returns nonzero when bit *BitPosition* of a bitmap is set. See the note below. |
 | [**RtlClearAllBits**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlclearallbits){: #RtlClearAllBits } | Clears every bit of a bitmap. |
 | **RtlClearAllBitsEx**{: #RtlClearAllBitsEx } | As **RtlClearAllBits**, for an **RTL_BITMAP_EX**. Not documented by Microsoft. |
 | [**RtlClearBit**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlclearbit){: #RtlClearBit } | Clears bit *BitNumber* of a bitmap. |
 | **RtlClearBitEx**{: #RtlClearBitEx } | As **RtlClearBit**, for an **RTL_BITMAP_EX**. Not documented by Microsoft. |
 | [**RtlClearBits**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlclearbits){: #RtlClearBits } | Clears *NumberToClear* bits of a bitmap, from bit *StartingIndex*. |
 | [**RtlCompareUnicodeString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcompareunicodestring){: #RtlCompareUnicodeString } | Compares two strings, with or without case, and returns a value less than, equal to or greater than zero. |
-| **RtlCompareUnicodeStrings**{: #RtlCompareUnicodeStrings } | Compares two UTF-16 strings given by their addresses, with or without case, and returns a value less than, equal to or greater than zero. See the warning below. |
+| **RtlCompareUnicodeStrings**{: #RtlCompareUnicodeStrings } | Compares two UTF-16 strings given by their addresses and their lengths in characters, with or without case, and returns a value less than, equal to or greater than zero. |
 | **RtlCopyBitMap**{: #RtlCopyBitMap } | Copies the bits of the bitmap *Source* into the bitmap *Destination*, at bit *TargetBit*. Not documented by Microsoft. |
 | [**RtlCopyUnicodeString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcopyunicodestring){: #RtlCopyUnicodeString } | Copies the string of *SourceString* into the buffer of *DestinationString*, as much of it as the buffer holds. |
 | [**RtlCreateHeap**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlcreateheap){: #RtlCreateHeap } | Creates a heap for **RtlAllocateHeap** to allocate from, and returns its handle, or 0 when it fails. |
 | [**RtlCreateSecurityDescriptor**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcreatesecuritydescriptor){: #RtlCreateSecurityDescriptor } | Initializes an absolute security descriptor with no owner, group or access control lists; *Revision* is `SECURITY_DESCRIPTOR_REVISION`. |
-| **RtlCreateServiceSid**{: #RtlCreateServiceSid } | Writes the SID of the service named *ServiceName* to the buffer at *ServiceSid*, whose size in bytes *ServiceSidLength* gives and receives. See the note below. |
-| **RtlDefaultNpAcl**{: #RtlDefaultNpAcl } | Creates the default access control list (ACL) of a named pipe and returns its address in *Acl*. Not documented by Microsoft. See the note below. |
 | **RtlDeriveCapabilitySidsFromName**{: #RtlDeriveCapabilitySidsFromName } | Derives the capability group SID and the capability SID of a capability's name, into the buffers at *CapabilityGroupSid* and *CapabilitySid*. Not documented by Microsoft. |
 | [**RtlDestroyHeap**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtldestroyheap){: #RtlDestroyHeap } | Destroys a heap that **RtlCreateHeap** created, and returns 0 when it succeeds. |
-| **RtlDuplicateUnicodeString**{: #RtlDuplicateUnicodeString } | Copies the string of *StringIn* into a new buffer, which *StringOut* then points at and which **RtlFreeUnicodeString** frees; *Flags* says whether the copy is null-terminated. See the note below. |
-| [**RtlEqualPrefixSid**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlequalprefixsid){: #RtlEqualPrefixSid } | Returns nonzero when two SIDs are equal in all but their last subauthority. See the note below. |
-| [**RtlEqualSid**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlequalsid){: #RtlEqualSid } | Returns nonzero when the SIDs at the addresses *Sid1* and *Sid2* are equal. |
+| **RtlDuplicateUnicodeString**{: #RtlDuplicateUnicodeString } | Copies the string of *StringIn* into a new buffer, which *StringOut* then points at and which **RtlFreeUnicodeString** frees; *Flags* says whether the copy is null-terminated. |
 | [**RtlEqualUnicodeString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlequalunicodestring){: #RtlEqualUnicodeString } | Returns nonzero when two strings are equal, ignoring case when *CaseInSensitive* is nonzero. |
 | **RtlExtractBitMap**{: #RtlExtractBitMap } | Copies *NumberOfBits* bits of the bitmap *Source*, from bit *TargetBit*, into the bitmap *Destination*. Not documented by Microsoft. |
 | [**RtlFindClearBits**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindclearbits){: #RtlFindClearBits } | Returns the first bit of a run of *NumberToFind* clear bits in a bitmap, searching from bit *HintIndex*, or `&HFFFFFFFF` when there is none. |
 | [**RtlFindClearBitsAndSet**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindclearbitsandset){: #RtlFindClearBitsAndSet } | As **RtlFindClearBits**, and sets the bits it finds. |
 | [**RtlFindClearRuns**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindclearruns){: #RtlFindClearRuns } | Fills the array of **RTL_BITMAP_RUN** that starts at *RunArray* with up to *SizeOfRunArray* runs of clear bits of a bitmap, the longest ones when *LocateLongestRuns* is nonzero, and returns how many it found. |
 | **RtlFindExportedRoutineByName**{: #RtlFindExportedRoutineByName } | Returns the address of a routine that a loaded image exports, from the image's base address and the address of the routine's name as an ANSI string, or 0 when the image has none of that name. Not documented by Microsoft. |
-| [**RtlFindFirstRunClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindfirstrunclear){: #RtlFindFirstRunClear } | Returns the number of bits in the first run of clear bits of a bitmap. See the warning below. |
+| [**RtlFindFirstRunClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindfirstrunclear){: #RtlFindFirstRunClear } | Returns the number of bits in the first run of clear bits of a bitmap, and writes the index of its first bit into *StartingIndex*. |
 | [**RtlFindLastBackwardRunClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindlastbackwardrunclear){: #RtlFindLastBackwardRunClear } | Returns the number of bits in the run of clear bits of a bitmap that precedes bit *FromIndex*, and its first bit in *StartingRunIndex*. |
 | [**RtlFindLeastSignificantBit**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindleastsignificantbit){: #RtlFindLeastSignificantBit } | Returns the zero-based position of the lowest set bit of *Set*, or 255 (`-1`) when *Set* is 0. |
-| [**RtlFindLongestRunClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindlongestrunclear){: #RtlFindLongestRunClear } | Returns the number of bits in the longest run of clear bits of a bitmap. See the warning below. |
+| [**RtlFindLongestRunClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindlongestrunclear){: #RtlFindLongestRunClear } | Returns the number of bits in the longest run of clear bits of a bitmap, and writes the index of its first bit into *StartingIndex*. |
 | [**RtlFindMostSignificantBit**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindmostsignificantbit){: #RtlFindMostSignificantBit } | Returns the zero-based position of the highest set bit of *Set*, or 255 (`-1`) when *Set* is 0. |
 | [**RtlFindNextForwardRunClear**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindnextforwardrunclear){: #RtlFindNextForwardRunClear } | Returns the number of bits in the next run of clear bits of a bitmap from bit *FromIndex*, and its first bit in *StartingRunIndex*. |
 | [**RtlFindSetBits**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfindsetbits){: #RtlFindSetBits } | Returns the first bit of a run of *NumberToFind* set bits in a bitmap, searching from bit *HintIndex*, or `&HFFFFFFFF` when there is none. |
@@ -233,10 +226,9 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | **RtlFindSetBitsAndClearEx**{: #RtlFindSetBitsAndClearEx } | As **RtlFindSetBitsAndClear**, for an **RTL_BITMAP_EX**. Not documented by Microsoft. |
 | **RtlFindSetBitsEx**{: #RtlFindSetBitsEx } | As **RtlFindSetBits**, for an **RTL_BITMAP_EX**. Not documented by Microsoft. |
 | [**RtlFreeHeap**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlfreeheap){: #RtlFreeHeap } | Frees a block that **RtlAllocateHeap** allocated, and returns nonzero when it succeeds. |
-| [**RtlFreeSid**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlfreesid){: #RtlFreeSid } | Frees a SID that **RtlAllocateAndInitializeSid** allocated. See the note below. |
+| [**RtlFreeSid**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlfreesid){: #RtlFreeSid } | Frees a SID that `RtlAllocateAndInitializeSid` allocated. See the note below. |
 | [**RtlFreeUnicodeString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlfreeunicodestring){: #RtlFreeUnicodeString } | Frees the buffer of a string that a routine allocated, such as **RtlUpcaseUnicodeString** with *AllocateDestinationString* nonzero. |
 | **RtlGetControlSecurityDescriptor**{: #RtlGetControlSecurityDescriptor } | Returns the control flags and the revision of a security descriptor in *Control* and *Revision*. |
-| **RtlGetCurrentPeb**{: #RtlGetCurrentPeb } | Returns the address of the process environment block (PEB) of the current process. Not documented by Microsoft. See the note below. |
 | [**RtlGetDaclSecurityDescriptor**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlgetdaclsecuritydescriptor){: #RtlGetDaclSecurityDescriptor } | Returns in *DaclPresent* whether a security descriptor has a discretionary access control list (DACL), and in *Dacl* and *DaclDefaulted* its address and whether it was defaulted. |
 | [**RtlGetSaclSecurityDescriptor**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlgetsaclsecuritydescriptor){: #RtlGetSaclSecurityDescriptor } | As **RtlGetDaclSecurityDescriptor**, for the system access control list (SACL). |
 | [**RtlGetVersion**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlgetversion){: #RtlGetVersion } | Returns the version of the running Windows. *lpVersionInformation* is `As Any`: pass an **RTL_OSVERSIONINFOW** or **RTL_OSVERSIONINFOEXW** whose **dwOSVersionInfoSize** is set to its size. |
@@ -261,7 +253,6 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | **RtlNumberOfSetBitsInRange**{: #RtlNumberOfSetBitsInRange } | Returns the number of set bits among the *Length* bits of a bitmap from bit *StartingIndex*. |
 | [**RtlNumberOfSetBitsUlongPtr**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlnumberofsetbitsulongptr){: #RtlNumberOfSetBitsUlongPtr } | Returns the number of set bits in *Target*. |
 | [**RtlQueryRegistryValues**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlqueryregistryvalues){: #RtlQueryRegistryValues } | Reads several values of one registry key in a single call, as an array of **RTL_QUERY_REGISTRY_TABLE** describes them. *RelativeTo* is an `RTL_REGISTRY_` constant and *Path* the address of a null-terminated UTF-16 string. |
-| **RtlReleasePebLock**{: #RtlReleasePebLock } | Releases the lock that **RtlAcquirePebLock** acquired. Not documented by Microsoft. See the note below. |
 | [**RtlSetAllBits**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits){: #RtlSetAllBits } | Sets every bit of a bitmap. |
 | [**RtlSetBit**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetbit){: #RtlSetBit } | Sets bit *BitNumber* of a bitmap. |
 | **RtlSetBitEx**{: #RtlSetBitEx } | As **RtlSetBit**, for an **RTL_BITMAP_EX**. Not documented by Microsoft. |
@@ -273,7 +264,6 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | **RtlSidHashLookup**{: #RtlSidHashLookup } | Returns the address of the **SID_AND_ATTRIBUTES** of the SID at *Sid* in a hash that **RtlSidHashInitialize** filled. Not documented by Microsoft. |
 | [**RtlTestBit**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtltestbit){: #RtlTestBit } | Returns nonzero when bit *BitNumber* of a bitmap is set. |
 | **RtlTestBitEx**{: #RtlTestBitEx } | As **RtlTestBit**, for an **RTL_BITMAP_EX**. Not documented by Microsoft. |
-| [**RtlUniform**](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-rtluniform){: #RtlUniform } | Returns a uniformly distributed random number, made from *Seed* by D. H. Lehmer's method, and updates *Seed*. See the note below. |
 | [**RtlUpcaseUnicodeString**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-rtlupcaseunicodestring){: #RtlUpcaseUnicodeString } | Writes an uppercase copy of *SourceString* into *DestinationString*, allocating its buffer when *AllocateDestinationString* is nonzero, to be freed with **RtlFreeUnicodeString**. |
 | [**RtlValidRelativeSecurityDescriptor**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlvalidrelativesecuritydescriptor){: #RtlValidRelativeSecurityDescriptor } | Returns nonzero when a self-relative security descriptor of *SecurityDescriptorLength* bytes is valid and holds the parts that *RequiredInformation* names. |
 | [**RtlValidSecurityDescriptor**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlvalidsecuritydescriptor){: #RtlValidSecurityDescriptor } | Returns nonzero when a security descriptor is valid. |
@@ -283,7 +273,7 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**SeAssignSecurityEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seassignsecurityex){: #SeAssignSecurityEx } | As **SeAssignSecurity**, with the object's type *ObjectType* and the auto-inheritance flags *AutoInheritFlags*. |
 | **SeComputeAutoInheritByObjectType**{: #SeComputeAutoInheritByObjectType } | Returns the auto-inheritance flags, such as `SEF_DACL_AUTO_INHERIT`, for a new object of the type at *ObjectType*, from its security descriptor and its parent's. |
 | [**SeEtwWriteKMCveEvent**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seetwwritekmcveevent){: #SeEtwWriteKMCveEvent } | Logs an event that reports an attempt to exploit a known vulnerability, named by its CVE identifier. |
-| [**SeLocateProcessImageName**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-selocateprocessimagename){: #SeLocateProcessImageName } | Returns the full path of a process's image file, from a pointer to the process's `EPROCESS`. See the warning below. |
+| [**SeLocateProcessImageName**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-selocateprocessimagename){: #SeLocateProcessImageName } | Returns the full path of a process's image file, from a pointer to the process's `EPROCESS`: it writes the address of a **UNICODE_STRING** that it allocates into *ImageFileName*. |
 | [**SeLockSubjectContext**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-selocksubjectcontext){: #SeLockSubjectContext } | Locks the tokens of a subject context, for **SeAccessCheck** with *SubjectContextLocked* nonzero. |
 | [**SeQueryInformationToken**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-sequeryinformationtoken){: #SeQueryInformationToken } | Returns information about an access token, in the form *TokenInformationClass* names, in a buffer that the routine allocates and the caller frees. *TokenInformation* is `As Any`: pass a **LongPtr** variable, which receives the buffer's address. |
 | [**SeUnlockSubjectContext**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-seunlocksubjectcontext){: #SeUnlockSubjectContext } | Unlocks the tokens that **SeLockSubjectContext** locked. |
@@ -300,35 +290,27 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**ZeroMemory**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlzeromemory){: #ZeroMemory } | `RtlZeroMemory`: fills *Length* bytes with zeros. *Destination* is `As Any`: pass a variable, or an address as `ByVal`. |
 | [**ZwClose**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwclose){: #ZwClose } | Closes a handle to an object of any type. |
 | **ZwCommitRegistryTransaction**{: #ZwCommitRegistryTransaction } | Commits the changes of a registry transaction. |
-| **ZwCompactKeys**{: #ZwCompactKeys } | Compacts *Count* registry keys, whose handles are an array that starts at *KeyArray*. Not documented by Microsoft. See the note below. |
-| **ZwCompressKey**{: #ZwCompressKey } | Compresses a registry key, by its handle. Not documented by Microsoft. See the note below. |
 | [**ZwCreateDirectoryObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatedirectoryobject){: #ZwCreateDirectoryObject } | Creates an object directory or opens an existing one, and returns its handle in *DirectoryHandle*. |
 | [**ZwCreateFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatefile){: #ZwCreateFile } | Creates a file or opens an existing one, and returns its handle in *FileHandle*. |
 | [**ZwCreateKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatekey){: #ZwCreateKey } | Creates a registry key or opens an existing one, and returns its handle in *KeyHandle* and in *Disposition* whether it was created or opened. |
 | [**ZwCreateKeyTransacted**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatekeytransacted){: #ZwCreateKeyTransacted } | As **ZwCreateKey**, as part of the transaction *TransactionHandle*. |
 | **ZwCreateRegistryTransaction**{: #ZwCreateRegistryTransaction } | Creates a registry transaction and returns its handle in *RegistryTransactionHandle*. |
 | [**ZwCreateSection**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatesection){: #ZwCreateSection } | Creates a section object and returns its handle in *SectionHandle*; the section is backed by the file *FileHandle*, or by the paging file when it is 0. |
-| **ZwCreateUserProcess**{: #ZwCreateUserProcess } | Creates a user-mode process and its first thread, and returns their handles in *ProcessHandle* and *ThreadHandle*. *ProcessParameters* is `As Any`: pass a structure, or an address as `ByVal`. Not documented by Microsoft. See the note below. |
+| **ZwCreateUserProcess**{: #ZwCreateUserProcess } | Creates a user-mode process and its first thread, and returns their handles in *ProcessHandle* and *ThreadHandle*. *ProcessParameters* is `As Any`: pass a structure, or an address as `ByVal`. The 64-bit kernel exports it with no name, as ordinal 2, which the declaration names as `Alias "#2"`. Not documented by Microsoft. |
 | [**ZwDeleteFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwdeletefile){: #ZwDeleteFile } | Deletes the file that *ObjectAttributes* names. |
 | [**ZwDeleteKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwdeletekey){: #ZwDeleteKey } | Deletes an open registry key. |
 | [**ZwDeleteValueKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwdeletevaluekey){: #ZwDeleteValueKey } | Deletes a value of an open registry key, by its name. |
-| [**ZwDuplicateObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwduplicateobject){: #ZwDuplicateObject } | Makes a duplicate of a handle. See the warning below. |
+| [**ZwDuplicateObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwduplicateobject){: #ZwDuplicateObject } | Makes a duplicate of a handle, for the process of *TargetProcessHandle*. |
 | [**ZwEnumerateKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwenumeratekey){: #ZwEnumerateKey } | Returns information about a subkey of an open registry key, by its index, in the form *KeyInformationClass* names. |
 | [**ZwEnumerateValueKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwenumeratevaluekey){: #ZwEnumerateValueKey } | Returns information about a value of an open registry key, by its index, in the form *KeyValueInformationClass* names, such as **KEY_VALUE_FULL_INFORMATION**. |
 | [**ZwFlushKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwflushkey){: #ZwFlushKey } | Writes the changes of an open registry key to disk. |
-| **ZwFreezeRegistry**{: #ZwFreezeRegistry } | Freezes the registry, for no more than *TimeOutInSeconds*. Not documented by Microsoft. See the note below. |
 | [**ZwFsControlFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwfscontrolfile){: #ZwFsControlFile } | Sends the file-system control code *FsControlCode* to the file system or the filter of an open file. *InputBuffer* and *OutputBuffer* are `As Any`: pass a variable, or an address as `ByVal` (`ByVal 0` for none). |
-| **ZwInitializeRegistry**{: #ZwInitializeRegistry } | Initializes the registry, with a boot condition. Not documented by Microsoft. See the note below. |
 | **ZwLoadKey**{: #ZwLoadKey } | Loads the registry hive of the file *SourceFile* names under the key *TargetKey* names. Not documented by Microsoft. |
-| **ZwLoadKey2**{: #ZwLoadKey2 } | As **ZwLoadKey**, with *Flags*. Not documented by Microsoft. See the note below. |
-| **ZwLoadKey3**{: #ZwLoadKey3 } | As **ZwLoadKeyEx**, with an array of **CM_EXTENDED_PARAMETER** in place of the trust class key and the event. Not documented by Microsoft. See the note below. |
 | **ZwLoadKeyEx**{: #ZwLoadKeyEx } | As **ZwLoadKey2**, with a trust class key, an event, an access mask, and a handle to the loaded key returned in *RootHandle*. Not documented by Microsoft. |
 | [**ZwLockFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwlockfile){: #ZwLockFile } | Locks the *Length* bytes of an open file from *ByteOffset*, exclusively when *ExclusiveLock* is nonzero. |
 | **ZwLockProductActivationKeys**{: #ZwLockProductActivationKeys } | Locks the product activation keys of the registry; *pPrivateVer* and *pSafeMode* receive a value each. Not documented by Microsoft. |
-| **ZwLockRegistryKey**{: #ZwLockRegistryKey } | Locks a registry key, by its handle. Not documented by Microsoft. See the note below. |
-| [**ZwMapViewOfSection**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwmapviewofsection){: #ZwMapViewOfSection } | Maps a view of a section into the address space of a process, and returns its address in *BaseAddress* and its size in *ViewSize*. See the warning below. |
+| [**ZwMapViewOfSection**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwmapviewofsection){: #ZwMapViewOfSection } | Maps a view of a section into the address space of a process, and returns its address in *BaseAddress* and its size in *ViewSize*; *InheritDisposition* says whether a child process inherits the view. |
 | [**ZwNotifyChangeKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwnotifychangekey){: #ZwNotifyChangeKey } | Asks to be told when an open registry key changes, by an event, an APC or *IoStatusBlock*; *CompletionFilter* names the changes, and *WatchTree* nonzero includes the subkeys. |
-| **ZwNotifyChangeMultipleKeys**{: #ZwNotifyChangeMultipleKeys } | As **ZwNotifyChangeKey**, for *MasterKeyHandle* and the *Count* keys that *SubordinateObjects* names. Not documented by Microsoft. See the note below. |
 | [**ZwOpenDirectoryObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwopendirectoryobject){: #ZwOpenDirectoryObject } | Opens an object directory and returns its handle in *DirectoryHandle*. |
 | [**ZwOpenKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopenkey){: #ZwOpenKey } | Opens an existing registry key and returns its handle in *KeyHandle*. |
 | [**ZwOpenKeyEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwopenkeyex){: #ZwOpenKeyEx } | As **ZwOpenKey**, with *OpenOptions*. |
@@ -342,24 +324,17 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**ZwQueryDirectoryFileEx**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwquerydirectoryfileex){: #ZwQueryDirectoryFileEx } | As **ZwQueryDirectoryFile**, with *QueryFlags* in place of *ReturnSingleEntry* and *RestartScan*. |
 | **ZwQueryDirectoryObject**{: #ZwQueryDirectoryObject } | Returns information about the objects of an object directory in *Buffer*, one or several per call, with *Context* keeping the position between calls. |
 | [**ZwQueryKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwquerykey){: #ZwQueryKey } | Returns information about an open registry key, in the form *KeyInformationClass* names. |
-| **ZwQueryMultipleValueKey**{: #ZwQueryMultipleValueKey } | Returns several values of an open registry key in one call: *ValueEntries* is an array of *EntryCount* **KEY_VALUE_ENTRY**, and the data goes into *ValueBuffer*. Not documented by Microsoft. See the note below. |
-| **ZwQueryOpenSubKeys**{: #ZwQueryOpenSubKeys } | Returns in *HandleCount* the number of open handles to the key *TargetKey* names and its subkeys. Not documented by Microsoft. See the note below. |
-| **ZwQueryOpenSubKeysEx**{: #ZwQueryOpenSubKeysEx } | As **ZwQueryOpenSubKeys**, returning information about the open keys in *Buffer*, or the size it needs in *RequiredSize*. Not documented by Microsoft. See the note below. |
 | [**ZwQuerySymbolicLinkObject**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwquerysymboliclinkobject){: #ZwQuerySymbolicLinkObject } | Returns the target of a symbolic link in *LinkTarget*. |
 | [**ZwQueryValueKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwqueryvaluekey){: #ZwQueryValueKey } | Returns a value of an open registry key, by its name, in the form *KeyValueInformationClass* names, such as **KEY_VALUE_PARTIAL_INFORMATION**. |
 | [**ZwReadFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwreadfile){: #ZwReadFile } | Reads *Length* bytes from an open file, at *ByteOffset*, into *Buffer*. |
 | **ZwRenameKey**{: #ZwRenameKey } | Changes the name of an open registry key. |
 | **ZwReplaceKey**{: #ZwReplaceKey } | Replaces the file of the registry key *TargetHandle* with the one *NewFile* names, keeping the old file under the name *OldFile* gives. Not documented by Microsoft. |
 | **ZwRestoreKey**{: #ZwRestoreKey } | Reads registry information from the file *FileHandle* into an open key and its subkeys. |
-| **ZwResumeProcess**{: #ZwResumeProcess } | Resumes a suspended process, by its handle. Not documented by Microsoft. See the note below. |
 | **ZwRollbackRegistryTransaction**{: #ZwRollbackRegistryTransaction } | Discards the changes of a registry transaction. |
 | **ZwSaveKey**{: #ZwSaveKey } | Saves an open registry key and its subkeys to the file *FileHandle*. |
 | **ZwSaveKeyEx**{: #ZwSaveKeyEx } | As **ZwSaveKey**, in the file format *Format* names. |
-| **ZwSaveMergedKeys**{: #ZwSaveMergedKeys } | Saves two registry keys merged to the file *FileHandle*, the first key's values taking precedence. Not documented by Microsoft. See the note below. |
 | **ZwSetInformationKey**{: #ZwSetInformationKey } | Sets information of an open registry key, of the class *KeySetInformationClass* names. |
 | [**ZwSetValueKey**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwsetvaluekey){: #ZwSetValueKey } | Creates or replaces a value of an open registry key. *Data* is `As Any`: pass a variable, or an address as `ByVal`, such as `ByVal StrPtr(...)` for a string. |
-| **ZwSuspendProcess**{: #ZwSuspendProcess } | Suspends a process, by its handle. Not documented by Microsoft. See the note below. |
-| **ZwThawRegistry**{: #ZwThawRegistry } | Ends a freeze of the registry that **ZwFreezeRegistry** began. Not documented by Microsoft. See the note below. |
 | **ZwUnloadKey**{: #ZwUnloadKey } | Unloads the registry hive loaded under the key *TargetKey* names. Not documented by Microsoft. |
 | **ZwUnloadKey2**{: #ZwUnloadKey2 } | As **ZwUnloadKey**, with *Flags*. Not documented by Microsoft. |
 | **ZwUnloadKeyEx**{: #ZwUnloadKeyEx } | As **ZwUnloadKey**, with an event in *Event*. Not documented by Microsoft. |
@@ -367,51 +342,23 @@ A parameter that C declares optional, and that is a structure passed by referenc
 | [**ZwUnmapViewOfSection**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwunmapviewofsection){: #ZwUnmapViewOfSection } | Unmaps a view that **ZwMapViewOfSection** mapped from the address space of a process. |
 | [**ZwWriteFile**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwwritefile){: #ZwWriteFile } | Writes *Length* bytes from *Buffer* to an open file, at *ByteOffset*. |
 
-<!-- test: compile ZwDuplicateObjectTakesTargetProcessHandle, compile IoCreateDeviceReturnsThePointer, compile ExTryToAcquireFastMutexReturnsWhetherAcquired, compile SeLocateProcessImageNameReturnsThePointer, compile ExInitializeNPagedLookasideListTakesTheList, compile CmCallbackReleaseKeyObjectIDExTakesThePointer, compile DbgPrintEx1TakesTheComponentAndTheLevel, compile DbgPrintEx2TakesTheComponentAndTheLevel, compile DbgPrintEx3TakesTheComponentAndTheLevel, compile ZwMapViewOfSectionTakesTheInheritDisposition, compile ExAllocatePool2TakesPoolFlags, KernelHelperTests.ExAllocatePool2_PassesTheSizeAndTheTag, compile RtlCompareUnicodeStringsTakesTheLengths, KernelHelperTests.RtlFindFirstRunClear_ReturnsTheStartingIndex, KernelHelperTests.RtlFindLongestRunClear_ReturnsTheStartingIndex -->
-> [!WARNING] 0.3.0.5
-> These declarations do not match the kernel's routines, and a driver must not call them. It declares each one itself, as the WDK has the routine.
->
-> - **CmCallbackReleaseKeyObjectIDEx** takes a **UNICODE_STRING**, but **CmCallbackGetKeyObjectIDEx** gives the name back as a pointer, which is what the routine takes. The compiler refuses the pointer, and a **UNICODE_STRING** passed instead gives the routine the address of the driver's own variable, not of the string it allocated.
-> - **DbgPrintEx1**, **DbgPrintEx2** and **DbgPrintEx3** lack the first two parameters of `DbgPrintEx`, *ComponentId* and *Level*, and start at *Format*. The routine takes the address of the format as the component ID and the first argument as the level, and reads its format from whatever follows the arguments.
-> - **ExAllocatePool2** and **ExAllocatePool3** take a **POOL_TYPE** where the routines take `POOL_FLAGS`, a 64-bit set of `POOL_FLAG_` bits, which the package does not declare. A **POOL_TYPE** value asks for something else: `NonPagedPool`, 0, names no pool, and `PagedPool`, 1, is `POOL_FLAG_USE_QUOTA`. In a 32-bit driver the routine also reads the size and the tag from the wrong places.
-> - **ExInitializeNPagedLookasideList** takes *Lookaside* as a **LongPtr** passed by reference, where the routine takes the list. The routine initializes a list at the address of that variable, and writes over what follows it.
-> - **ExTryToAcquireFastMutex** is a **Sub**, but the routine returns whether it acquired the mutex. A driver cannot tell whether it holds the mutex.
-> - **IoCreateDevice** takes *DeviceObject* as a **DEVICE_OBJECT**, where the routine takes the address of a variable that receives a pointer to the new device object. The routine writes the pointer over the start of the structure, and the driver does not receive its device object.
-> - **RtlCompareUnicodeStrings** lacks the length of each string, the routine's second and fourth parameters, so the routine takes the address of the second string as the length of the first. It also names `ntdll`, as **RtlDuplicateUnicodeString** does (see the note below).
-> - **RtlFindFirstRunClear** and **RtlFindLongestRunClear** take *StartingIndex* `ByVal`, where the routine takes the address of a variable and writes the run's first index there: the routine writes to the address that the value names.
-> - **SeLocateProcessImageName** takes *ImageFileName* as a **UNICODE_STRING**, where the routine takes the address of a variable that receives a pointer to the string it allocates. The routine writes the pointer over the start of the structure.
-> - **ZwDuplicateObject** lacks the routine's third parameter, *TargetProcessHandle*. The routine takes the address meant for *TargetHandle* as *TargetProcessHandle*, each later argument as the parameter before the one it is meant for, and its last parameter, *Options*, from whatever follows.
-> - **ZwMapViewOfSection** lacks the routine's eighth parameter, *InheritDisposition*, between *ViewSize* and *AllocationType*. The routine takes *AllocationType* as the disposition, *Win32Protect* as the allocation type, and its protection from whatever follows.
+<!-- test: KernelHelperTests.KeAcquireSpinLock_PassesTheLock -->
+> [!WARNING] 0.3.0.6
+> In a 32-bit driver [**KeAcquireSpinLock**](#KeAcquireSpinLock) is a declaration of `KfAcquireSpinLock` of `hal.dll`, a `__fastcall` routine that takes the lock in a register, but the package declares it without `FastCall` and calls it as a `__stdcall` routine, which pushes the lock on the stack. The routine acquires some other spin lock than the driver's, and the call leaves the stack 4 bytes off. A 64-bit driver is not affected.
 
-<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2, KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel, probe ordinal, probe x86exports -->
-> [!NOTE] 0.3.0.5
-> The 64-bit kernel of Windows 10 version 22H2 does not export these routines: **KeQuerySystemTime**, **RtlAcquirePebLock**, **RtlAllocateAndInitializeSid**, **RtlCheckBit**, **RtlCreateServiceSid**, **RtlDefaultNpAcl**, **RtlEqualPrefixSid**, **RtlFreeSid**, **RtlGetCurrentPeb**, **RtlReleasePebLock**, **RtlUniform**, **ZwCompactKeys**, **ZwCompressKey**, **ZwFreezeRegistry**, **ZwInitializeRegistry**, **ZwLoadKey2**, **ZwLoadKey3**, **ZwLockRegistryKey**, **ZwNotifyChangeMultipleKeys**, **ZwQueryMultipleValueKey**, **ZwQueryOpenSubKeys**, **ZwQueryOpenSubKeysEx**, **ZwResumeProcess**, **ZwSaveMergedKeys**, **ZwSuspendProcess** and **ZwThawRegistry**. **RtlDuplicateUnicodeString**, which the kernel exports, is declared in the user-mode `ntdll`, which the kernel does not load for a driver. A driver imports only the routines that it calls, so a driver that calls none of them is not affected; one that calls any of them does not load.
+<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, probe x86exports -->
+> [!NOTE] 0.3.0.6
+> The 64-bit kernel of Windows 10 version 22H2 does not export **RtlFreeSid**, and **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says. A driver imports only the routines that it calls, so a driver that calls neither is not affected; one that calls **RtlFreeSid**, or **ExFreePool2** on Windows 10, does not load.
 >
-> The same kernel exports **ZwCreateUserProcess** with no name, as ordinal 2, so the package's declaration, which imports it by name, does not load either. A driver that declares it with `Alias "#2"` imports it by ordinal. **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says: a driver that calls it does not load on Windows 10.
->
-> A 32-bit driver has more of them. The 32-bit `ntoskrnl.exe` does not export **ExAcquireFastMutex**, **ExReleaseFastMutex**, **ExTryToAcquireFastMutex**, **KeGetCurrentIrql**, **KeRaiseIrqlToDpcLevel**, **KeReleaseSpinLock** and **KfRaiseIrql**, which the 32-bit `hal.dll` exports, and neither file exports `KeAcquireSpinLockRaiseToDpc`, which **KeAcquireSpinLock** names, or **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx**. A 32-bit driver that calls any of them does not load. A driver declares a routine of `hal.dll` itself, with `Lib "hal.dll"`. The 64-bit kernel exports all of them.
-
-<!-- test: KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ObCloseHandle_PassesTheHandle, KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments -->
-> [!WARNING] 0.3.0.5
-> In a 32-bit driver, these routines take their arguments in registers, as `__fastcall` routines, but the package declares them without `FastCall` and calls them as `__stdcall` routines, which push the arguments on the stack:
->
-> - **ExAcquireFastMutex**, **ExReleaseFastMutex** and **ExTryToAcquireFastMutex**
-> - **ExInterlockedAddUlong**
-> - **ExReleaseResourceAndLeaveCriticalRegion**
-> - **InterlockedPopEntrySList**
-> - **IofCallDriver**, which [**IoCallDriver**](#IoCallDriver) calls
->
-> Each routine receives other values than its arguments, and the call leaves the stack 4 bytes off, 8 for **ExInterlockedAddUlong** and **IofCallDriver**. **ObCloseHandle** is the other way round: the package declares it `FastCall`, but the kernel's routine is `__stdcall` and reads its arguments from the stack, so it receives other values than its arguments, and the call leaves the stack 8 bytes off. A 64-bit driver is not affected. The 32-bit [**InterlockedIncrement**](#InterlockedIncrement) has a warning of its own.
+> A 32-bit driver has more of them. In a 32-bit build **KeLowerIrql** names `KfLowerIrql` of `ntoskrnl.exe`, which only the 32-bit `hal.dll` exports, and no 32-bit file exports **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx**. A 32-bit driver that calls any of them does not load; it calls **KfLowerIrql** in place of **KeLowerIrql**. The 64-bit kernel exports all of them.
 
 ## Types
 
-<!-- test: WDMLayoutTests.ACCESS_STATE_Layout, WDMLayoutTests.ANSI_STRING_Layout, WDMLayoutTests.CLIENT_ID_Layout, WDMLayoutTests.DISPATCHER_HEADER_Layout, WDMLayoutTests.DRIVER_EXTENSION_Layout, WDMLayoutTests.DRIVER_OBJECT_Layout, WDMLayoutTests.ERESOURCE_Layout, WDMLayoutTests.EVENT_DATA_DESCRIPTOR_Layout, WDMLayoutTests.EVENT_DESCRIPTOR_Layout, WDMLayoutTests.FAST_MUTEX_Layout, WDMLayoutTests.FILE_OBJECT_Layout, WDMLayoutTests.GENERAL_LOOKASIDE_LAYOUT_Layout, WDMLayoutTests.INITIAL_PRIVILEGE_SET_Layout, WDMLayoutTests.IO_COMPLETION_CONTEXT_Layout, WDMLayoutTests.IO_REMOVE_LOCK_Layout, WDMLayoutTests.IO_REMOVE_LOCK_COMMON_BLOCK_Layout, WDMLayoutTests.IO_SECURITY_CONTEXT_Layout, WDMLayoutTests.IO_STACK_LOCATION_Layout, WDMLayoutTests.IO_STATUS_BLOCK_Layout, WDMLayoutTests.IRP_Layout, WDMLayoutTests.KAPC_STATE_Layout, WDMLayoutTests.KDEVICE_QUEUE_Layout, WDMLayoutTests.KDPC_Layout, WDMLayoutTests.KEVENT_Layout, WDMLayoutTests.KEY_VALUE_BASIC_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_ENTRY_Layout, WDMLayoutTests.KEY_VALUE_FULL_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_LAYER_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_PARTIAL_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_PARTIAL_INFORMATION_ALIGN64_Layout, WDMLayoutTests.KSYSTEM_TIME_Layout, WDMLayoutTests.LARGE_INTEGER_Layout, WDMLayoutTests.LIST_ENTRY_Layout, WDMLayoutTests.LUID_Layout, WDMLayoutTests.LUID_AND_ATTRIBUTES_Layout, WDMLayoutTests.MDL_Layout, WDMLayoutTests.OBJECT_ATTRIBUTES_Layout, WDMLayoutTests.OBJECT_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_CALLBACK_REGISTRATION_Layout, WDMLayoutTests.OB_OPERATION_REGISTRATION_Layout, WDMLayoutTests.OB_POST_CREATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_POST_DUPLICATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_POST_OPERATION_PARAMETERS_Layout, WDMLayoutTests.OB_PRE_CREATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_PRE_DUPLICATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout, WDMLayoutTests.OEM_STRING_Layout, WDMLayoutTests.OWNER_ENTRY_Layout, WDMLayoutTests.POOL_EXTENDED_PARAMETER_Layout, WDMLayoutTests.POOL_EXTENDED_PARAMS_SECURE_POOL_Layout, WDMLayoutTests.PS_CREATE_NOTIFY_INFO_Layout, WDMLayoutTests.REG_CALLBACK_CONTEXT_CLEANUP_INFORMATION_Layout, WDMLayoutTests.REG_DELETE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_DELETE_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_ENUMERATE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_ENUMERATE_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_FLUSH_KEY_INFORMATION_Layout, WDMLayoutTests.REG_KEY_HANDLE_CLOSE_INFORMATION_Layout, WDMLayoutTests.REG_LOAD_KEY_INFORMATION_Layout, WDMLayoutTests.REG_LOAD_KEY_INFORMATION_V2_Layout, WDMLayoutTests.REG_QUERY_KEY_INFORMATION_Layout, WDMLayoutTests.REG_QUERY_KEY_NAME_Layout, WDMLayoutTests.REG_QUERY_KEY_SECURITY_INFORMATION_Layout, WDMLayoutTests.REG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_QUERY_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_RENAME_KEY_INFORMATION_Layout, WDMLayoutTests.REG_REPLACE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_RESTORE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SAVE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SAVE_MERGED_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SET_INFORMATION_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SET_KEY_SECURITY_INFORMATION_Layout, WDMLayoutTests.REG_SET_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_UNLOAD_KEY_INFORMATION_Layout, WDMLayoutTests.RESOURCE_HASH_ENTRY_Layout, WDMLayoutTests.RESOURCE_PERFORMANCE_DATA_Layout, WDMLayoutTests.RTL_BITMAP_Layout, WDMLayoutTests.RTL_BITMAP_RUN_Layout, WDMLayoutTests.RTL_HEAP_PARAMETERS_Layout, WDMLayoutTests.RTL_OSVERSIONINFOEXW_Layout, WDMLayoutTests.RTL_OSVERSIONINFOW_Layout, WDMLayoutTests.RTL_QUERY_REGISTRY_TABLE_Layout, WDMLayoutTests.SECTION_OBJECT_POINTERS_Layout, WDMLayoutTests.SECURITY_DESCRIPTOR_Layout, WDMLayoutTests.SECURITY_SUBJECT_CONTEXT_Layout, WDMLayoutTests.SID_Layout, WDMLayoutTests.SID_AND_ATTRIBUTES_Layout, WDMLayoutTests.SID_AND_ATTRIBUTES_HASH_Layout, WDMLayoutTests.SID_IDENTIFIER_AUTHORITY_Layout, WDMLayoutTests.TOKEN_PRIVILEGES_Layout, WDMLayoutTests.ULARGE_INTEGER_Layout, WDMLayoutTests.UNICODE_STRING_Layout, WDMLayoutTests.UUID_Layout, WDMLayoutTests.VPB_Layout, WDMLayoutTests._SLIST_HEADER_Layout -->
+<!-- test: WDMLayoutTests.ACCESS_STATE_Layout, WDMLayoutTests.ANSI_STRING_Layout, WDMLayoutTests.CLIENT_ID_Layout, WDMLayoutTests.DISPATCHER_HEADER_Layout, WDMLayoutTests.DRIVER_EXTENSION_Layout, WDMLayoutTests.DRIVER_OBJECT_Layout, WDMLayoutTests.ERESOURCE_Layout, WDMLayoutTests.EVENT_DATA_DESCRIPTOR_Layout, WDMLayoutTests.EVENT_DESCRIPTOR_Layout, WDMLayoutTests.FAST_MUTEX_Layout, WDMLayoutTests.FILE_OBJECT_Layout, WDMLayoutTests.GENERAL_LOOKASIDE_Layout, WDMLayoutTests.GENERAL_LOOKASIDE_LAYOUT_Layout, WDMLayoutTests.IMAGE_INFO_Layout, WDMLayoutTests.IMAGE_INFO_EX_Layout, WDMLayoutTests.INITIAL_PRIVILEGE_SET_Layout, WDMLayoutTests.IO_COMPLETION_CONTEXT_Layout, WDMLayoutTests.IO_REMOVE_LOCK_Layout, WDMLayoutTests.IO_REMOVE_LOCK_COMMON_BLOCK_Layout, WDMLayoutTests.IO_SECURITY_CONTEXT_Layout, WDMLayoutTests.IO_STACK_LOCATION_Layout, WDMLayoutTests.IO_STATUS_BLOCK_Layout, WDMLayoutTests.IRP_Layout, WDMLayoutTests.KAPC_STATE_Layout, WDMLayoutTests.KDEVICE_QUEUE_Layout, WDMLayoutTests.KDPC_Layout, WDMLayoutTests.KEVENT_Layout, WDMLayoutTests.KEY_VALUE_BASIC_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_ENTRY_Layout, WDMLayoutTests.KEY_VALUE_FULL_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_LAYER_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_PARTIAL_INFORMATION_Layout, WDMLayoutTests.KEY_VALUE_PARTIAL_INFORMATION_ALIGN64_Layout, WDMLayoutTests.KSYSTEM_TIME_Layout, WDMLayoutTests.LARGE_INTEGER_Layout, WDMLayoutTests.LIST_ENTRY_Layout, WDMLayoutTests.LUID_Layout, WDMLayoutTests.LUID_AND_ATTRIBUTES_Layout, WDMLayoutTests.MDL_Layout, WDMLayoutTests.OBJECT_ATTRIBUTES_Layout, WDMLayoutTests.OBJECT_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_CALLBACK_REGISTRATION_Layout, WDMLayoutTests.OB_OPERATION_REGISTRATION_Layout, WDMLayoutTests.OB_POST_CREATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_POST_DUPLICATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_POST_OPERATION_INFORMATION_Layout, WDMLayoutTests.OB_POST_OPERATION_PARAMETERS_Layout, WDMLayoutTests.OB_PRE_CREATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_PRE_DUPLICATE_HANDLE_INFORMATION_Layout, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout, WDMLayoutTests.OEM_STRING_Layout, WDMLayoutTests.OWNER_ENTRY_Layout, WDMLayoutTests.POOL_EXTENDED_PARAMETER_Layout, WDMLayoutTests.POOL_EXTENDED_PARAMS_SECURE_POOL_Layout, WDMLayoutTests.PS_CREATE_NOTIFY_INFO_Layout, WDMLayoutTests.REG_CALLBACK_CONTEXT_CLEANUP_INFORMATION_Layout, WDMLayoutTests.REG_DELETE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_DELETE_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_ENUMERATE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_ENUMERATE_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_FLUSH_KEY_INFORMATION_Layout, WDMLayoutTests.REG_KEY_HANDLE_CLOSE_INFORMATION_Layout, WDMLayoutTests.REG_LOAD_KEY_INFORMATION_Layout, WDMLayoutTests.REG_LOAD_KEY_INFORMATION_V2_Layout, WDMLayoutTests.REG_QUERY_KEY_INFORMATION_Layout, WDMLayoutTests.REG_QUERY_KEY_NAME_Layout, WDMLayoutTests.REG_QUERY_KEY_SECURITY_INFORMATION_Layout, WDMLayoutTests.REG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_QUERY_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_RENAME_KEY_INFORMATION_Layout, WDMLayoutTests.REG_REPLACE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_RESTORE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SAVE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SAVE_MERGED_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SET_INFORMATION_KEY_INFORMATION_Layout, WDMLayoutTests.REG_SET_KEY_SECURITY_INFORMATION_Layout, WDMLayoutTests.REG_SET_VALUE_KEY_INFORMATION_Layout, WDMLayoutTests.REG_UNLOAD_KEY_INFORMATION_Layout, WDMLayoutTests.RESOURCE_HASH_ENTRY_Layout, WDMLayoutTests.RESOURCE_PERFORMANCE_DATA_Layout, WDMLayoutTests.RTL_BITMAP_Layout, WDMLayoutTests.RTL_BITMAP_RUN_Layout, WDMLayoutTests.RTL_HEAP_PARAMETERS_Layout, WDMLayoutTests.RTL_OSVERSIONINFOEXW_Layout, WDMLayoutTests.RTL_OSVERSIONINFOW_Layout, WDMLayoutTests.RTL_QUERY_REGISTRY_TABLE_Layout, WDMLayoutTests.SECTION_OBJECT_POINTERS_Layout, WDMLayoutTests.SECURITY_DESCRIPTOR_Layout, WDMLayoutTests.SECURITY_SUBJECT_CONTEXT_Layout, WDMLayoutTests.SID_Layout, WDMLayoutTests.SID_AND_ATTRIBUTES_Layout, WDMLayoutTests.SID_AND_ATTRIBUTES_HASH_Layout, WDMLayoutTests.SID_IDENTIFIER_AUTHORITY_Layout, WDMLayoutTests.SLIST_HEADER_Layout, WDMLayoutTests.TOKEN_PRIVILEGES_Layout, WDMLayoutTests.ULARGE_INTEGER_Layout, WDMLayoutTests.UNICODE_STRING_Layout, WDMLayoutTests.UUID_Layout, WDMLayoutTests.VPB_Layout -->
 Each structure that the WDK's kernel-mode headers declare has the size of its C structure, and its fields are at the C fields' offsets, in a 32-bit and in a 64-bit build, apart from those of the warning and the note below.
 
 | Name | Description |
 |------|-------------|
-| **_GENERAL_LOOKASIDE**{: #_GENERAL_LOOKASIDE } | A lookaside list: its fields, **L**, followed by the padding array **align**. **NPAGED_LOOKASIDE_LIST** holds one. See the note below. |
-| **_SLIST_HEADER**{: #_SLIST_HEADER } | The head of a sequenced singly linked list, whose address **InterlockedPopEntrySList** takes and which **GENERAL_LOOKASIDE_LAYOUT.ListHead** holds. It is opaque: a 16-byte **Byte** array, **HeaderX64**, in a 64-bit build and a **LongLong**, **Alignment**, in a 32-bit one. |
 | [**ACCESS_STATE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_access_state){: #ACCESS_STATE } | The state of an access check in progress, as **IO_SECURITY_CONTEXT.AccessState** points to it: the desired, remaining and granted access, the flags (**TokenAccessStateFlags**), the subject's **SECURITY_SUBJECT_CONTEXT**, the privileges and the object's name and type name. **Privileges** stands for the C union, as its larger member, an **INITIAL_PRIVILEGE_SET**. |
 | **ANSI_STRING**{: #ANSI_STRING } | A counted string of 8-bit ANSI characters, laid out as **UNICODE_STRING**: its length and its buffer's size in bytes and the buffer's address. |
 | **CLIENT_ID**{: #CLIENT_ID } | A process ID and a thread ID, as **ZwOpenProcess** takes them and **PS_CREATE_NOTIFY_INFO.CreatingThreadId** holds them. |
@@ -427,9 +374,10 @@ Each structure that the WDK's kernel-mode headers declare has the size of its C 
 | **FAST_MUTEX**{: #FAST_MUTEX } | A fast mutex, as **ExInitializeFastMutex** initializes it and **ExAcquireFastMutex**, **ExTryToAcquireFastMutex** and **ExReleaseFastMutex** take it. |
 | [**FILE_OBJECT**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object){: #FILE_OBJECT } | An open instance of a file, device or volume, as **IO_STACK_LOCATION.FileObject** points to it and **FsRtlGetFileNameInformation**, **FsRtlGetFileSize** and **FsRtlIsPagingFile** take it: its device, file name, access and sharing, current byte offset and the file system's contexts. |
 | [**FILETIME**](https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime){: #FILETIME } | A time as two **Long** values, the low and the high half of the number of 100-nanosecond intervals since 1 January 1601 (UTC). |
-| **GENERAL_LOOKASIDE_LAYOUT**{: #GENERAL_LOOKASIDE_LAYOUT } | The fields of a lookaside list, as **_GENERAL_LOOKASIDE.L** holds them: the list head, depth, counters, pool type, tag, entry size and the allocate and free routines. C declares them with the macro `GENERAL_LOOKASIDE_LAYOUT`; each of its unions is one field here, such as **AllocateMissesHits** for **AllocateMisses** and **AllocateHits**. |
-| [**IMAGE_INFO**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_image_info){: #IMAGE_INFO } | An image that is being mapped, as the routine registered with **PsSetLoadImageNotifyRoutine** receives it: its base, size and section number, and in **Properties** the C bit fields of its addressing mode, signature level and whether an **IMAGE_INFO_EX** holds it. See the warning below. |
-| [**IMAGE_INFO_EX**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_image_info_ex){: #IMAGE_INFO_EX } | The extended form of **IMAGE_INFO**: its size, an **IMAGE_INFO** and the image's file object. The **IMAGE_INFO** a load-image routine receives is inside one when its extended-information bit is set. See the warning below. |
+| **GENERAL_LOOKASIDE**{: #GENERAL_LOOKASIDE } | A lookaside list: its fields, **L**, followed in a 64-bit build by the padding array **align**, to the cache-line size of C's. **NPAGED_LOOKASIDE_LIST** holds one. |
+| **GENERAL_LOOKASIDE_LAYOUT**{: #GENERAL_LOOKASIDE_LAYOUT } | The fields of a lookaside list, as **GENERAL_LOOKASIDE.L** holds them: the list head, depth, counters, pool type, tag, entry size and the allocate and free routines. C declares them with the macro `GENERAL_LOOKASIDE_LAYOUT`; each of its unions is one field here, such as **AllocateMissesHits** for **AllocateMisses** and **AllocateHits**. |
+| [**IMAGE_INFO**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_image_info){: #IMAGE_INFO } | An image that is being mapped, as the routine registered with **PsSetLoadImageNotifyRoutine** receives it: its base, size and section number, and in **Properties** the C bit fields of its addressing mode, signature level and whether an **IMAGE_INFO_EX** holds it. |
+| [**IMAGE_INFO_EX**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_image_info_ex){: #IMAGE_INFO_EX } | The extended form of **IMAGE_INFO**: its size, an **IMAGE_INFO** and the image's file object. The **IMAGE_INFO** a load-image routine receives is inside one when its extended-information bit is set. |
 | **INITIAL_PRIVILEGE_SET**{: #INITIAL_PRIVILEGE_SET } | A privilege set with room for `INITIAL_PRIVILEGE_COUNT` (3) privileges, as **ACCESS_STATE.Privileges** holds it: their count, the control flags and the privileges, each a **LUID_AND_ATTRIBUTES**. |
 | **IO_COMPLETION_CONTEXT**{: #IO_COMPLETION_CONTEXT } | The I/O completion port and key associated with a file, as **FILE_OBJECT.CompletionContext** points to it. |
 | [**IO_DRIVER_CREATE_CONTEXT**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_io_driver_create_context){: #IO_DRIVER_CREATE_CONTEXT } | The extra parameters of the kernel's `IoCreateFileEx`: its size, the extra create parameters, a device object hint and the transaction parameters. See the note below. |
@@ -452,19 +400,19 @@ Each structure that the WDK's kernel-mode headers declare has the size of its C 
 | **KEY_VALUE_PARTIAL_INFORMATION_ALIGN64**{: #KEY_VALUE_PARTIAL_INFORMATION_ALIGN64 } | As **KEY_VALUE_PARTIAL_INFORMATION** without **TitleIndex**, for **KeyValuePartialInformationAlign64**. **Data** is a buffer of 4,096 bytes where C has an array of any length. |
 | **KLDR_DATA_TABLE_ENTRY**{: #KLDR_DATA_TABLE_ENTRY } | An entry of the kernel's list of loaded modules, as **DRIVER_OBJECT.DriverSection** points to it: its links, base, entry point, size and names. It has the fields up to **LoadCount** only, and the source marks **InLoadOrderLinks** and the fields from **DllBase** on as the ones that stay the same between Windows versions. Not documented by Microsoft. |
 | **KSYSTEM_TIME**{: #KSYSTEM_TIME } | A 64-bit time as **KUSER_SHARED_DATA** holds it: the low **Long** and two copies of the high **Long**. |
-| [**KUSER_SHARED_DATA**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-kuser_shared_data){: #KUSER_SHARED_DATA } | The page of system data that the kernel shares with every process, at `KI_USER_SHARED_DATA`: the tick count, interrupt and system time, time zone bias, system root, Windows version, processor features and more. See the warning below. |
+| [**KUSER_SHARED_DATA**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-kuser_shared_data){: #KUSER_SHARED_DATA } | The page of system data that the kernel shares with every process, at `KI_USER_SHARED_DATA`: the tick count, interrupt and system time, time zone bias, system root, Windows version, processor features and more. See the note below. |
 | [**LARGE_INTEGER**](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-large_integer-r1){: #LARGE_INTEGER } | A signed 64-bit value. Of the C union it has the **QuadPart** member only. |
 | [**LIST_ENTRY**](https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-list_entry){: #LIST_ENTRY } | An entry of a doubly linked list, or the list's head, as **InitializeListHead**, **InsertHeadList**, **InsertTailList**, **IsListEmpty** and **RemoveListHead** take it. |
 | **LPC_MESSAGE**{: #LPC_MESSAGE } | The header of a local procedure call (LPC) message: its data length, total length, message type, sender and IDs. Not documented by Microsoft. |
 | [**LUID**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/igpupvdev/ns-igpupvdev-_luid){: #LUID } | A locally unique identifier: a 64-bit value that is unique on the system that made it, such as a privilege's. |
 | [**LUID_AND_ATTRIBUTES**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_luid_and_attributes){: #LUID_AND_ATTRIBUTES } | A **LUID** and its attributes, such as a privilege and whether it is enabled (**SE_PRIVILEGE_ATTR**). |
 | [**MDL**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_mdl){: #MDL } | A memory descriptor list, which describes the physical pages of a buffer, as **IRP.MdlAddress** points to it and **MmGetSystemAddressForMdlSafe** and **MmMapLockedPagesSpecifyCache** take its address. |
-| **NPAGED_LOOKASIDE_LIST**{: #NPAGED_LOOKASIDE_LIST } | A lookaside list of entries in nonpaged pool, whose address **ExInitializeNPagedLookasideList** takes. It holds a **_GENERAL_LOOKASIDE**, and in a 32-bit build also C's obsolete lock field and a padding array. See the note below. |
+| **NPAGED_LOOKASIDE_LIST**{: #NPAGED_LOOKASIDE_LIST } | A lookaside list of entries in nonpaged pool, whose address **ExInitializeNPagedLookasideList** takes. It holds a **GENERAL_LOOKASIDE**, followed by C's obsolete lock field in a 32-bit build and by a padding array, **align**, in a 64-bit one. See the note below. |
 | [**OB_CALLBACK_REGISTRATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_callback_registration){: #OB_CALLBACK_REGISTRATION } | What a driver registers with **ObRegisterCallbacks**: the version, the altitude, a context and **OperationRegistration**, which points to an array of **OperationRegistrationCount** **OB_OPERATION_REGISTRATION** items. |
 | [**OB_OPERATION_REGISTRATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_operation_registration){: #OB_OPERATION_REGISTRATION } | One object type to watch, with the handle operations (**OB_OPERATION**) and the pre-operation and post-operation callbacks. **ObjectType** is the address that **PsProcessType** or **PsThreadType** returns. |
 | [**OB_POST_CREATE_HANDLE_INFORMATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_create_handle_information){: #OB_POST_CREATE_HANDLE_INFORMATION } | The access granted to a process or thread handle that has been opened, as a post-operation callback receives it. |
 | [**OB_POST_DUPLICATE_HANDLE_INFORMATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_duplicate_handle_information){: #OB_POST_DUPLICATE_HANDLE_INFORMATION } | The access granted to a process or thread handle that has been duplicated, as a post-operation callback receives it. |
-| [**OB_POST_OPERATION_INFORMATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_operation_information){: #OB_POST_OPERATION_INFORMATION } | A process or thread handle operation, as a post-operation callback receives it: the operation, whether the handle is a kernel handle, the object and its type, the context from the pre-operation callback, the status and the parameters. **KernelHandle** stands for the C union of the flags and the **KernelHandle** bit. See the warning below. |
+| [**OB_POST_OPERATION_INFORMATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_operation_information){: #OB_POST_OPERATION_INFORMATION } | A process or thread handle operation, as a post-operation callback receives it: the operation, whether the handle is a kernel handle, the object and its type, the context from the pre-operation callback, the status and the parameters. **KernelHandle** stands for the C union of the flags and the **KernelHandle** bit. |
 | [**OB_POST_OPERATION_PARAMETERS**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_post_operation_parameters){: #OB_POST_OPERATION_PARAMETERS } | The parameters of a post-operation callback. Both members of the C union have the one field **GrantedAccess**, so the package gives that field. |
 | [**OB_PRE_CREATE_HANDLE_INFORMATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_pre_create_handle_information){: #OB_PRE_CREATE_HANDLE_INFORMATION } | The access asked for a process or thread handle that is being opened, which a pre-operation callback can reduce in **DesiredAccess**. |
 | [**OB_PRE_DUPLICATE_HANDLE_INFORMATION**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_ob_pre_duplicate_handle_information){: #OB_PRE_DUPLICATE_HANDLE_INFORMATION } | The access asked for a process or thread handle that is being duplicated, which a pre-operation callback can reduce in **DesiredAccess**, with the source and the target process. |
@@ -526,6 +474,7 @@ Each structure that the WDK's kernel-mode headers declare has the size of its C 
 | [**SID_AND_ATTRIBUTES**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_sid_and_attributes){: #SID_AND_ATTRIBUTES } | A pointer to a **SID** and its attributes (**GROUP_SID_ATTRIBUTES**). |
 | [**SID_AND_ATTRIBUTES_HASH**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-sid_and_attributes_hash){: #SID_AND_ATTRIBUTES_HASH } | A hash of an array of **SID_AND_ATTRIBUTES** items: their count, the address of the array and **SID_HASH_SIZE** hash values. |
 | [**SID_IDENTIFIER_AUTHORITY**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_sid_identifier_authority){: #SID_IDENTIFIER_AUTHORITY } | The top-level authority of a **SID**, six bytes. |
+| **SLIST_HEADER**{: #SLIST_HEADER } | The head of a sequenced singly linked list, whose address **InterlockedPopEntrySList** takes and which **GENERAL_LOOKASIDE_LAYOUT.ListHead** holds. It is opaque: a 16-byte **Byte** array, **HeaderX64**, in a 64-bit build and a **LongLong**, **Alignment**, in a 32-bit one. |
 | [**TOKEN_PRIVILEGES**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_privileges){: #TOKEN_PRIVILEGES } | A set of privileges of an access token: their count and an array of **LUID_AND_ATTRIBUTES** with room for two, where C has an array of any length. |
 | [**ULARGE_INTEGER**](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-ularge_integer-r1){: #ULARGE_INTEGER } | An unsigned 64-bit value, held in a **LongLong**. Of the C union it has the **QuadPart** member only. |
 | [**UNICODE_STRING**](https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_unicode_string){: #UNICODE_STRING } | A counted string of UTF-16 characters: its length and its buffer's size in bytes and the buffer's address, as **RtlInitUnicodeString** fills it and the other **Rtl...UnicodeString** routines take it. |
@@ -533,38 +482,35 @@ Each structure that the WDK's kernel-mode headers declare has the size of its C 
 | [**VPB**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_vpb){: #VPB } | A volume parameter block, which links the device object of a mounted file system volume to the device object of its disk: flags, serial number, reference count and a volume label of up to 32 characters. **FILE_OBJECT.Vpb** and **DEVICE_OBJECT.Vpb** point to it. |
 <!-- /test -->
 
-<!-- test: WDMLayoutTests.IMAGE_INFO_Layout, WDMLayoutTests.IMAGE_INFO_EX_Layout, WDMLayoutTests.OB_POST_OPERATION_INFORMATION_Layout, WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout, WDMLayoutTests.KUSER_SHARED_DATA_Layout -->
-> [!WARNING] 0.3.0.5
-> Five structures do not have the C structure's layout, so a driver that reads one the kernel passes it reads other data than the field it names. A driver declares each one itself, as the WDK has it.
->
-> - **IMAGE_INFO** has **ImageBase** first and **Properties** second, where C has the union of the properties first. In a 32-bit build the two fields have changed places; in a 64-bit build every field is at another offset, and the structure is 32 bytes where C's is 40. **IMAGE_INFO_EX** holds one: in a 64-bit build it is 48 bytes where C's is 56, and its **FileObject** is at offset 40 where C's is at 48.
-> - **KUSER_SHARED_DATA** has the layout of an older Windows near its end. Its **SystemCall** is at offset 768, where the WDK has **QpcFrequency**, and the WDK's **SystemCall** is at 776; its **SystemCallPad** is at 776 where the WDK's is at 784. Its **Reserved2** is an array at offset 584, where the WDK's **Reserved2** is at 780. The structure is 824 bytes where the WDK's is 1848, and has none of the fields after **Cookie**.
-> - **OB_POST_OPERATION_INFORMATION.Parameters** is an **OB_POST_OPERATION_PARAMETERS** where wdm.h has a pointer to one. In a 64-bit build it is at offset 36 where the pointer is at 40, and the structure is 40 bytes where C's is 48. In a 32-bit build the field is at the pointer's offset, so its **GrantedAccess** is the pointer.
-> - **OB_PRE_OPERATION_INFORMATION.Parameters** is a **Byte** array of the size of the parameters' union where wdm.h has a pointer to the union: 16 bytes where the pointer is 4 in a 32-bit build, and 24 where it is 8 in a 64-bit one. The structure is 36 bytes where C's is 24, and 56 where C's is 40. The array starts at the pointer's offset, so its first 4 or 8 bytes are the pointer, and the rest is past the end of the structure the kernel passes.
+<!-- test: WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout -->
+> [!WARNING] 0.3.0.6
+> **OB_PRE_OPERATION_INFORMATION.Parameters** is a **Byte** array of the size of the parameters' union where wdm.h has a pointer to the union: 16 bytes where the pointer is 4 in a 32-bit build, and 24 where it is 8 in a 64-bit one. The structure is 36 bytes where C's is 24, and 56 where C's is 40. The array starts at the pointer's offset, so its first 4 or 8 bytes are the pointer, and the rest is past the end of the structure the kernel passes. A driver that reads the parameters reads them at the address in the first 4 or 8 bytes.
 
-<!-- test: WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout, WDMLayoutTests.DEVICE_OBJECT_Layout, WDMLayoutTests._GENERAL_LOOKASIDE_Layout, WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout, WDMLayoutTests.SE_SID_Layout -->
-> [!NOTE] 0.3.0.5
+<!-- test: WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout, WDMLayoutTests.DEVICE_OBJECT_Layout, WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout, WDMLayoutTests.SE_SID_Layout, WDMLayoutTests.KUSER_SHARED_DATA_Layout -->
+> [!NOTE] 0.3.0.6
 > These structures differ from the C structures in size, and one in the start of a field:
 >
-> - **DEVICE_OBJECT.Queue** starts 3 bytes before C's **Queue**, at offset 49 where C's is at 52 in a 32-bit build and at 77 where C's is at 80 in a 64-bit one: its first 3 bytes are the padding after **StackSize**. In a 64-bit build the structure is 328 bytes where C's is 336. Its other fields are at their places.
-> - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. Its other fields are at their places.
-> - In a 32-bit build **_GENERAL_LOOKASIDE** is 128 bytes where C's is 72, and **NPAGED_LOOKASIDE_LIST**, which holds one, is 192 where C's is 80: their padding arrays, **align**, are longer than C's padding. In a 64-bit build both have C's sizes.
+> - In a 32-bit build **DEVICE_OBJECT.Queue** starts 3 bytes before C's **Queue**, at offset 49 where C's is at 52: its first 3 bytes are the padding after **StackSize**. Its other fields are at their places, and a 64-bit build has C's layout.
+> - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. The package declares the field under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1`, as the WDK does, but defines no `NTDDI_VERSION`, and a project's conditional constants do not reach a package's code, so the field is never there. Its other fields are at their places.
+> - **KUSER_SHARED_DATA** ends at **Cookie**: it is 824 bytes where the WDK's is 1848, and has none of the WDK's fields after **Cookie**. Its other fields are at their places.
+> - In a 64-bit build **NPAGED_LOOKASIDE_LIST** is 144 bytes where C's is 128: its padding array, **align**, follows the **GENERAL_LOOKASIDE**, which already has C's size. A 32-bit build has C's size.
 > - **SE_SID** is a buffer of **SECURITY_MAX_SID_SIZE** bytes, 60, where C's is 68 (see the note under [Constants](#constants)), so it cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
 
 ## Aliases
 
-Other names for **Byte**, which the declarations use where C has the type of the same name. A variable of one of them is a **Byte**.
+Other names for a type, which the declarations use where C has the type of the same name: **CBoolean**, **KIRQL** and **KPROCESSOR_MODE** for **Byte**, and **POOL_FLAGS** for **LongLong**. A variable of one of them is a variable of that type.
 
 | Name | Type | Description |
 |------|------|-------------|
 | **CBoolean**{: #CBoolean } | **Byte** | C's **BOOLEAN**: 0 for false, 1 for true. It is not twinBASIC's **Boolean**, which is 2 bytes and -1 for true. |
 | **KIRQL**{: #KIRQL } | **Byte** | An interrupt request level, such as a member of [**eKIRQL**](#eKIRQL). |
 | **KPROCESSOR_MODE**{: #KPROCESSOR_MODE } | **Byte** | A processor mode, a member of [**eKPROCESSOR_MODE**](#eKPROCESSOR_MODE). |
+| **POOL_FLAGS**{: #POOL_FLAGS } | **LongLong** | The flags of **ExAllocatePool2** and **ExAllocatePool3**, a set of the `POOL_FLAG_` constants. |
 
 ## Enumerations
 
-<!-- test: WDMValueTests.ALTERNATIVE_ARCHITECTURE_TYPE_Values, WDMValueTests.DEVICE_OBJECT_FLAGS_Values, WDMValueTests.DEVICE_TYPE_Values, WDMValueTests.DPFLTR_TYPE_Values, WDMValueTests.DRIVER_OBJECT_FLAGS_Values, WDMValueTests.DbgPrntLevels_Values, WDMValueTests.DirectoryAccessRights_Values, WDMValueTests.DuplicateObjectOptions_Values, WDMValueTests.EResFlags_Values, WDMValueTests.ETWEventDataDescriptorTypes_Values, WDMValueTests.ETWEventWriteFlags_Values, WDMValueTests.EVENT_INFO_CLASS_Values, WDMValueTests.EVENT_TYPE_Values, WDMValueTests.EX_POOL_PRIORITY_Values, WDMValueTests.FILE_ATTRIBUTES_Values, WDMValueTests.FILE_DEVICE_CHARACTERISTICS_Values, WDMValueTests.FILE_OBJECT_FLAGS_Values, WDMValueTests.FileAccessFlags_Values, WDMValueTests.FileAccessRights_Values, WDMValueTests.FileCreateDisposition_Values, WDMValueTests.FileCreateOutcome_Values, WDMValueTests.FileShareMode_Values, WDMValueTests.GenericRights_Values, WDMValueTests.HeapFlags_Values, WDMValueTests.IO_TYPE_Values, WDMValueTests.IoCreateFileFlags_Values, WDMValueTests.IoStackLocFlags_Values, WDMValueTests.IrpFlags_Values, WDMValueTests.KEY_INFORMATION_CLASS_Values, WDMValueTests.KEY_SET_INFORMATION_CLASS_Values, WDMValueTests.KEY_VALUE_INFORMATION_CLASS_Values, WDMValueTests.KPRIORITY_Values, WDMValueTests.KWAIT_REASON_Values, WDMValueTests.MDL_FLAGS_Values, WDMValueTests.MM_COPY_FLAGS_Values, WDMValueTests.MM_PAGE_PRIORITY_Values, WDMValueTests.MdlMappingFlags_Values, WDMValueTests.MemAllocType_Values, WDMValueTests.MemProtectFlags_Values, WDMValueTests.NTSTATUS_Values, WDMValueTests.NTSectionAccessRights_Values, WDMValueTests.NT_PRODUCT_TYPE_Values, WDMValueTests.NtFileQueryFlags_Values, WDMValueTests.OB_OPERATION_Values, WDMValueTests.OB_PREOP_CALLBACK_STATUS_Values, WDMValueTests.ObjectAttributeValues_Values, WDMValueTests.POOL_EXTENDED_PARAMETER_TYPE_Values, WDMValueTests.PSCREATETHREADNOTIFYTYPE_Values, WDMValueTests.REGSAM_Values, WDMValueTests.REGTYPES_Values, WDMValueTests.REG_NOTIFY_CLASS_Values, WDMValueTests.RegKeyRestoreAndLoadHiveFlags_Values, WDMValueTests.RegNotifyChangeValues_Values, WDMValueTests.RegOptions_Values, WDMValueTests.RegSaveKeyFlags_Values, WDMValueTests.RegUnloadFlags_Values, WDMValueTests.RegistryCreateDispositions_Values, WDMValueTests.ReparseDataExFlags_Values, WDMValueTests.RtlDupUnicodeStrFlags_Values, WDMValueTests.SECURITY_DESCRIPTOR_CONTROL_Values, WDMValueTests.SECURITY_IMPERSONATION_LEVEL_Values, WDMValueTests.SECURITY_INFORMATION_Values, WDMValueTests.SEF_FLAGS_Values, WDMValueTests.SE_PRIVILEGE_ATTR_Values, WDMValueTests.SID_NAME_USE_Values, WDMValueTests.SecurePoolFlags_Values, WDMValueTests.StandardAccessTypes_Values, WDMValueTests.SymbolicLinkAccessRights_Values, WDMValueTests.TOKEN_TYPE_Values, WDMValueTests.ThreadAccessRights_Values, WDMValueTests.TokenAccessStateFlags_Values, WDMValueTests.VBP_FLAGS_Values, WDMValueTests.eKIRQL_Values, WDMValueTests.eKPROCESSOR_MODE_Values -->
-Every member that the WDK's kernel-mode headers declare has the value of the WDK's constant or enumerator of the same name, apart from those of the warning and the note below.
+<!-- test: WDMValueTests.ALTERNATIVE_ARCHITECTURE_TYPE_Values, WDMValueTests.DEVICE_OBJECT_FLAGS_Values, WDMValueTests.DEVICE_TYPE_Values, WDMValueTests.DPFLTR_TYPE_Values, WDMValueTests.DRIVER_OBJECT_FLAGS_Values, WDMValueTests.DbgPrntLevels_Values, WDMValueTests.DirectoryAccessRights_Values, WDMValueTests.DuplicateObjectOptions_Values, WDMValueTests.EResFlags_Values, WDMValueTests.ETWEventDataDescriptorTypes_Values, WDMValueTests.ETWEventWriteFlags_Values, WDMValueTests.EVENT_INFO_CLASS_Values, WDMValueTests.EVENT_TYPE_Values, WDMValueTests.EX_POOL_PRIORITY_Values, WDMValueTests.FILE_ATTRIBUTES_Values, WDMValueTests.FILE_DEVICE_CHARACTERISTICS_Values, WDMValueTests.FILE_OBJECT_FLAGS_Values, WDMValueTests.FileAccessFlags_Values, WDMValueTests.FileAccessRights_Values, WDMValueTests.FileCreateDisposition_Values, WDMValueTests.FileCreateOutcome_Values, WDMValueTests.FileShareMode_Values, WDMValueTests.GenericRights_Values, WDMValueTests.HeapFlags_Values, WDMValueTests.IO_TYPE_Values, WDMValueTests.IoCreateFileFlags_Values, WDMValueTests.IoStackLocFlags_Values, WDMValueTests.IrpFlags_Values, WDMValueTests.KEY_INFORMATION_CLASS_Values, WDMValueTests.KEY_SET_INFORMATION_CLASS_Values, WDMValueTests.KEY_VALUE_INFORMATION_CLASS_Values, WDMValueTests.KPRIORITY_Values, WDMValueTests.KWAIT_REASON_Values, WDMValueTests.MDL_FLAGS_Values, WDMValueTests.MEMORY_CACHING_TYPE_Values, WDMValueTests.MEMORY_CACHING_TYPE_ORIG_Values, WDMValueTests.MM_COPY_FLAGS_Values, WDMValueTests.MM_PAGE_PRIORITY_Values, WDMValueTests.MdlMappingFlags_Values, WDMValueTests.MemAllocType_Values, WDMValueTests.MemProtectFlags_Values, WDMValueTests.NTSTATUS_Values, WDMValueTests.NTSectionAccessRights_Values, WDMValueTests.NT_PRODUCT_TYPE_Values, WDMValueTests.NtFileQueryFlags_Values, WDMValueTests.OB_OPERATION_Values, WDMValueTests.OB_PREOP_CALLBACK_STATUS_Values, WDMValueTests.ObjectAttributeValues_Values, WDMValueTests.POOL_EXTENDED_PARAMETER_TYPE_Values, WDMValueTests.POOL_TYPE_Values, WDMValueTests.PSCREATETHREADNOTIFYTYPE_Values, WDMValueTests.ProcessAccessRights_Values, WDMValueTests.REGSAM_Values, WDMValueTests.REGTYPES_Values, WDMValueTests.REG_NOTIFY_CLASS_Values, WDMValueTests.RTL_FAST_FAIL_Values, WDMValueTests.RegKeyRestoreAndLoadHiveFlags_Values, WDMValueTests.RegNotifyChangeValues_Values, WDMValueTests.RegOptions_Values, WDMValueTests.RegSaveKeyFlags_Values, WDMValueTests.RegUnloadFlags_Values, WDMValueTests.RegistryCreateDispositions_Values, WDMValueTests.ReparseDataExFlags_Values, WDMValueTests.RtlDupUnicodeStrFlags_Values, WDMValueTests.SECURITY_DESCRIPTOR_CONTROL_Values, WDMValueTests.SECURITY_IMPERSONATION_LEVEL_Values, WDMValueTests.SECURITY_INFORMATION_Values, WDMValueTests.SEF_FLAGS_Values, WDMValueTests.SE_PRIVILEGE_ATTR_Values, WDMValueTests.SID_NAME_USE_Values, WDMValueTests.SecurePoolFlags_Values, WDMValueTests.StandardAccessTypes_Values, WDMValueTests.SymbolicLinkAccessRights_Values, WDMValueTests.TOKEN_TYPE_Values, WDMValueTests.ThreadAccessRights_Values, WDMValueTests.TokenAccessStateFlags_Values, WDMValueTests.VBP_FLAGS_Values, WDMValueTests.VER_SUITE_VALUES_Values, WDMValueTests.eKIRQL_Values, WDMValueTests.eKPROCESSOR_MODE_Values -->
+Every member that the WDK's kernel-mode headers declare has the value of the WDK's constant or enumerator of the same name.
 
 | Name | Description |
 |------|-------------|
@@ -611,7 +557,8 @@ Every member that the WDK's kernel-mode headers declare has the value of the WDK
 | **MDL_FLAGS**{: #MDL_FLAGS } | The `MDL_` flags of **MDL.MdlFlags**, such as `MDL_PAGES_LOCKED` and `MDL_MAPPED_TO_SYSTEM_VA`. |
 | **MdlMappingFlags**{: #MdlMappingFlags } | The flags `MdlMappingNoWrite`, `MdlMappingNoExecute` and `MdlMappingWithGuardPtes`, combined with **Or** with an **MM_PAGE_PRIORITY** in the *Priority* of **MmMapLockedPagesSpecifyCache** and **MmGetSystemAddressForMdlSafe**. |
 | **MemAllocType**{: #MemAllocType } | The `MEM_` constants, such as `MEM_COMMIT`, `MEM_RESERVE` and `MEM_TOP_DOWN`, for **ZwMapViewOfSection**'s *AllocationType*, with the free types `MEM_DECOMMIT` and `MEM_RELEASE` and the region types such as `MEM_IMAGE`. Some members share a value, as in C, because they belong to different routines. |
-| [**MEMORY_CACHING_TYPE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_memory_caching_type){: #MEMORY_CACHING_TYPE } | How the processor caches a mapping, for **MmMapLockedPagesSpecifyCache**'s *CacheType*: `MmCached`, `MmNonCached`, `MmWriteCombined` and the others. See the note below. |
+| [**MEMORY_CACHING_TYPE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_memory_caching_type){: #MEMORY_CACHING_TYPE } | How the processor caches a mapping, for **MmMapLockedPagesSpecifyCache**'s *CacheType*: `MmCached`, `MmNonCached`, `MmWriteCombined` and the others. |
+| **MEMORY_CACHING_TYPE_ORIG**{: #MEMORY_CACHING_TYPE_ORIG } | The older name of the value 2 of **MEMORY_CACHING_TYPE**, `MmFrameBufferCached`, which **MmWriteCombined** equals. |
 | **MemProtectFlags**{: #MemProtectFlags } | The `PAGE_` memory protections, such as `PAGE_READWRITE` and `PAGE_EXECUTE_READ`, with the modifiers `PAGE_GUARD`, `PAGE_NOCACHE` and `PAGE_WRITECOMBINE`, for **ZwCreateSection**'s *SectionPageProtection* and **ZwMapViewOfSection**'s *Win32Protect*. |
 | **MessageBoxFlags**{: #MessageBoxFlags } | The `MB_` constants of `winuser.h`, such as `MB_OKCANCEL` and `MB_ICONERROR`, for the buttons, icon and default button of **MsgBox**. |
 | **MM_COPY_FLAGS**{: #MM_COPY_FLAGS } | Whether the source address of **MmCopyMemory** is physical (`MM_COPY_MEMORY_PHYSICAL`) or virtual (`MM_COPY_MEMORY_VIRTUAL`), its *Flags*. |
@@ -627,10 +574,10 @@ Every member that the WDK's kernel-mode headers declare has the value of the WDK
 | **ObjectAttributeValues**{: #ObjectAttributeValues } | The `OBJ_` attributes, such as `OBJ_KERNEL_HANDLE` and `OBJ_CASE_INSENSITIVE`, for **OBJECT_ATTRIBUTES.Attributes**, the *a* of **InitializeObjectAttributes** and the *HandleAttributes* of **ObOpenObjectByPointer** and **ZwDuplicateObject**. |
 | **OwnerEntryFlags**{: #OwnerEntryFlags } | Names of the package's own for the three one-bit fields at the start of **OWNER_ENTRY.TableSizeOrFlags**: `OEF_IoPriorityBoosted`, `OEF_OwnerReferenced` and `OEF_IoQoSPriorityBoosted`. |
 | [**POOL_EXTENDED_PARAMETER_TYPE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-pool_extended_parameter_type){: #POOL_EXTENDED_PARAMETER_TYPE } | The type of a **POOL_EXTENDED_PARAMETER**: `PoolExtendedParameterPriority`, `PoolExtendedParameterSecurePool` or `PoolExtendedParameterNumaNode`. See the note below. |
-| [**POOL_TYPE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_pool_type){: #POOL_TYPE } | The kind of memory **ExAllocatePoolWithTag** allocates, its *PoolType*, also in **GENERAL_LOOKASIDE_LAYOUT.Type**: `NonPagedPoolNx`, `PagedPool` and the others. See the warning below. |
+| [**POOL_TYPE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_pool_type){: #POOL_TYPE } | The kind of memory **ExAllocatePoolWithTag** allocates, its *PoolType*, also in **GENERAL_LOOKASIDE_LAYOUT.Type**: `NonPagedPoolNx`, `PagedPool` and the others. |
 | **PortAccessRights**{: #PortAccessRights } | The access rights of an LPC port: `PORT_CONNECT` and `PORT_ALL_ACCESS`. Not documented by Microsoft. |
 | **PROCESS_CREATE_FLAGS**{: #PROCESS_CREATE_FLAGS } | The `PROCESS_CREATE_FLAGS_` flags of **ZwCreateUserProcess**'s *ProcessFlags*, such as `PROCESS_CREATE_FLAGS_SUSPENDED` and `PROCESS_CREATE_FLAGS_INHERIT_HANDLES`; the source marks some as for `NtCreateProcessEx` only, which the package does not declare. Not documented by Microsoft. |
-| **ProcessAccessRights**{: #ProcessAccessRights } | The `PROCESS_` access rights of a process, such as `PROCESS_TERMINATE` and `PROCESS_QUERY_LIMITED_INFORMATION`, for the *DesiredAccess* of **ZwOpenProcess** and the access fields of the object callbacks' structures, such as **OB_PRE_CREATE_HANDLE_INFORMATION.DesiredAccess**. See the note below. |
+| **ProcessAccessRights**{: #ProcessAccessRights } | The `PROCESS_` access rights of a process, such as `PROCESS_TERMINATE` and `PROCESS_QUERY_LIMITED_INFORMATION`, for the *DesiredAccess* of **ZwOpenProcess** and the access fields of the object callbacks' structures, such as **OB_PRE_CREATE_HANDLE_INFORMATION.DesiredAccess**. |
 | **PS_ATTRIBUTE_ID**{: #PS_ATTRIBUTE_ID } | The IDs of **PS_ATTRIBUTE.Attribute**, such as `PS_ATTRIBUTE_IMAGE_NAME` and `PS_ATTRIBUTE_PARENT_PROCESS`: each is a **PS_ATTRIBUTE_NUM** combined with the bits `PS_ATTRIBUTE_THREAD`, `PS_ATTRIBUTE_INPUT` and `PS_ATTRIBUTE_ADDITIVE` that apply to it. Not documented by Microsoft. |
 | **PS_ATTRIBUTE_NUM**{: #PS_ATTRIBUTE_NUM } | The numbers of the process creation attributes, from `PsAttributeParentProcess` to `PsAttributeMax`, which the low 16 bits of a **PS_ATTRIBUTE_ID** hold. Not documented by Microsoft. |
 | **PS_CREATE_STATE**{: #PS_CREATE_STATE } | How far **ZwCreateUserProcess** got, as **PS_CREATE_INFO.State** holds it: `PsCreateSuccess`, or the step that failed, such as `PsCreateFailOnFileOpen` or `PsCreateFailExeFormat`. Not documented by Microsoft. |
@@ -649,6 +596,7 @@ Every member that the WDK's kernel-mode headers declare has the value of the WDK
 | **REGTYPES**{: #REGTYPES } | The `REG_` types of a registry value, such as `REG_SZ`, `REG_DWORD` and `REG_BINARY`, for the *Type* of **ZwSetValueKey** and **KEY_VALUE_ENTRY.Type**. |
 | **RegUnloadFlags**{: #RegUnloadFlags } | The *Flags* of **ZwUnloadKey2**: `REG_FORCE_UNLOAD` unloads the hive even when it has open handles. |
 | **ReparseDataExFlags**{: #ReparseDataExFlags } | The flag of **FltTagFileEx**'s *Flags* (modFltMgr): `REPARSE_DATA_EX_FLAG_GIVEN_TAG_OR_NONE` sets the reparse tag only if the file has no tag or the tag given as the existing one. |
+| **RTL_FAST_FAIL**{: #RTL_FAST_FAIL } | The reasons of a fast fail, such as `FAST_FAIL_CORRUPT_LIST_ENTRY` and `FAST_FAIL_INVALID_ARG`, which **RtlFailFast** takes. |
 | **RTL_UPP_FLAGS**{: #RTL_UPP_FLAGS } | The flags of **RTL_USER_PROCESS_PARAMETERS.Flags** (modSysInfo), such as `RTL_USER_PROCESS_PARAMETERS_NORMALIZED` and `RTL_USER_PROCESS_PARAMETERS_CASE_SENSITIVE`. Not documented by Microsoft. |
 | **RtlDupUnicodeStrFlags**{: #RtlDupUnicodeStrFlags } | The flags of **RtlDuplicateUnicodeString**: `RTL_DUPLICATE_UNICODE_STRING_NULL_TERMINATE`, which ends the copy with a null character, and `RTL_DUPLICATE_UNICODE_STRING_ALLOCATE_NULL_STRING`, which allocates a buffer even for an empty source. |
 | **SE_PRIVILEGE_ATTR**{: #SE_PRIVILEGE_ATTR } | The `SE_PRIVILEGE_` attributes of a privilege in a token, for **LUID_AND_ATTRIBUTES.Attributes**, such as `SE_PRIVILEGE_ENABLED` and `SE_PRIVILEGE_REMOVED`. |
@@ -657,6 +605,7 @@ Every member that the WDK's kernel-mode headers declare has the value of the WDK
 | [**SECURITY_IMPERSONATION_LEVEL**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_security_impersonation_level){: #SECURITY_IMPERSONATION_LEVEL } | How far a server may act for a client whose token it holds, from `SecurityAnonymous` to `SecurityDelegation`, in the **ImpersonationLevel** of **TOKEN_STATISTICS** and **TOKEN_ACCESS_INFORMATION** (modSysInfo). |
 | [**SECURITY_INFORMATION**](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-information){: #SECURITY_INFORMATION } | The parts of a security descriptor that a call reads or sets, such as `OWNER_SECURITY_INFORMATION` and `DACL_SECURITY_INFORMATION`; the **SecurityInformation** fields of **REG_QUERY_KEY_SECURITY_INFORMATION** and **REG_SET_KEY_SECURITY_INFORMATION** point to such a value. |
 | **SEF_FLAGS**{: #SEF_FLAGS } | The `SEF_` flags of **SeAssignSecurityEx**'s *AutoInheritFlags*, such as `SEF_DACL_AUTO_INHERIT` and `SEF_DEFAULT_OWNER_FROM_PARENT`: how the new security descriptor inherits from its parent, and which checks are skipped. |
+| **SharedDataFlagsMasks**{: #SharedDataFlagsMasks } | The bits of **KUSER_SHARED_DATA.SharedDataFlags**, such as `DbgErrorPortPresent` and `DbgSecureBootEnabled`. Some bits have two names, for different Windows versions. |
 | [**SID_NAME_USE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_sid_name_use){: #SID_NAME_USE } | The kind of account a security identifier names: `SidTypeUser`, `SidTypeGroup`, `SidTypeWellKnownGroup` and the others. |
 | **StandardAccessTypes**{: #StandardAccessTypes } | The access rights common to every kind of object, `DELETE`, `READ_CONTROL`, `WRITE_DAC`, `WRITE_OWNER` and `SYNCHRONIZE`, with the `STANDARD_RIGHTS_` combinations, `ACCESS_SYSTEM_SECURITY` and `MAXIMUM_ALLOWED`, to combine with an object's own rights in a *DesiredAccess*. |
 | **SymbolicLinkAccessRights**{: #SymbolicLinkAccessRights } | The access rights of a symbolic link object, `SYMBOLIC_LINK_QUERY` and `SYMBOLIC_LINK_ALL_ACCESS`, for the *DesiredAccess* of **ZwOpenSymbolicLinkObject**. It has no `SYMBOLIC_LINK_SET`. |
@@ -665,22 +614,12 @@ Every member that the WDK's kernel-mode headers declare has the value of the WDK
 | [**TOKEN_TYPE**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_token_type){: #TOKEN_TYPE } | Whether a token is a primary token (`TokenPrimary`) or an impersonation token (`TokenImpersonation`), in the **TokenType** of **TOKEN_STATISTICS** and **TOKEN_ACCESS_INFORMATION** (modSysInfo). |
 | **TokenAccessStateFlags**{: #TokenAccessStateFlags } | The flags of **ACCESS_STATE.Flags**, which are also an access token's flags, such as `TOKEN_HAS_TRAVERSE_PRIVILEGE` and `TOKEN_IS_RESTRICTED`. |
 | **VBP_FLAGS**{: #VBP_FLAGS } | The `VPB_` flags of **VPB.Flags**, such as `VPB_MOUNTED` and `VPB_LOCKED`; the enumeration's name is spelt `VBP`. |
+| **VER_SUITE_VALUES**{: #VER_SUITE_VALUES } | The product suites of **KUSER_SHARED_DATA.SuiteMask**, such as `VER_SUITE_ENTERPRISE` and `VER_SUITE_TERMINAL`, and the `VER_SERVER_NT` and `VER_WORKSTATION_NT` bits. |
 <!-- /test -->
-
-<!-- test: WDMValueTests.POOL_TYPE_Values -->
-> [!WARNING] 0.3.0.5
-> Three members of **POOL_TYPE** do not have the WDK's values: **DontUseThisType** is 2 where the WDK's is 3, **PagedPoolCacheAligned** is 3 where it is 5, and **MaxPoolType** is 4 where it is 7. A driver that allocates memory of **PagedPoolCacheAligned** asks the kernel for its `DontUseThisType`. A driver writes the WDK's value, 5, itself.
-
-<!-- test: WDMValueTests.MEMORY_CACHING_TYPE_Values, WDMValueTests.ProcessAccessRights_Values -->
-> [!NOTE] 0.3.0.5
-> Two members do not have the WDK's values:
->
-> - **MmNotMapped** of **MEMORY_CACHING_TYPE** is 7, where the WDK's is -1.
-> - **PROCESS_ALL_ACCESS** of **ProcessAccessRights** is `&H1F0FFF`, the value of Windows versions before Windows Vista, where the WDK's is `&H1FFFFF`. A handle opened with it lacks the rights that Windows Vista added.
 
 ## Constants
 
-The major and minor function codes of an IRP, the parts of an I/O control code that [**CTL_CODE**](#CTL_CODE) takes, the `SL_` flags of an I/O stack location, the values of **RtlQueryRegistryValues** and its **RTL_QUERY_REGISTRY_TABLE**, and the sizes and revisions of security descriptors and SIDs.
+The major and minor function codes of an IRP, the parts of an I/O control code that [**CTL_CODE**](#CTL_CODE) takes, the `SL_` flags of an I/O stack location, the values of **RtlQueryRegistryValues** and its **RTL_QUERY_REGISTRY_TABLE**, the `POOL_FLAG_` flags of **ExAllocatePool2**, the addresses in **KUSER_SHARED_DATA**, and the sizes and revisions of security descriptors and SIDs.
 
 | Name | Value | Description |
 |------|-------|-------------|
@@ -693,7 +632,7 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **_I64_MIN**{: #_I64_MIN } | `(-9223372036854775807^ - 1)` | The smallest value of a signed 64-bit integer, a **LongLong**. |
 | **_I8_MAX**{: #_I8_MAX } | `127` | The largest value of a signed 8-bit integer, Microsoft's `__int8`. |
 | **_I8_MIN**{: #_I8_MIN } | `(-127 - 1)` | The smallest value of a signed 8-bit integer, Microsoft's `__int8`. |
-| **_UI16_MAX**{: #_UI16_MAX } | `&Hffff` | The largest value of an unsigned 16-bit integer. See the note below. |
+| **_UI16_MAX**{: #_UI16_MAX } | `&Hffff` | The largest value of an unsigned 16-bit integer, as the bits of an **Integer**. See the paragraph below. |
 | **_UI32_MAX**{: #_UI32_MAX } | `&Hffffffff` | The largest value of an unsigned 32-bit integer. |
 | **_UI64_MAX**{: #_UI64_MAX } | `&Hffffffffffffffff^` | The largest value of an unsigned 64-bit integer. |
 | **_UI8_MAX**{: #_UI8_MAX } | `&Hff` | The largest value of an unsigned 8-bit integer, a **Byte**. |
@@ -732,6 +671,8 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **FLT_NORMALIZE**{: #FLT_NORMALIZE } | `0` | A constant that float.h defines as 0, and does not describe. |
 | **FLT_RADIX**{: #FLT_RADIX } | `2` | The base of the exponent of a floating-point number, for every C floating-point type. |
 | **FLT_TRUE_MIN**{: #FLT_TRUE_MIN } | `1.401298464E-45!` | The smallest positive **Single**, a subnormal number. |
+| **FM_LOCK_BIT**{: #FM_LOCK_BIT } | `&H1` | The bit of **FAST_MUTEX.Count** that is set while no thread holds the mutex; **ExInitializeFastMutex** sets it. |
+| **FM_LOCK_BIT_V**{: #FM_LOCK_BIT_V } | `&H0` | The number of the bit **FM_LOCK_BIT**. |
 | **FSCTL_OFFLOAD_WRITE**{: #FSCTL_OFFLOAD_WRITE } | `&H98268` | The file-system control code of an offload write, which writes a range of a file from a token that an offload read returned. |
 | **FTTYPE**{: #FTTYPE } | `&H66` | The device type of the fault-tolerant disk driver's I/O control codes, the character `f`; **InitIOCTLs** builds **FT_BALANCED_READ_MODE** from it. |
 | **HARDERROR_OVERRIDE_ERRORMODE**{: #HARDERROR_OVERRIDE_ERRORMODE } | `&H10000000` | A flag added to the status passed to **ExRaiseHardError** that overrides the error mode of the process; **MsgBox** uses it. Not documented by Microsoft. |
@@ -754,6 +695,7 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **IO_SOUND_INCREMENT**{: #IO_SOUND_INCREMENT } | `8` | For the *PriorityBoost* of **IoCompleteRequest**, in a sound device driver. |
 | **IO_VIDEO_INCREMENT**{: #IO_VIDEO_INCREMENT } | `1` | For the *PriorityBoost* of **IoCompleteRequest**, in a video device driver. |
 | **IOCTL_DISK_BASE**{: #IOCTL_DISK_BASE } | `FILE_DEVICE_DISK` | The device type of the disk I/O control codes, `FILE_DEVICE_DISK`; **InitIOCTLs** builds the `IOCTL_DISK_` codes from it. |
+| **IOCTL_DISK_FORMAT_TRACKS**{: #IOCTL_DISK_FORMAT_TRACKS } | `&H7C018` | The disk I/O control code that formats a range of tracks of a floppy disk. |
 | **IRP_MJ_CLEANUP**{: #IRP_MJ_CLEANUP } | `&H12` | The major function code of a request sent when the last handle to a file object is closed. |
 | **IRP_MJ_CLOSE**{: #IRP_MJ_CLOSE } | `&H02` | The major function code of a request sent when the last reference to a file object is released. |
 | **IRP_MJ_CREATE**{: #IRP_MJ_CREATE } | `&H00` | The major function code of a request to open or create a file or device. |
@@ -824,6 +766,7 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **IRP_MN_SURPRISE_REMOVAL**{: #IRP_MN_SURPRISE_REMOVAL } | `&H17` | With **IRP_MJ_PNP**: the device is no longer there, removed without warning. |
 | **IRP_MN_WAIT_WAKE**{: #IRP_MN_WAIT_WAKE } | `&H00` | With **IRP_MJ_POWER**: asks the device to wake the system or itself when it signals a wake event. |
 | **IRP_MN_WRITE_CONFIG**{: #IRP_MN_WRITE_CONFIG } | `&H10` | With **IRP_MJ_PNP**: writes the configuration space of the device's bus. |
+| **KI_USER_SHARED_DATA**{: #KI_USER_SHARED_DATA } | `&HFFFFF78000000000^` (64-bit), `&Hffdf0000&` (32-bit) | The address at which the kernel maps its **KUSER_SHARED_DATA**. |
 | **LLONG_MAX**{: #LLONG_MAX } | `9223372036854775807^` | The largest value of a `long long`, a **LongLong**. |
 | **LLONG_MIN**{: #LLONG_MIN } | `(-9223372036854775807^ - 1)` | The smallest value of a `long long`, a **LongLong**. |
 | **LONG_MAX**{: #LONG_MAX } | `2147483647` | The largest value of a `long`, 32 bits on Windows, a **Long**. |
@@ -844,7 +787,7 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **MAXSHORT**{: #MAXSHORT } | `&H7fff` | The largest value of a `SHORT`, an **Integer**. |
 | **MAXSIZE_T**{: #MAXSIZE_T } | `&Hffffffffffffffff^` (64-bit), `&Hffffffff` (32-bit) | The largest value of a `SIZE_T`, 32 bits in a 32-bit build and 64 bits in a 64-bit one. |
 | **MAXUCHAR**{: #MAXUCHAR } | `&Hff` | The largest value of a `UCHAR`, a **Byte**. |
-| **MAXUINT16**{: #MAXUINT16 } | `&Hffff` | The largest value of a `UINT16`. See the note below. |
+| **MAXUINT16**{: #MAXUINT16 } | `&Hffff` | The largest value of a `UINT16`, as the bits of an **Integer**. See the paragraph below. |
 | **MAXUINT32**{: #MAXUINT32 } | `&Hffffffff` | The largest value of a `UINT32`. |
 | **MAXUINT64**{: #MAXUINT64 } | `&Hffffffffffffffff^` | The largest value of a `UINT64`. |
 | **MAXUINT8**{: #MAXUINT8 } | `&Hff` | The largest value of a `UINT8`, a **Byte**. |
@@ -852,8 +795,8 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **MAXULONG32**{: #MAXULONG32 } | `&Hffffffff` | The largest value of a `ULONG32`. |
 | **MAXULONG64**{: #MAXULONG64 } | `Not 0^` | The largest value of a `ULONG64`. |
 | **MAXULONGLONG**{: #MAXULONGLONG } | `&Hffffffffffffffff^` | The largest value of a `ULONGLONG`. |
-| **MAXUSHORT**{: #MAXUSHORT } | `&Hffff` | The largest value of a `USHORT`. See the note below. |
-| **MAXWORD**{: #MAXWORD } | `&Hffff` | The largest value of a `WORD`. See the note below. |
+| **MAXUSHORT**{: #MAXUSHORT } | `&Hffff` | The largest value of a `USHORT`, as the bits of an **Integer**. See the paragraph below. |
+| **MAXWORD**{: #MAXWORD } | `&Hffff` | The largest value of a `WORD`, as the bits of an **Integer**. See the paragraph below. |
 | **MB_LEN_MAX**{: #MB_LEN_MAX } | `5` | The largest number of bytes in one multibyte character, in any locale. |
 | **METHOD_BUFFERED**{: #METHOD_BUFFERED } | `0` | For **CTL_CODE**: the I/O manager copies the input and output through one system buffer. |
 | **METHOD_IN_DIRECT**{: #METHOD_IN_DIRECT } | `1` | For **CTL_CODE**: the output buffer is described by an MDL for the device to read from. |
@@ -868,17 +811,36 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **MINLONG32**{: #MINLONG32 } | `(-2147483647 - 1)` | The smallest value of a `LONG32`, a **Long**. |
 | **MINLONG64**{: #MINLONG64 } | `MINLONGLONG` | The smallest value of a `LONG64`, a **LongLong**: **MINLONGLONG**. |
 | **MINLONGLONG**{: #MINLONGLONG } | `(-9223372036854775807^ - 1)` | The smallest value of a `LONGLONG`, a **LongLong**. |
-| **MINSHORT**{: #MINSHORT } | `&H8000` | The smallest value of a `SHORT`. See the note below. |
-| **MOUNTDEVCONTROLTYPE**{: #MOUNTDEVCONTROLTYPE } | `&H0000004` | The device type of the mount device I/O control codes; **InitIOCTLs** builds **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** from it. See the warning below. |
-| **MOUNTMGRCONTROLTYPE**{: #MOUNTMGRCONTROLTYPE } | `&H0000006` | The device type of the mount manager's I/O control codes; **InitIOCTLs** builds **IOCTL_MOUNTMGR_QUERY_POINTS** from it. See the warning below. |
+| **MINSHORT**{: #MINSHORT } | `&H8000` | The smallest value of a `SHORT`, an **Integer**. See the paragraph below. |
+| **MOUNTDEVCONTROLTYPE**{: #MOUNTDEVCONTROLTYPE } | `&H0000004D` | The device type of the mount device I/O control codes; **InitIOCTLs** builds **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** from it. |
+| **MOUNTMGRCONTROLTYPE**{: #MOUNTMGRCONTROLTYPE } | `&H0000006D` | The device type of the mount manager's I/O control codes; **InitIOCTLs** builds **IOCTL_MOUNTMGR_QUERY_POINTS** from it. |
 | **OB_FLT_REGISTRATION_VERSION**{: #OB_FLT_REGISTRATION_VERSION } | `&H100` | The version a driver states in **OB_CALLBACK_REGISTRATION.Version** for **ObRegisterCallbacks**. |
 | **POOL_EXTENDED_PARAMETER_REQUIRED_FIELD_BITS**{: #POOL_EXTENDED_PARAMETER_REQUIRED_FIELD_BITS } | `1` | The width in bits of the **Optional** field of a **POOL_EXTENDED_PARAMETER**, after its type field. |
 | **POOL_EXTENDED_PARAMETER_RESERVED_BITS**{: #POOL_EXTENDED_PARAMETER_RESERVED_BITS } | `(64 - POOL_EXTENDED_PARAMETER_TYPE_BITS - POOL_EXTENDED_PARAMETER_REQUIRED_FIELD_BITS)` | The width in bits of the reserved field that fills the rest of the first 64 bits of a **POOL_EXTENDED_PARAMETER**. |
 | **POOL_EXTENDED_PARAMETER_TYPE_BITS**{: #POOL_EXTENDED_PARAMETER_TYPE_BITS } | `8` | The width in bits of the type field at the start of a **POOL_EXTENDED_PARAMETER**, which holds a **POOL_EXTENDED_PARAMETER_TYPE**. |
+| **POOL_FLAG_CACHE_ALIGNED**{: #POOL_FLAG_CACHE_ALIGNED } | `&H0000000000000008^` | Aligns the allocation on a processor cache line. |
+| **POOL_FLAG_LAST_KNOWN_REQUIRED**{: #POOL_FLAG_LAST_KNOWN_REQUIRED } | `POOL_FLAG_RESERVED3` | The last required flag the package knows, **POOL_FLAG_RESERVED3**. |
+| **POOL_FLAG_NON_PAGED**{: #POOL_FLAG_NON_PAGED } | `&H0000000000000040^` | Allocates from nonpaged pool whose memory cannot run code. |
+| **POOL_FLAG_NON_PAGED_EXECUTE**{: #POOL_FLAG_NON_PAGED_EXECUTE } | `&H0000000000000080^` | Allocates from nonpaged pool whose memory can run code. |
+| **POOL_FLAG_OPTIONAL_END**{: #POOL_FLAG_OPTIONAL_END } | `&H8000000000000000^` | The last bit of the optional flags. |
+| **POOL_FLAG_OPTIONAL_START**{: #POOL_FLAG_OPTIONAL_START } | `&H0000000100000000^` | The first bit of the optional flags, the high 32 bits: a routine that does not know an optional flag ignores it. |
+| **POOL_FLAG_PAGED**{: #POOL_FLAG_PAGED } | `&H0000000000000100^` | Allocates from paged pool. |
+| **POOL_FLAG_RAISE_ON_FAILURE**{: #POOL_FLAG_RAISE_ON_FAILURE } | `&H0000000000000020^` | Raises an exception when the allocation fails, where the routine otherwise returns 0. |
+| **POOL_FLAG_REQUIRED_END**{: #POOL_FLAG_REQUIRED_END } | `&H0000000080000000^` | The last bit of the required flags. |
+| **POOL_FLAG_REQUIRED_MASK**{: #POOL_FLAG_REQUIRED_MASK } | `&H00000000FFFFFFFF^` | The bits of the required flags, the low 32. |
+| **POOL_FLAG_REQUIRED_START**{: #POOL_FLAG_REQUIRED_START } | `&H0000000000000001^` | The first bit of the required flags, the low 32 bits: a routine that does not know a required flag refuses the allocation. |
+| **POOL_FLAG_RESERVED1**{: #POOL_FLAG_RESERVED1 } | `&H0000000000000010^` | Reserved for the system. |
+| **POOL_FLAG_RESERVED2**{: #POOL_FLAG_RESERVED2 } | `&H0000000000000200^` | Reserved for the system. |
+| **POOL_FLAG_RESERVED3**{: #POOL_FLAG_RESERVED3 } | `&H0000000000000400^` | Reserved for the system. |
+| **POOL_FLAG_SESSION**{: #POOL_FLAG_SESSION } | `&H0000000000000004^` | Allocates from session pool. |
+| **POOL_FLAG_SPECIAL_POOL**{: #POOL_FLAG_SPECIAL_POOL } | `&H0000000100000000^` | Allocates from special pool, which helps find a driver's memory errors; an optional flag. |
+| **POOL_FLAG_UNINITIALIZED**{: #POOL_FLAG_UNINITIALIZED } | `&H0000000000000002^` | Leaves the memory as it is, where the routine otherwise fills it with zeros. |
+| **POOL_FLAG_UNUSED_REQUIRED_BITS**{: #POOL_FLAG_UNUSED_REQUIRED_BITS } | `(POOL_FLAG_REQUIRED_MASK And Not (POOL_FLAG_LAST_KNOWN_REQUIRED Or (POOL_FLAG_LAST_KNOWN_REQUIRED - 1)))` | The required bits above **POOL_FLAG_LAST_KNOWN_REQUIRED**, which no flag uses. |
+| **POOL_FLAG_USE_QUOTA**{: #POOL_FLAG_USE_QUOTA } | `&H0000000000000001^` | Charges the allocation to the quota of the current process. |
 | **PORT_MAXIMUM_MESSAGE_LENGTH**{: #PORT_MAXIMUM_MESSAGE_LENGTH } | `512` (64-bit), `256` (32-bit) | The longest message of a local procedure call port in bytes, 512 in a 64-bit build and 256 in a 32-bit one, which limits the size of an error log entry. |
 | **PS_ATTRIBUTE_ADDITIVE**{: #PS_ATTRIBUTE_ADDITIVE } | `&H00040000` | A bit of a **PS_ATTRIBUTE_ID** value: the attribute's values accumulate, as bit masks and counters do. Not documented by Microsoft. |
 | **PS_ATTRIBUTE_INPUT**{: #PS_ATTRIBUTE_INPUT } | `&H00020000` | A bit of a **PS_ATTRIBUTE_ID** value: the attribute is input only. Not documented by Microsoft. |
-| **PS_ATTRIBUTE_NUMBER_MASK**{: #PS_ATTRIBUTE_NUMBER_MASK } | `&H0000ffff` | The bits of a **PS_ATTRIBUTE_ID** value that hold its **PS_ATTRIBUTE_NUM**. Not documented by Microsoft. See the note below. |
+| **PS_ATTRIBUTE_NUMBER_MASK**{: #PS_ATTRIBUTE_NUMBER_MASK } | `&H0000ffff&` | The bits of a **PS_ATTRIBUTE_ID** value that hold its **PS_ATTRIBUTE_NUM**. Not documented by Microsoft. |
 | **PS_ATTRIBUTE_THREAD**{: #PS_ATTRIBUTE_THREAD } | `&H00010000` | A bit of a **PS_ATTRIBUTE_ID** value: the attribute may be given for the creation of a thread. Not documented by Microsoft. |
 | **RESOURCE_HASH_TABLE_SIZE**{: #RESOURCE_HASH_TABLE_SIZE } | `64` | The number of entries of **RESOURCE_PERFORMANCE_DATA.HashTable**. |
 | **RTL_QUERY_REGISTRY_DELETE**{: #RTL_QUERY_REGISTRY_DELETE } | `&H00000040` | For **RTL_QUERY_REGISTRY_TABLE.Flags**: deletes the value once it has been read. |
@@ -890,7 +852,7 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **RTL_QUERY_REGISTRY_SUBKEY**{: #RTL_QUERY_REGISTRY_SUBKEY } | `&H00000001` | For **RTL_QUERY_REGISTRY_TABLE.Flags**: the entry's name is a subkey, which the entries after it read. |
 | **RTL_QUERY_REGISTRY_TOPKEY**{: #RTL_QUERY_REGISTRY_TOPKEY } | `&H00000002` | For **RTL_QUERY_REGISTRY_TABLE.Flags**: the entries from this one on read the original key again. |
 | **RTL_QUERY_REGISTRY_TYPECHECK**{: #RTL_QUERY_REGISTRY_TYPECHECK } | `&H00000100` | For **RTL_QUERY_REGISTRY_TABLE.Flags**: with **RTL_QUERY_REGISTRY_DIRECT**, checks the value's type against the one in the top byte of *DefaultType*. |
-| **RTL_QUERY_REGISTRY_TYPECHECK_MASK**{: #RTL_QUERY_REGISTRY_TYPECHECK_MASK } | `(&Hff << RTL_QUERY_REGISTRY_TYPECHECK_SHIFT)` | The top byte of **RTL_QUERY_REGISTRY_TABLE.DefaultType**, which holds the type that **RTL_QUERY_REGISTRY_TYPECHECK** expects. See the note below. |
+| **RTL_QUERY_REGISTRY_TYPECHECK_MASK**{: #RTL_QUERY_REGISTRY_TYPECHECK_MASK } | `(&Hff& << RTL_QUERY_REGISTRY_TYPECHECK_SHIFT)` | The top byte of **RTL_QUERY_REGISTRY_TABLE.DefaultType**, which holds the type that **RTL_QUERY_REGISTRY_TYPECHECK** expects. |
 | **RTL_QUERY_REGISTRY_TYPECHECK_SHIFT**{: #RTL_QUERY_REGISTRY_TYPECHECK_SHIFT } | `24` | The bit position of the expected type in **RTL_QUERY_REGISTRY_TABLE.DefaultType**. |
 | **RTL_REGISTRY_ABSOLUTE**{: #RTL_REGISTRY_ABSOLUTE } | `0` | For the *RelativeTo* of **RtlQueryRegistryValues**: the path is a full registry path. |
 | **RTL_REGISTRY_CONTROL**{: #RTL_REGISTRY_CONTROL } | `2` | For the *RelativeTo* of **RtlQueryRegistryValues**: the path is relative to `\Registry\Machine\System\CurrentControlSet\Control`. |
@@ -902,13 +864,16 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **RTL_REGISTRY_USER**{: #RTL_REGISTRY_USER } | `5` | For the *RelativeTo* of **RtlQueryRegistryValues**: the path is relative to the current user's key. |
 | **RTL_REGISTRY_WINDOWS_NT**{: #RTL_REGISTRY_WINDOWS_NT } | `3` | For the *RelativeTo* of **RtlQueryRegistryValues**: the path is relative to `\Registry\Machine\Software\Microsoft\Windows NT\CurrentVersion`. |
 | **SCHAR_MAX**{: #SCHAR_MAX } | `127` | The largest value of a `signed char`. |
-| **SCHAR_MIN**{: #SCHAR_MIN } | `&H80` | The smallest value of a `signed char`. See the note below. |
+| **SCHAR_MIN**{: #SCHAR_MIN } | `&H80` | The smallest value of a `signed char`, as the bits of a **Byte**. See the paragraph below. |
 | **SECURITY_DESCRIPTOR_DO_NOT_FREE**{: #SECURITY_DESCRIPTOR_DO_NOT_FREE } | `&H04000000` | A flag of **ACCESS_STATE.Flags**: the new security descriptor in the access state's auxiliary data is not freed when the access state is deleted. Not documented by Microsoft. |
 | **SECURITY_DESCRIPTOR_MIN_LENGTH**{: #SECURITY_DESCRIPTOR_MIN_LENGTH } | `40` (64-bit), `&H14` (32-bit) | The size in bytes of an absolute **SECURITY_DESCRIPTOR**, 40 in a 64-bit build and 20 in a 32-bit one. |
 | **SECURITY_DESCRIPTOR_REVISION**{: #SECURITY_DESCRIPTOR_REVISION } | `(1)` | The revision of a **SECURITY_DESCRIPTOR**. |
 | **SECURITY_DESCRIPTOR_REVISION1**{: #SECURITY_DESCRIPTOR_REVISION1 } | `(1)` | The first revision of a **SECURITY_DESCRIPTOR**, the same as **SECURITY_DESCRIPTOR_REVISION**. |
 | **SECURITY_MAX_SID_SIZE**{: #SECURITY_MAX_SID_SIZE } | `(60)` | The size in bytes of the largest **SID**, the one with **SID_MAX_SUB_AUTHORITIES** subauthorities. See the note below. |
 | **SEMAPHORE_INCREMENT**{: #SEMAPHORE_INCREMENT } | `1` | The priority boost of a thread whose wait on a semaphore ends when the semaphore is released. |
+| **SharedInterruptTime**{: #SharedInterruptTime } | `(KI_USER_SHARED_DATA + &H8)` | The address of **KUSER_SHARED_DATA.InterruptTime**: the time since the system started, in 100-nanosecond units. |
+| **SharedSystemTime**{: #SharedSystemTime } | `(KI_USER_SHARED_DATA + &H14)` | The address of **KUSER_SHARED_DATA.SystemTime**, which the package's **KeQuerySystemTime** reads in a 64-bit build. |
+| **SharedTickCount**{: #SharedTickCount } | `(KI_USER_SHARED_DATA + &H320)` | The address of the tick count in **KUSER_SHARED_DATA**. |
 | **SHRT_MAX**{: #SHRT_MAX } | `32767` | The largest value of a `short`, an **Integer**. |
 | **SHRT_MIN**{: #SHRT_MIN } | `(-32768)` | The smallest value of a `short`, an **Integer**. |
 | **SID_HASH_SIZE**{: #SID_HASH_SIZE } | `32` | The number of entries of **SID_AND_ATTRIBUTES_HASH.Hash**. |
@@ -927,52 +892,50 @@ The major and minor function codes of an IRP, the parts of an I/O control code t
 | **ULONG_MAX**{: #ULONG_MAX } | `&Hffffffff` | The largest value of an `unsigned long`, 32 bits on Windows. |
 | **UNICODE_STRING_MAX_BYTES**{: #UNICODE_STRING_MAX_BYTES } | `65534` | The largest **Length** of a **UNICODE_STRING**, in bytes: the largest even number that 16 unsigned bits hold. |
 | **UNICODE_STRING_MAX_CHARS**{: #UNICODE_STRING_MAX_CHARS } | `32767` | The largest number of UTF-16 characters that a **UNICODE_STRING** holds, half of **UNICODE_STRING_MAX_BYTES**. |
-| **USHRT_MAX**{: #USHRT_MAX } | `&Hffff` | The largest value of an `unsigned short`. See the note below. |
+| **USHRT_MAX**{: #USHRT_MAX } | `&Hffff` | The largest value of an `unsigned short`, as the bits of an **Integer**. See the paragraph below. |
 
 <!-- test: WDMValueTests.Constants_Values -->
-> [!WARNING] 0.3.0.5
-> **MOUNTDEVCONTROLTYPE** is 4 and **MOUNTMGRCONTROLTYPE** is 6, where the WDK's device types are `&H4D` and `&H6D`. The I/O control codes built from them are not the WDK's, as the two mount codes that [**InitIOCTLs**](#InitIOCTLs) sets are not. A driver uses the WDK's values.
+The limits of the 16-bit types hold the bits of the C value in an **Integer**, as the package's fields of those types are **Integers**: **MAXUINT16**, **MAXUSHORT**, **MAXWORD**, **USHRT_MAX** and **_UI16_MAX** are `&HFFFF`, -1, and **MINSHORT** is `&H8000`, -32768. Each equals a field that holds the bits of a `USHORT` of 65535, or a `SHORT` of -32768, but not the **Long** 65535 or 32768. **SCHAR_MIN** is the **Byte** `&H80`, 128, the bits of C's -128, as the package takes a `char` as a **Byte**.
+<!-- /test -->
 
 <!-- test: WDMValueTests.Constants_Values -->
-> [!NOTE] 0.3.0.5
-> These constants do not have the values of the C headers they come from:
->
-> - **SECURITY_MAX_SID_SIZE** is 60, where the WDK's is 68: a buffer of that size cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
-> - **RTL_QUERY_REGISTRY_TYPECHECK_MASK** is 0, where the WDK's is `&HFF000000`.
-> - **MAXUINT16**, **MAXUSHORT**, **MAXWORD**, **USHRT_MAX** and **_UI16_MAX** are -1, where C's are 65535: `&HFFFF` is an **Integer** literal. They equal an **Integer** field that holds the bits of a **USHORT** of 65535, but not a **Long** of 65535.
-> - **MINSHORT** is -32768, where the WDK's is `&H8000`, 32768, for the same reason.
-> - **SCHAR_MIN** is 128, a **Byte** of `&H80`, where C's is -128.
-> - **PS_ATTRIBUTE_NUMBER_MASK** is -1, an **Integer** literal of `&HFFFF`, where the Native API's mask is `&HFFFF`, 65535: as a **Long** it keeps every bit.
+> [!NOTE] 0.3.0.6
+> **SECURITY_MAX_SID_SIZE** is 60, where the WDK's is 68: a buffer of that size cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
 
 ## Variables
 
-The I/O control codes are variables, not constants: each is 0 until [**InitIOCTLs**](#InitIOCTLs) sets it. **SOURCE_FILE** is the file name that [**IoAcquireRemoveLock**](#IoAcquireRemoveLock) passes to the kernel.
+<!-- test: WDMHelperTests.InitIOCTLs_SetsTheMountCodes, WDMHelperTests.InitIOCTLs_SetsFormatTracks -->
+The I/O control codes are variables, not constants: each is 0 until [**InitIOCTLs**](#InitIOCTLs) sets it, to the WDK's value. **IOCTL_DISK_FORMAT_TRACKS** is a constant. **SOURCE_FILE** is the file name that [**IoAcquireRemoveLock**](#IoAcquireRemoveLock) passes to the kernel, as ANSI bytes.
+<!-- /test -->
 
 | Name | Description |
 |------|-------------|
 | **FT_BALANCED_READ_MODE**{: #FT_BALANCED_READ_MODE } | An I/O control code of the fault-tolerant disk driver, built from **FTTYPE**; **InitIOCTLs** sets it to `&H66001B`. Not documented by Microsoft. |
 | **IOCTL_DISK_CHECK_VERIFY**{: #IOCTL_DISK_CHECK_VERIFY } | The disk I/O control code that asks whether the medium of a removable-media device has changed; **InitIOCTLs** sets it to `&H74800`. |
-| **IOCTL_DISK_FORMAT_TRACKS**{: #IOCTL_DISK_FORMAT_TRACKS } | The disk I/O control code that formats a range of tracks of a floppy disk. See the note below. |
 | **IOCTL_DISK_GET_DRIVE_GEOMETRY**{: #IOCTL_DISK_GET_DRIVE_GEOMETRY } | The disk I/O control code that returns a disk's geometry in a **DISK_GEOMETRY**; **InitIOCTLs** sets it to `&H70000`. |
 | **IOCTL_DISK_GET_MEDIA_TYPES**{: #IOCTL_DISK_GET_MEDIA_TYPES } | The disk I/O control code that returns the media types a device supports; **InitIOCTLs** sets it to `&H70C00`. |
 | **IOCTL_DISK_GET_PARTITION_INFO**{: #IOCTL_DISK_GET_PARTITION_INFO } | The disk I/O control code that returns a partition's information in a **PARTITION_INFORMATION**; **InitIOCTLs** sets it to `&H74004`. |
 | **IOCTL_DISK_IS_WRITABLE**{: #IOCTL_DISK_IS_WRITABLE } | The disk I/O control code that asks whether a disk can be written to; **InitIOCTLs** sets it to `&H70024`. |
 | **IOCTL_DISK_SET_PARTITION_INFO**{: #IOCTL_DISK_SET_PARTITION_INFO } | The disk I/O control code that sets a partition's type; **InitIOCTLs** sets it to `&H7C008`. |
-| **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME**{: #IOCTL_MOUNTDEV_QUERY_DEVICE_NAME } | The mount manager's request to a volume's driver for its device name, returned in a **MOUNTDEV_NAME**; **InitIOCTLs** sets it to `&H40008`. See the warning below. |
-| **IOCTL_MOUNTMGR_QUERY_POINTS**{: #IOCTL_MOUNTMGR_QUERY_POINTS } | The I/O control code that asks the mount manager for its mount points; **InitIOCTLs** sets it to `&H60008`. See the warning below. |
+| **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME**{: #IOCTL_MOUNTDEV_QUERY_DEVICE_NAME } | The mount manager's request to a volume's driver for its device name, returned in a **MOUNTDEV_NAME**; **InitIOCTLs** sets it to `&H4D0008`. |
+| **IOCTL_MOUNTMGR_QUERY_POINTS**{: #IOCTL_MOUNTMGR_QUERY_POINTS } | The I/O control code that asks the mount manager for its mount points; **InitIOCTLs** sets it to `&H6D0008`. |
 | **SOURCE_FILE**{: #SOURCE_FILE } | The source file name that **IoAcquireRemoveLock** passes to the kernel with each acquisition of a remove lock; empty until the driver sets it. |
-
-<!-- test: WDMHelperTests.InitIOCTLs_SetsTheMountCodes -->
-> [!WARNING] 0.3.0.5
-> **IOCTL_MOUNTMGR_QUERY_POINTS** and **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** are not the WDK's codes after [**InitIOCTLs**](#InitIOCTLs) has set them. A driver sets the two itself.
-
-<!-- test: WDMHelperTests.InitIOCTLs_SetsFormatTracks -->
-> [!NOTE] 0.3.0.5
-> [**InitIOCTLs**](#InitIOCTLs) does not set **IOCTL_DISK_FORMAT_TRACKS**, which stays 0.
 
 ## Procedures
 
 The procedures do what the WDK's macros and inline routines do, such as [**IoGetCurrentIrpStackLocation**](#IoGetCurrentIrpStackLocation) and [**InitializeListHead**](#InitializeListHead), or return the kernel's object types, such as [**PsProcessType**](#PsProcessType). [**InitIOCTLs**](#InitIOCTLs) sets the I/O control codes. **MsgBox**, **InStr**, **LCase** and **UCase** are kernel-mode versions of VBA's functions, and **StrRev** reverses a string; all five take the addresses of null-terminated strings.
+
+### CLngToULng
+{: #CLngToULng }
+
+Returns a **Long** read as an unsigned 32-bit number.
+
+Syntax: **CLngToULng**( *Value* )
+
+*Value*
+: *required* A **Long**: the value, such as a `ULONG` that a routine returned.
+
+The function returns a **LongLong**: *Value* when it is 0 or more, and *Value* plus `&H100000000` when it is negative, so `&HFFFFFFFF` gives 4294967295. [**NT_ERROR**](#NT_ERROR), [**NT_INFORMATION**](#NT_INFORMATION) and [**NT_WARNING**](#NT_WARNING) read a status with it.
 
 ### CmKeyObjectType
 {: #CmKeyObjectType }
@@ -1004,6 +967,18 @@ Syntax: **CTL_CODE**( *DeviceType*, *lFunction*, *Method*, *Access* )
 The result is *DeviceType* shifted left by 16 bits, *Access* by 14 and *lFunction* by 2, combined with *Method*: `CTL_CODE(7, 6, 0, 3)` is `&H7C018`. A device type of `&H8000` or more gives a code with the top bit set, a negative **Long**, and raises no overflow: `CTL_CODE(&H8000&, &H800, 0, 0)` is `&H80002000`.
 <!-- /test -->
 
+### CULngToLng
+{: #CULngToLng }
+
+Returns an unsigned 32-bit number as the **Long** that holds its bits.
+
+Syntax: **CULngToLng**( *Value* )
+
+*Value*
+: *required* A **LongLong**: the number, from 0 to 4294967295.
+
+The function returns *Value* when it is not greater than `&H7FFFFFFF`, and *Value* less `&H100000000` when it is greater, so 4294967295 gives -1. For a value outside the range of a `ULONG` it returns 0.
+
 ### ExDesktopObjectType
 {: #ExDesktopObjectType }
 
@@ -1028,11 +1003,9 @@ Syntax: **ExInitializeFastMutex** *FastMutex*
 *FastMutex*
 : *required* A **FAST_MUTEX**, passed by reference, in memory that is not paged.
 
-The procedure sets **Owner** and **Contention** to 0 and initializes **Event** as a synchronization event that is not signalled, with [**KeInitializeEvent**](#KeInitializeEvent). The WDK's routine of the same name, an inline function in wdm.h, also sets **Count** to `FM_LOCK_BIT`, 1, the value of a mutex that no thread holds.
-
 <!-- test: KernelHelperTests.ExInitializeFastMutex_InitializesAsTheWdkDoes -->
-> [!WARNING] 0.3.0.5
-> **ExInitializeFastMutex** leaves **Count** as it was, where the WDK's routine sets it to 1. **Count** is 1 only in a mutex that no thread holds, and in a new **FAST_MUTEX** variable it is 0. A driver sets **Count** to 1 itself after the call.
+As the WDK's routine of the same name, an inline function in wdm.h, does, the procedure sets **Count** to [**FM_LOCK_BIT**](#FM_LOCK_BIT), 1, the value of a mutex that no thread holds, sets **Owner** and **Contention** to 0, and initializes **Event** as a synchronization event that is not signalled, with [**KeInitializeEvent**](#KeInitializeEvent).
+<!-- /test -->
 
 ### ExIsResourceAcquiredLite
 {: #ExIsResourceAcquiredLite }
@@ -1066,6 +1039,18 @@ In the WDK `ExReleaseResource` is a macro that stands for [**ExReleaseResourceLi
 Returns the object type of semaphores, the value of the kernel's **ExSemaphoreObjectType** variable, in the same way as [**IoFileObjectType**](#IoFileObjectType).
 
 Syntax: **ExSemaphoreObjectType**()
+
+### FatalListEntryError
+{: #FatalListEntryError }
+
+Ends the system with a fast fail, for a list whose links are broken.
+
+Syntax: **FatalListEntryError** *p1*, *p2*, *p3*
+
+*p1*, *p2*, *p3*
+: *required* **LongPtr** values, which the procedure does not use.
+
+The procedure calls [**RtlFailFast**](#RtlFailFast) with `FAST_FAIL_CORRUPT_LIST_ENTRY`, as the WDK's routine of the same name does. No list procedure of the package calls it.
 
 ### InitializeListHead
 {: #InitializeListHead }
@@ -1116,17 +1101,13 @@ Syntax: **InitIOCTLs**
 
 The codes are variables, not constants, and each is 0 until **InitIOCTLs** sets it, so a driver calls it once before it uses them, as in its **DriverEntry**. It sets each with [**CTL_CODE**](#CTL_CODE): **IOCTL_DISK_GET_DRIVE_GEOMETRY**, **IOCTL_DISK_GET_PARTITION_INFO**, **IOCTL_DISK_IS_WRITABLE**, **IOCTL_DISK_GET_MEDIA_TYPES**, **IOCTL_DISK_CHECK_VERIFY**, **IOCTL_DISK_SET_PARTITION_INFO**, **IOCTL_MOUNTMGR_QUERY_POINTS**, **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** and **FT_BALANCED_READ_MODE**.
 
-<!-- test: WDMHelperTests.InitIOCTLs_SetsTheDiskCodes -->
-The six `IOCTL_DISK_` codes it sets are the WDK's.
+<!-- test: WDMHelperTests.InitIOCTLs_SetsTheDiskCodes, WDMHelperTests.InitIOCTLs_SetsTheMountCodes -->
+The codes it sets are the WDK's: the six `IOCTL_DISK_` codes, and the two mount codes, built from **MOUNTMGRCONTROLTYPE** and **MOUNTDEVCONTROLTYPE**: `&H6D0008` and `&H4D0008`.
 <!-- /test -->
 
-<!-- test: WDMHelperTests.InitIOCTLs_SetsTheMountCodes, WDMValueTests.Constants_Values -->
-> [!WARNING] 0.3.0.5
-> The two mount codes are not the WDK's: **IOCTL_MOUNTMGR_QUERY_POINTS** is `&H60008` where the WDK's is `&H6D0008`, and **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** is `&H40008` where the WDK's is `&H4D0008`. They are built from **MOUNTMGRCONTROLTYPE**, 6, and **MOUNTDEVCONTROLTYPE**, 4, where the WDK's device types are `&H6D` and `&H4D`. A driver sets the two variables to the WDK's values after the call.
-
 <!-- test: WDMHelperTests.InitIOCTLs_SetsFormatTracks -->
-> [!NOTE] 0.3.0.5
-> **InitIOCTLs** does not set **IOCTL_DISK_FORMAT_TRACKS**, which stays 0. A driver sets it to `&H7C018`, `CTL_CODE(IOCTL_DISK_BASE, 6, METHOD_BUFFERED, FILE_READ_ACCESS Or FILE_WRITE_ACCESS)`.
+**IOCTL_DISK_FORMAT_TRACKS** is a constant, `&H7C018`, which needs no call.
+<!-- /test -->
 
 ### InsertHeadList
 {: #InsertHeadList }
@@ -1141,11 +1122,9 @@ Syntax: **InsertHeadList** *ListHead*, *Entry*
 *Entry*
 : *required* A **LIST_ENTRY**, passed by reference: the entry to insert, usually a field of a larger structure.
 
-The WDK's routine of the same name links *Entry* between *ListHead* and the entry that was first, and sets that entry's **Blink** to *Entry*.
-
 <!-- test: KernelHelperTests.InsertHeadList_LinksTheEntryAfterTheHead -->
-> [!WARNING] 0.3.0.5
-> **InsertHeadList** copies the entry that was first into a local variable and links *Entry* to the copy. *Entry*'s **Flink** then points into the procedure's own stack, which is gone once it returns, and the **Blink** of the entry that was first is not changed: after an insert into an empty list, **ListHead.Blink** still points to *ListHead*. The list is broken from the first insert on. A driver sets the links itself, as the WDK's routine does.
+As the WDK's routine of the same name does, the procedure links *Entry* between *ListHead* and the entry that was first, and sets that entry's **Blink** to *Entry*.
+<!-- /test -->
 
 ### InsertTailList
 {: #InsertTailList }
@@ -1160,11 +1139,9 @@ Syntax: **InsertTailList** *ListHead*, *Entry*
 *Entry*
 : *required* A **LIST_ENTRY**, passed by reference: the entry to insert, usually a field of a larger structure.
 
-The WDK's routine of the same name links *Entry* between the entry that was last and *ListHead*, and sets that entry's **Flink** to *Entry*.
-
 <!-- test: KernelHelperTests.InsertTailList_LinksTheEntryBeforeTheHead -->
-> [!WARNING] 0.3.0.5
-> **InsertTailList** copies the entry that was last into a local variable and links *Entry* to the copy. *Entry*'s **Blink** then points into the procedure's own stack, which is gone once it returns, and the **Flink** of the entry that was last is not changed: after an insert into an empty list, **ListHead.Flink** still points to *ListHead*. The list is broken from the first insert on. A driver sets the links itself, as the WDK's routine does.
+As the WDK's routine of the same name does, the procedure links *Entry* between the entry that was last and *ListHead*, and sets that entry's **Flink** to *Entry*.
+<!-- /test -->
 
 ### InStr
 {: #InStr }
@@ -1179,11 +1156,9 @@ Syntax: **InStr**( *szIn*, *szFind* )
 *szFind*
 : *required* A **LongPtr**: the address of the null-terminated UTF-16 string to find.
 
-The function has the name of VBA's **InStr** but takes the strings' addresses. A driver calls it as `modWDM.InStr`: without the module name the call is VBA's (see [Names shared with VBA](.#names-shared-with-vba)). It calls [**wcsstr**](#wcsstr), and returns 0 when *szFind* is not in *szIn*.
-
 <!-- test: KernelHelperTests.InStr_ReturnsTheCharacterPosition -->
-> [!WARNING] 0.3.0.5
-> For a string that is found, **InStr** returns `szIn` minus the address **wcsstr** returned: the negative of the match's offset in bytes, not its position in characters. `modWDM.InStr` of "mode" in "kernel mode" is -14, where VBA's **InStr** gives 8. A driver calls **wcsstr** and works out the position from the address *p* it returns: `(p - szIn) \ 2 + 1`.
+The function has the name of VBA's **InStr** but takes the strings' addresses. A driver calls it as `modWDM.InStr`: without the module name the call is VBA's (see [Names shared with VBA](.#names-shared-with-vba)). It calls [**wcsstr**](#wcsstr), and returns the position in characters of the first match, as VBA's **InStr** does, or 0 when *szFind* is not in *szIn*: `modWDM.InStr` of "mode" in "kernel mode" is 8.
+<!-- /test -->
 
 ### InterlockedAdd64
 {: #InterlockedAdd64 }
@@ -1198,13 +1173,13 @@ Syntax: **InterlockedAdd64** *Addend*, *Value*
 *Value*
 : *required* A **LongLong**: the value to add.
 
-<!-- test: KernelHelperTests.InterlockedAdd64_AddsTheValue -->
-Each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), acquires it with [**KeAcquireSpinLock**](#KeAcquireSpinLock), passes it with *Addend* and *Value* to [**ExInterlockedAddLargeInteger**](#ExInterlockedAddLargeInteger), and releases it. The procedure is a **Sub**: it returns nothing, where the WDK's `InterlockedAdd64`, a compiler intrinsic, returns the sum. The package describes it as not usable in a 32-bit driver.
+<!-- test: KernelHelperTests.InterlockedAdd64_AddsTheValue, KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree -->
+Each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), passes it with *Addend* and *Value* to [**ExInterlockedAddLargeInteger**](#ExInterlockedAddLargeInteger), which acquires and releases it, and then calls [**KeReleaseSpinLock**](#KeReleaseSpinLock) with it. The procedure is a **Sub**: it returns nothing, where the WDK's `InterlockedAdd64`, a compiler intrinsic, returns the sum. The package describes it as not usable in a 32-bit driver.
 <!-- /test -->
 
-<!-- test: KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree -->
-> [!WARNING] 0.3.0.5
-> A call of **InterlockedAdd64** never returns. The procedure passes its spin lock to **ExInterlockedAddLargeInteger** while it holds it, and **ExInterlockedAddLargeInteger** acquires the lock it is given. A spin lock that is held is waited for until it is released, so the call waits without end. A driver calls **ExInterlockedAddLargeInteger** itself, with a spin lock that it has initialized with **KeInitializeSpinLock** and does not hold.
+<!-- test: KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas -->
+> [!WARNING] 0.3.0.6
+> **InterlockedAdd64** calls **KeReleaseSpinLock** with a lock that it never acquired and an IRQL of 0. **KeReleaseSpinLock** sets the IRQL to the one it is given, so a call made at `APC_LEVEL` or `DISPATCH_LEVEL` returns at `PASSIVE_LEVEL`, and the driver goes on at an IRQL lower than the one it was at. A driver calls **ExInterlockedAddLargeInteger** itself, with a spin lock that it has initialized with **KeInitializeSpinLock**.
 
 ### InterlockedIncrement
 {: #InterlockedIncrement }
@@ -1218,18 +1193,16 @@ Syntax (32-bit): **InterlockedIncrement**( *Addend* )
 *Addend*
 : *required* A **Long**, passed by reference: the variable to increment.
 
-In a 64-bit build **InterlockedIncrement** is a **Sub** of the package: each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), acquires it with [**KeAcquireSpinLock**](#KeAcquireSpinLock), passes it to [**ExInterlockedAddUlong**](#ExInterlockedAddUlong) with *Addend* and 1, and releases it. In a 32-bit build it is a **Declare** of the kernel's `InterlockedIncrement`, a `__fastcall` routine there, which returns the incremented value. The WDK's [**InterlockedIncrement**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement) is a compiler intrinsic that returns the incremented value.
+<!-- test: KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree, KernelHelperTests.InterlockedIncrement_IncrementsTheValue -->
+In a 64-bit build **InterlockedIncrement** is a **Sub** of the package: each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), passes it to [**ExInterlockedAddUlong**](#ExInterlockedAddUlong) with *Addend* and 1, which acquires and releases it, and then calls [**KeReleaseSpinLock**](#KeReleaseSpinLock) with it, as [**InterlockedAdd64**](#InterlockedAdd64) does. In a 32-bit build it is a **Declare** of the kernel's `InterlockedIncrement`, a `__fastcall` routine there, which returns the incremented value. The WDK's [**InterlockedIncrement**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement) is a compiler intrinsic that returns the incremented value.
+<!-- /test -->
 
-<!-- test: KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree -->
-> [!WARNING] 0.3.0.5
-> In a 64-bit driver a call of **InterlockedIncrement** never returns. The procedure passes its spin lock to **ExInterlockedAddUlong** while it holds it, and **ExInterlockedAddUlong** acquires the lock it is given. A spin lock that is held is waited for until it is released, so the call waits without end. A driver calls **ExInterlockedAddUlong** itself, with a spin lock that it has initialized with **KeInitializeSpinLock** and does not hold.
-
-<!-- test: KernelHelperTests.InterlockedIncrement_IncrementsTheValue -->
-> [!WARNING] 0.3.0.5
-> In a 32-bit driver the kernel's `InterlockedIncrement` takes its argument in a register, but the package calls it as a `__stdcall` routine, which pushes the argument on the stack. The routine receives some other value than the variable's address, the variable keeps its value, and the call leaves the stack 4 bytes off.
+<!-- test: KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas -->
+> [!WARNING] 0.3.0.6
+> In a 64-bit driver **InterlockedIncrement** calls **KeReleaseSpinLock** with a lock that it never acquired and an IRQL of 0, as **InterlockedAdd64** does: a call made at `APC_LEVEL` or `DISPATCH_LEVEL` returns at `PASSIVE_LEVEL`. A driver calls **ExInterlockedAddUlong** itself, with a spin lock that it has initialized with **KeInitializeSpinLock**.
 
 <!-- test: compile InterlockedIncrementReturnsTheValue -->
-> [!NOTE] 0.3.0.5
+> [!NOTE] 0.3.0.6
 > In a 64-bit build **InterlockedIncrement** is a **Sub**, so `n = InterlockedIncrement(v)` is refused with TB5033. In a 32-bit build it compiles.
 
 ### IoAcquireRemoveLock
@@ -1248,11 +1221,11 @@ Syntax: **IoAcquireRemoveLock**( *RemoveLock*, *Tag*, *Line* )
 *Line*
 : *required* A **Long**: the source line number to record with the acquisition.
 
-The function returns what [**IoAcquireRemoveLockEx**](#IoAcquireRemoveLockEx) returns: `STATUS_SUCCESS`, or `STATUS_DELETE_PENDING` when the device is being removed, and then the driver does not use it. The WDK's `IoAcquireRemoveLock` macro takes two arguments and passes the file name and line number of the call itself; the procedure takes the line number as *Line*, and passes the address of [**SOURCE_FILE**](#SOURCE_FILE) as the file name and `LenB` of the lock as its size.
-
 <!-- test: KernelHelperTests.IoAcquireRemoveLock_PassesTheTagTheFileAndTheLine -->
-> [!NOTE] 0.3.0.5
-> **IoAcquireRemoveLock** passes `StrPtr(SOURCE_FILE)`, the address of a UTF-16 string, where **IoAcquireRemoveLockEx** takes the address of an ANSI string. For a name made of ASCII characters the kernel reads only its first character as the file name: `D` for `Driver.twin`. *Tag* and *Line* reach the kernel as given.
+The function returns what [**IoAcquireRemoveLockEx**](#IoAcquireRemoveLockEx) returns: `STATUS_SUCCESS`, or `STATUS_DELETE_PENDING` when the device is being removed, and then the driver does not use it. The WDK's `IoAcquireRemoveLock` macro takes two arguments and passes the file name and line number of the call itself; the procedure takes the line number as *Line*, passes *Tag* and *Line* as given, and passes `StrPtr(SOURCE_FILE)` as the file name and `LenB` of the lock as its size.
+
+**IoAcquireRemoveLockEx** reads the file name as an ANSI string, and kernel mode has no conversion of a **String** from UTF-16. So [**SOURCE_FILE**](#SOURCE_FILE) holds the ANSI bytes of the name, which the driver puts there itself, two characters to each of the **String**'s. A name assigned as an ordinary **String** reaches the kernel as its first character only: `D` for `Driver.twin`.
+<!-- /test -->
 
 ### IoCallDriver
 {: #IoCallDriver }
@@ -1267,11 +1240,7 @@ Syntax: **IoCallDriver**( *DeviceObject*, *pIrp* )
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP, with the stack location below the current one set up for the driver called.
 
-The function returns what [**IofCallDriver**](#IofCallDriver) returns: the status the driver called gives, or `STATUS_PENDING`. In the WDK `IoCallDriver` is a macro that stands for **IofCallDriver**, a `__fastcall` routine in a 32-bit kernel.
-
-<!-- test: KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp -->
-> [!WARNING] 0.3.0.5
-> In a 32-bit driver **IofCallDriver** takes its two arguments in registers, but **IoCallDriver** calls it as a `__stdcall` routine, which pushes them on the stack. The routine receives other values than the device object and the IRP, and the call leaves the stack 8 bytes off.
+The function returns what [**IofCallDriver**](#IofCallDriver) returns: the status the driver called gives, or `STATUS_PENDING`. In the WDK `IoCallDriver` is a macro that stands for **IofCallDriver**, a `__fastcall` routine in a 32-bit kernel, which the package declares `FastCall`. In a 32-bit driver no `FastCall` call reaches its routine as it should: see [Building a driver](.#building-a-driver).
 
 ### IoCopyCurrentIrpStackLocationToNext
 {: #IoCopyCurrentIrpStackLocationToNext }
@@ -1283,11 +1252,9 @@ Syntax: **IoCopyCurrentIrpStackLocationToNext** *pIrp*
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP that the driver passes down.
 
-As the WDK's routine of the same name does, the procedure copies the fields of the current **IO_STACK_LOCATION** up to **CompletionRoutine**, `&H1C` bytes in a 32-bit build and `&H38` in a 64-bit one, and sets **Control** of the copy to 0. It finds the location below with [**IoGetNextIrpStackLocation**](#IoGetNextIrpStackLocation).
-
-<!-- test: KernelHelperTests.IoCopyCurrentIrpStackLocationToNext_CopiesIntoTheLocationBelow, WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow -->
-> [!WARNING] 0.3.0.5
-> **IoGetNextIrpStackLocation** returns an address 4 or 8 bytes below the current location, not the location below, and **IoCopyCurrentIrpStackLocationToNext** writes the copy there. The location below receives none of the fields: its **MajorFunction**, **MinorFunction**, **Flags**, **DeviceObject** and **FileObject** stay as they were, and its **Context** receives the current location's **MajorFunction**, **MinorFunction** and **Flags**, with a 0 for **Control**. The copy also writes over the current location: its **MajorFunction**, **MinorFunction** and **Flags** take the values of the bytes 4 or 8 further on, and its **DeviceObject** the value of its **FileObject**. A driver copies the fields itself, to the current location's address less `LenB(Of IO_STACK_LOCATION)`, and sets **Control** there to 0.
+<!-- test: KernelHelperTests.IoCopyCurrentIrpStackLocationToNext_CopiesIntoTheLocationBelow -->
+As the WDK's routine of the same name does, the procedure copies the fields of the current **IO_STACK_LOCATION** up to **CompletionRoutine**, `&H1C` bytes in a 32-bit build and `&H38` in a 64-bit one, into the location below, and sets **Control** of the copy to 0. It finds the location below with [**IoGetNextIrpStackLocation**](#IoGetNextIrpStackLocation).
+<!-- /test -->
 
 ### IoFileObjectType
 {: #IoFileObjectType }
@@ -1326,11 +1293,9 @@ Syntax: **IoGetNextIrpStackLocation**( *pIrp* )
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP that the driver passes down.
 
-The WDK's routine of the same name returns the current location's address less one **IO_STACK_LOCATION**, 36 bytes in a 32-bit build and 72 in a 64-bit one.
-
 <!-- test: WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow -->
-> [!WARNING] 0.3.0.5
-> **IoGetNextIrpStackLocation** subtracts `LenB(Of LongPtr)`, 4 or 8 bytes, instead: the address it returns is inside the location below, 32 bytes into it in a 32-bit build and 64 in a 64-bit one. A driver subtracts `LenB(Of IO_STACK_LOCATION)` from the result of [**IoGetCurrentIrpStackLocation**](#IoGetCurrentIrpStackLocation).
+As the WDK's routine of the same name does, the function returns the current location's address less one **IO_STACK_LOCATION**, 36 bytes in a 32-bit build and 72 in a 64-bit one.
+<!-- /test -->
 
 ### IoInitializeRemoveLock
 {: #IoInitializeRemoveLock }
@@ -1375,22 +1340,17 @@ As the WDK's macro of the same name does, the procedure calls [**IoReleaseRemove
 
 Releases a remove lock and waits until every other acquisition of it has been released, before the driver removes its device.
 
-Syntax: **IoReleaseRemoveLockAndWait** *RemoveLock*, *Tag*, *RemlockSize*
+Syntax: **IoReleaseRemoveLockAndWait** *RemoveLock*, *Tag*
 
 *RemoveLock*
 : *required* An **IO_REMOVE_LOCK**, passed by reference: the lock.
 
 *Tag*
-: *required* A **Long**: the value the driver's own acquisition passed as its *Tag*.
-
-*RemlockSize*
-: *required* A **Long**: the size of the lock, `LenB(Of IO_REMOVE_LOCK)`.
-
-The procedure calls [**IoReleaseRemoveLockAndWaitEx**](#IoReleaseRemoveLockAndWaitEx) with its three arguments. The WDK's macro of the same name takes two, and passes the size itself.
+: *required* A **LongPtr**: the value the driver's own acquisition passed as its *Tag*.
 
 <!-- test: KernelHelperTests.IoReleaseRemoveLockAndWait_PassesTheTag, compile IoReleaseRemoveLockAndWaitTakesALongPtrTag -->
-> [!NOTE] 0.3.0.5
-> **IoReleaseRemoveLockAndWait** passes *Tag* by reference to the `As Any` *Tag* of **IoReleaseRemoveLockAndWaitEx**, so the kernel receives the address of the variable, not the tag value that the driver's acquisition passed. In a 64-bit build its *Tag* is a **Long** where **IoAcquireRemoveLock** takes a **LongPtr**, so the compiler refuses the **LongPtr** tag that the acquisition was given. A driver calls **IoReleaseRemoveLockAndWaitEx** itself, with the tag passed `ByVal` and `LenB` of the lock as *RemlockSize*.
+As the WDK's macro of the same name does, the procedure calls [**IoReleaseRemoveLockAndWaitEx**](#IoReleaseRemoveLockAndWaitEx) with its arguments and `LenB` of the lock as its size.
+<!-- /test -->
 
 ### IoSetCompletionRoutine
 {: #IoSetCompletionRoutine }
@@ -1417,11 +1377,9 @@ Syntax: **IoSetCompletionRoutine** *pIrp*, *CompletionRoutine*, *Context*, *Invo
 *InvokeOnCancel*
 : *required* A **Boolean**: **True** to call the routine when the IRP is cancelled.
 
+<!-- test: KernelHelperTests.IoSetCompletionRoutine_SetsTheLocationBelow -->
 As the WDK's routine of the same name does, the procedure sets **CompletionRoutine** and **Context** of the stack location below the current one, and its **Control** to **SL_INVOKE_ON_SUCCESS**, **SL_INVOKE_ON_ERROR** and **SL_INVOKE_ON_CANCEL** as the three **Boolean** arguments say. It finds the location with [**IoGetNextIrpStackLocation**](#IoGetNextIrpStackLocation).
-
-<!-- test: KernelHelperTests.IoSetCompletionRoutine_SetsTheLocationBelow, WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow -->
-> [!WARNING] 0.3.0.5
-> **IoGetNextIrpStackLocation** returns an address 4 or 8 bytes below the current location, and **IoSetCompletionRoutine** writes at the offsets of the fields from there. The location below gets no completion routine and no **Control** flags; the routine's address is written over the current location's **FileObject**, *Context* over its **CompletionRoutine**, and the flags into the location below's **Context**. A driver sets the three fields itself, at the current location's address less `LenB(Of IO_STACK_LOCATION)`.
+<!-- /test -->
 
 ### IoSkipCurrentIrpStackLocation
 {: #IoSkipCurrentIrpStackLocation }
@@ -1433,11 +1391,9 @@ Syntax: **IoSkipCurrentIrpStackLocation** *pIrp*
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP that the driver passes down with [**IoCallDriver**](#IoCallDriver), with no completion routine.
 
-The WDK's routine of the same name adds 1 to **CurrentLocation** and one **IO_STACK_LOCATION** to **CurrentStackLocation**.
-
 <!-- test: WDMHelperTests.IoSkipCurrentIrpStackLocation_MovesUpOneLocation -->
-> [!WARNING] 0.3.0.5
-> **IoSkipCurrentIrpStackLocation** adds 1 to **CurrentStackLocation**, which is an address, so it moves one byte and not one location; **CurrentLocation** is right. The next lower driver then does not receive the driver's own location. A driver adds `LenB(Of IO_STACK_LOCATION)` to **CurrentStackLocation** itself.
+As the WDK's routine of the same name does, the procedure adds 1 to **CurrentLocation** and one **IO_STACK_LOCATION** to **CurrentStackLocation**.
+<!-- /test -->
 
 ### IsListEmpty
 {: #IsListEmpty }
@@ -1453,6 +1409,34 @@ Syntax: **IsListEmpty**( *ListHead* )
 The function returns a **Byte**, 1 when **ListHead.Flink** is the address of *ListHead* and 0 otherwise, as the WDK's routine of the same name returns a `BOOLEAN`.
 <!-- /test -->
 
+### KeAcquireSpinLock
+{: #KeAcquireSpinLock }
+
+Acquires a spin lock, raising the IRQL to `DISPATCH_LEVEL`, and returns the IRQL from before, which [**KeReleaseSpinLock**](#KeReleaseSpinLock) takes back.
+
+Syntax: **KeAcquireSpinLock**( *SpinLock* )
+
+*SpinLock*
+: *required* A **LongPtr**, passed by reference: the spin lock, as [**KeInitializeSpinLock**](#KeInitializeSpinLock) initialized it.
+
+In a 64-bit build the function calls [**KeAcquireSpinLockRaiseToDpc**](#KeAcquireSpinLockRaiseToDpc) and returns what it returns. In a 32-bit build it is a **Declare** of `KfAcquireSpinLock` of `hal.dll`. The WDK's `KeAcquireSpinLock` macro writes the IRQL to a second argument instead of returning it.
+
+<!-- test: KernelHelperTests.KeAcquireSpinLock_PassesTheLock -->
+> [!WARNING] 0.3.0.6
+> In a 32-bit driver `KfAcquireSpinLock` is a `__fastcall` routine, which takes the lock in a register, but the package declares it without `FastCall` and calls it as a `__stdcall` routine, which pushes the lock on the stack. The routine acquires some other spin lock than the driver's. A driver declares `KfAcquireSpinLock` itself, `FastCall` and with `Lib "hal.dll"`.
+
+### KeQuerySystemTime
+{: #KeQuerySystemTime }
+
+Writes the current system time into *CurrentTime*, in 100-nanosecond units since 1 January 1601 (UTC).
+
+Syntax: **KeQuerySystemTime** *CurrentTime*
+
+*CurrentTime*
+: *required* A **LARGE_INTEGER**, passed by reference, that receives the time.
+
+In a 64-bit build the procedure reads the time from **KUSER_SHARED_DATA.SystemTime**, at [**SharedSystemTime**](#SharedSystemTime), as the WDK's `KeQuerySystemTime` macro does there: the 64-bit kernel exports no routine of that name. In a 32-bit build it is a **Declare** of the kernel's routine.
+
 ### KeRaiseIrql
 {: #KeRaiseIrql }
 
@@ -1466,7 +1450,7 @@ Syntax: **KeRaiseIrql** *NewIrql*, *OldIrql*
 *OldIrql*
 : *required* A [**KIRQL**](#KIRQL) variable, passed by reference, that receives the level before the call.
 
-The procedure sets *OldIrql* to what [**KfRaiseIrql**](#KfRaiseIrql) returns for *NewIrql*, as the WDK's `KeRaiseIrql` macro does. A driver goes back to *OldIrql* with [**KeLowerIrql**](#KeLowerIrql), which the module declares for a 64-bit build only.
+The procedure sets *OldIrql* to what [**KfRaiseIrql**](#KfRaiseIrql) returns for *NewIrql*, as the WDK's `KeRaiseIrql` macro does. A driver goes back to *OldIrql* with [**KeLowerIrql**](#KeLowerIrql).
 
 ### LCase
 {: #LCase }
@@ -1553,8 +1537,8 @@ Syntax: **MsgBox**( *lpText*, *dwOptions*, *lpTitle* )
 The function has the name of VBA's **MsgBox** but takes the strings' addresses. A driver calls it as `modWDM.MsgBox`: without the module name the call is VBA's (see [Names shared with VBA](.#names-shared-with-vba)). It passes the two strings, as **UNICODE_STRING** structures, and *dwOptions* to [**ExRaiseHardError**](#ExRaiseHardError) with the status `STATUS_SERVICE_NOTIFICATION Or HARDERROR_OVERRIDE_ERRORMODE`, which shows the box, and returns the [**HARDERROR_RESPONSE**](#HARDERROR_RESPONSE) that it gives, such as `HardError_ResponseOk`. The package says that the call must come from a request of a user-mode process, such as in the driver's handler of **DeviceIoControl** requests.
 
 <!-- test: KernelHelperTests.MsgBox_PassesTheTextAndTheTitle -->
-> [!WARNING] 0.3.0.5
-> **MsgBox** makes both of its strings into the **UNICODE_STRING** of the text, and leaves the one of the title empty. The box shows *lpTitle* as its text, and no title; *lpText* is not shown. A driver that needs a title calls **ExRaiseHardError** itself.
+The box shows *lpText* as its text and *lpTitle* as its title.
+<!-- /test -->
 
 ### NT_ERROR
 {: #NT_ERROR }
@@ -1566,11 +1550,23 @@ Syntax: **NT_ERROR**( *Status* )
 *Status*
 : *required* A **Long**: the status, as a routine returned it.
 
-The WDK's `NT_ERROR` macro is true when the two highest bits of *Status* are both set: for the error statuses, from `&HC0000000` on, such as `STATUS_ACCESS_DENIED`. The procedure returns whether *Status* is less than `&HC0000000` as a signed **Long**.
-
 <!-- test: WDMHelperTests.NT_ERROR_IsTrueForErrorStatusesOnly -->
-> [!WARNING] 0.3.0.5
-> **NT_ERROR** returns **False** for an error status, such as `STATUS_ACCESS_DENIED` (`&HC0000022`) and `STATUS_UNSUCCESSFUL` (`&HC0000001`), and **True** for a warning, such as `STATUS_BUFFER_OVERFLOW` (`&H80000005`). A driver tests `(Status And &HC0000000) = &HC0000000` instead.
+The function returns **True** when the two highest bits of *Status* are both set, as the WDK's `NT_ERROR` macro does: for the error statuses, from `&HC0000000` on, such as `STATUS_ACCESS_DENIED`. It reads *Status* as unsigned with [**CLngToULng**](#CLngToULng).
+<!-- /test -->
+
+### NT_INFORMATION
+{: #NT_INFORMATION }
+
+Returns whether an **NTSTATUS** value is an informational status.
+
+Syntax: **NT_INFORMATION**( *Status* )
+
+*Status*
+: *required* A **Long**: the status, as a routine returned it.
+
+<!-- test: WDMHelperTests.NT_INFORMATION_NT_WARNING_TestTheTwoHighestBits -->
+The function returns **True** when the two highest bits of *Status* are 01, as the WDK's `NT_INFORMATION` macro does: for the statuses from `&H40000000` to `&H7FFFFFFF`, such as `STATUS_OBJECT_NAME_EXISTS`.
+<!-- /test -->
 
 ### NT_SUCCESS
 {: #NT_SUCCESS }
@@ -1584,6 +1580,20 @@ Syntax: **NT_SUCCESS**( *Status* )
 
 <!-- test: WDMHelperTests.NT_SUCCESS_SuccessAndInformationalAreSuccess -->
 The function returns whether *Status* is 0 or more as a signed **Long**, as the WDK's `NT_SUCCESS` macro does: **True** for `STATUS_SUCCESS` and the informational statuses, **False** for the warnings and the errors, whose highest bit is set.
+<!-- /test -->
+
+### NT_WARNING
+{: #NT_WARNING }
+
+Returns whether an **NTSTATUS** value is a warning status.
+
+Syntax: **NT_WARNING**( *Status* )
+
+*Status*
+: *required* A **Long**: the status, as a routine returned it.
+
+<!-- test: WDMHelperTests.NT_INFORMATION_NT_WARNING_TestTheTwoHighestBits -->
+The function returns **True** when the two highest bits of *Status* are 10, as the WDK's `NT_WARNING` macro does: for the statuses from `&H80000000` to `&HBFFFFFFF`, such as `STATUS_BUFFER_OVERFLOW`.
 <!-- /test -->
 
 ### PointerAdd
@@ -1624,21 +1634,52 @@ Returns the object type of threads, the value of the kernel's **PsThreadType** v
 
 Syntax: **PsThreadType**()
 
-### RemoveListHead
-{: #RemoveListHead }
+### RemoveHeadList
+{: #RemoveHeadList }
 
-Removes the first entry of a doubly linked list.
+Removes the first entry of a doubly linked list, and returns its address.
 
-Syntax: **RemoveListHead**( *ListHead* )
+Syntax: **RemoveHeadList**( *ListHead* )
 
 *ListHead*
 : *required* A **LIST_ENTRY**, passed by reference: the head of the list, which has at least one entry.
 
-The function returns a copy of the entry removed, a **LIST_ENTRY**, where the WDK's `RemoveHeadList` returns the entry's address; a driver that needs the address reads **ListHead.Flink** before the call. The WDK's routine links *ListHead* to the second entry, and sets that entry's **Blink** to *ListHead*.
+<!-- test: KernelHelperTests.RemoveHeadList_UnlinksTheFirstEntry -->
+As the WDK's routine of the same name does, the function links *ListHead* to the second entry, sets that entry's **Blink** to *ListHead*, and returns the address of the entry removed, a **LongPtr**.
+<!-- /test -->
 
-<!-- test: KernelHelperTests.RemoveListHead_UnlinksTheFirstEntry -->
-> [!WARNING] 0.3.0.5
-> **RemoveListHead** copies the second entry into a local variable and links *ListHead* to the copy, as [**InsertHeadList**](#InsertHeadList) and **InsertTailList** link to a copy of their neighbour. **ListHead.Flink** then points into the procedure's own stack, which is gone once it returns, and the **Blink** of the second entry is not changed: it still points to the entry removed. The list is broken from the first remove on. A driver sets the links itself, as the WDK's routine does.
+### RtlCheckBit
+{: #RtlCheckBit }
+
+Returns whether a bit of a bitmap is set.
+
+Syntax: **RtlCheckBit**( *BitmapHeader*, *BitPosition* )
+
+*BitmapHeader*
+: *required* An **RTL_BITMAP**, passed by reference: the bitmap.
+
+*BitPosition*
+: *required* A **Long**: the number of the bit, from 0.
+
+<!-- test: KernelHelperTests.RtlCheckBit_ReturnsTheBit -->
+The function returns a **Byte**, 1 when the bit is set and 0 when it is clear, as the WDK's `RtlCheckBit` macro does. It reads the bit from the **Long** of the buffer that holds it, bit 0 the lowest bit of the first.
+<!-- /test -->
+
+### RtlFailFast
+{: #RtlFailFast }
+
+Ends the system with a fast fail, an `int 29h` that the kernel answers with a bug check.
+
+Syntax: **RtlFailFast** *code*
+
+*code*
+: *required* A **Long**: the reason, such as `FAST_FAIL_CORRUPT_LIST_ENTRY` of [**RTL_FAST_FAIL**](#RTL_FAST_FAIL).
+
+The procedure is `Naked` and `CDecl`. The WDK's `RtlFailFast`, the intrinsic `__fastfail`, loads *code* into ECX and raises `int 29h`.
+
+<!-- test: none -- the procedure ends the system, so no program can call it and see the reason it gives; its code is two instructions, read from the package's source -->
+> [!NOTE] 0.3.0.6
+> The procedure's code is `mov ecx, 7` and `int 29h`: it raises the fast fail with the reason 7, `FAST_FAIL_FATAL_APP_EXIT`, whatever *code* is, so the bug check names that reason. [**FatalListEntryError**](#FatalListEntryError) passes `FAST_FAIL_CORRUPT_LIST_ENTRY`, 3.
 
 ### SeQuerySubjectContextToken
 {: #SeQuerySubjectContextToken }
@@ -1730,17 +1771,6 @@ A call of it is a use of *arg*, so the compiler's warning of an unused parameter
 <!-- /test -->
 
 The procedure does nothing, and has the [**DebugOnly**](../../../Core/Attributes#debugonly) attribute: a built driver contains no call of it.
-
-### ZwCurrentPeb
-{: #ZwCurrentPeb }
-
-Returns the address of the process environment block (PEB) of the current process.
-
-Syntax: **ZwCurrentPeb**()
-
-The function returns what [**RtlGetCurrentPeb**](#RtlGetCurrentPeb) returns. The WDK has no `ZwCurrentPeb` macro; the name is the one that the headers of the Native API give to `NtCurrentPeb`. The PEB is in the process's user-mode memory. Not documented by Microsoft.
-
-The 64-bit kernel does not export **RtlGetCurrentPeb** (see the note under [Declares](#declares)), so a 64-bit driver that calls **ZwCurrentPeb** does not load.
 
 ### ZwCurrentProcess
 {: #ZwCurrentProcess }

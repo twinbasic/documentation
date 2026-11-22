@@ -31,7 +31,7 @@ without a page in bold, with no link; link it when its page exists.
 
 ## The package
 
-- 1.8.141.0 compiles on BETA 1042 for win32 and win64, embedded with its own copy of OLEGuids.
+- 1.8.142.0 compiles on BETA 1042 for win32 and win64, embedded with its own copy of OLEGuids.
 - The controls are the classes marked `[COMControl]`. Each is a VB6 UserControl that makes a
   window of Windows' own control inside itself, so `hWnd` (that window) and `hWndUserControl`
   differ.
@@ -132,6 +132,11 @@ without a page in bold, with no link; link it when its page exists.
   the setting, a run of 276 cases had one of its last cases (WindowedLabelTests, the last
   fixture) "not return" on win32 in some runs, a different one each time. A case that loads
   HostForm many times itself counts against the same limit.
+- **`HotKeyTests.SetRules_KeyWithAnInvalidCombination_GetsTheDefaultModifiers` can fail once
+  on win64 with modifiers 4 (`vbAltMask`)**, a modifier the case never sends: the control
+  reads the keyboard's state, which a key held elsewhere changes. Seen once in three runs of
+  1.8.142.0, whose HotKey is unchanged from 1.8.141.0; it passed on the run after. Before
+  `--update` records it, run win64 again.
 - **A case does not read `Err.Number` after an assignment that succeeds**: twinBASIC leaves 438
   there (WIP.BugHunt.md, *UserControl*). It checks the value the property then has. A case
   assigns directly, not through `CallByName`, which reports another error number.

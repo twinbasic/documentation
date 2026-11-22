@@ -639,6 +639,19 @@ Module WDMLayoutTests
     End Sub
 
     [TestCase]
+    Public Sub GENERAL_LOOKASIDE_Layout()
+        Expect.Begin
+        Dim t As GENERAL_LOOKASIDE
+        Dim b As LongPtr = VarPtr(t)
+        #If Win64 Then
+            Expect.AreEqual 128, LenB(t), "LenB of GENERAL_LOOKASIDE"
+        #Else
+            Expect.AreEqual 72, LenB(t), "LenB of GENERAL_LOOKASIDE"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
     Public Sub GENERAL_LOOKASIDE_LAYOUT_Layout()
         Expect.Begin
         Dim t As GENERAL_LOOKASIDE_LAYOUT
@@ -733,12 +746,12 @@ Module WDMLayoutTests
         #Else
             Expect.AreEqual 20, LenB(t), "LenB of IMAGE_INFO"
         #End If
+        Expect.AreEqual 0, Off(b, VarPtr(t.Properties)), "offset of IMAGE_INFO.Properties"
         #If Win64 Then
             Expect.AreEqual 8, Off(b, VarPtr(t.ImageBase)), "offset of IMAGE_INFO.ImageBase"
         #Else
             Expect.AreEqual 4, Off(b, VarPtr(t.ImageBase)), "offset of IMAGE_INFO.ImageBase"
         #End If
-        Expect.AreEqual 0, Off(b, VarPtr(t.Properties)), "offset of IMAGE_INFO.Properties"
         #If Win64 Then
             Expect.AreEqual 16, Off(b, VarPtr(t.ImageSelector)), "offset of IMAGE_INFO.ImageSelector"
         #Else
@@ -1351,9 +1364,16 @@ Module WDMLayoutTests
         Expect.AreEqual 572, Off(b, VarPtr(t.CryptoExponent)), "offset of KUSER_SHARED_DATA.CryptoExponent"
         Expect.AreEqual 576, Off(b, VarPtr(t.TimeZoneId)), "offset of KUSER_SHARED_DATA.TimeZoneId"
         Expect.AreEqual 580, Off(b, VarPtr(t.LargePageMinimum)), "offset of KUSER_SHARED_DATA.LargePageMinimum"
-        Expect.AreEqual 780, Off(b, VarPtr(t.Reserved2(0))), "offset of KUSER_SHARED_DATA.Reserved2"
+        Expect.AreEqual 584, Off(b, VarPtr(t.AitSamplingValue)), "offset of KUSER_SHARED_DATA.AitSamplingValue"
+        Expect.AreEqual 588, Off(b, VarPtr(t.AppCompatFlag)), "offset of KUSER_SHARED_DATA.AppCompatFlag"
+        Expect.AreEqual 592, Off(b, VarPtr(t.RNGSeedVersion)), "offset of KUSER_SHARED_DATA.RNGSeedVersion"
+        Expect.AreEqual 600, Off(b, VarPtr(t.GlobalValidationRunlevel)), "offset of KUSER_SHARED_DATA.GlobalValidationRunlevel"
+        Expect.AreEqual 604, Off(b, VarPtr(t.TimeZoneBiasStamp)), "offset of KUSER_SHARED_DATA.TimeZoneBiasStamp"
+        Expect.AreEqual 608, Off(b, VarPtr(t.NtBuildNumber)), "offset of KUSER_SHARED_DATA.NtBuildNumber"
         Expect.AreEqual 612, Off(b, VarPtr(t.NtProductType)), "offset of KUSER_SHARED_DATA.NtProductType"
         Expect.AreEqual 616, Off(b, VarPtr(t.ProductTypeIsValid)), "offset of KUSER_SHARED_DATA.ProductTypeIsValid"
+        Expect.AreEqual 617, Off(b, VarPtr(t.Reserved0)), "offset of KUSER_SHARED_DATA.Reserved0"
+        Expect.AreEqual 618, Off(b, VarPtr(t.NativeProcessorArchitecture)), "offset of KUSER_SHARED_DATA.NativeProcessorArchitecture"
         Expect.AreEqual 620, Off(b, VarPtr(t.NtMajorVersion)), "offset of KUSER_SHARED_DATA.NtMajorVersion"
         Expect.AreEqual 624, Off(b, VarPtr(t.NtMinorVersion)), "offset of KUSER_SHARED_DATA.NtMinorVersion"
         Expect.AreEqual 628, Off(b, VarPtr(t.ProcessorFeatures(0))), "offset of KUSER_SHARED_DATA.ProcessorFeatures"
@@ -1361,21 +1381,26 @@ Module WDMLayoutTests
         Expect.AreEqual 696, Off(b, VarPtr(t.Reserved3)), "offset of KUSER_SHARED_DATA.Reserved3"
         Expect.AreEqual 700, Off(b, VarPtr(t.TimeSlip)), "offset of KUSER_SHARED_DATA.TimeSlip"
         Expect.AreEqual 704, Off(b, VarPtr(t.AlternativeArchitecture)), "offset of KUSER_SHARED_DATA.AlternativeArchitecture"
+        Expect.AreEqual 708, Off(b, VarPtr(t.BootId)), "offset of KUSER_SHARED_DATA.BootId"
         Expect.AreEqual 712, Off(b, VarPtr(t.SystemExpirationDate)), "offset of KUSER_SHARED_DATA.SystemExpirationDate"
         Expect.AreEqual 720, Off(b, VarPtr(t.SuiteMask)), "offset of KUSER_SHARED_DATA.SuiteMask"
         Expect.AreEqual 724, Off(b, VarPtr(t.KdDebuggerEnabled)), "offset of KUSER_SHARED_DATA.KdDebuggerEnabled"
-        Expect.AreEqual 725, Off(b, VarPtr(t.NXSupportPolicy)), "offset of KUSER_SHARED_DATA.NXSupportPolicy"
+        Expect.AreEqual 725, Off(b, VarPtr(t.MitigationPolicies)), "offset of KUSER_SHARED_DATA.MitigationPolicies"
+        Expect.AreEqual 726, Off(b, VarPtr(t.CyclesPerYield)), "offset of KUSER_SHARED_DATA.CyclesPerYield"
         Expect.AreEqual 728, Off(b, VarPtr(t.ActiveConsoleId)), "offset of KUSER_SHARED_DATA.ActiveConsoleId"
         Expect.AreEqual 732, Off(b, VarPtr(t.DismountCount)), "offset of KUSER_SHARED_DATA.DismountCount"
         Expect.AreEqual 736, Off(b, VarPtr(t.ComPlusPackage)), "offset of KUSER_SHARED_DATA.ComPlusPackage"
         Expect.AreEqual 740, Off(b, VarPtr(t.LastSystemRITEventTickCount)), "offset of KUSER_SHARED_DATA.LastSystemRITEventTickCount"
         Expect.AreEqual 744, Off(b, VarPtr(t.NumberOfPhysicalPages)), "offset of KUSER_SHARED_DATA.NumberOfPhysicalPages"
         Expect.AreEqual 748, Off(b, VarPtr(t.SafeBootMode)), "offset of KUSER_SHARED_DATA.SafeBootMode"
-        Expect.AreEqual 752, Off(b, VarPtr(t.TraceLogging)), "offset of KUSER_SHARED_DATA.TraceLogging"
+        Expect.AreEqual 749, Off(b, VarPtr(t.VirtualizationFlags)), "offset of KUSER_SHARED_DATA.VirtualizationFlags"
+        Expect.AreEqual 750, Off(b, VarPtr(t.Reserved12(0))), "offset of KUSER_SHARED_DATA.Reserved12"
+        Expect.AreEqual 752, Off(b, VarPtr(t.SharedDataFlags)), "offset of KUSER_SHARED_DATA.SharedDataFlags"
+        Expect.AreEqual 756, Off(b, VarPtr(t.DataFlagsPad(0))), "offset of KUSER_SHARED_DATA.DataFlagsPad"
         Expect.AreEqual 760, Off(b, VarPtr(t.TestRetInstruction)), "offset of KUSER_SHARED_DATA.TestRetInstruction"
+        Expect.AreEqual 768, Off(b, VarPtr(t.QpcFrequency)), "offset of KUSER_SHARED_DATA.QpcFrequency"
         Expect.AreEqual 776, Off(b, VarPtr(t.SystemCall)), "offset of KUSER_SHARED_DATA.SystemCall"
         Expect.AreEqual 784, Off(b, VarPtr(t.SystemCallPad(0))), "offset of KUSER_SHARED_DATA.SystemCallPad"
-        Expect.AreEqual 800, Off(b, VarPtr(t.TickCountQuad)), "offset of KUSER_SHARED_DATA.TickCountQuad"
         Expect.AreEqual 816, Off(b, VarPtr(t.Cookie)), "offset of KUSER_SHARED_DATA.Cookie"
         Expect.Done
     End Sub
@@ -3231,6 +3256,15 @@ Module WDMLayoutTests
     End Sub
 
     [TestCase]
+    Public Sub SLIST_HEADER_Layout()
+        Expect.Begin
+        Dim t As SLIST_HEADER
+        Dim b As LongPtr = VarPtr(t)
+        ' Variable-length in C: its size is not compared.
+        Expect.Done
+    End Sub
+
+    [TestCase]
     Public Sub TOKEN_PRIVILEGES_Layout()
         Expect.Begin
         Dim t As TOKEN_PRIVILEGES
@@ -3315,28 +3349,6 @@ Module WDMLayoutTests
         #Else
             Expect.AreEqual 24, Off(b, VarPtr(t.VolumeLabel(0))), "offset of VPB.VolumeLabel"
         #End If
-        Expect.Done
-    End Sub
-
-    [TestCase]
-    Public Sub _GENERAL_LOOKASIDE_Layout()
-        Expect.Begin
-        Dim t As _GENERAL_LOOKASIDE
-        Dim b As LongPtr = VarPtr(t)
-        #If Win64 Then
-            Expect.AreEqual 128, LenB(t), "LenB of _GENERAL_LOOKASIDE"
-        #Else
-            Expect.AreEqual 72, LenB(t), "LenB of _GENERAL_LOOKASIDE"
-        #End If
-        Expect.Done
-    End Sub
-
-    [TestCase]
-    Public Sub _SLIST_HEADER_Layout()
-        Expect.Begin
-        Dim t As _SLIST_HEADER
-        Dim b As LongPtr = VarPtr(t)
-        ' Variable-length in C: its size is not compared.
         Expect.Done
     End Sub
 

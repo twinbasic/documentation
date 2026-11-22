@@ -87,10 +87,10 @@ Module WDMCompileTests
     End Sub
 
     ' The Tag of a remove lock is a PVOID: IoReleaseRemoveLockAndWait takes it as IoAcquireRemoveLock
-    ' does, a LongPtr.
+    ' does, a LongPtr, after the lock, as the WDK's macro takes its two arguments.
     Public Sub WDM_IoReleaseRemoveLockAndWait_TakesALongPtrTag()
         Dim lk As IO_REMOVE_LOCK, tag As LongPtr
-        IoReleaseRemoveLockAndWait lk, tag, LenB(lk) ' CASE IoReleaseRemoveLockAndWaitTakesALongPtrTag: none
+        IoReleaseRemoveLockAndWait lk, tag ' CASE IoReleaseRemoveLockAndWaitTakesALongPtrTag: none
     End Sub
 
     ' modWDM's MsgBox (three arguments) is meant to override VBA's, as its LCase, UCase and InStr

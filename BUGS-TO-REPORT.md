@@ -14135,3 +14135,58 @@ Severity: medium. A program that lays out its controls in `Form_Load` gets a bro
 
 <!-- Reproducer: bugs/cef-move-before-ready/ (mode run, exe: exit 10 and the access violation, win32, BETA 1042, 2026-11-15; with both forms unmoved it exits 11). Not run as win64: only the win32 runtime was downloaded (owner's approval was for that one); the reproducer falls back to the package's default runtime folder, and uses %TEMP%\tb-cef when the runtime is there. The later calls' errors come from a scratch probe (Navigate and Unload raise -2147467259 under On Error Resume Next; DocumentTitle raises nothing; the Automation error box still shows). Found 2026-11-15 taking the CEF picture (shoot_docs setup cef): the fixture moved its control in Sub Main. Narrowed with a full-memory dump of the browser process, taken by running the exe under cdb -o on a private desktop. The fixture now places its control in its .tbform. docs/Reference/Built-In/CEF/CefBrowser/index.md (Lifecycle) carries a WARNING labelled BETA 1042 for it; when a fixed build is released, the WARNING goes. -->
 
+---
+
+## A `FastCall` Declare bound in the import table does not pass its arguments in registers, in a 32-bit build
+
+**Describe the bug**
+With **Runtime Binding Of DLL Declares** set to **No** (`project.dllRuntimeBinding: false`), a 32-bit build calls a `Declare` marked `FastCall` without its arguments in ECX and EDX, where a `__fastcall` routine reads them. The routine works on other values, and the program then ends with an access violation. The same project with run-time binding passes the arguments as it should. The IDE run of the probe (`[RunAfterBuild]`) is wrong too, and the compiler restarts after it. Observed with `tbrun` and `tbrun --exe`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `declare-fastcall-static-binding-32bit.twinproj` (attached as `declare-fastcall-static-binding-32bit.zip`). Its Settings set Runtime Binding Of DLL Declares to No, and its one source file, `Startup.twin`, is:
+   ```
+   Module Startup
+
+       ' RtlUlongByteSwap is __fastcall in the 32-bit ntdll.dll: it takes its argument in ECX and
+       ' returns its bytes in the opposite order.
+       Private Declare PtrSafe Function RtlUlongByteSwap FastCall Lib "ntdll" (ByVal Source As Long) As Long
+
+       Public Sub Main()
+           Dim r As Long = RtlUlongByteSwap(&H12345678)
+           Debug.Print "RtlUlongByteSwap(&H12345678) = &H" & Hex$(r)
+           Debug.Print "after the call"
+       End Sub
+
+       [RunAfterBuild]
+       Private Sub Built()
+           Debug.Cls
+           Main
+       End Sub
+
+   End Module
+   ```
+2. Build it as win32. The DEBUG CONSOLE shows `RtlUlongByteSwap(&H12345678) = &H6000000` (the value changes from run to run), and the compiler restarts.
+3. Run the built exe. It ends with an access violation (0xC0000005) after the call.
+
+What decides it, each in a 32-bit build:
+- Runtime Binding Of DLL Declares set to Yes, the default: the exe prints `&H78563412` and ends normally.
+- A `FastCall` Declare of a routine with two parameters, in a DLL of our own whose `__fastcall` routine records ECX and EDX: with run-time binding both hold the arguments; bound in the import table neither does, and the exe ends with an access violation.
+- A `Declare` with the settings of a package: the package's own Settings decide the binding of its Declares, and a package that turns run-time binding off gives the program that uses it the same calls.
+
+A 64-bit build has one calling convention, so `FastCall` changes nothing there.
+
+**Expected behavior**
+The call passes its arguments as a `__fastcall` call does, the first two in ECX and EDX, however the Declare is bound: `RtlUlongByteSwap(&H12345678)` returns `&H78563412`, and the program goes on.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1042
+
+**Additional context**
+A kernel-mode driver has to bind its Declares in the import table, since the kernel resolves a driver's imports when it loads it and the run-time binder's `LoadLibrary` and `GetProcAddress` are not there. The 32-bit kernel exports many routines as `__fastcall` (`IofCallDriver`, `ObfDereferenceObject`, `ExAcquireFastMutex`, `KfRaiseIrql`, ...), so a 32-bit driver cannot call any of them through a Declare. Found with the contributed package tbKMode 0.3.0.6, whose Settings turn run-time binding off for that reason: its test exe ends at the first `FastCall` routine it calls. VB6 has no comparison: it has no `FastCall`.
+
+Severity: high for 32-bit drivers: no `__fastcall` routine of the kernel can be called, and the driver corrupts its stack with no diagnostic. Low otherwise: a user-mode program rarely needs both.
+
+<!-- Reproducer: bugs/declare-fastcall-static-binding-32bit/ (mode run, exe; expect is tbrun exit 5, a byte swap other than &H78563412 from the IDE run and the exe's access violation). The two-parameter case and the run-time-binding control were run with tbrun --exe on scratch trees that are not kept, against tbKMode's stand-in for ntoskrnl.exe (test/package-tests/tbKMode/exe/fake-kernel). Found 2026-11-22 moving the tbKMode section to 0.3.0.6. docs/Reference/Contributed/tbKMode/index.md carries a WARNING labelled BETA 1042 under "Building a driver"; when a fixed build is released, the WARNING goes, and tbKMode's 32-bit exe cases run past their FastCall routines again. -->
+

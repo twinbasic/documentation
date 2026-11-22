@@ -8,7 +8,6 @@
   },
   "ctypes": {
     "GENERAL_LOOKASIDE_LAYOUT": "GENERAL_LOOKASIDE",
-    "_GENERAL_LOOKASIDE": "GENERAL_LOOKASIDE",
     "FLT_PARAMETERS_Create": "FLT_PARAMETERS.Create",
     "FLT_PARAMETERS_Read": "FLT_PARAMETERS.Read",
     "FLT_PARAMETERS_Write": "FLT_PARAMETERS.Write",
@@ -41,8 +40,6 @@
     "OB_POST_OPERATION_PARAMETERS.GrantedAccess": "CreateHandleInformation.GrantedAccess",
     "OB_PRE_OPERATION_INFORMATION.KernelHandle": "Flags",
     "OB_POST_OPERATION_INFORMATION.KernelHandle": "Flags",
-    "KUSER_SHARED_DATA.NXSupportPolicy": "MitigationPolicies",
-    "KUSER_SHARED_DATA.TraceLogging": "SharedDataFlags",
     "GENERAL_LOOKASIDE_LAYOUT.AllocateMissesHits": "AllocateMisses",
     "GENERAL_LOOKASIDE_LAYOUT.FreeMissesHits": "FreeMisses",
     "GENERAL_LOOKASIDE_LAYOUT.LastAllocateMissesHits": "LastAllocateMisses",
@@ -57,15 +54,13 @@
   "skipType": [],
   "skipField": [
     "IRP.Pad",
-    "KUSER_SHARED_DATA.Pad",
     "NPAGED_LOOKASIDE_LIST.align",
     "NPAGED_LOOKASIDE_LIST.Lock__ObsoleteButDoNotDelete",
-    "_GENERAL_LOOKASIDE.L",
-    "_GENERAL_LOOKASIDE.align",
-    "_SLIST_HEADER.Alignment",
+    "GENERAL_LOOKASIDE.L",
+    "GENERAL_LOOKASIDE.align",
+    "SLIST_HEADER.Alignment",
     "KEY_VALUE_LAYER_INFORMATION.IsTombstone",
     "IO_DRIVER_CREATE_CONTEXT.SiloContext",
-    "KUSER_SHARED_DATA.SystemCallReturn",
     "FLT_REGISTRATION.SectionNotificationCallback"
   ],
   "skipName": [
@@ -100,19 +95,33 @@
     "FILE_IO_PRIORITY_HINT_INFORMATION": {
       "x64": 8,
       "x86": 8
+    },
+    "IMAGE_LOAD_CONFIG_DIRECTORY32": {
+      "x64": 196,
+      "x86": 196
+    },
+    "IMAGE_LOAD_CONFIG_DIRECTORY64": {
+      "x64": 328,
+      "x86": 328
     }
   },
   "values": {
-    "MAXWORD": 65535,
+    "MAXWORD": -1,
     "PS_ATTRIBUTE_NUMBER_MASK": 65535,
     "FLT_REGISTRATION_VERSION": 514,
     "FLT_ALL_CONTEXTS": 63,
-    "UNWIND_HISTORY_TABLE_SIZE": 12
+    "UNWIND_HISTORY_TABLE_SIZE": 12,
+    "MAXUINT16": -1,
+    "MAXUSHORT": -1,
+    "USHRT_MAX": -1,
+    "_UI16_MAX": -1,
+    "MINSHORT": -32768,
+    "SCHAR_MIN": 128
   },
   "comments": {
-    "modWDM": "The fields are the package's names for C fields of other names, or for a member of a C union or nested structure that it flattens (IRP's Tail.Overlay, IO_STACK_LOCATION's Parameters). The skipped fields are padding, a wrapper (_GENERAL_LOOKASIDE.L holds the layout C spells out in place) or a bitfield (IsTombstone); the KernelHandle bitfields are checked as the Flags they share with. GENERAL_LOOKASIDE_LAYOUT is a macro in wdm.h, the body of GENERAL_LOOKASIDE, whose size includes the cache-line alignment the package puts in _GENERAL_LOOKASIDE. MDL_MAPPING_FLAGS is an enum member named like the C enum type, which has no value. IO_DRIVER_CREATE_CONTEXT.SiloContext is declared under #If NTDDI_VERSION >= NTDDI_WIN10_RS1, and the package never defines NTDDI_VERSION, so the field is never there: its size case says so. KUSER_SHARED_DATA.SystemCallReturn has no counterpart in KUSER_SHARED_DATA (its place is inside QpcFrequency). MaximumWaitReason ends its enumeration and grows with each SDK. KEY_VALUE_FULL_INFORMATION has no Name field: the name follows its last field, where C's Name[1] starts, and C's size counts that one character and its padding. The values are those of headers the kernel's do not include: MAXWORD of winnt.h (0xffff) and PS_ATTRIBUTE_NUMBER_MASK of the Native API's headers (0x0000ffff). SE_SID is a union of a SID and a buffer of SECURITY_MAX_SID_SIZE bytes, 68, which ends in an array but is no variable-length structure: its size is asserted. CHAR_MIN and CHAR_MAX are not compared: the package takes char as unsigned, as a Byte is and its page says (C with /J), where limits.h, without /J, has -128 and 127 (owner, 2026-11-17).",
+    "modWDM": "The fields are the package's names for C fields of other names, or for a member of a C union or nested structure that it flattens (IRP's Tail.Overlay, IO_STACK_LOCATION's Parameters). The skipped fields are padding, a wrapper (GENERAL_LOOKASIDE.L holds the layout C spells out in place) or a bitfield (IsTombstone); the KernelHandle bitfields are checked as the Flags they share with. GENERAL_LOOKASIDE_LAYOUT is a macro in wdm.h, the body of GENERAL_LOOKASIDE, whose size includes the cache-line alignment the package puts in GENERAL_LOOKASIDE. MDL_MAPPING_FLAGS is an enum member named like the C enum type, which has no value. IO_DRIVER_CREATE_CONTEXT.SiloContext is declared under #If NTDDI_VERSION >= NTDDI_WIN10_RS1, and the package never defines NTDDI_VERSION, so the field is never there: its size case says so. MaximumWaitReason ends its enumeration and grows with each SDK. KEY_VALUE_FULL_INFORMATION has no Name field: the name follows its last field, where C's Name[1] starts, and C's size counts that one character and its padding. PS_ATTRIBUTE_NUMBER_MASK is of the Native API's headers (0x0000ffff), which the kernel's do not include. The 16-bit limits are the package's convention (fafalone, tbKMode#4, 2026-11-19; owner, 2026-11-22): an Integer or a Byte holding the bits of the unsigned or signed C value, as the package's USHORT fields are Integers. MAXUINT16, MAXUSHORT, MAXWORD (winnt.h's), USHRT_MAX and _UI16_MAX are &HFFFF, -1; MINSHORT is &H8000, -32768, where C's 0x8000 is the int 32768; SCHAR_MIN is the Byte &H80, 128, the bits of C's -128. SE_SID is a union of a SID and a buffer of SECURITY_MAX_SID_SIZE bytes, 68, which ends in an array but is no variable-length structure: its size is asserted. CHAR_MIN and CHAR_MAX are not compared: the package takes char as unsigned, as a Byte is and its page says (C with /J), where limits.h, without /J, has -128 and 127 (owner, 2026-11-17).",
     "modFltMgr": "The package builds without FLT_MGR_WIN8: FLT_REGISTRATION of version 0x0202, no section context, where the headers, for the kit's newest Windows, declare version 0x0203.",
     "modSysInfo": "The skipped names end their enumerations and grow with each SDK. The noSize types end in a SID or a nested variable-length structure. The three ctypes are the WDK names of the package's _EX structures: FILE_RENAME_INFORMATION and FILE_LINK_INFORMATION hold the Flags of the Ex classes in a union with ReplaceIfExists. The fields are the package's names for C fields of other names; its padding field (Pad) has none. FILE_IO_PRIORITY_HINT_INFORMATION is 8 bytes as phnt declares it (DECLSPEC_ALIGN(8)), where wdm.h's is 4, and the kernel takes any length from 4 up for FileIoPriorityHintInformation, query and set, and writes 4 (Windows 10 22H2, 32-bit and 64-bit callers). POLICY_AUDIT_SUBCATEGORY_COUNT is 59 in WDK 10.0.22621, which decides and which the module matches, and 60 from 10.0.26100 on: a note.",
-    "modImage": "UNWIND_HISTORY_TABLE_SIZE is winnt.h's (and rtlsupportapi.h's), which no kernel header declares."
+    "modImage": "UNWIND_HISTORY_TABLE_SIZE is winnt.h's (and rtlsupportapi.h's), which no kernel header declares. IMAGE_LOAD_CONFIG_DIRECTORY32 and IMAGE_LOAD_CONFIG_DIRECTORY64 end in UmaFunctionPointers, the field WDK 10.0.28000 adds after 10.0.22621's last, GuardMemcpyFunctionPointer: a version the package chose (0.3.0.6), and the loader reads only the Size the image gives, so their sizes are asserted."
   }
 }

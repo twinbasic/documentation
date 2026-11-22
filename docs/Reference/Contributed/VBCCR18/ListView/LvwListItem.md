@@ -142,7 +142,7 @@ Syntax: *object*.**SubItems**( *Index* ) [ = *value* ]
 : A **String**. Assigning a number that the item has no subitem for yet adds the subitems up to it, with empty texts in between. See [Subitems](Items#subitems).
 
 <!-- test: ListViewItemsTests.SubItems_LongText_IsReturnedWhole -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > **SubItems** returns at most the first 259 characters of a subitem's text. The text is kept whole: the subitem's [**Text**](LvwListSubItem#text) in [**ListSubItems**](#listsubitems) returns all of it, and the control shows as much as fits.
 
 ### Tag

@@ -83,7 +83,8 @@ const BUILDS = { Win64: "64-bit", "Not (Win64)": "32-bit" };
 const code = (v) => (v.includes("`") ? `\`\` ${v} \`\`` : `\`${v}\``);
 function constValue(members, name, given) {
   const declared = (sig) => {
-    const m = /^Public Const \w+(?: As \w+)? = (.+)$/.exec(sig);
+    // Keywords in any case: tbKMode 0.3.0.6 writes `Public const KI_USER_SHARED_DATA as LongPtr`.
+    const m = /^Public Const \w+(?: As \w+)? = (.+)$/i.exec(sig);
     if (!m) throw new Error(`${name}: no value in ${sig}`);
     return m[1].trim();
   };
@@ -162,7 +163,10 @@ function modulePage(module, api, expect) {
         return `| **${n}**{: #${n} } | ${constValue(members, n, given).replace(/\|/g, "\\|")} | ${text} |`;
       }),
     ],
-    aliases: (list, d) => typed(list, d, (n) => aliases.find((a) => a.name === n).target),
+    // An alias declared once for each build (modImage's IMAGE_LOAD_CONFIG_DIRECTORY) has each of its
+    // targets: the snapshot keeps no #If of an alias, so its description says which build has which.
+    aliases: (list, d) =>
+      typed(list, d, (n) => [...new Set(aliases.filter((a) => a.name === n).map((a) => a.target))].join("** or **")),
   };
   // `typed`: the Type column a variables table has (modDisk's).
   const table = (section, option) => {

@@ -23,8 +23,8 @@ A pointer is a **LongPtr**. A parameter with no `ByVal` is passed by reference: 
 
 ## Declares
 
-<!-- test: KernelHelperTests.RtlCompareUnicodeString_OrdersTheStrings, KernelHelperTests.ObDereferenceObject_PassesTheObject, KernelHelperTests.ExReleaseResourceLite_PassesTheResource -->
-Every routine is in `ntoskrnl.exe`. Each declaration names it there, takes the routine's parameters and returns its result, and a routine that the 32-bit kernel exports as `__fastcall`, such as **ObDereferenceObject**, is declared `FastCall`, apart from those of the warnings and the note below.
+<!-- test: KernelHelperTests.RtlCompareUnicodeString_OrdersTheStrings, KernelHelperTests.ObDereferenceObject_PassesTheObject, KernelHelperTests.ExReleaseResourceLite_PassesTheResource, compile ZwDuplicateObjectTakesTargetProcessHandle, compile IoCreateDeviceReturnsThePointer, compile ExTryToAcquireFastMutexReturnsWhetherAcquired, compile SeLocateProcessImageNameReturnsThePointer, compile ExInitializeNPagedLookasideListTakesTheList, compile CmCallbackReleaseKeyObjectIDExTakesThePointer, compile DbgPrintEx1TakesTheComponentAndTheLevel, compile DbgPrintEx2TakesTheComponentAndTheLevel, compile DbgPrintEx3TakesTheComponentAndTheLevel, compile ZwMapViewOfSectionTakesTheInheritDisposition, compile ExAllocatePool2TakesPoolFlags, compile RtlCompareUnicodeStringsTakesTheLengths, KernelHelperTests.ExAllocatePool2_PassesTheSizeAndTheTag, KernelHelperTests.RtlFindFirstRunClear_ReturnsTheStartingIndex, KernelHelperTests.RtlFindLongestRunClear_ReturnsTheStartingIndex, KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel, KernelHelperTests.ObCloseHandle_PassesTheHandle, KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments, WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2, probe ordinal -->
+Every routine is in `ntoskrnl.exe`, but in a 32-bit build the fast mutexes and the IRQL and spin-lock routines, which the 32-bit kernel leaves to `hal.dll`, are declared there. Each declaration names its routine, takes the routine's parameters and returns its result, and a routine that the 32-bit kernel exports as `__fastcall`, such as **ObDereferenceObject**, is declared `FastCall`, apart from those of the warning and the note below. **ZwCreateUserProcess**, which the 64-bit kernel exports with no name, is declared `Alias "#2"`, its ordinal.
 <!-- /test -->
 
 <!-- test: compile ZwCreateKeyClassIsOptional, compile ZwCreateKeyTransactedClassIsOptional, compile ZwCreateRegistryTransactionObjAttributesIsOptional, compile ZwOpenProcessClientIDIsOptional -->
@@ -33,41 +33,15 @@ A parameter that C declares optional, and that is a structure passed by referenc
 
 {{table:declares}}
 
-<!-- test: compile ZwDuplicateObjectTakesTargetProcessHandle, compile IoCreateDeviceReturnsThePointer, compile ExTryToAcquireFastMutexReturnsWhetherAcquired, compile SeLocateProcessImageNameReturnsThePointer, compile ExInitializeNPagedLookasideListTakesTheList, compile CmCallbackReleaseKeyObjectIDExTakesThePointer, compile DbgPrintEx1TakesTheComponentAndTheLevel, compile DbgPrintEx2TakesTheComponentAndTheLevel, compile DbgPrintEx3TakesTheComponentAndTheLevel, compile ZwMapViewOfSectionTakesTheInheritDisposition, compile ExAllocatePool2TakesPoolFlags, KernelHelperTests.ExAllocatePool2_PassesTheSizeAndTheTag, compile RtlCompareUnicodeStringsTakesTheLengths, KernelHelperTests.RtlFindFirstRunClear_ReturnsTheStartingIndex, KernelHelperTests.RtlFindLongestRunClear_ReturnsTheStartingIndex -->
-> [!WARNING] 0.3.0.5
-> These declarations do not match the kernel's routines, and a driver must not call them. It declares each one itself, as the WDK has the routine.
->
-> - **CmCallbackReleaseKeyObjectIDEx** takes a **UNICODE_STRING**, but **CmCallbackGetKeyObjectIDEx** gives the name back as a pointer, which is what the routine takes. The compiler refuses the pointer, and a **UNICODE_STRING** passed instead gives the routine the address of the driver's own variable, not of the string it allocated.
-> - **DbgPrintEx1**, **DbgPrintEx2** and **DbgPrintEx3** lack the first two parameters of `DbgPrintEx`, *ComponentId* and *Level*, and start at *Format*. The routine takes the address of the format as the component ID and the first argument as the level, and reads its format from whatever follows the arguments.
-> - **ExAllocatePool2** and **ExAllocatePool3** take a **POOL_TYPE** where the routines take `POOL_FLAGS`, a 64-bit set of `POOL_FLAG_` bits, which the package does not declare. A **POOL_TYPE** value asks for something else: `NonPagedPool`, 0, names no pool, and `PagedPool`, 1, is `POOL_FLAG_USE_QUOTA`. In a 32-bit driver the routine also reads the size and the tag from the wrong places.
-> - **ExInitializeNPagedLookasideList** takes *Lookaside* as a **LongPtr** passed by reference, where the routine takes the list. The routine initializes a list at the address of that variable, and writes over what follows it.
-> - **ExTryToAcquireFastMutex** is a **Sub**, but the routine returns whether it acquired the mutex. A driver cannot tell whether it holds the mutex.
-> - **IoCreateDevice** takes *DeviceObject* as a **DEVICE_OBJECT**, where the routine takes the address of a variable that receives a pointer to the new device object. The routine writes the pointer over the start of the structure, and the driver does not receive its device object.
-> - **RtlCompareUnicodeStrings** lacks the length of each string, the routine's second and fourth parameters, so the routine takes the address of the second string as the length of the first. It also names `ntdll`, as **RtlDuplicateUnicodeString** does (see the note below).
-> - **RtlFindFirstRunClear** and **RtlFindLongestRunClear** take *StartingIndex* `ByVal`, where the routine takes the address of a variable and writes the run's first index there: the routine writes to the address that the value names.
-> - **SeLocateProcessImageName** takes *ImageFileName* as a **UNICODE_STRING**, where the routine takes the address of a variable that receives a pointer to the string it allocates. The routine writes the pointer over the start of the structure.
-> - **ZwDuplicateObject** lacks the routine's third parameter, *TargetProcessHandle*. The routine takes the address meant for *TargetHandle* as *TargetProcessHandle*, each later argument as the parameter before the one it is meant for, and its last parameter, *Options*, from whatever follows.
-> - **ZwMapViewOfSection** lacks the routine's eighth parameter, *InheritDisposition*, between *ViewSize* and *AllocationType*. The routine takes *AllocationType* as the disposition, *Win32Protect* as the allocation type, and its protection from whatever follows.
+<!-- test: KernelHelperTests.KeAcquireSpinLock_PassesTheLock -->
+> [!WARNING] 0.3.0.6
+> In a 32-bit driver [**KeAcquireSpinLock**](#KeAcquireSpinLock) is a declaration of `KfAcquireSpinLock` of `hal.dll`, a `__fastcall` routine that takes the lock in a register, but the package declares it without `FastCall` and calls it as a `__stdcall` routine, which pushes the lock on the stack. The routine acquires some other spin lock than the driver's, and the call leaves the stack 4 bytes off. A 64-bit driver is not affected.
 
-<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, WDMExportTests.ZwCreateUserProcess_IsTheKernelsUnnamedOrdinal2, KernelHelperTests.RtlDuplicateUnicodeString_CallsTheKernel, probe ordinal, probe x86exports -->
-> [!NOTE] 0.3.0.5
-> The 64-bit kernel of Windows 10 version 22H2 does not export these routines: **KeQuerySystemTime**, **RtlAcquirePebLock**, **RtlAllocateAndInitializeSid**, **RtlCheckBit**, **RtlCreateServiceSid**, **RtlDefaultNpAcl**, **RtlEqualPrefixSid**, **RtlFreeSid**, **RtlGetCurrentPeb**, **RtlReleasePebLock**, **RtlUniform**, **ZwCompactKeys**, **ZwCompressKey**, **ZwFreezeRegistry**, **ZwInitializeRegistry**, **ZwLoadKey2**, **ZwLoadKey3**, **ZwLockRegistryKey**, **ZwNotifyChangeMultipleKeys**, **ZwQueryMultipleValueKey**, **ZwQueryOpenSubKeys**, **ZwQueryOpenSubKeysEx**, **ZwResumeProcess**, **ZwSaveMergedKeys**, **ZwSuspendProcess** and **ZwThawRegistry**. **RtlDuplicateUnicodeString**, which the kernel exports, is declared in the user-mode `ntdll`, which the kernel does not load for a driver. A driver imports only the routines that it calls, so a driver that calls none of them is not affected; one that calls any of them does not load.
+<!-- test: WDMExportTests.Declares_NameExportsOfTheKernel, probe x86exports -->
+> [!NOTE] 0.3.0.6
+> The 64-bit kernel of Windows 10 version 22H2 does not export **RtlFreeSid**, and **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says. A driver imports only the routines that it calls, so a driver that calls neither is not affected; one that calls **RtlFreeSid**, or **ExFreePool2** on Windows 10, does not load.
 >
-> The same kernel exports **ZwCreateUserProcess** with no name, as ordinal 2, so the package's declaration, which imports it by name, does not load either. A driver that declares it with `Alias "#2"` imports it by ordinal. **ExFreePool2** is exported from Windows 11 and Windows Server 2022 on, as [its page](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exfreepool2) says: a driver that calls it does not load on Windows 10.
->
-> A 32-bit driver has more of them. The 32-bit `ntoskrnl.exe` does not export **ExAcquireFastMutex**, **ExReleaseFastMutex**, **ExTryToAcquireFastMutex**, **KeGetCurrentIrql**, **KeRaiseIrqlToDpcLevel**, **KeReleaseSpinLock** and **KfRaiseIrql**, which the 32-bit `hal.dll` exports, and neither file exports `KeAcquireSpinLockRaiseToDpc`, which **KeAcquireSpinLock** names, or **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx**. A 32-bit driver that calls any of them does not load. A driver declares a routine of `hal.dll` itself, with `Lib "hal.dll"`. The 64-bit kernel exports all of them.
-
-<!-- test: KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp, KernelHelperTests.ExAcquireFastMutex_PassesTheMutex, KernelHelperTests.ExReleaseFastMutex_PassesTheMutex, KernelHelperTests.ExTryToAcquireFastMutex_PassesTheMutex, KernelHelperTests.InterlockedPopEntrySList_PassesTheListHead, KernelHelperTests.ExReleaseResourceAndLeaveCriticalRegion_PassesTheResource, KernelHelperTests.ObCloseHandle_PassesTheHandle, KernelHelperTests.ExInterlockedAddUlong_PassesTheArguments -->
-> [!WARNING] 0.3.0.5
-> In a 32-bit driver, these routines take their arguments in registers, as `__fastcall` routines, but the package declares them without `FastCall` and calls them as `__stdcall` routines, which push the arguments on the stack:
->
-> - **ExAcquireFastMutex**, **ExReleaseFastMutex** and **ExTryToAcquireFastMutex**
-> - **ExInterlockedAddUlong**
-> - **ExReleaseResourceAndLeaveCriticalRegion**
-> - **InterlockedPopEntrySList**
-> - **IofCallDriver**, which [**IoCallDriver**](#IoCallDriver) calls
->
-> Each routine receives other values than its arguments, and the call leaves the stack 4 bytes off, 8 for **ExInterlockedAddUlong** and **IofCallDriver**. **ObCloseHandle** is the other way round: the package declares it `FastCall`, but the kernel's routine is `__stdcall` and reads its arguments from the stack, so it receives other values than its arguments, and the call leaves the stack 8 bytes off. A 64-bit driver is not affected. The 32-bit [**InterlockedIncrement**](#InterlockedIncrement) has a warning of its own.
+> A 32-bit driver has more of them. In a 32-bit build **KeLowerIrql** names `KfLowerIrql` of `ntoskrnl.exe`, which only the 32-bit `hal.dll` exports, and no 32-bit file exports **RtlInitializeBitMapEx**, **RtlClearAllBitsEx**, **RtlClearBitEx**, **RtlSetBitEx**, **RtlTestBitEx**, **RtlFindSetBitsEx** and **RtlFindSetBitsAndClearEx**. A 32-bit driver that calls any of them does not load; it calls **KfLowerIrql** in place of **KeLowerIrql**. The 64-bit kernel exports all of them.
 
 ## Types
 
@@ -77,83 +51,55 @@ Each structure that the WDK's kernel-mode headers declare has the size of its C 
 {{table:types}}
 <!-- /test -->
 
-<!-- test: WDMLayoutTests.IMAGE_INFO_Layout, WDMLayoutTests.IMAGE_INFO_EX_Layout, WDMLayoutTests.OB_POST_OPERATION_INFORMATION_Layout, WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout, WDMLayoutTests.KUSER_SHARED_DATA_Layout -->
-> [!WARNING] 0.3.0.5
-> Five structures do not have the C structure's layout, so a driver that reads one the kernel passes it reads other data than the field it names. A driver declares each one itself, as the WDK has it.
->
-> - **IMAGE_INFO** has **ImageBase** first and **Properties** second, where C has the union of the properties first. In a 32-bit build the two fields have changed places; in a 64-bit build every field is at another offset, and the structure is 32 bytes where C's is 40. **IMAGE_INFO_EX** holds one: in a 64-bit build it is 48 bytes where C's is 56, and its **FileObject** is at offset 40 where C's is at 48.
-> - **KUSER_SHARED_DATA** has the layout of an older Windows near its end. Its **SystemCall** is at offset 768, where the WDK has **QpcFrequency**, and the WDK's **SystemCall** is at 776; its **SystemCallPad** is at 776 where the WDK's is at 784. Its **Reserved2** is an array at offset 584, where the WDK's **Reserved2** is at 780. The structure is 824 bytes where the WDK's is 1848, and has none of the fields after **Cookie**.
-> - **OB_POST_OPERATION_INFORMATION.Parameters** is an **OB_POST_OPERATION_PARAMETERS** where wdm.h has a pointer to one. In a 64-bit build it is at offset 36 where the pointer is at 40, and the structure is 40 bytes where C's is 48. In a 32-bit build the field is at the pointer's offset, so its **GrantedAccess** is the pointer.
-> - **OB_PRE_OPERATION_INFORMATION.Parameters** is a **Byte** array of the size of the parameters' union where wdm.h has a pointer to the union: 16 bytes where the pointer is 4 in a 32-bit build, and 24 where it is 8 in a 64-bit one. The structure is 36 bytes where C's is 24, and 56 where C's is 40. The array starts at the pointer's offset, so its first 4 or 8 bytes are the pointer, and the rest is past the end of the structure the kernel passes.
+<!-- test: WDMFieldTests.OB_PRE_OPERATION_INFORMATION_ParametersIsAPointer, WDMLayoutTests.OB_PRE_OPERATION_INFORMATION_Layout -->
+> [!WARNING] 0.3.0.6
+> **OB_PRE_OPERATION_INFORMATION.Parameters** is a **Byte** array of the size of the parameters' union where wdm.h has a pointer to the union: 16 bytes where the pointer is 4 in a 32-bit build, and 24 where it is 8 in a 64-bit one. The structure is 36 bytes where C's is 24, and 56 where C's is 40. The array starts at the pointer's offset, so its first 4 or 8 bytes are the pointer, and the rest is past the end of the structure the kernel passes. A driver that reads the parameters reads them at the address in the first 4 or 8 bytes.
 
-<!-- test: WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout, WDMLayoutTests.DEVICE_OBJECT_Layout, WDMLayoutTests._GENERAL_LOOKASIDE_Layout, WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout, WDMLayoutTests.SE_SID_Layout -->
-> [!NOTE] 0.3.0.5
+<!-- test: WDMLayoutTests.IO_DRIVER_CREATE_CONTEXT_Layout, WDMLayoutTests.DEVICE_OBJECT_Layout, WDMLayoutTests.NPAGED_LOOKASIDE_LIST_Layout, WDMLayoutTests.SE_SID_Layout, WDMLayoutTests.KUSER_SHARED_DATA_Layout -->
+> [!NOTE] 0.3.0.6
 > These structures differ from the C structures in size, and one in the start of a field:
 >
-> - **DEVICE_OBJECT.Queue** starts 3 bytes before C's **Queue**, at offset 49 where C's is at 52 in a 32-bit build and at 77 where C's is at 80 in a 64-bit one: its first 3 bytes are the padding after **StackSize**. In a 64-bit build the structure is 328 bytes where C's is 336. Its other fields are at their places.
-> - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. Its other fields are at their places.
-> - In a 32-bit build **_GENERAL_LOOKASIDE** is 128 bytes where C's is 72, and **NPAGED_LOOKASIDE_LIST**, which holds one, is 192 where C's is 80: their padding arrays, **align**, are longer than C's padding. In a 64-bit build both have C's sizes.
+> - In a 32-bit build **DEVICE_OBJECT.Queue** starts 3 bytes before C's **Queue**, at offset 49 where C's is at 52: its first 3 bytes are the padding after **StackSize**. Its other fields are at their places, and a 64-bit build has C's layout.
+> - **IO_DRIVER_CREATE_CONTEXT** lacks C's last field, **SiloContext**: it is 16 bytes where C's is 20 in a 32-bit build, and 32 where C's is 40 in a 64-bit one. The package declares the field under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1`, as the WDK does, but defines no `NTDDI_VERSION`, and a project's conditional constants do not reach a package's code, so the field is never there. Its other fields are at their places.
+> - **KUSER_SHARED_DATA** ends at **Cookie**: it is 824 bytes where the WDK's is 1848, and has none of the WDK's fields after **Cookie**. Its other fields are at their places.
+> - In a 64-bit build **NPAGED_LOOKASIDE_LIST** is 144 bytes where C's is 128: its padding array, **align**, follows the **GENERAL_LOOKASIDE**, which already has C's size. A 32-bit build has C's size.
 > - **SE_SID** is a buffer of **SECURITY_MAX_SID_SIZE** bytes, 60, where C's is 68 (see the note under [Constants](#constants)), so it cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
 
 ## Aliases
 
-Other names for **Byte**, which the declarations use where C has the type of the same name. A variable of one of them is a **Byte**.
+Other names for a type, which the declarations use where C has the type of the same name: **CBoolean**, **KIRQL** and **KPROCESSOR_MODE** for **Byte**, and **POOL_FLAGS** for **LongLong**. A variable of one of them is a variable of that type.
 
 {{table:aliases}}
 
 ## Enumerations
 
 <!-- test: {{cases:WDMValueTests}} -->
-Every member that the WDK's kernel-mode headers declare has the value of the WDK's constant or enumerator of the same name, apart from those of the warning and the note below.
+Every member that the WDK's kernel-mode headers declare has the value of the WDK's constant or enumerator of the same name.
 
 {{table:enums}}
 <!-- /test -->
 
-<!-- test: WDMValueTests.POOL_TYPE_Values -->
-> [!WARNING] 0.3.0.5
-> Three members of **POOL_TYPE** do not have the WDK's values: **DontUseThisType** is 2 where the WDK's is 3, **PagedPoolCacheAligned** is 3 where it is 5, and **MaxPoolType** is 4 where it is 7. A driver that allocates memory of **PagedPoolCacheAligned** asks the kernel for its `DontUseThisType`. A driver writes the WDK's value, 5, itself.
-
-<!-- test: WDMValueTests.MEMORY_CACHING_TYPE_Values, WDMValueTests.ProcessAccessRights_Values -->
-> [!NOTE] 0.3.0.5
-> Two members do not have the WDK's values:
->
-> - **MmNotMapped** of **MEMORY_CACHING_TYPE** is 7, where the WDK's is -1.
-> - **PROCESS_ALL_ACCESS** of **ProcessAccessRights** is `&H1F0FFF`, the value of Windows versions before Windows Vista, where the WDK's is `&H1FFFFF`. A handle opened with it lacks the rights that Windows Vista added.
-
 ## Constants
 
-The major and minor function codes of an IRP, the parts of an I/O control code that [**CTL_CODE**](#CTL_CODE) takes, the `SL_` flags of an I/O stack location, the values of **RtlQueryRegistryValues** and its **RTL_QUERY_REGISTRY_TABLE**, and the sizes and revisions of security descriptors and SIDs.
+The major and minor function codes of an IRP, the parts of an I/O control code that [**CTL_CODE**](#CTL_CODE) takes, the `SL_` flags of an I/O stack location, the values of **RtlQueryRegistryValues** and its **RTL_QUERY_REGISTRY_TABLE**, the `POOL_FLAG_` flags of **ExAllocatePool2**, the addresses in **KUSER_SHARED_DATA**, and the sizes and revisions of security descriptors and SIDs.
 
 {{table:consts}}
 
 <!-- test: WDMValueTests.Constants_Values -->
-> [!WARNING] 0.3.0.5
-> **MOUNTDEVCONTROLTYPE** is 4 and **MOUNTMGRCONTROLTYPE** is 6, where the WDK's device types are `&H4D` and `&H6D`. The I/O control codes built from them are not the WDK's, as the two mount codes that [**InitIOCTLs**](#InitIOCTLs) sets are not. A driver uses the WDK's values.
+The limits of the 16-bit types hold the bits of the C value in an **Integer**, as the package's fields of those types are **Integers**: **MAXUINT16**, **MAXUSHORT**, **MAXWORD**, **USHRT_MAX** and **_UI16_MAX** are `&HFFFF`, -1, and **MINSHORT** is `&H8000`, -32768. Each equals a field that holds the bits of a `USHORT` of 65535, or a `SHORT` of -32768, but not the **Long** 65535 or 32768. **SCHAR_MIN** is the **Byte** `&H80`, 128, the bits of C's -128, as the package takes a `char` as a **Byte**.
+<!-- /test -->
 
 <!-- test: WDMValueTests.Constants_Values -->
-> [!NOTE] 0.3.0.5
-> These constants do not have the values of the C headers they come from:
->
-> - **SECURITY_MAX_SID_SIZE** is 60, where the WDK's is 68: a buffer of that size cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
-> - **RTL_QUERY_REGISTRY_TYPECHECK_MASK** is 0, where the WDK's is `&HFF000000`.
-> - **MAXUINT16**, **MAXUSHORT**, **MAXWORD**, **USHRT_MAX** and **_UI16_MAX** are -1, where C's are 65535: `&HFFFF` is an **Integer** literal. They equal an **Integer** field that holds the bits of a **USHORT** of 65535, but not a **Long** of 65535.
-> - **MINSHORT** is -32768, where the WDK's is `&H8000`, 32768, for the same reason.
-> - **SCHAR_MIN** is 128, a **Byte** of `&H80`, where C's is -128.
-> - **PS_ATTRIBUTE_NUMBER_MASK** is -1, an **Integer** literal of `&HFFFF`, where the Native API's mask is `&HFFFF`, 65535: as a **Long** it keeps every bit.
+> [!NOTE] 0.3.0.6
+> **SECURITY_MAX_SID_SIZE** is 60, where the WDK's is 68: a buffer of that size cannot hold a SID of **SID_MAX_SUB_AUTHORITIES** subauthorities.
 
 ## Variables
 
-The I/O control codes are variables, not constants: each is 0 until [**InitIOCTLs**](#InitIOCTLs) sets it. **SOURCE_FILE** is the file name that [**IoAcquireRemoveLock**](#IoAcquireRemoveLock) passes to the kernel.
+<!-- test: WDMHelperTests.InitIOCTLs_SetsTheMountCodes, WDMHelperTests.InitIOCTLs_SetsFormatTracks -->
+The I/O control codes are variables, not constants: each is 0 until [**InitIOCTLs**](#InitIOCTLs) sets it, to the WDK's value. **IOCTL_DISK_FORMAT_TRACKS** is a constant. **SOURCE_FILE** is the file name that [**IoAcquireRemoveLock**](#IoAcquireRemoveLock) passes to the kernel, as ANSI bytes.
+<!-- /test -->
 
 {{table:variables}}
-
-<!-- test: WDMHelperTests.InitIOCTLs_SetsTheMountCodes -->
-> [!WARNING] 0.3.0.5
-> **IOCTL_MOUNTMGR_QUERY_POINTS** and **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** are not the WDK's codes after [**InitIOCTLs**](#InitIOCTLs) has set them. A driver sets the two itself.
-
-<!-- test: WDMHelperTests.InitIOCTLs_SetsFormatTracks -->
-> [!NOTE] 0.3.0.5
-> [**InitIOCTLs**](#InitIOCTLs) does not set **IOCTL_DISK_FORMAT_TRACKS**, which stays 0.
 
 ## Procedures
 

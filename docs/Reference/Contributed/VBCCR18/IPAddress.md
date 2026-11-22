@@ -220,7 +220,7 @@ As the [common events](Common#mousedown-mousemove-mouseup) of these names. Over 
 <!-- /test -->
 
 <!-- test: IPAddressTests.MouseMove_OverTheBorder_XAndYAreInTwips -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > Over the border of the control and over the dots between the fields, *X* and *Y* are in pixels, not in twips. A program that uses the position converts those values itself, or ignores the events there.
 
 ### SelChange

@@ -1,10 +1,11 @@
 /*
- * A user-mode stand-in for ntoskrnl.exe, for tbKMode's exe cases: a DLL that the test exe loads by
- * its full path before it calls any of the package's helpers, so that their `Lib "ntoskrnl.exe"`
- * Declares resolve to it. It is never a kernel and starts nothing: the memory and string routines do
- * in user mode what the kernel's do, and the kernel's other routines only record their arguments,
- * which the cases read back through the FakeKernel_ functions. A routine it does not export makes
- * the helper that calls it fail with an error, never reach the real kernel.
+ * A user-mode stand-in for ntoskrnl.exe, for tbKMode's exe cases: a DLL that tbrun copies into the
+ * test exe's folder (../prepare.mjs), where the loader finds it before System32's, so that the
+ * package's `Lib "ntoskrnl.exe"` Declares, which the exe imports, resolve to it. It is never a
+ * kernel and starts nothing: the memory and string routines do in user mode what the kernel's do,
+ * and the kernel's other routines only record their arguments, which the cases read back through
+ * the FakeKernel_ functions. A routine the exe imports that it does not export stops the exe from
+ * starting, so a new case that calls one adds it here and to ntoskrnl.def.
  *
  * Its exports are named in ntoskrnl.def, so that an x86 build exports them undecorated. Built by
  * ../prepare.mjs for each architecture. The routines are __stdcall (NTAPI) where the
@@ -122,13 +123,26 @@ LONG __stdcall KeInitializeSpinLock(ULONG_PTR *lock) {
   return 0;
 }
 
+static void record(const char *name, ULONG_PTR a, ULONG_PTR b);
+
 UCHAR __stdcall KeAcquireSpinLockRaiseToDpc(ULONG_PTR *lock) {
+  record("KeAcquireSpinLockRaiseToDpc", (ULONG_PTR)lock, 0);
   if (spinLockCount < 16) spinLocks[spinLockCount++] = lock;
   *lock = 1;
   return 0;
 }
 
+/* The kernel's releases the lock and sets the IRQL to irql. A lock that KeAcquireSpinLockRaiseToDpc
+   did not acquire (0, as KeInitializeSpinLock leaves it) is counted, with the IRQL it was given:
+   the kernel would lower its caller's IRQL to that, PASSIVE_LEVEL for 0. */
+static LONG unmatchedReleases;
+static LONG unmatchedIrql = -1;
+
 void __stdcall KeReleaseSpinLock(ULONG_PTR *lock, UCHAR irql) {
+  if (!*lock) {
+    unmatchedReleases++;
+    unmatchedIrql = irql;
+  }
   *lock = 0;
 }
 
@@ -142,7 +156,10 @@ static void recordLock(const ULONG_PTR *lock) { lockHeldAtEntry = lock && *lock 
 
 /* --- the routines that the x86 kernel exports as __fastcall (wdm.h: FASTCALL): each records its
    name and its arguments, and returns a value the cases know. In an x64 build __fastcall is the
-   one convention, so there they are what the x64 kernel's are. --- */
+   one convention, so there they are what the x64 kernel's are. Until tbKMode 0.3.0.6 the x86
+   build had naked stand-ins that popped what a Declare in the wrong convention pushed; from 0.3.0.6
+   the package declares each of these as the kernel has it, so one C routine serves both builds,
+   and a Declare that changes its convention again leaves the exe's stack off. --- */
 
 static const char *lastCall = "";
 static ULONG_PTR lastArgs[2];
@@ -153,119 +170,34 @@ static void record(const char *name, ULONG_PTR a, ULONG_PTR b) {
   lastArgs[1] = b;
 }
 
+/* KfAcquireSpinLock, the x86 hal.dll's __fastcall routine that the package's 32-bit KeAcquireSpinLock
+   names (the stand-in for hal.dll jumps here). It reads the lock from ECX. The package declares it
+   without FastCall (tbKMode 0.3.0.6), whose call pushes the lock: this records ECX, where the
+   routine reads the lock, and the address pushed, and pops the 4 bytes pushed, so that the exe goes
+   on. Once the package declares it FastCall, this must pop nothing (`ret 0`). The x64 kernel has no
+   such routine; the x64 build exports one so that both builds share ntoskrnl.def. */
 #ifdef _M_IX86
-
-/* x86: each routine reads its arguments where the kernel's __fastcall routine does, the first in
-   ECX and the second in EDX, and records them. A routine the package declares without FastCall
-   then pops the bytes its __stdcall call pushed, which the kernel's routine does not (it pops none:
-   its arguments are in registers), so that the exe goes on to its next case instead of running on
-   a stack 4 or 8 bytes off. A routine the package declares FastCall (ObfDereferenceObject and
-   ExReleaseResourceLite, since tbKMode 0.3.0.5) is called with nothing pushed, and pops nothing,
-   as the kernel's does. */
-
 static void __stdcall record_std(const char *name, ULONG_PTR a, ULONG_PTR b) { record(name, a, b); }
+static const char nm_KfAcquireSpinLock[] = "KfAcquireSpinLock";
 
-static LONG __stdcall increment_guarded(LONG volatile *addend) {
-  LONG result = 0;
-  __try {
-    result = ++*addend;
-  } __except (EXCEPTION_EXECUTE_HANDLER) {
-    result = 0;
-  }
-  return result;
-}
-
-static const char nm_IofCallDriver[] = "IofCallDriver";
-static const char nm_ObfDereferenceObject[] = "ObfDereferenceObject";
-static const char nm_ExReleaseResourceLite[] = "ExReleaseResourceLite";
-static const char nm_ExReleaseResourceAndLeaveCriticalRegion[] = "ExReleaseResourceAndLeaveCriticalRegion";
-static const char nm_ExAcquireFastMutex[] = "ExAcquireFastMutex";
-static const char nm_ExReleaseFastMutex[] = "ExReleaseFastMutex";
-static const char nm_ExTryToAcquireFastMutex[] = "ExTryToAcquireFastMutex";
-static const char nm_InterlockedPopEntrySList[] = "InterlockedPopEntrySList";
-static const char nm_InterlockedIncrement[] = "InterlockedIncrement";
-
-#define FASTCALL_RECORD(fn, nm, result, pop) \
-  __declspec(naked) void fn(void) {          \
-    __asm push edx                           \
-    __asm push ecx                           \
-    __asm push offset nm                     \
-    __asm call record_std                    \
-    __asm mov eax, result                    \
-    __asm ret pop                            \
-  }
-
-FASTCALL_RECORD(IofCallDriver, nm_IofCallDriver, 0x1234, 8)
-FASTCALL_RECORD(ObfDereferenceObject, nm_ObfDereferenceObject, 0x1234, 0)
-FASTCALL_RECORD(ExReleaseResourceLite, nm_ExReleaseResourceLite, 0, 0)
-FASTCALL_RECORD(ExReleaseResourceAndLeaveCriticalRegion, nm_ExReleaseResourceAndLeaveCriticalRegion, 0, 4)
-FASTCALL_RECORD(ExAcquireFastMutex, nm_ExAcquireFastMutex, 0, 4)
-FASTCALL_RECORD(ExReleaseFastMutex, nm_ExReleaseFastMutex, 0, 4)
-FASTCALL_RECORD(ExTryToAcquireFastMutex, nm_ExTryToAcquireFastMutex, 1, 4)
-FASTCALL_RECORD(fake_InterlockedPopEntrySList, nm_InterlockedPopEntrySList, 0x1234, 4)
-
-/* ObCloseHandle is __stdcall in the x86 kernel (wdm.h: NTKERNELAPI, no FASTCALL), and reads its
-   two arguments from the stack, as this does. The package declares it FastCall (tbKMode 0.3.0.5),
-   whose call of two arguments pushes nothing, so this pops nothing either and the exe goes on; once
-   the package declares it without FastCall, its call pushes 8 bytes, and this must pop them
-   (`ret 8`), as the kernel's routine does. */
-static const char nm_ObCloseHandle[] = "ObCloseHandle";
-
-__declspec(naked) void ObCloseHandle(void) {
+__declspec(naked) void KfAcquireSpinLock(void) {
   __asm {
-    push dword ptr [esp + 8]
-    push dword ptr [esp + 8]
-    push offset nm_ObCloseHandle
+    push dword ptr [esp + 4]
+    push ecx
+    push offset nm_KfAcquireSpinLock
     call record_std
     xor eax, eax
-    ret 0
-  }
-}
-
-/* ExAllocatePool2 is __stdcall in both kernels, with a ULONG64 Flags first (wdm.h: POOL_FLAGS), so
-   that the x86 kernel's routine reads the size at [esp+12] and the tag at [esp+16], and pops 16
-   bytes. The package passes a 4-byte POOL_TYPE (tbKMode 0.3.0.5), and its call pushes 12: this reads
-   where the kernel's routine does, records the size and the tag, and pops the 12 bytes pushed, so
-   that the exe goes on. Once the package passes 8 bytes of flags, this must pop 16 (`ret 16`). */
-static const char nm_ExAllocatePool2[] = "ExAllocatePool2";
-
-__declspec(naked) void ExAllocatePool2(void) {
-  __asm {
-    push dword ptr [esp + 16]
-    push dword ptr [esp + 16]
-    push offset nm_ExAllocatePool2
-    call record_std
-    xor eax, eax
-    ret 12
-  }
-}
-
-/* ExInterlockedAddUlong is __fastcall in the x86 kernel (wdm.h: FASTCALL): Addend in ECX, Value in
-   EDX and the lock on the stack, which it pops (4 bytes). The package declares it without FastCall
-   (tbKMode 0.3.0.5), whose call pushes all three, 12 bytes: this records ECX and EDX, where the
-   kernel's routine reads Addend and Value, adds nothing, since ECX is no address the case gave, and
-   pops the 12 bytes pushed, so that the exe goes on. Once the package declares it FastCall, this
-   must pop 4 (`ret 4`), and may do the addition and record the lock as the x64 version does. */
-static const char nm_ExInterlockedAddUlong[] = "ExInterlockedAddUlong";
-
-FASTCALL_RECORD(ExInterlockedAddUlong, nm_ExInterlockedAddUlong, 0, 12)
-
-/* Records ECX and increments what it points at, when that is an address. */
-__declspec(naked) void fake_InterlockedIncrement(void) {
-  __asm {
-    push ecx
-    push 0
-    push ecx
-    push offset nm_InterlockedIncrement
-    call record_std
-    call increment_guarded
     ret 4
   }
 }
-
 #else
+UCHAR __fastcall KfAcquireSpinLock(ULONG_PTR *lock) {
+  record("KfAcquireSpinLock", (ULONG_PTR)lock, 0);
+  return 0;
+}
+#endif
 
-/* x64: records the lock it was given, and Addend and Value, and adds as the kernel's does. */
+/* Records the lock it was given, and Addend and Value, and adds as the kernel's does. */
 ULONG __fastcall ExInterlockedAddUlong(ULONG *addend, ULONG value, ULONG_PTR *lock) {
   recordLock(lock);
   record("ExInterlockedAddUlong", (ULONG_PTR)addend, value);
@@ -316,13 +248,13 @@ LONG __stdcall ObCloseHandle(void *handle, CHAR previousMode) {
   return 0;
 }
 
-/* The x86 kernel's export, which the package's 32-bit Declare names; the x64 kernel has none. */
+/* The x86 kernel's export, which the package's 32-bit Declare names; the x64 kernel has none.
+   It increments what it is given, as the kernel's does; a case passes the address of a Long. */
 LONG __fastcall fake_InterlockedIncrement(LONG volatile *addend) {
   record("InterlockedIncrement", (ULONG_PTR)addend, 0);
   return ++*addend;
 }
 
-#endif
 
 /* The x64 kernel's name for InterlockedPopEntrySList, which the package's 64-bit Declare uses. */
 void *__fastcall ExpInterlockedPopEntrySList(void *head) {
@@ -392,6 +324,14 @@ ULONG __stdcall RtlFindLongestRunClear(void *bitmap, ULONG *startingIndex) {
   return 3;
 }
 
+/* Maps an MDL's pages, as the kernel's does for MmGetSystemAddressForMdlSafe when the MDL has no
+   system address yet: here it records the call and maps nothing. */
+void *__stdcall MmMapLockedPagesSpecifyCache(void *mdl, CHAR accessMode, LONG cacheType, void *requestedAddress,
+                                             ULONG bugCheckOnFailure, ULONG priority) {
+  record("MmMapLockedPagesSpecifyCache", (ULONG_PTR)mdl, (ULONG_PTR)(ULONG)priority);
+  return NULL;
+}
+
 /* The kernel's exported object-type variables, each holding a POBJECT_TYPE: here an address the
    cases know, so that they can tell the variable from its value. */
 ULONG_PTR PsProcessType = 0x50000001;
@@ -426,10 +366,14 @@ const char *__stdcall FakeKernel_LastCall(void) { return lastCall; }
 ULONG_PTR __stdcall FakeKernel_LastArg(LONG i) { return i >= 0 && i < 2 ? lastArgs[i] : 0; }
 LONG __stdcall FakeKernel_LockHeldAtEntry(void) { return lockHeldAtEntry; }
 const char *__stdcall FakeKernel_RemoveLockFile(void) { return removeLockFile; }
+LONG __stdcall FakeKernel_UnmatchedReleases(void) { return unmatchedReleases; }
+LONG __stdcall FakeKernel_UnmatchedIrql(void) { return unmatchedIrql; }
 void __stdcall FakeKernel_ResetCall(void) {
   record("", 0, 0);
   lockHeldAtEntry = -1;
   removeLockFile[0] = 0;
+  unmatchedReleases = 0;
+  unmatchedIrql = -1;
 }
 
 BOOL WINAPI DllMain(HINSTANCE h, DWORD reason, LPVOID reserved) { return TRUE; }

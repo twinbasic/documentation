@@ -92,7 +92,7 @@ Debug.Print MonthView1.CalendarCount, MonthView1.Height > Before
 <!-- /test -->
 
 <!-- test: MonthViewTests.MonthColumns_Three_ShowsThreeMonths -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > With visual styles, a **MonthColumns** of 2 or more can make the control show fewer months across than it says. The control asks Windows for the room of that many months side by side, but leaves out the gap that Windows puts between two months, so Windows may fit one month fewer. Whether it does depends on the font and the scaling of the screen: in a program run from the IDE, 2 shows one month, 3 shows two, and so on, while a built program can show them all, or all but the last for a larger number. Without visual styles the control adds the gaps itself and shows them all. **MonthRows** is right, and so are the control's width and the result of [**ComputeControlSize**](#computecontrolsize), which are those of the months shown.
 >
 > [**CalendarCount**](#calendarcount) tells how many months are shown. A program that needs *n* months across sets **MonthColumns** to *n*, and to *n* + 1 if **CalendarCount** is then short, keeping the product with **MonthRows** at 12 or less.

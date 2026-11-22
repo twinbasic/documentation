@@ -155,7 +155,7 @@ Properties
 The edge of the form that the control is attached to, where it takes the form's whole width. A member of [**AlignConstants**](../../../VBRUN/Constants/AlignConstants).
 
 <!-- test: sample statusbar-align -->
-> [!NOTE] 1.8.141.0, BETA 1042
+> [!NOTE] 1.8.142.0, BETA 1042
 > twinBASIC has not implemented **Align**: an assignment compiles with the warning TB0009 and changes nothing, and the property goes on returning **vbAlignNone**, also for a status bar drawn on a form. A program places and sizes the status bar itself.
 
 ```tb probe check_run arch=win32,win64 id=statusbar-align

@@ -52,11 +52,9 @@ Syntax: **ExInitializeFastMutex** *FastMutex*
 *FastMutex*
 : *required* A **FAST_MUTEX**, passed by reference, in memory that is not paged.
 
-The procedure sets **Owner** and **Contention** to 0 and initializes **Event** as a synchronization event that is not signalled, with [**KeInitializeEvent**](#KeInitializeEvent). The WDK's routine of the same name, an inline function in wdm.h, also sets **Count** to `FM_LOCK_BIT`, 1, the value of a mutex that no thread holds.
-
 <!-- test: KernelHelperTests.ExInitializeFastMutex_InitializesAsTheWdkDoes -->
-> [!WARNING] 0.3.0.5
-> **ExInitializeFastMutex** leaves **Count** as it was, where the WDK's routine sets it to 1. **Count** is 1 only in a mutex that no thread holds, and in a new **FAST_MUTEX** variable it is 0. A driver sets **Count** to 1 itself after the call.
+As the WDK's routine of the same name, an inline function in wdm.h, does, the procedure sets **Count** to [**FM_LOCK_BIT**](#FM_LOCK_BIT), 1, the value of a mutex that no thread holds, sets **Owner** and **Contention** to 0, and initializes **Event** as a synchronization event that is not signalled, with [**KeInitializeEvent**](#KeInitializeEvent).
+<!-- /test -->
 
 ### ExIsResourceAcquiredLite
 {: #ExIsResourceAcquiredLite }
@@ -140,17 +138,13 @@ Syntax: **InitIOCTLs**
 
 The codes are variables, not constants, and each is 0 until **InitIOCTLs** sets it, so a driver calls it once before it uses them, as in its **DriverEntry**. It sets each with [**CTL_CODE**](#CTL_CODE): **IOCTL_DISK_GET_DRIVE_GEOMETRY**, **IOCTL_DISK_GET_PARTITION_INFO**, **IOCTL_DISK_IS_WRITABLE**, **IOCTL_DISK_GET_MEDIA_TYPES**, **IOCTL_DISK_CHECK_VERIFY**, **IOCTL_DISK_SET_PARTITION_INFO**, **IOCTL_MOUNTMGR_QUERY_POINTS**, **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** and **FT_BALANCED_READ_MODE**.
 
-<!-- test: WDMHelperTests.InitIOCTLs_SetsTheDiskCodes -->
-The six `IOCTL_DISK_` codes it sets are the WDK's.
+<!-- test: WDMHelperTests.InitIOCTLs_SetsTheDiskCodes, WDMHelperTests.InitIOCTLs_SetsTheMountCodes -->
+The codes it sets are the WDK's: the six `IOCTL_DISK_` codes, and the two mount codes, built from **MOUNTMGRCONTROLTYPE** and **MOUNTDEVCONTROLTYPE**: `&H6D0008` and `&H4D0008`.
 <!-- /test -->
 
-<!-- test: WDMHelperTests.InitIOCTLs_SetsTheMountCodes, WDMValueTests.Constants_Values -->
-> [!WARNING] 0.3.0.5
-> The two mount codes are not the WDK's: **IOCTL_MOUNTMGR_QUERY_POINTS** is `&H60008` where the WDK's is `&H6D0008`, and **IOCTL_MOUNTDEV_QUERY_DEVICE_NAME** is `&H40008` where the WDK's is `&H4D0008`. They are built from **MOUNTMGRCONTROLTYPE**, 6, and **MOUNTDEVCONTROLTYPE**, 4, where the WDK's device types are `&H6D` and `&H4D`. A driver sets the two variables to the WDK's values after the call.
-
 <!-- test: WDMHelperTests.InitIOCTLs_SetsFormatTracks -->
-> [!NOTE] 0.3.0.5
-> **InitIOCTLs** does not set **IOCTL_DISK_FORMAT_TRACKS**, which stays 0. A driver sets it to `&H7C018`, `CTL_CODE(IOCTL_DISK_BASE, 6, METHOD_BUFFERED, FILE_READ_ACCESS Or FILE_WRITE_ACCESS)`.
+**IOCTL_DISK_FORMAT_TRACKS** is a constant, `&H7C018`, which needs no call.
+<!-- /test -->
 
 ### InsertHeadList
 {: #InsertHeadList }
@@ -165,11 +159,9 @@ Syntax: **InsertHeadList** *ListHead*, *Entry*
 *Entry*
 : *required* A **LIST_ENTRY**, passed by reference: the entry to insert, usually a field of a larger structure.
 
-The WDK's routine of the same name links *Entry* between *ListHead* and the entry that was first, and sets that entry's **Blink** to *Entry*.
-
 <!-- test: KernelHelperTests.InsertHeadList_LinksTheEntryAfterTheHead -->
-> [!WARNING] 0.3.0.5
-> **InsertHeadList** copies the entry that was first into a local variable and links *Entry* to the copy. *Entry*'s **Flink** then points into the procedure's own stack, which is gone once it returns, and the **Blink** of the entry that was first is not changed: after an insert into an empty list, **ListHead.Blink** still points to *ListHead*. The list is broken from the first insert on. A driver sets the links itself, as the WDK's routine does.
+As the WDK's routine of the same name does, the procedure links *Entry* between *ListHead* and the entry that was first, and sets that entry's **Blink** to *Entry*.
+<!-- /test -->
 
 ### InsertTailList
 {: #InsertTailList }
@@ -184,11 +176,9 @@ Syntax: **InsertTailList** *ListHead*, *Entry*
 *Entry*
 : *required* A **LIST_ENTRY**, passed by reference: the entry to insert, usually a field of a larger structure.
 
-The WDK's routine of the same name links *Entry* between the entry that was last and *ListHead*, and sets that entry's **Flink** to *Entry*.
-
 <!-- test: KernelHelperTests.InsertTailList_LinksTheEntryBeforeTheHead -->
-> [!WARNING] 0.3.0.5
-> **InsertTailList** copies the entry that was last into a local variable and links *Entry* to the copy. *Entry*'s **Blink** then points into the procedure's own stack, which is gone once it returns, and the **Flink** of the entry that was last is not changed: after an insert into an empty list, **ListHead.Flink** still points to *ListHead*. The list is broken from the first insert on. A driver sets the links itself, as the WDK's routine does.
+As the WDK's routine of the same name does, the procedure links *Entry* between the entry that was last and *ListHead*, and sets that entry's **Flink** to *Entry*.
+<!-- /test -->
 
 ### InStr
 {: #InStr }
@@ -203,11 +193,9 @@ Syntax: **InStr**( *szIn*, *szFind* )
 *szFind*
 : *required* A **LongPtr**: the address of the null-terminated UTF-16 string to find.
 
-The function has the name of VBA's **InStr** but takes the strings' addresses. A driver calls it as `modWDM.InStr`: without the module name the call is VBA's (see [Names shared with VBA](.#names-shared-with-vba)). It calls [**wcsstr**](#wcsstr), and returns 0 when *szFind* is not in *szIn*.
-
 <!-- test: KernelHelperTests.InStr_ReturnsTheCharacterPosition -->
-> [!WARNING] 0.3.0.5
-> For a string that is found, **InStr** returns `szIn` minus the address **wcsstr** returned: the negative of the match's offset in bytes, not its position in characters. `modWDM.InStr` of "mode" in "kernel mode" is -14, where VBA's **InStr** gives 8. A driver calls **wcsstr** and works out the position from the address *p* it returns: `(p - szIn) \ 2 + 1`.
+The function has the name of VBA's **InStr** but takes the strings' addresses. A driver calls it as `modWDM.InStr`: without the module name the call is VBA's (see [Names shared with VBA](.#names-shared-with-vba)). It calls [**wcsstr**](#wcsstr), and returns the position in characters of the first match, as VBA's **InStr** does, or 0 when *szFind* is not in *szIn*: `modWDM.InStr` of "mode" in "kernel mode" is 8.
+<!-- /test -->
 
 ### InterlockedAdd64
 {: #InterlockedAdd64 }
@@ -222,13 +210,13 @@ Syntax: **InterlockedAdd64** *Addend*, *Value*
 *Value*
 : *required* A **LongLong**: the value to add.
 
-<!-- test: KernelHelperTests.InterlockedAdd64_AddsTheValue -->
-Each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), acquires it with [**KeAcquireSpinLock**](#KeAcquireSpinLock), passes it with *Addend* and *Value* to [**ExInterlockedAddLargeInteger**](#ExInterlockedAddLargeInteger), and releases it. The procedure is a **Sub**: it returns nothing, where the WDK's `InterlockedAdd64`, a compiler intrinsic, returns the sum. The package describes it as not usable in a 32-bit driver.
+<!-- test: KernelHelperTests.InterlockedAdd64_AddsTheValue, KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree -->
+Each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), passes it with *Addend* and *Value* to [**ExInterlockedAddLargeInteger**](#ExInterlockedAddLargeInteger), which acquires and releases it, and then calls [**KeReleaseSpinLock**](#KeReleaseSpinLock) with it. The procedure is a **Sub**: it returns nothing, where the WDK's `InterlockedAdd64`, a compiler intrinsic, returns the sum. The package describes it as not usable in a 32-bit driver.
 <!-- /test -->
 
-<!-- test: KernelHelperTests.InterlockedAdd64_CallsWithTheLockFree -->
-> [!WARNING] 0.3.0.5
-> A call of **InterlockedAdd64** never returns. The procedure passes its spin lock to **ExInterlockedAddLargeInteger** while it holds it, and **ExInterlockedAddLargeInteger** acquires the lock it is given. A spin lock that is held is waited for until it is released, so the call waits without end. A driver calls **ExInterlockedAddLargeInteger** itself, with a spin lock that it has initialized with **KeInitializeSpinLock** and does not hold.
+<!-- test: KernelHelperTests.InterlockedAdd64_LeavesTheIrqlAsItWas -->
+> [!WARNING] 0.3.0.6
+> **InterlockedAdd64** calls **KeReleaseSpinLock** with a lock that it never acquired and an IRQL of 0. **KeReleaseSpinLock** sets the IRQL to the one it is given, so a call made at `APC_LEVEL` or `DISPATCH_LEVEL` returns at `PASSIVE_LEVEL`, and the driver goes on at an IRQL lower than the one it was at. A driver calls **ExInterlockedAddLargeInteger** itself, with a spin lock that it has initialized with **KeInitializeSpinLock**.
 
 ### InterlockedIncrement
 {: #InterlockedIncrement }
@@ -242,18 +230,16 @@ Syntax (32-bit): **InterlockedIncrement**( *Addend* )
 *Addend*
 : *required* A **Long**, passed by reference: the variable to increment.
 
-In a 64-bit build **InterlockedIncrement** is a **Sub** of the package: each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), acquires it with [**KeAcquireSpinLock**](#KeAcquireSpinLock), passes it to [**ExInterlockedAddUlong**](#ExInterlockedAddUlong) with *Addend* and 1, and releases it. In a 32-bit build it is a **Declare** of the kernel's `InterlockedIncrement`, a `__fastcall` routine there, which returns the incremented value. The WDK's [**InterlockedIncrement**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement) is a compiler intrinsic that returns the incremented value.
+<!-- test: KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree, KernelHelperTests.InterlockedIncrement_IncrementsTheValue -->
+In a 64-bit build **InterlockedIncrement** is a **Sub** of the package: each call initializes a spin lock of its own with [**KeInitializeSpinLock**](#KeInitializeSpinLock), passes it to [**ExInterlockedAddUlong**](#ExInterlockedAddUlong) with *Addend* and 1, which acquires and releases it, and then calls [**KeReleaseSpinLock**](#KeReleaseSpinLock) with it, as [**InterlockedAdd64**](#InterlockedAdd64) does. In a 32-bit build it is a **Declare** of the kernel's `InterlockedIncrement`, a `__fastcall` routine there, which returns the incremented value. The WDK's [**InterlockedIncrement**](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-interlockedincrement) is a compiler intrinsic that returns the incremented value.
+<!-- /test -->
 
-<!-- test: KernelHelperTests.InterlockedIncrement_CallsWithTheLockFree -->
-> [!WARNING] 0.3.0.5
-> In a 64-bit driver a call of **InterlockedIncrement** never returns. The procedure passes its spin lock to **ExInterlockedAddUlong** while it holds it, and **ExInterlockedAddUlong** acquires the lock it is given. A spin lock that is held is waited for until it is released, so the call waits without end. A driver calls **ExInterlockedAddUlong** itself, with a spin lock that it has initialized with **KeInitializeSpinLock** and does not hold.
-
-<!-- test: KernelHelperTests.InterlockedIncrement_IncrementsTheValue -->
-> [!WARNING] 0.3.0.5
-> In a 32-bit driver the kernel's `InterlockedIncrement` takes its argument in a register, but the package calls it as a `__stdcall` routine, which pushes the argument on the stack. The routine receives some other value than the variable's address, the variable keeps its value, and the call leaves the stack 4 bytes off.
+<!-- test: KernelHelperTests.InterlockedIncrement_LeavesTheIrqlAsItWas -->
+> [!WARNING] 0.3.0.6
+> In a 64-bit driver **InterlockedIncrement** calls **KeReleaseSpinLock** with a lock that it never acquired and an IRQL of 0, as **InterlockedAdd64** does: a call made at `APC_LEVEL` or `DISPATCH_LEVEL` returns at `PASSIVE_LEVEL`. A driver calls **ExInterlockedAddUlong** itself, with a spin lock that it has initialized with **KeInitializeSpinLock**.
 
 <!-- test: compile InterlockedIncrementReturnsTheValue -->
-> [!NOTE] 0.3.0.5
+> [!NOTE] 0.3.0.6
 > In a 64-bit build **InterlockedIncrement** is a **Sub**, so `n = InterlockedIncrement(v)` is refused with TB5033. In a 32-bit build it compiles.
 
 ### IoAcquireRemoveLock
@@ -272,11 +258,11 @@ Syntax: **IoAcquireRemoveLock**( *RemoveLock*, *Tag*, *Line* )
 *Line*
 : *required* A **Long**: the source line number to record with the acquisition.
 
-The function returns what [**IoAcquireRemoveLockEx**](#IoAcquireRemoveLockEx) returns: `STATUS_SUCCESS`, or `STATUS_DELETE_PENDING` when the device is being removed, and then the driver does not use it. The WDK's `IoAcquireRemoveLock` macro takes two arguments and passes the file name and line number of the call itself; the procedure takes the line number as *Line*, and passes the address of [**SOURCE_FILE**](#SOURCE_FILE) as the file name and `LenB` of the lock as its size.
-
 <!-- test: KernelHelperTests.IoAcquireRemoveLock_PassesTheTagTheFileAndTheLine -->
-> [!NOTE] 0.3.0.5
-> **IoAcquireRemoveLock** passes `StrPtr(SOURCE_FILE)`, the address of a UTF-16 string, where **IoAcquireRemoveLockEx** takes the address of an ANSI string. For a name made of ASCII characters the kernel reads only its first character as the file name: `D` for `Driver.twin`. *Tag* and *Line* reach the kernel as given.
+The function returns what [**IoAcquireRemoveLockEx**](#IoAcquireRemoveLockEx) returns: `STATUS_SUCCESS`, or `STATUS_DELETE_PENDING` when the device is being removed, and then the driver does not use it. The WDK's `IoAcquireRemoveLock` macro takes two arguments and passes the file name and line number of the call itself; the procedure takes the line number as *Line*, passes *Tag* and *Line* as given, and passes `StrPtr(SOURCE_FILE)` as the file name and `LenB` of the lock as its size.
+
+**IoAcquireRemoveLockEx** reads the file name as an ANSI string, and kernel mode has no conversion of a **String** from UTF-16. So [**SOURCE_FILE**](#SOURCE_FILE) holds the ANSI bytes of the name, which the driver puts there itself, two characters to each of the **String**'s. A name assigned as an ordinary **String** reaches the kernel as its first character only: `D` for `Driver.twin`.
+<!-- /test -->
 
 ### IoCallDriver
 {: #IoCallDriver }
@@ -291,11 +277,7 @@ Syntax: **IoCallDriver**( *DeviceObject*, *pIrp* )
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP, with the stack location below the current one set up for the driver called.
 
-The function returns what [**IofCallDriver**](#IofCallDriver) returns: the status the driver called gives, or `STATUS_PENDING`. In the WDK `IoCallDriver` is a macro that stands for **IofCallDriver**, a `__fastcall` routine in a 32-bit kernel.
-
-<!-- test: KernelHelperTests.IoCallDriver_PassesTheDeviceAndTheIrp -->
-> [!WARNING] 0.3.0.5
-> In a 32-bit driver **IofCallDriver** takes its two arguments in registers, but **IoCallDriver** calls it as a `__stdcall` routine, which pushes them on the stack. The routine receives other values than the device object and the IRP, and the call leaves the stack 8 bytes off.
+The function returns what [**IofCallDriver**](#IofCallDriver) returns: the status the driver called gives, or `STATUS_PENDING`. In the WDK `IoCallDriver` is a macro that stands for **IofCallDriver**, a `__fastcall` routine in a 32-bit kernel, which the package declares `FastCall`. In a 32-bit driver no `FastCall` call reaches its routine as it should: see [Building a driver](.#building-a-driver).
 
 ### IoCopyCurrentIrpStackLocationToNext
 {: #IoCopyCurrentIrpStackLocationToNext }
@@ -307,11 +289,9 @@ Syntax: **IoCopyCurrentIrpStackLocationToNext** *pIrp*
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP that the driver passes down.
 
-As the WDK's routine of the same name does, the procedure copies the fields of the current **IO_STACK_LOCATION** up to **CompletionRoutine**, `&H1C` bytes in a 32-bit build and `&H38` in a 64-bit one, and sets **Control** of the copy to 0. It finds the location below with [**IoGetNextIrpStackLocation**](#IoGetNextIrpStackLocation).
-
-<!-- test: KernelHelperTests.IoCopyCurrentIrpStackLocationToNext_CopiesIntoTheLocationBelow, WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow -->
-> [!WARNING] 0.3.0.5
-> **IoGetNextIrpStackLocation** returns an address 4 or 8 bytes below the current location, not the location below, and **IoCopyCurrentIrpStackLocationToNext** writes the copy there. The location below receives none of the fields: its **MajorFunction**, **MinorFunction**, **Flags**, **DeviceObject** and **FileObject** stay as they were, and its **Context** receives the current location's **MajorFunction**, **MinorFunction** and **Flags**, with a 0 for **Control**. The copy also writes over the current location: its **MajorFunction**, **MinorFunction** and **Flags** take the values of the bytes 4 or 8 further on, and its **DeviceObject** the value of its **FileObject**. A driver copies the fields itself, to the current location's address less `LenB(Of IO_STACK_LOCATION)`, and sets **Control** there to 0.
+<!-- test: KernelHelperTests.IoCopyCurrentIrpStackLocationToNext_CopiesIntoTheLocationBelow -->
+As the WDK's routine of the same name does, the procedure copies the fields of the current **IO_STACK_LOCATION** up to **CompletionRoutine**, `&H1C` bytes in a 32-bit build and `&H38` in a 64-bit one, into the location below, and sets **Control** of the copy to 0. It finds the location below with [**IoGetNextIrpStackLocation**](#IoGetNextIrpStackLocation).
+<!-- /test -->
 
 ### IoFileObjectType
 {: #IoFileObjectType }
@@ -350,11 +330,9 @@ Syntax: **IoGetNextIrpStackLocation**( *pIrp* )
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP that the driver passes down.
 
-The WDK's routine of the same name returns the current location's address less one **IO_STACK_LOCATION**, 36 bytes in a 32-bit build and 72 in a 64-bit one.
-
 <!-- test: WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow -->
-> [!WARNING] 0.3.0.5
-> **IoGetNextIrpStackLocation** subtracts `LenB(Of LongPtr)`, 4 or 8 bytes, instead: the address it returns is inside the location below, 32 bytes into it in a 32-bit build and 64 in a 64-bit one. A driver subtracts `LenB(Of IO_STACK_LOCATION)` from the result of [**IoGetCurrentIrpStackLocation**](#IoGetCurrentIrpStackLocation).
+As the WDK's routine of the same name does, the function returns the current location's address less one **IO_STACK_LOCATION**, 36 bytes in a 32-bit build and 72 in a 64-bit one.
+<!-- /test -->
 
 ### IoInitializeRemoveLock
 {: #IoInitializeRemoveLock }
@@ -399,22 +377,17 @@ As the WDK's macro of the same name does, the procedure calls [**IoReleaseRemove
 
 Releases a remove lock and waits until every other acquisition of it has been released, before the driver removes its device.
 
-Syntax: **IoReleaseRemoveLockAndWait** *RemoveLock*, *Tag*, *RemlockSize*
+Syntax: **IoReleaseRemoveLockAndWait** *RemoveLock*, *Tag*
 
 *RemoveLock*
 : *required* An **IO_REMOVE_LOCK**, passed by reference: the lock.
 
 *Tag*
-: *required* A **Long**: the value the driver's own acquisition passed as its *Tag*.
-
-*RemlockSize*
-: *required* A **Long**: the size of the lock, `LenB(Of IO_REMOVE_LOCK)`.
-
-The procedure calls [**IoReleaseRemoveLockAndWaitEx**](#IoReleaseRemoveLockAndWaitEx) with its three arguments. The WDK's macro of the same name takes two, and passes the size itself.
+: *required* A **LongPtr**: the value the driver's own acquisition passed as its *Tag*.
 
 <!-- test: KernelHelperTests.IoReleaseRemoveLockAndWait_PassesTheTag, compile IoReleaseRemoveLockAndWaitTakesALongPtrTag -->
-> [!NOTE] 0.3.0.5
-> **IoReleaseRemoveLockAndWait** passes *Tag* by reference to the `As Any` *Tag* of **IoReleaseRemoveLockAndWaitEx**, so the kernel receives the address of the variable, not the tag value that the driver's acquisition passed. In a 64-bit build its *Tag* is a **Long** where **IoAcquireRemoveLock** takes a **LongPtr**, so the compiler refuses the **LongPtr** tag that the acquisition was given. A driver calls **IoReleaseRemoveLockAndWaitEx** itself, with the tag passed `ByVal` and `LenB` of the lock as *RemlockSize*.
+As the WDK's macro of the same name does, the procedure calls [**IoReleaseRemoveLockAndWaitEx**](#IoReleaseRemoveLockAndWaitEx) with its arguments and `LenB` of the lock as its size.
+<!-- /test -->
 
 ### IoSetCompletionRoutine
 {: #IoSetCompletionRoutine }
@@ -441,11 +414,9 @@ Syntax: **IoSetCompletionRoutine** *pIrp*, *CompletionRoutine*, *Context*, *Invo
 *InvokeOnCancel*
 : *required* A **Boolean**: **True** to call the routine when the IRP is cancelled.
 
+<!-- test: KernelHelperTests.IoSetCompletionRoutine_SetsTheLocationBelow -->
 As the WDK's routine of the same name does, the procedure sets **CompletionRoutine** and **Context** of the stack location below the current one, and its **Control** to **SL_INVOKE_ON_SUCCESS**, **SL_INVOKE_ON_ERROR** and **SL_INVOKE_ON_CANCEL** as the three **Boolean** arguments say. It finds the location with [**IoGetNextIrpStackLocation**](#IoGetNextIrpStackLocation).
-
-<!-- test: KernelHelperTests.IoSetCompletionRoutine_SetsTheLocationBelow, WDMHelperTests.IoGetNextIrpStackLocation_ReturnsTheLocationBelow -->
-> [!WARNING] 0.3.0.5
-> **IoGetNextIrpStackLocation** returns an address 4 or 8 bytes below the current location, and **IoSetCompletionRoutine** writes at the offsets of the fields from there. The location below gets no completion routine and no **Control** flags; the routine's address is written over the current location's **FileObject**, *Context* over its **CompletionRoutine**, and the flags into the location below's **Context**. A driver sets the three fields itself, at the current location's address less `LenB(Of IO_STACK_LOCATION)`.
+<!-- /test -->
 
 ### IoSkipCurrentIrpStackLocation
 {: #IoSkipCurrentIrpStackLocation }
@@ -457,11 +428,9 @@ Syntax: **IoSkipCurrentIrpStackLocation** *pIrp*
 *pIrp*
 : *required* An **IRP**, passed by reference: the IRP that the driver passes down with [**IoCallDriver**](#IoCallDriver), with no completion routine.
 
-The WDK's routine of the same name adds 1 to **CurrentLocation** and one **IO_STACK_LOCATION** to **CurrentStackLocation**.
-
 <!-- test: WDMHelperTests.IoSkipCurrentIrpStackLocation_MovesUpOneLocation -->
-> [!WARNING] 0.3.0.5
-> **IoSkipCurrentIrpStackLocation** adds 1 to **CurrentStackLocation**, which is an address, so it moves one byte and not one location; **CurrentLocation** is right. The next lower driver then does not receive the driver's own location. A driver adds `LenB(Of IO_STACK_LOCATION)` to **CurrentStackLocation** itself.
+As the WDK's routine of the same name does, the procedure adds 1 to **CurrentLocation** and one **IO_STACK_LOCATION** to **CurrentStackLocation**.
+<!-- /test -->
 
 ### IsListEmpty
 {: #IsListEmpty }
@@ -490,7 +459,7 @@ Syntax: **KeRaiseIrql** *NewIrql*, *OldIrql*
 *OldIrql*
 : *required* A [**KIRQL**](#KIRQL) variable, passed by reference, that receives the level before the call.
 
-The procedure sets *OldIrql* to what [**KfRaiseIrql**](#KfRaiseIrql) returns for *NewIrql*, as the WDK's `KeRaiseIrql` macro does. A driver goes back to *OldIrql* with [**KeLowerIrql**](#KeLowerIrql), which the module declares for a 64-bit build only.
+The procedure sets *OldIrql* to what [**KfRaiseIrql**](#KfRaiseIrql) returns for *NewIrql*, as the WDK's `KeRaiseIrql` macro does. A driver goes back to *OldIrql* with [**KeLowerIrql**](#KeLowerIrql).
 
 ### LCase
 {: #LCase }
@@ -577,8 +546,8 @@ Syntax: **MsgBox**( *lpText*, *dwOptions*, *lpTitle* )
 The function has the name of VBA's **MsgBox** but takes the strings' addresses. A driver calls it as `modWDM.MsgBox`: without the module name the call is VBA's (see [Names shared with VBA](.#names-shared-with-vba)). It passes the two strings, as **UNICODE_STRING** structures, and *dwOptions* to [**ExRaiseHardError**](#ExRaiseHardError) with the status `STATUS_SERVICE_NOTIFICATION Or HARDERROR_OVERRIDE_ERRORMODE`, which shows the box, and returns the [**HARDERROR_RESPONSE**](#HARDERROR_RESPONSE) that it gives, such as `HardError_ResponseOk`. The package says that the call must come from a request of a user-mode process, such as in the driver's handler of **DeviceIoControl** requests.
 
 <!-- test: KernelHelperTests.MsgBox_PassesTheTextAndTheTitle -->
-> [!WARNING] 0.3.0.5
-> **MsgBox** makes both of its strings into the **UNICODE_STRING** of the text, and leaves the one of the title empty. The box shows *lpTitle* as its text, and no title; *lpText* is not shown. A driver that needs a title calls **ExRaiseHardError** itself.
+The box shows *lpText* as its text and *lpTitle* as its title.
+<!-- /test -->
 
 ### NT_ERROR
 {: #NT_ERROR }
@@ -590,11 +559,9 @@ Syntax: **NT_ERROR**( *Status* )
 *Status*
 : *required* A **Long**: the status, as a routine returned it.
 
-The WDK's `NT_ERROR` macro is true when the two highest bits of *Status* are both set: for the error statuses, from `&HC0000000` on, such as `STATUS_ACCESS_DENIED`. The procedure returns whether *Status* is less than `&HC0000000` as a signed **Long**.
-
 <!-- test: WDMHelperTests.NT_ERROR_IsTrueForErrorStatusesOnly -->
-> [!WARNING] 0.3.0.5
-> **NT_ERROR** returns **False** for an error status, such as `STATUS_ACCESS_DENIED` (`&HC0000022`) and `STATUS_UNSUCCESSFUL` (`&HC0000001`), and **True** for a warning, such as `STATUS_BUFFER_OVERFLOW` (`&H80000005`). A driver tests `(Status And &HC0000000) = &HC0000000` instead.
+The function returns **True** when the two highest bits of *Status* are both set, as the WDK's `NT_ERROR` macro does: for the error statuses, from `&HC0000000` on, such as `STATUS_ACCESS_DENIED`. It reads *Status* as unsigned with [**CLngToULng**](#CLngToULng).
+<!-- /test -->
 
 ### NT_SUCCESS
 {: #NT_SUCCESS }
@@ -648,21 +615,19 @@ Returns the object type of threads, the value of the kernel's **PsThreadType** v
 
 Syntax: **PsThreadType**()
 
-### RemoveListHead
-{: #RemoveListHead }
+### RemoveHeadList
+{: #RemoveHeadList }
 
-Removes the first entry of a doubly linked list.
+Removes the first entry of a doubly linked list, and returns its address.
 
-Syntax: **RemoveListHead**( *ListHead* )
+Syntax: **RemoveHeadList**( *ListHead* )
 
 *ListHead*
 : *required* A **LIST_ENTRY**, passed by reference: the head of the list, which has at least one entry.
 
-The function returns a copy of the entry removed, a **LIST_ENTRY**, where the WDK's `RemoveHeadList` returns the entry's address; a driver that needs the address reads **ListHead.Flink** before the call. The WDK's routine links *ListHead* to the second entry, and sets that entry's **Blink** to *ListHead*.
-
-<!-- test: KernelHelperTests.RemoveListHead_UnlinksTheFirstEntry -->
-> [!WARNING] 0.3.0.5
-> **RemoveListHead** copies the second entry into a local variable and links *ListHead* to the copy, as [**InsertHeadList**](#InsertHeadList) and **InsertTailList** link to a copy of their neighbour. **ListHead.Flink** then points into the procedure's own stack, which is gone once it returns, and the **Blink** of the second entry is not changed: it still points to the entry removed. The list is broken from the first remove on. A driver sets the links itself, as the WDK's routine does.
+<!-- test: KernelHelperTests.RemoveHeadList_UnlinksTheFirstEntry -->
+As the WDK's routine of the same name does, the function links *ListHead* to the second entry, sets that entry's **Blink** to *ListHead*, and returns the address of the entry removed, a **LongPtr**.
+<!-- /test -->
 
 ### SeQuerySubjectContextToken
 {: #SeQuerySubjectContextToken }
@@ -755,17 +720,6 @@ A call of it is a use of *arg*, so the compiler's warning of an unused parameter
 
 The procedure does nothing, and has the [**DebugOnly**](../../../Core/Attributes#debugonly) attribute: a built driver contains no call of it.
 
-### ZwCurrentPeb
-{: #ZwCurrentPeb }
-
-Returns the address of the process environment block (PEB) of the current process.
-
-Syntax: **ZwCurrentPeb**()
-
-The function returns what [**RtlGetCurrentPeb**](#RtlGetCurrentPeb) returns. The WDK has no `ZwCurrentPeb` macro; the name is the one that the headers of the Native API give to `NtCurrentPeb`. The PEB is in the process's user-mode memory. Not documented by Microsoft.
-
-The 64-bit kernel does not export **RtlGetCurrentPeb** (see the note under [Declares](#declares)), so a 64-bit driver that calls **ZwCurrentPeb** does not load.
-
 ### ZwCurrentProcess
 {: #ZwCurrentProcess }
 
@@ -819,3 +773,128 @@ Returns the pseudo-handle that stands for the impersonation token of the current
 Syntax: **ZwCurrentThreadToken**()
 
 The function returns -5, the value of `GetCurrentThreadToken` in processthreadsapi.h. A routine that queries a token, such as **ZwQueryInformationToken**, takes it in place of a token handle, when the thread impersonates a client. It need not be closed with [**ZwClose**](#ZwClose).
+
+### CLngToULng
+{: #CLngToULng }
+
+Returns a **Long** read as an unsigned 32-bit number.
+
+Syntax: **CLngToULng**( *Value* )
+
+*Value*
+: *required* A **Long**: the value, such as a `ULONG` that a routine returned.
+
+The function returns a **LongLong**: *Value* when it is 0 or more, and *Value* plus `&H100000000` when it is negative, so `&HFFFFFFFF` gives 4294967295. [**NT_ERROR**](#NT_ERROR), [**NT_INFORMATION**](#NT_INFORMATION) and [**NT_WARNING**](#NT_WARNING) read a status with it.
+
+### CULngToLng
+{: #CULngToLng }
+
+Returns an unsigned 32-bit number as the **Long** that holds its bits.
+
+Syntax: **CULngToLng**( *Value* )
+
+*Value*
+: *required* A **LongLong**: the number, from 0 to 4294967295.
+
+The function returns *Value* when it is not greater than `&H7FFFFFFF`, and *Value* less `&H100000000` when it is greater, so 4294967295 gives -1. For a value outside the range of a `ULONG` it returns 0.
+
+### FatalListEntryError
+{: #FatalListEntryError }
+
+Ends the system with a fast fail, for a list whose links are broken.
+
+Syntax: **FatalListEntryError** *p1*, *p2*, *p3*
+
+*p1*, *p2*, *p3*
+: *required* **LongPtr** values, which the procedure does not use.
+
+The procedure calls [**RtlFailFast**](#RtlFailFast) with `FAST_FAIL_CORRUPT_LIST_ENTRY`, as the WDK's routine of the same name does. No list procedure of the package calls it.
+
+### KeAcquireSpinLock
+{: #KeAcquireSpinLock }
+
+Acquires a spin lock, raising the IRQL to `DISPATCH_LEVEL`, and returns the IRQL from before, which [**KeReleaseSpinLock**](#KeReleaseSpinLock) takes back.
+
+Syntax: **KeAcquireSpinLock**( *SpinLock* )
+
+*SpinLock*
+: *required* A **LongPtr**, passed by reference: the spin lock, as [**KeInitializeSpinLock**](#KeInitializeSpinLock) initialized it.
+
+In a 64-bit build the function calls [**KeAcquireSpinLockRaiseToDpc**](#KeAcquireSpinLockRaiseToDpc) and returns what it returns. In a 32-bit build it is a **Declare** of `KfAcquireSpinLock` of `hal.dll`. The WDK's `KeAcquireSpinLock` macro writes the IRQL to a second argument instead of returning it.
+
+<!-- test: KernelHelperTests.KeAcquireSpinLock_PassesTheLock -->
+> [!WARNING] 0.3.0.6
+> In a 32-bit driver `KfAcquireSpinLock` is a `__fastcall` routine, which takes the lock in a register, but the package declares it without `FastCall` and calls it as a `__stdcall` routine, which pushes the lock on the stack. The routine acquires some other spin lock than the driver's. A driver declares `KfAcquireSpinLock` itself, `FastCall` and with `Lib "hal.dll"`.
+
+### KeQuerySystemTime
+{: #KeQuerySystemTime }
+
+Writes the current system time into *CurrentTime*, in 100-nanosecond units since 1 January 1601 (UTC).
+
+Syntax: **KeQuerySystemTime** *CurrentTime*
+
+*CurrentTime*
+: *required* A **LARGE_INTEGER**, passed by reference, that receives the time.
+
+In a 64-bit build the procedure reads the time from **KUSER_SHARED_DATA.SystemTime**, at [**SharedSystemTime**](#SharedSystemTime), as the WDK's `KeQuerySystemTime` macro does there: the 64-bit kernel exports no routine of that name. In a 32-bit build it is a **Declare** of the kernel's routine.
+
+### NT_INFORMATION
+{: #NT_INFORMATION }
+
+Returns whether an **NTSTATUS** value is an informational status.
+
+Syntax: **NT_INFORMATION**( *Status* )
+
+*Status*
+: *required* A **Long**: the status, as a routine returned it.
+
+<!-- test: WDMHelperTests.NT_INFORMATION_NT_WARNING_TestTheTwoHighestBits -->
+The function returns **True** when the two highest bits of *Status* are 01, as the WDK's `NT_INFORMATION` macro does: for the statuses from `&H40000000` to `&H7FFFFFFF`, such as `STATUS_OBJECT_NAME_EXISTS`.
+<!-- /test -->
+
+### NT_WARNING
+{: #NT_WARNING }
+
+Returns whether an **NTSTATUS** value is a warning status.
+
+Syntax: **NT_WARNING**( *Status* )
+
+*Status*
+: *required* A **Long**: the status, as a routine returned it.
+
+<!-- test: WDMHelperTests.NT_INFORMATION_NT_WARNING_TestTheTwoHighestBits -->
+The function returns **True** when the two highest bits of *Status* are 10, as the WDK's `NT_WARNING` macro does: for the statuses from `&H80000000` to `&HBFFFFFFF`, such as `STATUS_BUFFER_OVERFLOW`.
+<!-- /test -->
+
+### RtlCheckBit
+{: #RtlCheckBit }
+
+Returns whether a bit of a bitmap is set.
+
+Syntax: **RtlCheckBit**( *BitmapHeader*, *BitPosition* )
+
+*BitmapHeader*
+: *required* An **RTL_BITMAP**, passed by reference: the bitmap.
+
+*BitPosition*
+: *required* A **Long**: the number of the bit, from 0.
+
+<!-- test: KernelHelperTests.RtlCheckBit_ReturnsTheBit -->
+The function returns a **Byte**, 1 when the bit is set and 0 when it is clear, as the WDK's `RtlCheckBit` macro does. It reads the bit from the **Long** of the buffer that holds it, bit 0 the lowest bit of the first.
+<!-- /test -->
+
+### RtlFailFast
+{: #RtlFailFast }
+
+Ends the system with a fast fail, an `int 29h` that the kernel answers with a bug check.
+
+Syntax: **RtlFailFast** *code*
+
+*code*
+: *required* A **Long**: the reason, such as `FAST_FAIL_CORRUPT_LIST_ENTRY` of [**RTL_FAST_FAIL**](#RTL_FAST_FAIL).
+
+The procedure is `Naked` and `CDecl`. The WDK's `RtlFailFast`, the intrinsic `__fastfail`, loads *code* into ECX and raises `int 29h`.
+
+<!-- test: none -- the procedure ends the system, so no program can call it and see the reason it gives; its code is two instructions, read from the package's source -->
+> [!NOTE] 0.3.0.6
+> The procedure's code is `mov ecx, 7` and `int 29h`: it raises the fast fail with the reason 7, `FAST_FAIL_FATAL_APP_EXIT`, whatever *code* is, so the bug check names that reason. [**FatalListEntryError**](#FatalListEntryError) passes `FAST_FAIL_CORRUPT_LIST_ENTRY`, 3.

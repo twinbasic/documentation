@@ -19,7 +19,9 @@ export function fileConstants(text) {
  * lines, fileConstants's) those too, each evaluated in order; then a constant not defined is Empty.
  */
 export function constantsFor(arch, defined = null) {
-  const c = { WIN64: arch === "x64", WIN32: true, VBA7: true, VBA6: true, TWINBASIC: true, MAC: false };
+  // The compiler's constants are numbers, 1 or 0, not Booleans: `#If Win64 = 1` holds in a 64-bit
+  // build, `#If Win64 = -1` in none, and `(TWINBASIC = 1) Or (Win64 = 1)` in both (BETA 1042).
+  const c = { WIN64: arch === "x64" ? 1 : 0, WIN32: 1, VBA7: 1, VBA6: 1, TWINBASIC: 1, MAC: 0 };
   if (defined) {
     Object.defineProperty(c, KNOWN_ALL, { value: true });
     for (const d of defined) {
@@ -68,8 +70,13 @@ export function conditionValue(expr, constants) {
     }
     if (t === "-") return -num(primary());
     if (t.toUpperCase() === "NOT") {
+      // `Not (x)` is how the scanner writes the #Else of `#If x`: the branch that holds when x
+      // does not, so it negates x's truth. Any other Not is twinBASIC's, bitwise on a number:
+      // `#If Not Win64` holds in a 64-bit build too, since Not 1 is -2. (A source `Not (Win64)`
+      // reads as the scanner's; tbKMode writes none.)
+      const scanners = tokens[i] === "(";
       const v = compare();
-      return typeof v === "boolean" ? !v : ~v;
+      return typeof v === "boolean" ? !v : scanners ? v === 0 : ~v;
     }
     return value(t);
   };

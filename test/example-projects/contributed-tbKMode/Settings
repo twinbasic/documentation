@@ -51,11 +51,11 @@
 			"autoCtlExt": true,
 			"id": "{B94B0CA7-4E84-44EA-BCF3-3F541FC64C0F}",
 			"licence": "MIT",
-			"name": "[IMPORTED] twinBASIC Kernel Mode Support Package, v0.3.5",
+			"name": "[IMPORTED] twinBASIC Kernel Mode Support Package, v0.3.6",
 			"path32": "/Packages/tbKMode",
 			"path64": "/Packages/tbKMode",
 			"symbolId": "tbKMode",
-			"versionBuild": "5",
+			"versionBuild": "6",
 			"versionMajor": "0",
 			"versionMinor": "3",
 			"versionRevision": "0"

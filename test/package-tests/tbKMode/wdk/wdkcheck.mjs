@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { constantsFor, evaluate } from "../verifier/lib/conditions.mjs";
 import { cStructure, cValue, fieldAt } from "../verifier/lib/headers.mjs";
 import { membersOf, typesOf } from "./api.mjs";
 
@@ -61,8 +62,11 @@ for (const t of typesOf(mod).filter((t) => t.vis === "public")) {
   if (!ident(t.name) || skipType.has(t.name)) continue;
   if (t.kind === "type" && !types.has(t.name)) {
     const fields = new Map();
+    // A field under an #If that holds in neither build (KUSER_SHARED_DATA's #Else of
+    // `(TWINBASIC = 1) Or (Win64 = 1)`) is not in the Type; one that cannot be decided is kept.
+    const never = (f) => ["x86", "x64"].every((a) => evaluate(f.cond, constantsFor(a)) === false);
     for (const f of t.fields ?? [])
-      if (ident(f.name) && !fields.has(f.name) && !skipField.has(`${t.name}.${f.name}`))
+      if (ident(f.name) && !fields.has(f.name) && !never(f) && !skipField.has(`${t.name}.${f.name}`))
         fields.set(f.name, /^\w+\s*\(/.test(f.signature));
     types.set(t.name, fields);
   }
@@ -82,6 +86,26 @@ const isString = new Set(
     .filter((m) => [m.signature, ...(m.signatures ?? []).map((s) => s.signature)].some((s) => /=\s*"/.test(s ?? "")))
     .map((m) => m.name),
 );
+// A constant the package declares as a LongLong, for an arch: its value has a LongLong literal
+// (&H0000000080000000^, or more than 8 hex digits), or names a constant of the module that is one
+// (POOL_FLAG_UNUSED_REQUIRED_BITS). Its case compares it as a LongLong whatever C's value is:
+// CLng of POOL_FLAG_REQUIRED_END, 2147483648, overflows.
+const constByName = new Map(constMembers.map((m) => [m.name.toLowerCase(), m]));
+const branchFor = (m, arch) => {
+  const all = m.signature ? [{ cond: m.cond ?? null, signature: m.signature }] : (m.signatures ?? []);
+  const x86 = (c) => /\bNot\s*\(?\s*Win64\b|\bWin64\s*=\s*0\b/i.test(c ?? "");
+  const x64 = (c) => /\bWin64\b/i.test(c ?? "") && !x86(c);
+  return all.find((b) => (arch === "x86" ? !x64(b.cond) : !x86(b.cond))) ?? all[0];
+};
+function pkgWide(name, arch, seen = new Set()) {
+  const m = constByName.get(name.toLowerCase());
+  if (!m || seen.has(m)) return false;
+  seen.add(m);
+  const v = /=\s*(.+)$/.exec(branchFor(m, arch)?.signature ?? "")?.[1] ?? "";
+  if (/\bAs\s+LongLong\b/i.test(branchFor(m, arch)?.signature ?? "")) return true;
+  if (/&H[0-9A-F]+\^|\b\d+\^|&H0*[1-9A-F][0-9A-F]{8,}\b/i.test(v)) return true;
+  return [...v.matchAll(/\b[A-Za-z_]\w*\b/g)].some((t) => pkgWide(t[0], arch, seen));
+}
 
 // What the database says, as `<key> <value>` for each arch: "<Type> size", "<Type>.<field>" (an
 // offset; a bitfield has none) and "=<name>" (a value; a string as $ and its bytes in hex).
@@ -188,12 +212,14 @@ for (const [g, names] of [...enums, ["Constants", consts]]) {
       continue;
     }
     const raw = (arch) => values[n] ?? res[arch].get(`=${n}`) ?? res.x64.get(`=${n}`);
-    const isWide = wide(raw("x64")) || wide(raw("x86"));
+    const isWide = wide(raw("x64")) || wide(raw("x86")) || pkgWide(n, "x64") || pkgWide(n, "x86");
     // A value that is 64-bit in one build and fits 32 bits in the other (IMAGE_ORDINAL_FLAG:
     // 0x8000000000000000 and 0x80000000) is, in the 32-bit build, the Long of those 32 bits, as
-    // lit() reads any 32-bit value.
+    // lit() reads any 32-bit value, unless the package declares it a LongLong there too.
     const at = (arch) =>
-      isWide ? lit64(wide(raw(arch)) ? raw(arch) : BigInt.asIntN(32, BigInt(raw(arch)))) : lit(raw(arch));
+      isWide
+        ? lit64(wide(raw(arch)) || pkgWide(n, arch) ? raw(arch) : BigInt.asIntN(32, BigInt(raw(arch))))
+        : lit(raw(arch));
     val += pair(at("x64"), at("x86"), (v) => `Expect.AreEqual ${v}, ${isWide ? "CLngLng" : "CLng"}(${n}), "${n}"`);
   }
   val += "        Expect.Done\n    End Sub\n";

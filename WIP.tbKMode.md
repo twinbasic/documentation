@@ -16,14 +16,31 @@ about the package beyond its pages; the rules for every contributed package are 
   verifier's page, `Verifier.md`, and the writer's, `Writer.md`, after it. Tables of two columns (Constants three), rows alphabetical, the
   name cell `**Name**{: #Name }` or `[**Name**](<checked Microsoft URL>){: #Name }`, one-sentence
   descriptions, enum members not listed. modWDM's procedures are `###` sections. An object-type
-  function (0.3.0.5 returns the object type itself) is plain prose. modWDM has an `## Aliases` table
-  (CBoolean, KIRQL, KPROCESSOR_MODE); modImage's aliases are commented out in the package.
-- **Callouts** are labelled with the package version (`0.3.0.5`) or `timeless`, each backed by
-  cases or the probe.
+  function (from 0.3.0.5 it returns the object type itself) is plain prose. modWDM has an `## Aliases`
+  table (CBoolean, KIRQL, KPROCESSOR_MODE, POOL_FLAGS), and from 0.3.0.6 modImage has one too
+  (IMAGE_LOAD_CONFIG_DIRECTORY, an Alias of the 32-bit or the 64-bit structure, whose two targets the
+  writer joins: the snapshot keeps no `#If` of an alias). A name that is a procedure in one build and
+  a Declare in the other (InterlockedIncrement, KeAcquireSpinLock, KeQuerySystemTime) is a `###`
+  section in `procedures.md` with a syntax for each build.
+- **Callouts** are labelled with the package version (`0.3.0.6`) or `timeless`, each backed by
+  cases or the probe; the one about twinBASIC itself, under *Building a driver*, is labelled `BETA
+  1042` and names its reproducer, `bugs/declare-fastcall-static-binding-32bit`.
 - The owner reviewed the 0.3.0.5 pages, the verifier's included (2026-11-17).
 - **A declaration right for the kit the package was written from is no defect**: modSysInfo follows
   the 10.0.22621 SDK (`POLICY_AUDIT_SUBCATEGORY_COUNT` 59, no `FileFsGuidInformation`), and its cases
-  check that kit's values (`wdk/modSysInfo.json`, `values` and `sizes`).
+  check that kit's values (`wdk/modSysInfo.json`, `values` and `sizes`). From 0.3.0.6 the load
+  configuration directories have the fields of the newest kit (`UmaFunctionPointers`), a version the
+  package chose: `sizes` asserts them, and modImage says so in prose.
+- **The package's conventions are no defects** (owner, 2026-11-22, from fafalone on tbKMode#4,
+  2026-11-19): the 16-bit limits are Integers (or SCHAR_MIN a Byte) holding the bits of C's value,
+  as the package's USHORT fields are Integers, so `values` asserts -1, -32768 and 128, and modWDM
+  says so in prose under Constants; and **SOURCE_FILE** holds ANSI bytes that the driver puts there,
+  since kernel mode has no conversion of a String, so the IoAcquireRemoveLock case fills it with
+  `StrConv(..., vbFromUnicode)` and the page describes it in prose.
+- **IO_DRIVER_CREATE_CONTEXT.SiloContext stays a NOTE** (owner, 2026-11-22): fafalone answered on #4
+  that it is under `#If NTDDI_VERSION >= NTDDI_WIN10_RS1` as in the SDK, but the package defines no
+  NTDDI_VERSION and a project's constants do not reach a package, so the field is never compiled;
+  the NOTE says why.
 
 ## How the pages are written
 
@@ -46,10 +63,18 @@ package*). Each folder's README says how.
   (`wdkcheck.mjs`, configured by `verifier/config/tbKMode.json`), and finds Microsoft Learn's pages
   (`learn.mjs`, committed `learn/<Module>.json`). Needs neither Visual Studio nor the WDK. The cases
   stay beside the verifier's own check because the compiler is the authority on a Type's layout.
-- `exe/`: cases run in a built exe against a stand-in `ntoskrnl.exe` built with MSVC
-  (`fake-kernel/`). A routine a new exe case calls is added to the stand-in and its `.def`. A
-  routine called in the wrong convention gets an x86 naked stand-in that pops what the defective
-  caller pushed; its comment says what to change once fixed.
+- `exe/`: cases run in a built exe against stand-ins built with MSVC (`fake-kernel/`):
+  `ntoskrnl.exe`, and for x86 `hal.dll`, which passes each call to the first so that the cases
+  read one record. From 0.3.0.6 the package binds its Declares in the exe's import table (its
+  Settings turn run-time binding off), so `prepare.mjs` returns them as `beside` and
+  `tbrun --beside` copies them into the exe's folder, where the loader finds them before System32;
+  a routine the exe imports that a stand-in lacks stops the exe from starting (0xC0000139), so a
+  routine a new case reaches is added to the stand-in and its `.def`. A routine called in the wrong
+  convention gets an x86 naked stand-in that pops what the defective caller pushed; its comment
+  says what to change once fixed (KfAcquireSpinLock, 0.3.0.6). **A 32-bit exe ends at its first
+  FastCall case** (twinBASIC BETA 1042, `bugs/declare-fastcall-static-binding-32bit`): those cases
+  are last in the file and record *no result*; the cases that call no FastCall Declare come before
+  them.
 - `probe/`: builds small drivers with `tbbuild --build` and judges their import tables with the
   verifier's `checkDriver`; it backs the landing page's warning on the package's own settings.
 - `verifier/`: published as `tbKMode-verifier.zip` (its page, `Verifier.md`). `check` checks each
@@ -80,7 +105,12 @@ compile case's record holds its line number, so new ones go at the end of a file
 named like a WDK macro breaks the generated C++ unless guarded (the WDK program hides such macros
 with push_macro). Never pin `NTDDI_VERSION`. A layout case compares offsets and sizes only; the
 verifier's check also compares field sizes. The source closes one `#If` with `#endif` (no space), so
-a reader of `#If` blocks takes `#End\s*If`.
+a reader of `#If` blocks takes `#End\s*If`. The compiler's constants are numbers, 1 and 0, not
+Booleans: `#If Win64 = 1` holds in a 64-bit build and `(TWINBASIC = 1) Or (Win64 = 1)` in both (BETA
+1042), so `conditions.mjs` gives them 1 and 0, and reads the scanner's `Not (x)`, its form of an
+`#Else`, as logical; wdkcheck leaves out a field whose `#If` holds in neither build. A constant the
+package declares as a LongLong is compared as one (POOL_FLAG_REQUIRED_END, `&H0000000080000000^`):
+CLng of it overflows.
 
 From writing the WDK databases: on x86 the headers need `/Gz` (most routines have no convention in
 their declaration); `cl /d1PP` loses the name of a `#define` whose comment runs on to the next line,
@@ -97,11 +127,14 @@ and each file's `#Const` (an undefined constant is Empty).
 Issues for fafalone's repository are drafted in the main checkout's `.claude/drafts/`; the owner
 posts them. #1 (modFltMgr, modDisk) and #2 (modSysInfo) were answered by 0.3.0.5 (comment for #2:
 `tbkmode-issue-2-comment.md`). #3 (the package's Settings) and #4 (the declarations of modWDM and modImage) are filed
-(2026-11-17), from `tbkmode-issue-3.md` and `tbkmode-issue-4.md`.
+(2026-11-17), from `tbkmode-issue-3.md` and `tbkmode-issue-4.md`. 0.3.0.6 answered #3 (its Settings
+set the five) and most of #4; fafalone's replies on #2 and #4 decided the conventions above. The
+reply to #4 on 0.3.0.6 is drafted in `tbkmode-issue-4-comment.md`.
 
 ## Leads, not on the pages
 
-In [WIP.BugHunt.md](WIP.BugHunt.md#tbkmode): the 16-bit limits (perhaps no defect) and
-`SE_SELF_RELATIVE` `&H8000&` against the Integer `Control` field. Omissions, not defects: newer
+In [WIP.BugHunt.md](WIP.BugHunt.md#tbkmode): RtlFailFast's fixed reason (on the page as a NOTE
+marked `none`), `SE_SELF_RELATIVE` `&H8000&` against the Integer `Control` field, and MmCopyMemory's
+4-byte *NumberOfBytes* in a 64-bit build, which the verifier reports and no page states yet. Omissions, not defects: newer
 members missing from `IMAGE_DEBUG_EX_CH` and `ImageMachineType`, `SYMBOLIC_LINK_SET`; optional
 pointers declared `ByRef` (the `ByVal vbNullPtr` paragraph covers them).

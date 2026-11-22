@@ -100,7 +100,6 @@ Module ImageLayoutTests
         Dim t As IMAGE_AUX_SYMBOL
         Dim b As LongPtr = VarPtr(t)
         ' Variable-length in C: its size is not compared.
-        Expect.AreEqual 0, Off(b, VarPtr(t.TokenDef)), "offset of IMAGE_AUX_SYMBOL.TokenDef"
         Expect.Done
     End Sub
 
@@ -110,8 +109,6 @@ Module ImageLayoutTests
         Dim t As IMAGE_AUX_SYMBOL_EX
         Dim b As LongPtr = VarPtr(t)
         ' Variable-length in C: its size is not compared.
-        Expect.AreEqual 0, Off(b, VarPtr(t.TokenDef)), "offset of IMAGE_AUX_SYMBOL_EX.TokenDef"
-        Expect.AreEqual 18, Off(b, VarPtr(t.rgbReserved(0))), "offset of IMAGE_AUX_SYMBOL_EX.rgbReserved"
         Expect.Done
     End Sub
 
@@ -456,237 +453,11 @@ Module ImageLayoutTests
     End Sub
 
     [TestCase]
-    Public Sub IMAGE_LOAD_CONFIG_DIRECTORY_Layout()
-        Expect.Begin
-        Dim t As IMAGE_LOAD_CONFIG_DIRECTORY
-        Dim b As LongPtr = VarPtr(t)
-        #If Win64 Then
-            Expect.AreEqual 320, LenB(t), "LenB of IMAGE_LOAD_CONFIG_DIRECTORY"
-        #Else
-            Expect.AreEqual 192, LenB(t), "LenB of IMAGE_LOAD_CONFIG_DIRECTORY"
-        #End If
-        Expect.AreEqual 0, Off(b, VarPtr(t.Size)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.Size"
-        Expect.AreEqual 4, Off(b, VarPtr(t.TimeDateStamp)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.TimeDateStamp"
-        Expect.AreEqual 8, Off(b, VarPtr(t.MajorVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.MajorVersion"
-        Expect.AreEqual 10, Off(b, VarPtr(t.MinorVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.MinorVersion"
-        Expect.AreEqual 12, Off(b, VarPtr(t.GlobalFlagsClear)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GlobalFlagsClear"
-        Expect.AreEqual 16, Off(b, VarPtr(t.GlobalFlagsSet)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GlobalFlagsSet"
-        Expect.AreEqual 20, Off(b, VarPtr(t.CriticalSectionDefaultTimeout)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CriticalSectionDefaultTimeout"
-        Expect.AreEqual 24, Off(b, VarPtr(t.DeCommitFreeBlockThreshold)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DeCommitFreeBlockThreshold"
-        #If Win64 Then
-            Expect.AreEqual 32, Off(b, VarPtr(t.DeCommitTotalFreeThreshold)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DeCommitTotalFreeThreshold"
-        #Else
-            Expect.AreEqual 28, Off(b, VarPtr(t.DeCommitTotalFreeThreshold)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DeCommitTotalFreeThreshold"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 40, Off(b, VarPtr(t.LockPrefixTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.LockPrefixTable"
-        #Else
-            Expect.AreEqual 32, Off(b, VarPtr(t.LockPrefixTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.LockPrefixTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 48, Off(b, VarPtr(t.MaximumAllocationSize)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.MaximumAllocationSize"
-        #Else
-            Expect.AreEqual 36, Off(b, VarPtr(t.MaximumAllocationSize)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.MaximumAllocationSize"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 56, Off(b, VarPtr(t.VirtualMemoryThreshold)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.VirtualMemoryThreshold"
-        #Else
-            Expect.AreEqual 40, Off(b, VarPtr(t.VirtualMemoryThreshold)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.VirtualMemoryThreshold"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 64, Off(b, VarPtr(t.ProcessAffinityMask)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessAffinityMask"
-        #Else
-            Expect.AreEqual 48, Off(b, VarPtr(t.ProcessAffinityMask)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessAffinityMask"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 72, Off(b, VarPtr(t.ProcessHeapFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessHeapFlags"
-        #Else
-            Expect.AreEqual 44, Off(b, VarPtr(t.ProcessHeapFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.ProcessHeapFlags"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 76, Off(b, VarPtr(t.CSDVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CSDVersion"
-        #Else
-            Expect.AreEqual 52, Off(b, VarPtr(t.CSDVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CSDVersion"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 78, Off(b, VarPtr(t.DependentLoadFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DependentLoadFlags"
-        #Else
-            Expect.AreEqual 54, Off(b, VarPtr(t.DependentLoadFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DependentLoadFlags"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 80, Off(b, VarPtr(t.EditList)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.EditList"
-        #Else
-            Expect.AreEqual 56, Off(b, VarPtr(t.EditList)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.EditList"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 88, Off(b, VarPtr(t.SecurityCookie)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.SecurityCookie"
-        #Else
-            Expect.AreEqual 60, Off(b, VarPtr(t.SecurityCookie)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.SecurityCookie"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 96, Off(b, VarPtr(t.SEHandlerTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.SEHandlerTable"
-        #Else
-            Expect.AreEqual 64, Off(b, VarPtr(t.SEHandlerTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.SEHandlerTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 104, Off(b, VarPtr(t.SEHandlerCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.SEHandlerCount"
-        #Else
-            Expect.AreEqual 68, Off(b, VarPtr(t.SEHandlerCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.SEHandlerCount"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 112, Off(b, VarPtr(t.GuardCFCheckFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFCheckFunctionPointer"
-        #Else
-            Expect.AreEqual 72, Off(b, VarPtr(t.GuardCFCheckFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFCheckFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 120, Off(b, VarPtr(t.GuardCFDispatchFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFDispatchFunctionPointer"
-        #Else
-            Expect.AreEqual 76, Off(b, VarPtr(t.GuardCFDispatchFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFDispatchFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 128, Off(b, VarPtr(t.GuardCFFunctionTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFFunctionTable"
-        #Else
-            Expect.AreEqual 80, Off(b, VarPtr(t.GuardCFFunctionTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFFunctionTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 136, Off(b, VarPtr(t.GuardCFFunctionCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFFunctionCount"
-        #Else
-            Expect.AreEqual 84, Off(b, VarPtr(t.GuardCFFunctionCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardCFFunctionCount"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 144, Off(b, VarPtr(t.GuardFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardFlags"
-        #Else
-            Expect.AreEqual 88, Off(b, VarPtr(t.GuardFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardFlags"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 148, Off(b, VarPtr(t.CodeIntegrity)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CodeIntegrity"
-        #Else
-            Expect.AreEqual 92, Off(b, VarPtr(t.CodeIntegrity)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CodeIntegrity"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 160, Off(b, VarPtr(t.GuardAddressTakenIatEntryTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardAddressTakenIatEntryTable"
-        #Else
-            Expect.AreEqual 104, Off(b, VarPtr(t.GuardAddressTakenIatEntryTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardAddressTakenIatEntryTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 168, Off(b, VarPtr(t.GuardAddressTakenIatEntryCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardAddressTakenIatEntryCount"
-        #Else
-            Expect.AreEqual 108, Off(b, VarPtr(t.GuardAddressTakenIatEntryCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardAddressTakenIatEntryCount"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 176, Off(b, VarPtr(t.GuardLongJumpTargetTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardLongJumpTargetTable"
-        #Else
-            Expect.AreEqual 112, Off(b, VarPtr(t.GuardLongJumpTargetTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardLongJumpTargetTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 184, Off(b, VarPtr(t.GuardLongJumpTargetCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardLongJumpTargetCount"
-        #Else
-            Expect.AreEqual 116, Off(b, VarPtr(t.GuardLongJumpTargetCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardLongJumpTargetCount"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 192, Off(b, VarPtr(t.DynamicValueRelocTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DynamicValueRelocTable"
-        #Else
-            Expect.AreEqual 120, Off(b, VarPtr(t.DynamicValueRelocTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DynamicValueRelocTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 200, Off(b, VarPtr(t.CHPEMetadataPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CHPEMetadataPointer"
-        #Else
-            Expect.AreEqual 124, Off(b, VarPtr(t.CHPEMetadataPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CHPEMetadataPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 208, Off(b, VarPtr(t.GuardRFFailureRoutine)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardRFFailureRoutine"
-        #Else
-            Expect.AreEqual 128, Off(b, VarPtr(t.GuardRFFailureRoutine)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardRFFailureRoutine"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 216, Off(b, VarPtr(t.GuardRFFailureRoutineFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardRFFailureRoutineFunctionPointer"
-        #Else
-            Expect.AreEqual 132, Off(b, VarPtr(t.GuardRFFailureRoutineFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardRFFailureRoutineFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 224, Off(b, VarPtr(t.DynamicValueRelocTableOffset)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DynamicValueRelocTableOffset"
-        #Else
-            Expect.AreEqual 136, Off(b, VarPtr(t.DynamicValueRelocTableOffset)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DynamicValueRelocTableOffset"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 228, Off(b, VarPtr(t.DynamicValueRelocTableSection)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DynamicValueRelocTableSection"
-        #Else
-            Expect.AreEqual 140, Off(b, VarPtr(t.DynamicValueRelocTableSection)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.DynamicValueRelocTableSection"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 230, Off(b, VarPtr(t.Reserved2)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.Reserved2"
-        #Else
-            Expect.AreEqual 142, Off(b, VarPtr(t.Reserved2)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.Reserved2"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 232, Off(b, VarPtr(t.GuardRFVerifyStackPointerFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardRFVerifyStackPointerFunctionPointer"
-        #Else
-            Expect.AreEqual 144, Off(b, VarPtr(t.GuardRFVerifyStackPointerFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardRFVerifyStackPointerFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 240, Off(b, VarPtr(t.HotPatchTableOffset)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.HotPatchTableOffset"
-        #Else
-            Expect.AreEqual 148, Off(b, VarPtr(t.HotPatchTableOffset)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.HotPatchTableOffset"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 244, Off(b, VarPtr(t.Reserved3)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.Reserved3"
-        #Else
-            Expect.AreEqual 152, Off(b, VarPtr(t.Reserved3)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.Reserved3"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 248, Off(b, VarPtr(t.EnclaveConfigurationPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.EnclaveConfigurationPointer"
-        #Else
-            Expect.AreEqual 156, Off(b, VarPtr(t.EnclaveConfigurationPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.EnclaveConfigurationPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 256, Off(b, VarPtr(t.VolatileMetadataPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.VolatileMetadataPointer"
-        #Else
-            Expect.AreEqual 160, Off(b, VarPtr(t.VolatileMetadataPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.VolatileMetadataPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 264, Off(b, VarPtr(t.GuardEHContinuationTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardEHContinuationTable"
-        #Else
-            Expect.AreEqual 164, Off(b, VarPtr(t.GuardEHContinuationTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardEHContinuationTable"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 272, Off(b, VarPtr(t.GuardEHContinuationCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardEHContinuationCount"
-        #Else
-            Expect.AreEqual 168, Off(b, VarPtr(t.GuardEHContinuationCount)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardEHContinuationCount"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 280, Off(b, VarPtr(t.GuardXFGCheckFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardXFGCheckFunctionPointer"
-        #Else
-            Expect.AreEqual 172, Off(b, VarPtr(t.GuardXFGCheckFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardXFGCheckFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 288, Off(b, VarPtr(t.GuardXFGDispatchFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardXFGDispatchFunctionPointer"
-        #Else
-            Expect.AreEqual 176, Off(b, VarPtr(t.GuardXFGDispatchFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardXFGDispatchFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 296, Off(b, VarPtr(t.GuardXFGTableDispatchFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardXFGTableDispatchFunctionPointer"
-        #Else
-            Expect.AreEqual 180, Off(b, VarPtr(t.GuardXFGTableDispatchFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardXFGTableDispatchFunctionPointer"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 304, Off(b, VarPtr(t.CastGuardOsDeterminedFailureMode)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CastGuardOsDeterminedFailureMode"
-        #Else
-            Expect.AreEqual 184, Off(b, VarPtr(t.CastGuardOsDeterminedFailureMode)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.CastGuardOsDeterminedFailureMode"
-        #End If
-        #If Win64 Then
-            Expect.AreEqual 312, Off(b, VarPtr(t.GuardMemcpyFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardMemcpyFunctionPointer"
-        #Else
-            Expect.AreEqual 188, Off(b, VarPtr(t.GuardMemcpyFunctionPointer)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY.GuardMemcpyFunctionPointer"
-        #End If
-        Expect.Done
-    End Sub
-
-    [TestCase]
     Public Sub IMAGE_LOAD_CONFIG_DIRECTORY32_Layout()
         Expect.Begin
         Dim t As IMAGE_LOAD_CONFIG_DIRECTORY32
         Dim b As LongPtr = VarPtr(t)
-        Expect.AreEqual 192, LenB(t), "LenB of IMAGE_LOAD_CONFIG_DIRECTORY32"
+        Expect.AreEqual 196, LenB(t), "LenB of IMAGE_LOAD_CONFIG_DIRECTORY32"
         Expect.AreEqual 0, Off(b, VarPtr(t.Size)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.Size"
         Expect.AreEqual 4, Off(b, VarPtr(t.TimeDateStamp)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.TimeDateStamp"
         Expect.AreEqual 8, Off(b, VarPtr(t.MajorVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.MajorVersion"
@@ -699,8 +470,8 @@ Module ImageLayoutTests
         Expect.AreEqual 32, Off(b, VarPtr(t.LockPrefixTable)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.LockPrefixTable"
         Expect.AreEqual 36, Off(b, VarPtr(t.MaximumAllocationSize)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.MaximumAllocationSize"
         Expect.AreEqual 40, Off(b, VarPtr(t.VirtualMemoryThreshold)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.VirtualMemoryThreshold"
-        Expect.AreEqual 48, Off(b, VarPtr(t.ProcessAffinityMask)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessAffinityMask"
         Expect.AreEqual 44, Off(b, VarPtr(t.ProcessHeapFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessHeapFlags"
+        Expect.AreEqual 48, Off(b, VarPtr(t.ProcessAffinityMask)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.ProcessAffinityMask"
         Expect.AreEqual 52, Off(b, VarPtr(t.CSDVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.CSDVersion"
         Expect.AreEqual 54, Off(b, VarPtr(t.DependentLoadFlags)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.DependentLoadFlags"
         Expect.AreEqual 56, Off(b, VarPtr(t.EditList)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY32.EditList"
@@ -744,7 +515,7 @@ Module ImageLayoutTests
         Expect.Begin
         Dim t As IMAGE_LOAD_CONFIG_DIRECTORY64
         Dim b As LongPtr = VarPtr(t)
-        Expect.AreEqual 320, LenB(t), "LenB of IMAGE_LOAD_CONFIG_DIRECTORY64"
+        Expect.AreEqual 328, LenB(t), "LenB of IMAGE_LOAD_CONFIG_DIRECTORY64"
         Expect.AreEqual 0, Off(b, VarPtr(t.Size)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY64.Size"
         Expect.AreEqual 4, Off(b, VarPtr(t.TimeDateStamp)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY64.TimeDateStamp"
         Expect.AreEqual 8, Off(b, VarPtr(t.MajorVersion)), "offset of IMAGE_LOAD_CONFIG_DIRECTORY64.MajorVersion"

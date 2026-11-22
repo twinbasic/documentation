@@ -86,9 +86,11 @@ End Module
   `server.mjs` in the folder is started first, prints its port on its first line, and the exe finds
   the port in `PACKAGE_TEST_PORT` (TBMANLIB: an HTTPS server whose certificate fails every check).
   A `prepare.mjs` there is imported before that, and its default export awaited with the
-  architecture: it builds what the exe needs and returns the variables that name it to the exe
-  (tbKMode: a user-mode stand-in for `ntoskrnl.exe`, which the cases load by its full path before
-  they call a helper, so that the package's `Lib "ntoskrnl.exe"` Declares never reach the kernel).
+  architecture: it builds what the exe needs and returns `{env, beside}`, the variables that name
+  it to the exe and the files `tbrun --beside` copies into the exe's folder (tbKMode: user-mode
+  stand-ins for `ntoskrnl.exe` and, in a 32-bit build, `hal.dll`. The package binds its Declares
+  in the exe's import table, and the loader looks in the exe's folder before System32, so that its
+  `Lib "ntoskrnl.exe"` Declares never reach the kernel).
   The `exe/` folder is not published, and `RunAll` does not run its cases.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do, and so does one about what a program built with the package

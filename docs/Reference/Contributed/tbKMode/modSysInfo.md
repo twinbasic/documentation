@@ -21,7 +21,7 @@ Some of the structures hold fields of types that [**modWDM**](modWDM) declares, 
 
 ## Declares
 
-Every routine is in `ntoskrnl.exe`. A parameter with no `ByVal` is passed by reference: the buffer, which is `As Any`, the **IO_STATUS_BLOCK**, and *ReturnLength*, which receives the length the routine wrote or needs. **ZwQueryInformationProcess** spells its buffer parameter *ProccessInformation*.
+Every routine is in `ntoskrnl.exe`. A parameter with no `ByVal` is passed by reference: the buffer, which is `As Any`, the **IO_STATUS_BLOCK**, and *ReturnLength*, which receives the length the routine wrote or needs.
 
 | Name | Description |
 |------|-------------|

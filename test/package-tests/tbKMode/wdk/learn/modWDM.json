@@ -237,6 +237,12 @@
  },
  {
   "kind": "Declare",
+  "name": "ExDeleteNPagedLookasideList",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exdeletenpagedlookasidelist",
+  "syntax": "VOID ExDeleteNPagedLookasideList(\n  [in, out] PNPAGED_LOOKASIDE_LIST Lookaside\n);"
+ },
+ {
+  "kind": "Declare",
   "name": "ExDeleteResourceLite",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exdeleteresourcelite",
   "syntax": "NTSTATUS ExDeleteResourceLite(\n  [in, out] PERESOURCE Resource\n);"
@@ -525,7 +531,13 @@
  {
   "kind": "Declare",
   "name": "KeAcquireSpinLock",
-  "entry": "KeAcquireSpinLockRaiseToDpc",
+  "entry": "KfAcquireSpinLock",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-kfacquirespinlock",
+  "syntax": "KIRQL KfAcquireSpinLock(\n  PKSPIN_LOCK SpinLock\n);"
+ },
+ {
+  "kind": "Declare",
+  "name": "KeAcquireSpinLockRaiseToDpc",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-keacquirespinlockraisetodpc",
   "syntax": "KIRQL KeAcquireSpinLockRaiseToDpc(\n  PKSPIN_LOCK SpinLock\n);"
  },
@@ -668,6 +680,7 @@
  {
   "kind": "Declare",
   "name": "ObDereferenceObject",
+  "entry": "ObfDereferenceObject",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobject",
   "syntax": "void ObDereferenceObject(\n  [in] a\n);"
  },
@@ -686,6 +699,7 @@
  {
   "kind": "Declare",
   "name": "ObDereferenceObjectWithTag",
+  "entry": "ObfDereferenceObjectWithTag",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obdereferenceobjectwithtag",
   "syntax": "void ObDereferenceObjectWithTag(\n  [in] a,\n  [in] t\n);"
  },
@@ -727,8 +741,9 @@
  {
   "kind": "Declare",
   "name": "ObReferenceObject",
-  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobject",
-  "syntax": "void ObReferenceObject(\n  [in] Object\n);"
+  "entry": "ObfReferenceObject",
+  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obfreferenceobject",
+  "syntax": "LONG_PTR ObfReferenceObject(\n  [in] PVOID Object\n);"
  },
  {
   "kind": "Declare",
@@ -768,6 +783,7 @@
  {
   "kind": "Declare",
   "name": "ObReferenceObjectWithTag",
+  "entry": "ObfReferenceObjectWithTag",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-obreferenceobjectwithtag",
   "syntax": "void ObReferenceObjectWithTag(\n  [in] Object,\n  [in] Tag\n);"
  },
@@ -928,17 +944,6 @@
  },
  {
   "kind": "Declare",
-  "name": "RtlAcquirePebLock",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "RtlAllocateAndInitializeSid",
-  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlallocateandinitializesid",
-  "syntax": "NTSYSAPI NTSTATUS RtlAllocateAndInitializeSid(\n  PSID_IDENTIFIER_AUTHORITY IdentifierAuthority,\n  UCHAR                     SubAuthorityCount,\n  ULONG                     SubAuthority0,\n  ULONG                     SubAuthority1,\n  ULONG                     SubAuthority2,\n  ULONG                     SubAuthority3,\n  ULONG                     SubAuthority4,\n  ULONG                     SubAuthority5,\n  ULONG                     SubAuthority6,\n  ULONG                     SubAuthority7,\n  PSID                      *Sid\n);"
- },
- {
-  "kind": "Declare",
   "name": "RtlAllocateHeap",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlallocateheap",
   "syntax": "NTSYSAPI PVOID RtlAllocateHeap(\n  [in]           PVOID  HeapHandle,\n  [in, optional] ULONG  Flags,\n  [in]           SIZE_T Size\n);"
@@ -966,12 +971,6 @@
   "name": "RtlAreBitsSet",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlarebitsset",
   "syntax": "NTSYSAPI BOOLEAN RtlAreBitsSet(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       StartingIndex,\n  [in] ULONG       Length\n);"
- },
- {
-  "kind": "Declare",
-  "name": "RtlCheckBit",
-  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlcheckbit",
-  "syntax": "BOOLEAN RtlCheckBit(\n  [in] PRTL_BITMAP BitMapHeader,\n  [in] ULONG       BitPosition\n);"
  },
  {
   "kind": "Declare",
@@ -1037,16 +1036,6 @@
  },
  {
   "kind": "Declare",
-  "name": "RtlCreateServiceSid",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "RtlDefaultNpAcl",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "RtlDeriveCapabilitySidsFromName",
   "url": null
  },
@@ -1060,18 +1049,6 @@
   "kind": "Declare",
   "name": "RtlDuplicateUnicodeString",
   "url": null
- },
- {
-  "kind": "Declare",
-  "name": "RtlEqualPrefixSid",
-  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlequalprefixsid",
-  "syntax": "NTSYSAPI BOOLEAN RtlEqualPrefixSid(\n  [in] PSID Sid1,\n  [in] PSID Sid2\n);"
- },
- {
-  "kind": "Declare",
-  "name": "RtlEqualSid",
-  "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-rtlequalsid",
-  "syntax": "NTSYSAPI BOOLEAN RtlEqualSid(\n  [in] PSID Sid1,\n  [in] PSID Sid2\n);"
  },
  {
   "kind": "Declare",
@@ -1192,11 +1169,6 @@
  {
   "kind": "Declare",
   "name": "RtlGetControlSecurityDescriptor",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "RtlGetCurrentPeb",
   "url": null
  },
  {
@@ -1331,11 +1303,6 @@
  },
  {
   "kind": "Declare",
-  "name": "RtlReleasePebLock",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "RtlSetAllBits",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits",
   "syntax": "NTSYSAPI VOID RtlSetAllBits(\n  [in] PRTL_BITMAP BitMapHeader\n);"
@@ -1395,12 +1362,6 @@
   "kind": "Declare",
   "name": "RtlTestBitEx",
   "url": null
- },
- {
-  "kind": "Declare",
-  "name": "RtlUniform",
-  "url": "https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-rtluniform",
-  "syntax": "ULONG RtlUniform(\n  [in, out] PULONG Seed\n);"
  },
  {
   "kind": "Declare",
@@ -1499,16 +1460,6 @@
  },
  {
   "kind": "Declare",
-  "name": "ZwCompactKeys",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "ZwCompressKey",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwCreateDirectoryObject",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwcreatedirectoryobject",
   "syntax": "NTSYSAPI NTSTATUS ZwCreateDirectoryObject(\n  [out] PHANDLE            DirectoryHandle,\n  [in]  ACCESS_MASK        DesiredAccess,\n  [in]  POBJECT_ATTRIBUTES ObjectAttributes\n);"
@@ -1545,6 +1496,7 @@
  {
   "kind": "Declare",
   "name": "ZwCreateUserProcess",
+  "entry": "#2",
   "url": null
  },
  {
@@ -1591,33 +1543,13 @@
  },
  {
   "kind": "Declare",
-  "name": "ZwFreezeRegistry",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwFsControlFile",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwfscontrolfile",
   "syntax": "NTSYSAPI NTSTATUS ZwFsControlFile(\n  [in]            HANDLE           FileHandle,\n  [in, optional]  HANDLE           Event,\n  [in, optional]  PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional]  PVOID            ApcContext,\n  [out]           PIO_STATUS_BLOCK IoStatusBlock,\n  [in]            ULONG            FsControlCode,\n  [in, optional]  PVOID            InputBuffer,\n  [in]            ULONG            InputBufferLength,\n  [out, optional] PVOID            OutputBuffer,\n  [in]            ULONG            OutputBufferLength\n);"
  },
  {
   "kind": "Declare",
-  "name": "ZwInitializeRegistry",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwLoadKey",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "ZwLoadKey2",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "ZwLoadKey3",
   "url": null
  },
  {
@@ -1638,11 +1570,6 @@
  },
  {
   "kind": "Declare",
-  "name": "ZwLockRegistryKey",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwMapViewOfSection",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwmapviewofsection",
   "syntax": "NTSYSAPI NTSTATUS ZwMapViewOfSection(\n  [in]                HANDLE          SectionHandle,\n  [in]                HANDLE          ProcessHandle,\n  [in, out]           PVOID           *BaseAddress,\n  [in]                ULONG_PTR       ZeroBits,\n  [in]                SIZE_T          CommitSize,\n  [in, out, optional] PLARGE_INTEGER  SectionOffset,\n  [in, out]           PSIZE_T         ViewSize,\n  [in]                SECTION_INHERIT InheritDisposition,\n  [in]                ULONG           AllocationType,\n  [in]                ULONG           Win32Protect\n);"
@@ -1652,11 +1579,6 @@
   "name": "ZwNotifyChangeKey",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwnotifychangekey",
   "syntax": "NTSYSAPI NTSTATUS ZwNotifyChangeKey(\n  [in]            HANDLE           KeyHandle,\n  [in, optional]  HANDLE           Event,\n  [in, optional]  PIO_APC_ROUTINE  ApcRoutine,\n  [in, optional]  PVOID            ApcContext,\n  [out]           PIO_STATUS_BLOCK IoStatusBlock,\n  [in]            ULONG            CompletionFilter,\n  [in]            BOOLEAN          WatchTree,\n  [out, optional] PVOID            Buffer,\n  [in]            ULONG            BufferSize,\n  [in]            BOOLEAN          Asynchronous\n);"
- },
- {
-  "kind": "Declare",
-  "name": "ZwNotifyChangeMultipleKeys",
-  "url": null
  },
  {
   "kind": "Declare",
@@ -1736,21 +1658,6 @@
  },
  {
   "kind": "Declare",
-  "name": "ZwQueryMultipleValueKey",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "ZwQueryOpenSubKeys",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "ZwQueryOpenSubKeysEx",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwQuerySymbolicLinkObject",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwquerysymboliclinkobject",
   "syntax": "NTSYSAPI NTSTATUS ZwQuerySymbolicLinkObject(\n  [in]            HANDLE          LinkHandle,\n  [in, out]       PUNICODE_STRING LinkTarget,\n  [out, optional] PULONG          ReturnedLength\n);"
@@ -1784,11 +1691,6 @@
  },
  {
   "kind": "Declare",
-  "name": "ZwResumeProcess",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwRollbackRegistryTransaction",
   "url": null
  },
@@ -1804,11 +1706,6 @@
  },
  {
   "kind": "Declare",
-  "name": "ZwSaveMergedKeys",
-  "url": null
- },
- {
-  "kind": "Declare",
   "name": "ZwSetInformationKey",
   "url": null
  },
@@ -1817,16 +1714,6 @@
   "name": "ZwSetValueKey",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwsetvaluekey",
   "syntax": "NTSYSAPI NTSTATUS ZwSetValueKey(\n  [in]           HANDLE          KeyHandle,\n  [in]           PUNICODE_STRING ValueName,\n  [in, optional] ULONG           TitleIndex,\n  [in]           ULONG           Type,\n  [in, optional] PVOID           Data,\n  [in]           ULONG           DataSize\n);"
- },
- {
-  "kind": "Declare",
-  "name": "ZwSuspendProcess",
-  "url": null
- },
- {
-  "kind": "Declare",
-  "name": "ZwThawRegistry",
-  "url": null
  },
  {
   "kind": "Declare",
@@ -2007,6 +1894,11 @@
   "name": "FILE_OBJECT",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object",
   "syntax": "typedef struct _FILE_OBJECT {\n  CSHORT                                Type;\n  CSHORT                                Size;\n  PDEVICE_OBJECT                        DeviceObject;\n  PVPB                                  Vpb;\n  PVOID                                 FsContext;\n  PVOID                                 FsContext2;\n  PSECTION_OBJECT_POINTERS              SectionObjectPointer;\n  PVOID                                 PrivateCacheMap;\n  NTSTATUS                              FinalStatus;\n  struct _FILE_OBJECT                   *RelatedFileObject;\n  BOOLEAN                               LockOperation;\n  BOOLEAN                               DeletePending;\n  BOOLEAN                               ReadAccess;\n  BOOLEAN                               WriteAccess;\n  BOOLEAN                               DeleteAccess;\n  BOOLEAN                               SharedRead;\n  BOOLEAN                               SharedWrite;\n  BOOLEAN                               SharedDelete;\n  ULONG                                 Flags;\n  UNICODE_STRING                        FileName;\n  LARGE_INTEGER                         CurrentByteOffset;\n  __volatile ULONG                      Waiters;\n  __volatile ULONG                      Busy;\n  PVOID                                 LastLock;\n  KEVENT                                Lock;\n  KEVENT                                Event;\n  __volatile PIO_COMPLETION_CONTEXT     CompletionContext;\n  KSPIN_LOCK                            IrpListLock;\n  LIST_ENTRY                            IrpList;\n  __volatile _IOP_FILE_OBJECT_EXTENSION *FileObjectExtension;\n  struct                                _IOP_FILE_OBJECT_EXTENSION;\n} FILE_OBJECT, *PFILE_OBJECT;"
+ },
+ {
+  "kind": "Type",
+  "name": "GENERAL_LOOKASIDE",
+  "url": null
  },
  {
   "kind": "Type",
@@ -2566,6 +2458,11 @@
  },
  {
   "kind": "Type",
+  "name": "SLIST_HEADER",
+  "url": null
+ },
+ {
+  "kind": "Type",
   "name": "TOKEN_PRIVILEGES",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_token_privileges",
   "syntax": "typedef struct _TOKEN_PRIVILEGES {\n  ULONG               PrivilegeCount;\n  LUID_AND_ATTRIBUTES Privileges[ANYSIZE_ARRAY];\n} TOKEN_PRIVILEGES, *PTOKEN_PRIVILEGES;"
@@ -2593,16 +2490,6 @@
   "name": "VPB",
   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_vpb",
   "syntax": "typedef struct _VPB {\n  CSHORT                Type;\n  CSHORT                Size;\n  USHORT                Flags;\n  USHORT                VolumeLabelLength;\n  struct _DEVICE_OBJECT *DeviceObject;\n  struct _DEVICE_OBJECT *RealDevice;\n  ULONG                 SerialNumber;\n  ULONG                 ReferenceCount;\n  WCHAR                 VolumeLabel[MAXIMUM_VOLUME_LABEL_LENGTH / sizeof(WCHAR)];\n} VPB, *PVPB;"
- },
- {
-  "kind": "Type",
-  "name": "_GENERAL_LOOKASIDE",
-  "url": null
- },
- {
-  "kind": "Type",
-  "name": "_SLIST_HEADER",
-  "url": null
  },
  {
   "kind": "Enum",
@@ -2812,6 +2699,11 @@
  },
  {
   "kind": "Enum",
+  "name": "MEMORY_CACHING_TYPE_ORIG",
+  "url": null
+ },
+ {
+  "kind": "Enum",
   "name": "MM_COPY_FLAGS",
   "url": null
  },
@@ -2977,6 +2869,11 @@
  },
  {
   "kind": "Enum",
+  "name": "RTL_FAST_FAIL",
+  "url": null
+ },
+ {
+  "kind": "Enum",
   "name": "RTL_UPP_FLAGS",
   "url": null
  },
@@ -3061,6 +2958,11 @@
  },
  {
   "kind": "Enum",
+  "name": "SharedDataFlagsMasks",
+  "url": null
+ },
+ {
+  "kind": "Enum",
   "name": "StandardAccessTypes",
   "url": null
  },
@@ -3093,6 +2995,11 @@
  {
   "kind": "Enum",
   "name": "VBP_FLAGS",
+  "url": null
+ },
+ {
+  "kind": "Enum",
+  "name": "VER_SUITE_VALUES",
   "url": null
  },
  {

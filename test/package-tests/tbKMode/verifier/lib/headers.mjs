@@ -340,8 +340,10 @@ function findingsFor(parsed, model, db, config) {
       if (c.value !== tb) add("error", `${name} is ${JSON.stringify(tb)}, the WDK's ${JSON.stringify(c.value)}`);
       return;
     }
-    // As the test cases compare: a value that needs 64 bits as a LongLong, any other as a Long.
-    const wide = c.value < -(2n ** 31n) || c.value > 2n ** 32n - 1n;
+    // As the test cases compare: a value that needs 64 bits as a LongLong, any other as a Long;
+    // and a package value no Long holds, a LongLong constant (POOL_FLAG_REQUIRED_END,
+    // &H0000000080000000^), as a LongLong.
+    const wide = c.value < -(2n ** 31n) || c.value > 2n ** 32n - 1n || tb < -(2n ** 31n) || tb > 2n ** 31n - 1n;
     const want = BigInt.asIntN(wide ? 64 : 32, c.value);
     if (want !== tb) add("error", `${name} is ${num(tb)}, the WDK's ${num(c.value)}`);
   };
