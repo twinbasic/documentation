@@ -18,7 +18,10 @@
 // the web fonts a run was drawn with, each scrolling box's scrollbar styles, each
 // inline <svg>'s markup, each search field's clear button (`searchButtons`,
 // [layout object's key, what capture.mjs's searchButton read] pairs; a bundle
-// taken before they were read has none, and a field with text is a miss), and a
+// taken before they were read has none, and a field with text is a miss), where
+// Chromium wraps each textarea's text (`breaks`, [layout object's key, the offsets
+// its drawn lines start at] pairs for those it wraps; a bundle taken before they
+// were read has none, and a textarea with a line wider than it is a miss), and a
 // frame's viewport and zoom.
 //
 // A web font is kept as the @font-face rules of its family that some run was
@@ -54,7 +57,10 @@ import {
   accentUnknown,
   decodeSnapshot,
   ellipsisLines,
+  LONG_TEXTAREA_LINE,
+  maskUnknown,
   oneLine,
+  renderingUnknown,
   renderSvg,
   unzoom,
   useImageTools,
@@ -234,6 +240,8 @@ export function drawBundle(bundle) {
       // a bundle taken before the clear buttons were read cannot say whether one shows
       searchButton: (key) =>
         buttons ? (buttons.get(key) ?? null) : miss("the clear button of a search field that shows text"),
+      // a bundle taken before they were read has none, and renderSvg reports a line that needs them
+      breaks: m.breaks ? new Map(m.breaks) : null,
       selection: m.selection,
       inner: m.inner,
     };
@@ -248,6 +256,12 @@ export function drawBundle(bundle) {
     if (accentUnknown(doc)) misses.add("accent-color of a checked checkbox or radio button");
   // Nor, before zoom was read, the size of what an element its inline style zooms holds.
   for (const doc of measured.keys()) if (doc.zoomUnknown) misses.add("zoom of an element its inline style zooms");
+  // Nor, before mask-image was read, whether a box in its own text colour is an icon's mask.
+  for (const doc of measured.keys())
+    if (maskUnknown(doc)) misses.add("mask-image of a ::before or ::after in its own text colour");
+  // Nor, before image-rendering was read, whether an image scaled up is smooth or pixelated.
+  for (const [doc, m] of measured)
+    if (renderingUnknown(doc, m.page.canvases)) misses.add("image-rendering of an image scaled up 2 times or more");
 
   const mine = measured.get(decoded);
   if (!mine) throw new Error("the bundle has no measurements of the page");
@@ -269,6 +283,9 @@ export function drawBundle(bundle) {
     overlays,
     frames: (doc) => (measured.has(doc) ? envOf(measured.get(doc)) : null),
   });
+  // Nor, before a textarea's line breaks were read, whether a line wider than it is wrapped.
+  if (drawn.stats.unsupported[LONG_TEXTAREA_LINE])
+    misses.add("the line breaks of a textarea with a line wider than it");
   return { drawn, fonts, misses: [...misses].sort() };
 }
 

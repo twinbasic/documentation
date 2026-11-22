@@ -23,7 +23,7 @@ A theme sets the colours, fonts and borders of the whole IDE, including the colo
 
 Point at **Window → Theme**. The submenu lists the themes, and a tick marks the one in use.
 
-![The Window menu with Theme highlighted and its submenu open to the right, listing Aurora (Dark), Classic (Light), a ticked Dark, High Contrast Dark (Dark), High Contrast Light (Light) and Light, with Reload from disk below a separator.](../Menu/Images/Menu_Window_Theme.png){:width="361" height="288"}
+![The Window menu with Theme highlighted and its submenu open to the right, listing Aurora (Dark), Classic (Light), a ticked Dark, High Contrast Dark (Dark), High Contrast Light (Light) and Light, with Reload from disk below a separator.](../Menu/Images/Menu_Window_Theme.png){:width="364" height="288"}
 
 You can also click the icon with the tooltip **Change IDE Theme** in the toolbar. It opens the same list.
 
@@ -78,7 +78,7 @@ SymbolClassTextDecoration:      underline;
 ```
 
 <!-- test: bug theme-override-breaks-inheritance, lane ide:customising -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A file named `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` breaks the inheritance of every custom theme. The IDE ignores the file's contents, but still counts it, and so it never links the themes to their parents. Every custom theme, and **Classic (Light)** with them, is listed as `(undefined)` in place of **Light** or **Dark**. Choosing one gives the dark base with only that theme's own properties changed, and **Reload from disk** no longer applies the edits you make. No error is shown. To change one of the shipped themes, give your file another name and inherit from the shipped theme: `inherits: dark;`.
 
 A chain of `inherits:` lines must not return to a theme in it. When `LoopA` has the line `inherits: LoopB;` and `LoopB` has `inherits: LoopA;`, **Reload from disk** shows the alert *Invalid theme file detected: LoopB.theme (recursive inheritance)*. `LoopA` is then left out of the **Theme** list, and `LoopB` is listed with the dark base.
@@ -109,7 +109,7 @@ The shipped files `Dark.theme` and `Light.theme` define the same properties, abo
 - `Property`, 14.
 - `Code`, 13.
 
-Smaller groups follow, such as `Diagnostics`, `Context`, `FrontPage`, `General`, `Modal`, `Dock`, `Debug` and `Menu`. The names within each shipped file are roughly, not strictly, in alphabetical order, so search the file for a name rather than looking for it by its place.
+Smaller groups follow, such as `Diagnostics`, `Context`, `FrontPage`, `General`, `Modal`, `Dock`, `Debug` and `Menu`. The `Addin` group is the colours that add-ins draw their tool windows and designers in, such as `AddinBackColor` and `AddinAccentBackColor`; an add-in reads them as CSS variables, which [Colours for addins](../../Packages/tbIDE/Themes#colours-for-addins) lists. The names within each shipped file are roughly, not strictly, in alphabetical order, so search the file for a name rather than looking for it by its place.
 
 Each of the 47 kinds of code has four `Symbol` properties: its name between `Symbol` and `Color`, `FontStyle`, `FontWeight` or `TextDecoration`. `SymbolClassTextDecoration` in the example above is the text decoration of the kind *Class*.
 

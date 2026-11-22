@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:ico-cur",
+  "tests": [
+    "Pic.cur, the same picture as a cursor, opens in the ICO Designer as an unsupported or corrupt icon"
+  ],
+  "steps": "1. A project with two files in Sources: Pic.ico, a 16x16 32-bit icon, and Pic.cur, the same picture as a cursor (type 2 in the header, hotspot 0,0).\n2. Double-click Pic.ico in the Project Explorer. The ICO Designer opens it and says Imported ICO.\n3. Double-click Pic.cur. The ICO Designer opens it, since it is the default designer for .cur, and says Unsupported/corrupt ICO: click New icon to replace it.\nControl: step 2."
+}

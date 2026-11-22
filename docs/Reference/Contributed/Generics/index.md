@@ -18,7 +18,7 @@ The **Generics** contributed package provides seven tuple classes, **TupleOf1** 
 A tuple lets a function return several values at once, without a user-defined type declared for the purpose or **ByRef** parameters for the results. Each class is a [generic class](../../../../Features/Language/Generics): **TupleOf2(Of Long, String)** holds a **Long** and a **String**, and its **Item1** and **Item2** properties return them with those types. The classes follow .NET's **System.Tuple** classes, and their source comments are taken from .NET's, under the MIT licence. This section documents version 1.0.0.0, published under the MIT licence.
 
 <!-- test: compile PspCallbackA_DelegateHasNoReturnType, compile PspCallbackW_DelegateHasNoReturnType, compile PspCallback_DelegateHasNoReturnType, compile EnumerateMetafileProc_DelegateHasNoReturnType, compile InspectHSTRINGCallback_DelegateHasNoReturnType, compile InspectHSTRINGCallback2_DelegateHasNoReturnType -->
-> [!NOTE] 1.0.0.0, BETA 1042
+> [!NOTE] 1.0.0.0, BETA 1045
 > The package does not compile, so a project that references it does not build. It embeds the **WinDevLib** package, version 8.9.518.0, through **WinDevLibImpl**, and six of WinDevLib's [**Delegate**](../../../Core/Delegate) declarations are a **Function** with no **As** clause. twinBASIC reports each with TB0003, *Datatype has not been explicitly declared so will default to Variant*, and WinDevLib's own settings make TB0003 an error.
 
 ```tb check_build check_run
@@ -101,7 +101,7 @@ End Module
 ```
 
 <!-- test: compile NewWithoutDeclaration -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > **New** with a generic class from a package compiles only when some declaration in the project or the package names the same class with the same type arguments. A variable declared with the tuple's type is such a declaration. Without one, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails with TB5074, *Could not bind to parameterized constructor of class 'TupleOf2'*, and so does **New** assigned to an **Object** or **Variant** variable or passed as an argument. A generic class declared in the project's own code is not affected. Assign the tuple to a variable of its own type first; that variable can then be assigned to an **Object** or **Variant** variable, through which the items are read late-bound:
 >
 > ```tb check_build check_run
@@ -152,7 +152,7 @@ Three kinds of type cannot be used:
 > The constructor stores each item with `=`, not with **Set**, so creating a tuple of an object type fails. For **Object**, which compiles, **New** raises run-time error 91, *Object variable or With block variable not set*, even when the item passed is **Nothing**. A class whose default member takes an argument, such as **Collection**, fails to compile, with TB5092 *Missing argument 'Index'* reported in the package's source.
 
 <!-- test: bug generic-array-type-argument-crash -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A tuple type with an array as a type argument, such as `TupleOf1(Of Long())`, crashes the compiler wherever it is written: in a declaration, a parameter, a function's result type or after **New**. The compiler restarts and crashes again, so nothing in the project compiles until the line is removed. The same happens with a generic class declared in a project's own code.
 
 ## TupleOf4

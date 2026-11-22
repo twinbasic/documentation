@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:hover-values",
+  "tests": [
+    "hovering over iNeg shows \"iNeg:   -1  (&HFFFF&)\"",
+    "hovering over lNeg shows \"lNeg:   -1  (&HFFFFFFFF^)\""
+  ],
+  "steps": "1. Dim iNeg As Integer = -1 and Dim lNeg As Long = -1, then a line after them.\n2. Stop at a breakpoint on that line.\n3. Hold the pointer over iNeg. The hover reads iNeg:   -1  (&HFFFF&), and &HFFFF& is the Long 65535.\n4. Hold the pointer over lNeg. The hover reads lNeg:   -1  (&HFFFFFFFF^), and &HFFFFFFFF^ is the LongLong 4294967295.\nControl: a Long of 32768 shows (&H8000&), which is right, and a Byte of 255 shows (&HFF)."
+}

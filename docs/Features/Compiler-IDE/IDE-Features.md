@@ -57,10 +57,6 @@ The classic file-based view is still used by default, you can activate the new v
 
 ![The Project Explorer title bar with the file view toggle button highlighted](../Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png){:width="296" height="30"}
 
-## View Forms and Packages as JSON
+## View Forms as JSON
 
-Project forms and packages are stored as JSON, and **View As JSON** in the Project Explorer shows that text. For a package, this exposes its code in a form that a program can read. [View as JSON and Markdown preview](../../tB/IDE/Projects/Files-and-Folders#view-as-json-and-markdown-preview) describes the command.
-
-![The Project Explorer with the Packages folder open, and the right-click menu of CustomControlsPackage with View As JSON highlighted](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="486" height="409"}
-
-![The CustomControls package shown as JSON in the editor, listing its components with their events, fields and procedures](../Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png){:width="757" height="198"}
+Project forms are stored as JSON, and **Open with → JSON Preview** in the Project Explorer shows that text. [JSON preview and Markdown preview](../../tB/IDE/Projects/Files-and-Folders#view-as-json-and-markdown-preview) describes the command.

@@ -2,7 +2,7 @@
   "format": 4,
   "package": "tbIDE",
   "project": "tbIDE",
-  "version": "beta-x-1042",
+  "version": "beta-x-1045",
   "types": [
     {
       "name": "AddIn",
@@ -64,6 +64,66 @@
       "members": []
     },
     {
+      "name": "Designer",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "CoClass Designer",
+      "interfaces": [{"name":"IDesignerV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"10194E9A-6A3B-413F-BCDA-F4485E7D7F79\""}],
+      "members": []
+    },
+    {
+      "name": "DesignerFactory",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "CoClass DesignerFactory",
+      "interfaces": [{"name":"IDesignerFactoryV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"30262402-4D7A-4170-9E63-FE158040EC0F\""}],
+      "members": []
+    },
+    {
+      "name": "DesignerHost",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "CoClass DesignerHost",
+      "interfaces": [{"name":"IDesignerHostV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"30262402-4D7A-4170-9E63-FE158040EC0F\""}],
+      "members": []
+    },
+    {
+      "name": "DesignerToolbox",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "CoClass DesignerToolbox",
+      "interfaces": [{"name":"IDesignerToolboxV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"E2256BF6-7BF8-45DF-92F3-97269E96C93A\""}],
+      "members": []
+    },
+    {
+      "name": "DesignerToolboxItem",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "CoClass DesignerToolboxItem",
+      "interfaces": [{"name":"IDesignerToolboxItemV1","default":true},{"name":"IDesignerToolboxItemEventsV1","default":true,"source":true}],
+      "attrs": [{"name":"CoClassId","args":"\"349EAA81-4307-4BEA-A042-EE593F1AB4D0\""}],
+      "members": []
+    },
+    {
+      "name": "Designers",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "CoClass Designers",
+      "interfaces": [{"name":"IDesignersV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"348718FE-4B27-47F2-A040-F45E66DD2E41\""}],
+      "members": []
+    },
+    {
       "name": "Editor",
       "kind": "coclass",
       "vis": "public",
@@ -79,7 +139,7 @@
       "vis": "public",
       "file": "Editors.twin",
       "signature": "CoClass Editors",
-      "interfaces": [{"name":"IEditorsV1","default":true}],
+      "interfaces": [{"name":"IEditorsV2","default":true}],
       "attrs": [{"name":"CoClassId","args":"\"4272F739-1019-48FB-B3B6-17BBE0DDE52E\""}],
       "members": []
     },
@@ -129,7 +189,7 @@
       "vis": "public",
       "file": "Host.twin",
       "signature": "Public CoClass Host",
-      "interfaces": [{"name":"IHostV1","default":true},{"name":"ItbHostEventsV3","default":true,"source":true}],
+      "interfaces": [{"name":"IHostV2","default":true},{"name":"ItbHostEventsV3","default":true,"source":true}],
       "attrs": [{"name":"CoClassId","args":"\"1C616DB9-06D0-4367-8E5F-5B4E86789463\""}],
       "members": []
     },
@@ -179,7 +239,7 @@
       "vis": "public",
       "file": "IHtmlEventProperties.twin",
       "signature": "CoClass HtmlEventProperties",
-      "interfaces": [{"name":"IHtmlEventPropertiesV1","default":true}],
+      "interfaces": [{"name":"IHtmlEventPropertiesV2","default":true}],
       "attrs": [{"name":"CoClassId","args":"\"8CB99AC2-51EE-4FDA-B3D5-80BB0E7706EE\""}],
       "members": []
     },
@@ -203,6 +263,18 @@
       "attrs": [{"name":"InterfaceId","args":"\"F1BAB9A7-09A3-436C-8B57-A57A76C5DF98\""}],
       "members": [
         {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "IAsyncResultResolver",
+      "kind": "interface",
+      "vis": "public",
+      "file": "IHtmlEventProperties.twin",
+      "signature": "Public Interface IAsyncResultResolver Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3A78C0F0-9163-41D3-A123-81EE0D7D37E9\""},{"name":"COMExtensible","args":"True"}],
+      "members": [
+        {"name":"Resolve","kind":"sub","vis":"public","signature":"Sub Resolve(retval As Variant)"}
       ]
     },
     {
@@ -284,6 +356,111 @@
       ]
     },
     {
+      "name": "IDesignerFactoryV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignerFactoryV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"A78D5F69-C8F5-4395-BF9A-E1E9E904D0FB\""}],
+      "members": [
+        {"name":"CreateDesigner","kind":"function","vis":"public","signature":"Function CreateDesigner() As Designer","returnType":"Designer","description":""}
+      ]
+    },
+    {
+      "name": "IDesignerHostV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignerHostV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"90A8309C-B25E-4C1D-8395-77868FD4BBD2\""}],
+      "members": [
+        {"name":"ApplyCss","kind":"sub","vis":"public","signature":"Sub ApplyCss(ByVal styles As String)","description":""},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Get Caption() As String","returnType":"String","accessor":"Get","description":""},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Let Caption(ByVal value As String)","accessor":"Let","description":""},
+        {"name":"GetURI","kind":"property","vis":"public","signature":"Property Get GetURI() As String","returnType":"String","accessor":"Get","description":""},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Get IconData() As Variant","returnType":"Variant","accessor":"Get","description":""},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Let IconData(ByVal value As Variant)","accessor":"Let","description":""},
+        {"name":"RootDomElement","kind":"property","vis":"public","signature":"Property Get RootDomElement() As HtmlElement","returnType":"HtmlElement","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":""},
+        {"name":"SetFileData","kind":"sub","vis":"public","signature":"Sub SetFileData(ByRef bytes() As Byte)","description":""},
+        {"name":"Toolbox","kind":"property","vis":"public","signature":"Property Get Toolbox() As DesignerToolbox","returnType":"DesignerToolbox","accessor":"Get","description":""},
+        {"name":"Tooltip","kind":"property","vis":"public","signature":"Property Get Tooltip() As String","returnType":"String","accessor":"Get","description":""},
+        {"name":"Tooltip","kind":"property","vis":"public","signature":"Property Let Tooltip(ByVal value As String)","accessor":"Let","description":""}
+      ]
+    },
+    {
+      "name": "IDesignerToolboxItemEventsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignerToolboxItemEventsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"211DF286-8D8E-4717-9CB8-2AF018396A43\""}],
+      "members": [
+        {"name":"OnClick","kind":"sub","vis":"public","signature":"Sub OnClick()","description":""}
+      ]
+    },
+    {
+      "name": "IDesignerToolboxItemV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignerToolboxItemV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"1BD36D91-5A3C-4D31-9CBB-6531F4C72538\""}],
+      "members": [
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Get Caption() As String","returnType":"String","accessor":"Get","description":""},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Let Caption(ByVal Value As String)","accessor":"Let","description":""},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Get IconData() As Variant","returnType":"Variant","accessor":"Get","description":""},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Let IconData(ByVal Value As Variant)","accessor":"Let","description":""}
+      ]
+    },
+    {
+      "name": "IDesignerToolboxV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignerToolboxV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0DB2DD63-0AE9-4973-9303-0598444C15B4\""}],
+      "members": [
+        {"name":"AddItem","kind":"function","vis":"public","signature":"Function AddItem(ByVal Caption As String, Optional ByVal IconData As Variant) As DesignerToolboxItem","returnType":"DesignerToolboxItem","description":""},
+        {"name":"Clear","kind":"sub","vis":"public","signature":"Sub Clear()","description":""}
+      ]
+    },
+    {
+      "name": "IDesignerV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignerV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"5D3E990F-9A8A-4AF8-A37C-C46FA51CDFD0\""}],
+      "members": [
+        {"name":"OnActivated","kind":"sub","vis":"public","signature":"Sub OnActivated()","description":""},
+        {"name":"OnAttached","kind":"sub","vis":"public","signature":"Sub OnAttached(ByVal DesignerHost As DesignerHost)","description":""},
+        {"name":"OnClosed","kind":"sub","vis":"public","signature":"Sub OnClosed()","description":""},
+        {"name":"OnClosing","kind":"sub","vis":"public","signature":"Sub OnClosing()","description":""},
+        {"name":"OnDeactivated","kind":"sub","vis":"public","signature":"Sub OnDeactivated()","description":""},
+        {"name":"OnFileDataChanged","kind":"sub","vis":"public","signature":"Sub OnFileDataChanged(ByRef byteData() As Byte)","description":""},
+        {"name":"OnSaveCompleted","kind":"sub","vis":"public","signature":"Sub OnSaveCompleted()","description":""}
+      ]
+    },
+    {
+      "name": "IDesignersV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Designers.twin",
+      "signature": "Interface IDesignersV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3BDF1151-85F0-4095-84AA-4B9E83344AE1\""}],
+      "members": [
+        {"name":"Register","kind":"sub","vis":"public","signature":"Sub Register(ByVal Name As String, ByVal Extension As String, ByVal Factory As DesignerFactory, Optional ByVal IsDefault As Boolean, Optional ByVal IconData As Variant)","description":""},
+        {"name":"Unregister","kind":"sub","vis":"public","signature":"Sub Unregister(ByVal Extension As String)","description":""}
+      ]
+    },
+    {
       "name": "IEditorV1",
       "kind": "interface",
       "vis": "public",
@@ -311,7 +488,7 @@
       "members": [
         {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Count of active editors"},
         {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal Index As Variant) As Editor","returnType":"Editor","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"There is currently only ONE active editor, accessible via the Editors(0) syntax"},
-        {"name":"Open","kind":"sub","vis":"public","signature":"Sub Open(ByVal Path As String, Optional ByVal LineNumber As Long, Optional ByVal ColumnNumber As Long, Optional ByVal Options As EditorOpenOptions)","description":"Opens the editor associated with the given file"}
+        {"name":"OpenV1","kind":"sub","vis":"public","signature":"Sub OpenV1(ByVal Path As String, Optional ByVal LineNumber As Long, Optional ByVal ColumnNumber As Long, Optional ByVal Options As EditorOpenOptions)","hidden":true,"attrs":[{"name":"Hidden"},{"name":"NonBrowsable"},{"name":"Restricted"}],"description":"Opens the editor associated with the given file"}
       ]
     },
     {
@@ -323,6 +500,18 @@
       "signature": "Enum EditorOpenOptions",
       "values": [
         {"name":"NONE","value":"0"}
+      ]
+    },
+    {
+      "name": "IEditorsV2",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Editors.twin",
+      "signature": "Public Interface IEditorsV2 Extends IEditorsV1",
+      "extends": "IEditorsV1",
+      "attrs": [{"name":"InterfaceId","args":"\"3FB40CEA-21C7-4AD2-8E0A-F87DD256786D\""}],
+      "members": [
+        {"name":"Open","kind":"sub","vis":"public","signature":"Sub Open(ByVal Path As String, Optional ByVal LineNumber As Long, Optional ByVal ColumnNumber As Long, Optional ByVal Options As EditorOpenOptions, Optional ByVal Designer As Designer)","description":"Opens the editor associated with the given file"}
       ]
     },
     {
@@ -397,7 +586,7 @@
       "extends": "IFileV1",
       "attrs": [{"name":"InterfaceId","args":"\"5C7802BE-D1BC-4C2A-B096-39A628638DF7\""}],
       "members": [
-        {"name":"ReadText","kind":"function","vis":"public","signature":"Function ReadText(ByVal Options As ReadTextFlags) As String","returnType":"String","description":"appropriate UTF-16 conversion of the current data, for known types (e.g. UTF8 to UTF16 for TWIN, ANSI to UTF16 for BAS/CLS)"}
+        {"name":"ReadText","kind":"function","vis":"public","signature":"Function ReadText(Optional ByVal Options As ReadTextFlags) As String","returnType":"String","description":"appropriate UTF-16 conversion of the current data, for known types (e.g. UTF8 to UTF16 for TWIN, ANSI to UTF16 for BAS/CLS)"}
       ]
     },
     {
@@ -459,6 +648,20 @@
       "signature": "Enum DebuggerEvaluateOptions",
       "values": [
         {"name":"NONE","value":"0"}
+      ]
+    },
+    {
+      "name": "IHostV2",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Public Interface IHostV2 Extends IHostV1",
+      "extends": "IHostV1",
+      "attrs": [{"name":"InterfaceId","args":"\"4088161F-3A8F-40AF-80B0-C2546BD51A28\""}],
+      "members": [
+        {"name":"Designers","kind":"property","vis":"public","signature":"Property Get Designers() As Designers","returnType":"Designers","accessor":"Get"},
+        {"name":"Menus","kind":"property","vis":"public","signature":"Property Get Menus() As Menus","returnType":"Menus","accessor":"Get","description":"Provides methods for registering and unregistering custom menu entries inside the IDE"},
+        {"name":"ProjectExplorer","kind":"property","vis":"public","signature":"Property Get ProjectExplorer() As ProjectExplorer","returnType":"ProjectExplorer","accessor":"Get","description":"Provides access to PROJECT EXPLORER panel features"}
       ]
     },
     {
@@ -527,6 +730,18 @@
       ]
     },
     {
+      "name": "IHtmlEventPropertiesV2",
+      "kind": "interface",
+      "vis": "public",
+      "file": "IHtmlEventProperties.twin",
+      "signature": "Public Interface IHtmlEventPropertiesV2 Extends IHtmlEventPropertiesV1",
+      "extends": "IHtmlEventPropertiesV1",
+      "attrs": [{"name":"InterfaceId","args":"\"4579C2C7-5913-48B3-B37F-08C2862144C8\""},{"name":"COMExtensible","args":"True"}],
+      "members": [
+        {"name":"AsyncResultResolver","kind":"property","vis":"public","signature":"Property Get AsyncResultResolver() As IAsyncResultResolver","returnType":"IAsyncResultResolver","accessor":"Get"}
+      ]
+    },
+    {
       "name": "IHtmlEventPropertyV1",
       "kind": "interface",
       "vis": "public",
@@ -551,6 +766,129 @@
       ]
     },
     {
+      "name": "IMenuEntryEventsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "Interface IMenuEntryEventsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"88908374-0D2E-424F-8152-CB5BCC56364F\""}],
+      "members": [
+        {"name":"BeforeShow","kind":"sub","vis":"public","signature":"Sub BeforeShow()"},
+        {"name":"Click","kind":"sub","vis":"public","signature":"Sub Click()"}
+      ]
+    },
+    {
+      "name": "IMenuEntryV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "Interface IMenuEntryV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"9ABEFB74-0CFD-4274-A227-4329D0222E44\""}],
+      "members": [
+        {"name":"BeforeShowEvents","kind":"property","vis":"public","signature":"Property Get BeforeShowEvents() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"BeforeShowEvents","kind":"property","vis":"public","signature":"Property Let BeforeShowEvents(ByVal Value As Boolean)","accessor":"Let"},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Get Caption() As String","returnType":"String","accessor":"Get"},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Let Caption(ByVal Value As String)","accessor":"Let"},
+        {"name":"Checked","kind":"property","vis":"public","signature":"Property Get Checked() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Checked","kind":"property","vis":"public","signature":"Property Let Checked(ByVal Value As Boolean)","accessor":"Let"},
+        {"name":"Children","kind":"property","vis":"public","signature":"Property Get Children() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Property Get Enabled() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Property Let Enabled(ByVal Value As Boolean)","accessor":"Let"},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Get IconData() As Variant","returnType":"Variant","accessor":"Get"},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Let IconData(ByVal Value As Variant)","accessor":"Let"},
+        {"name":"Id","kind":"property","vis":"public","signature":"Property Get Id() As String","returnType":"String","accessor":"Get"},
+        {"name":"Parent","kind":"property","vis":"public","signature":"Property Get Parent() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"Remove","kind":"sub","vis":"public","signature":"Sub Remove()"},
+        {"name":"Visible","kind":"property","vis":"public","signature":"Property Get Visible() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Visible","kind":"property","vis":"public","signature":"Property Let Visible(ByVal Value As Boolean)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "IMenuV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "Interface IMenuV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"F4101D25-AEDE-4604-9C2A-056D7983F4E0\""}],
+      "members": [
+        {"name":"AddEntry","kind":"function","vis":"public","signature":"Function AddEntry(Optional ByVal Caption As String, Optional ByVal IconData As Variant, Optional ByVal RelativeToCommand As String, Optional ByVal RelativePriority As Long) As MenuEntry","returnType":"MenuEntry"},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Get Caption() As String","returnType":"String","accessor":"Get"},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Let Caption(ByVal Value As String)","accessor":"Let"},
+        {"name":"Id","kind":"property","vis":"public","signature":"Property Get Id() As String","returnType":"String","accessor":"Get"},
+        {"name":"RemoveAllAddedEntries","kind":"sub","vis":"public","signature":"Sub RemoveAllAddedEntries()"},
+        {"name":"ShowPopup","kind":"sub","vis":"public","signature":"Sub ShowPopup(ByVal ClientX As Long, ByVal ClientY As Long)"},
+        {"name":"Visible","kind":"property","vis":"public","signature":"Property Get Visible() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Visible","kind":"property","vis":"public","signature":"Property Let Visible(ByVal Value As Boolean)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "IMenusV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "Interface IMenusV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"F45732AE-F0BA-4E17-8D2A-065A661984A5\""}],
+      "members": [
+        {"name":"AddCustom","kind":"function","vis":"public","signature":"Function AddCustom(ByVal Caption As String, Optional ByVal IsVisible As Boolean, Optional ByVal RelativeToCommand As String, Optional ByVal RelativePriority As Long) As Menu","returnType":"Menu"},
+        {"name":"AddinsMenu","kind":"property","vis":"public","signature":"Property Get AddinsMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"CodeEditorContextMenu","kind":"property","vis":"public","signature":"Property Get CodeEditorContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"CodeEditorOptionsMenu","kind":"property","vis":"public","signature":"Property Get CodeEditorOptionsMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"CodeEditorTabsListMenu","kind":"property","vis":"public","signature":"Property Get CodeEditorTabsListMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"CodeEditorTabsListRecentlyClosedSubMenu","kind":"property","vis":"public","signature":"Property Get CodeEditorTabsListRecentlyClosedSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"DebugConsoleContextMenu","kind":"property","vis":"public","signature":"Property Get DebugConsoleContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"DebugConsoleOptionsMenu","kind":"property","vis":"public","signature":"Property Get DebugConsoleOptionsMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"DebugDebuggerOptionsSubMenu","kind":"property","vis":"public","signature":"Property Get DebugDebuggerOptionsSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"DebugMenu","kind":"property","vis":"public","signature":"Property Get DebugMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"DiagnosticsContextMenu","kind":"property","vis":"public","signature":"Property Get DiagnosticsContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"EditMenu","kind":"property","vis":"public","signature":"Property Get EditMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"EditorTabsContextMenu","kind":"property","vis":"public","signature":"Property Get EditorTabsContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FileMenu","kind":"property","vis":"public","signature":"Property Get FileMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FormDesignerContextMenu","kind":"property","vis":"public","signature":"Property Get FormDesignerContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FormatAlignSubMenu","kind":"property","vis":"public","signature":"Property Get FormatAlignSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FormatHorizontalSpacingSubMenu","kind":"property","vis":"public","signature":"Property Get FormatHorizontalSpacingSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FormatMakeSameSizeSubMenu","kind":"property","vis":"public","signature":"Property Get FormatMakeSameSizeSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FormatMenu","kind":"property","vis":"public","signature":"Property Get FormatMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"FormatVerticalSpacingSubMenu","kind":"property","vis":"public","signature":"Property Get FormatVerticalSpacingSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"HelpMenu","kind":"property","vis":"public","signature":"Property Get HelpMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ProjectExplorerAddMenu","kind":"property","vis":"public","signature":"Property Get ProjectExplorerAddMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ProjectExplorerFileViewContextMenu","kind":"property","vis":"public","signature":"Property Get ProjectExplorerFileViewContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ProjectExplorerObjectViewContextMenu","kind":"property","vis":"public","signature":"Property Get ProjectExplorerObjectViewContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ProjectMenu","kind":"property","vis":"public","signature":"Property Get ProjectMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"PropertySheetCopyToContextMenu","kind":"property","vis":"public","signature":"Property Get PropertySheetCopyToContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"PropertySheetSystemColorsContextMenu","kind":"property","vis":"public","signature":"Property Get PropertySheetSystemColorsContextMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"RemoveAllAddedEntries","kind":"sub","vis":"public","signature":"Sub RemoveAllAddedEntries()"},
+        {"name":"RunMenu","kind":"property","vis":"public","signature":"Property Get RunMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ShellProcessPopupMenu","kind":"property","vis":"public","signature":"Property Get ShellProcessPopupMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ThemesPopupMenu","kind":"property","vis":"public","signature":"Property Get ThemesPopupMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ToolboxOptionsMenu","kind":"property","vis":"public","signature":"Property Get ToolboxOptionsMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ToolsMenu","kind":"property","vis":"public","signature":"Property Get ToolsMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"ViewMenu","kind":"property","vis":"public","signature":"Property Get ViewMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"WebpageOptionsMenu","kind":"property","vis":"public","signature":"Property Get WebpageOptionsMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"WindowKeyboardShortcutsSubMenu","kind":"property","vis":"public","signature":"Property Get WindowKeyboardShortcutsSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"WindowLanguageSubMenu","kind":"property","vis":"public","signature":"Property Get WindowLanguageSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"WindowMenu","kind":"property","vis":"public","signature":"Property Get WindowMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"WindowPanelFeaturesSubMenu","kind":"property","vis":"public","signature":"Property Get WindowPanelFeaturesSubMenu() As Menu","returnType":"Menu","accessor":"Get"},
+        {"name":"WindowPanelLayoutsSubMenu","kind":"property","vis":"public","signature":"Property Get WindowPanelLayoutsSubMenu() As Menu","returnType":"Menu","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "IProjectExplorerV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ProjectExplorer.twin",
+      "signature": "Public Interface IProjectExplorerV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"E0EA66A7-8D33-465E-872C-3EE7E42C62B5\""}],
+      "members": [
+        {"name":"AddFileUI","kind":"function","vis":"public","signature":"Function AddFileUI(ByVal FileExt As String, ByVal SuggestedName As String, ByVal ContentString As String) As String","returnType":"String","description":"Returns the created URI, or throws an error if canceled by the user"},
+        {"name":"SelectedItemPath","kind":"property","vis":"public","signature":"Property Get SelectedItemPath() As String","returnType":"String","accessor":"Get"}
+      ]
+    },
+    {
       "name": "IProjectV1",
       "kind": "interface",
       "vis": "public",
@@ -568,13 +906,13 @@
         {"name":"Clean","kind":"sub","vis":"public","signature":"Sub Clean()","description":"Deregisters and deletes any built executables relating to this project"},
         {"name":"Close","kind":"sub","vis":"public","signature":"Sub Close()","description":"Closes the project (like menu File > Close Project)"},
         {"name":"Evaluate","kind":"function","vis":"public","signature":"Function Evaluate(ByVal EvalString As String, Optional ByVal Options As DebuggerEvaluateOptions = DebuggerEvaluateOptions.NONE) As Variant","returnType":"Variant","description":"Evaluates an expression in the context of the current project, as if entered in the DEBUG CONSOLE"},
-        {"name":"LoadMetaData","kind":"function","vis":"public","signature":"Function LoadMetaData(ByVal Key As String) As String","returnType":"String","description":"Meta data can be used for storing persistant data int he twinproj file for use by your addin"},
+        {"name":"LoadMetaData","kind":"function","vis":"public","signature":"Function LoadMetaData(ByVal Key As String) As String","returnType":"String","description":"Meta data can be used for storing persistant data int the twinproj file for use by your addin"},
         {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get","description":"Returns the current project name, as specified in the Settings file"},
         {"name":"Path","kind":"property","vis":"public","signature":"Property Get Path() As String","returnType":"String","accessor":"Get","description":"Returns the full path to the current Project twinproj file"},
         {"name":"ProjectID","kind":"property","vis":"public","signature":"Property Get ProjectID() As String","returnType":"String","accessor":"Get","description":"Returns the current Project GUID as a string"},
         {"name":"RootFolder","kind":"property","vis":"public","signature":"Property Get RootFolder() As Folder","returnType":"Folder","accessor":"Get","description":"Provides access to the projects root folder within the virtual filesystem inside twinBASIC"},
         {"name":"Save","kind":"sub","vis":"public","signature":"Sub Save()","description":"Saves the project (like menu File > Save Project)"},
-        {"name":"SaveMetaData","kind":"sub","vis":"public","signature":"Sub SaveMetaData(ByVal Key As String, ByVal Value As String)","description":"Meta data can be used for storing persistant data int he twinproj file for use by your addin"},
+        {"name":"SaveMetaData","kind":"sub","vis":"public","signature":"Sub SaveMetaData(ByVal Key As String, ByVal Value As String)","description":"Meta data can be used for storing persistant data int the twinproj file for use by your addin"},
         {"name":"VersionBuild","kind":"property","vis":"public","signature":"Property Get VersionBuild() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Build)"},
         {"name":"VersionMajor","kind":"property","vis":"public","signature":"Property Get VersionMajor() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Major)"},
         {"name":"VersionMinor","kind":"property","vis":"public","signature":"Property Get VersionMinor() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Minor)"},
@@ -727,6 +1065,36 @@
       "members": []
     },
     {
+      "name": "Menu",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "CoClass Menu",
+      "interfaces": [{"name":"IMenuV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"3643EC4A-70D6-40DC-ACC3-F4CD9B079BDD\""}],
+      "members": []
+    },
+    {
+      "name": "MenuEntry",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "CoClass MenuEntry",
+      "interfaces": [{"name":"IMenuEntryV1","default":true},{"name":"IMenuEntryEventsV1","default":true,"source":true}],
+      "attrs": [{"name":"CoClassId","args":"\"C24CCF7C-9CC9-4B76-8380-BD52339A5C6F\""}],
+      "members": []
+    },
+    {
+      "name": "Menus",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Menus.twin",
+      "signature": "CoClass Menus",
+      "interfaces": [{"name":"IMenusV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"A5D1968D-1637-427E-AFCB-12B0038EEE59\""}],
+      "members": []
+    },
+    {
       "name": "Project",
       "kind": "coclass",
       "vis": "public",
@@ -734,6 +1102,16 @@
       "signature": "CoClass Project",
       "interfaces": [{"name":"IProjectV1","default":true}],
       "attrs": [{"name":"CoClassId","args":"\"2B9593AF-DF94-48AC-863B-0764B2F9DF2E\""}],
+      "members": []
+    },
+    {
+      "name": "ProjectExplorer",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "ProjectExplorer.twin",
+      "signature": "CoClass ProjectExplorer",
+      "interfaces": [{"name":"IProjectExplorerV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"2CE3B5A1-8F6E-4B0F-A700-6C64F9E05CAA\""}],
       "members": []
     },
     {
@@ -785,6 +1163,18 @@
       "interfaces": [{"name":"IToolbarsV1","default":true}],
       "attrs": [{"name":"CoClassId","args":"\"4371990B-AAE5-4B2F-BF95-3A3AFF777EEC\""}],
       "members": []
+    },
+    {
+      "name": "UnsupportedHostAddin",
+      "kind": "class",
+      "vis": "public",
+      "file": "Addin.twin",
+      "signature": "Public Class UnsupportedHostAddin",
+      "implements": ["AddIn"],
+      "attrs": [{"name":"ClassId","args":"\"09391827-1FE4-40AD-8AD2-00FE90AFCCF2\""}],
+      "members": [
+        {"name":"AddIn_Name","kind":"property","vis":"private","signature":"Private Property Get AddIn_Name() As String","returnType":"String","accessor":"Get"}
+      ]
     }
   ],
   "aliases": [],

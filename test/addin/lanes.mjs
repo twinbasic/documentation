@@ -54,6 +54,16 @@ export default [
   { file: "toolwindow-layouts.test.mjs" },
   // DebugConsole.PrintText against its ColorRGB argument: an IDE defect. Its add-in saves nothing.
   { file: "console-colour.test.mjs" },
+  // tbIDE's Menus, ProjectExplorer and --themeAddin* colours, new in BETA 1045, and an add-in returning UnsupportedHostAddin. Neither add-in calls SaveSetting.
+  { file: "menus.test.mjs", settings: [] },
+  // The ICO Designer that ships with the IDE against a .cur file: an add-in defect. It
+  // takes the install's own DLL and saves nothing.
+  { file: "ico-cur.test.mjs" },
+  // The datasheet element of BETA 1045 in a tool window: its events, controller and replies. Its add-in saves nothing.
+  { file: "datasheet.test.mjs", settings: [] },
+  // The custom-designer API of BETA 1045: its probe add-in registers designers for the files
+  // of probes/designers-host and logs every call on them. Saves nothing.
+  { file: "designers.test.mjs" },
   // The help add-in, add-in/ at the repository's root. It saves the page its
   // pane shows. The second lane builds it with the help archive, so its pane's
   // pages come from the add-in's own server.

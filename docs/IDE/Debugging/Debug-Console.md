@@ -22,7 +22,7 @@ The **DEBUG CONSOLE** panel is a scrolling log of what a run writes, and an inpu
 The panel is docked at the bottom of the default layout. <kbd>Ctrl</kbd>+<kbd>G</kbd> shows it, and moves the keyboard focus to the input row.
 
 <!-- test: bug console-cleared-at-open -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > The first project opened after the IDE starts empties the console twice: once as the project opens, as it should, and again a moment later, as the project's console options are applied. What was written in between is lost, the lines an add-in prints as the project loads among them. A project opened after the first one is not affected.
 
 ## What the console shows
@@ -107,15 +107,15 @@ The input row is one line. There is no way to enter a multi-line construct.
 - A [keyboard shortcut](../Customising/Keyboard-Shortcuts#the-text-of-a-group) can run a line of code in the console: `tbDebugConsole_ExecuteCode('? 6*7')` is the one command that takes an argument.
 
 <!-- test: bug console-completion-after-print, lane ide:console-completion -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > The input row offers no completion for a name typed after `?` and a space, and <kbd>Ctrl</kbd>+<kbd>Space</kbd> there opens no list. Type the name without the space, as `?total`, or start the line with the name.
 
 <!-- test: bug console-space-accepts-completion -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > In the **MODERN** [Intellisense mode](../Customising/IDE-Options#intellisense-modes), a space typed while the completion list is open accepts the list's first entry, and the space is lost. Typing `Print total` gives `Printertotal`, because the list offers `Printer` but not the keyword `Print`; `Call Touch(total)` and `Set obj = items` are changed in the same way. The console refuses the changed line. Press <kbd>Escape</kbd> to close the list before you type the space: the text you typed stays.
 
 <!-- test: bug console-print-udt-linker-error -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > `? p`, where `p` is a variable of a user-defined type, fails with `(compile error: codegen error; check for compilation errors)`, and the console prints a `[LINKER] compilation (codegen) error` line. The [Variables](Inspecting#variables) panel and a watch show the same variable, so read it there.
 
 ## Copy the output

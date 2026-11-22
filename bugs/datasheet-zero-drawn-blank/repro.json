@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:datasheet",
+  "tests": [
+    "what the grid draws: the header, a 0 as nothing, no number formatting, a tick only for true"
+  ],
+  "steps": "1. A datasheet whose `onGetInfo` answers `{\"recordCount\": 2, \"columns\": [{\"name\": \"n\", \"type\": \"integer\"}, {\"name\": \"s\", \"type\": \"string\"}]}`.\n2. Its `onGetRows` answers `[[0, 0], [1, 1]]`.\n3. The first row's two cells are empty; the second row shows `1` and `1`."
+}

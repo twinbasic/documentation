@@ -121,7 +121,7 @@ A search that reaches the end of its scope with **Down** asks **End of search sc
 A search with **All**, a project search, and **Replace All** end with **The specified region has been searched.** After a **Replace All**, a second box says how many replacements were made: **N replacements were made.**, or **1 replacement was made.** In a project search, one box says both, and in how many files: **The specified region has been searched. N replacements were made in M files.** (see [Search the whole project](#search-the-whole-project)). With no scope ticked, the panel says **Scope not selected**.
 
 <!-- test: bug find-scope-stuck-selected-text -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > After a search of **Selected Text**, moving the caret leaves **Selected Text** ticked but greyed out, and **Current File** is no longer ticked. **Find Next** then says at once that the end of the search scope has been reached. Tick **Current File** again to search on.
 
 ## Match text
@@ -129,7 +129,7 @@ A search with **All**, a project search, and **Replace All** end with **The spec
 A plain search ignores case unless **Match Case** is ticked.
 
 <!-- test: bug find-whole-word-file-start, lane ide:code-find -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > **Whole Word Only** never finds a match that starts at the very first character of the file. For example, searching for `Module` with **Whole Word Only** skips a `Module` on line 1, column 1. A **Replace All** with **Whole Word Only** leaves that word unchanged. Search without **Whole Word Only**, and check the first line yourself.
 
 ### Pattern matching
@@ -153,15 +153,15 @@ With **Match Regular Expressions**, **Find What** is a JavaScript regular expres
 If **Find What** is not in the `/pattern/flags` form, a box says **Invalid format. Expecting /pattern/flags**. If the pattern is not a valid expression, a box says **Invalid RegExp:**.
 
 <!-- test: bug find-regex-capital-letter, lane ide:code-find -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A regular expression that has a capital letter finds nothing unless it has the `i` flag. The search runs on the text of the file turned into small letters, and the pattern is left as written. `/End Sub/` finds nothing and reports **The specified region has been searched.**, while `/end sub/` and `/End Sub/i` find every `End Sub`. Write the pattern in small letters, or add the `i` flag.
 
 <!-- test: bug find-regex-line-break -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > A regular expression whose match spans a line break, such as `/^\s+end sub$/`, selects nothing. The selection is an empty one at the end of the line before the match, and **Find Next** stays there. Search for one line at a time, or use [Quick Find](#regular-expressions-in-quick-find), which can match across lines.
 
 <!-- test: bug find-regex-alert-reason -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > The **Invalid RegExp:** box leaves out the reason. It shows the words and nothing after them.
 
 ## Search the whole project
@@ -203,7 +203,7 @@ The widget opens with the selected text in its box, and with the count of the ma
 With a word selected, <kbd>Ctrl</kbd>+<kbd>F3</kbd> in the code goes to its next occurrence and shows the widget.
 
 <!-- test: bug quick-find-enter-in-replace-box, lane ide:quick-find-keys -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > <kbd>Enter</kbd> in the replace box replaces nothing. It adds a line break to the replacement, and the box grows to two lines; **Replace All** then writes that line break into the code after each replacement. Take the line break out with <kbd>Backspace</kbd>, and click **Replace** or **Replace All** instead.
 
 ### Regular expressions in Quick Find
@@ -246,7 +246,7 @@ open Quick Replace with <kbd>Alt</kbd>+<kbd>H</kbd>, click **Use Regular Express
 While the focus is in the Find / Replace panel, <kbd>Alt</kbd>+<kbd>A</kbd> is **Replace All** and <kbd>Alt</kbd>+<kbd>F</kbd> goes to **Find What**. In the editor they run Select All Matches and Quick Find.
 
 <!-- test: bug find-panel-keys-outside-panel, lane ide:quick-find-keys -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > Once the panel's **Find What** holds text, as it does after any search with the panel, <kbd>Alt</kbd>+<kbd>A</kbd> and <kbd>Alt</kbd>+<kbd>R</kbd> run the panel's **Replace All** and **Replace** in the code and in Quick Find too, even with the panel closed. They use the panel's **Find What** and **Replace With**, not the text in Quick Find. <kbd>Alt</kbd>+<kbd>A</kbd> in the code then selects nothing, replaces every match of **Find What** in the file, and a box says how many; <kbd>Ctrl</kbd>+<kbd>F</kbd> empties **Replace With**, so the matches are deleted. <kbd>Alt</kbd>+<kbd>R</kbd> selects the panel's next match, and a second press replaces it with no message. To select every match, use <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> on the word, and press neither <kbd>Alt</kbd>+<kbd>A</kbd> nor <kbd>Alt</kbd>+<kbd>R</kbd> in the code or in Quick Find.
 
 ## See Also

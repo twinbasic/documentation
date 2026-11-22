@@ -8,7 +8,7 @@ has_toc: false
 # Host class
 {: .no_toc }
 
-The root API the IDE passes to every addin. The DLL receives a **Host** as the argument to its [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) factory; the addin retains that reference for its lifetime and reaches every other capability through it --- the currently-loaded [**CurrentProject**](#currentproject), the [**ActiveEditors**](#activeeditors), the [**Toolbars**](#toolbars) for adding buttons, the [**ToolWindows**](#toolwindows) for adding HTML-rendered panels, the [**DebugConsole**](#debugconsole) for log output, the virtual [**FileSystem**](#filesystem), the [**KeyboardShortcuts**](#keyboardshortcuts) registry, the [**Themes**](#themes) state, plus the dialog helpers [**ShowMessageBox**](#showmessagebox) / [**ShowNotification**](#shownotification).
+The root API the IDE passes to every addin. The DLL receives a **Host** as the argument to its [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) factory; the addin retains that reference for its lifetime and reaches every other capability through it --- the currently-loaded [**CurrentProject**](#currentproject), the [**ActiveEditors**](#activeeditors), the [**Toolbars**](#toolbars) for adding buttons, the [**Menus**](#menus) for adding commands, the [**Designers**](#designers) for adding an editor for a kind of file, the [**ProjectExplorer**](#projectexplorer), the [**ToolWindows**](#toolwindows) for adding HTML-rendered panels, the [**DebugConsole**](#debugconsole) for log output, the virtual [**FileSystem**](#filesystem), the [**KeyboardShortcuts**](#keyboardshortcuts) registry, the [**Themes**](#themes) state, plus the dialog helpers [**ShowMessageBox**](#showmessagebox) / [**ShowNotification**](#shownotification).
 
 Typically held via `WithEvents` so the addin can subscribe to lifecycle events:
 
@@ -42,7 +42,7 @@ The collection of editors currently open in the IDE. `Host.ActiveEditors(0)` ret
 ### CompilerVersion
 {: .no_toc }
 
-The full compiler-version string of the running IDE, e.g. `"0.15.371"`. **String**, read-only. Useful for diagnostic log lines and for compatibility gates.
+The full compiler-version string of the running IDE, such as `"0.15.1045"`. **String**, read-only. Its third number is the number of the BETA, so an addin can refuse an IDE that is too old for it; see [**UnsupportedHostAddin**](UnsupportedHostAddin).
 
 ### CurrentProject
 {: .no_toc }
@@ -53,6 +53,11 @@ The currently-loaded project. Provides project name and path, lifecycle methods 
 {: .no_toc }
 
 The IDE's DEBUG CONSOLE pane. Print, clear, or set focus. **As** [**DebugConsole**](DebugConsole). Read-only.
+
+### Designers
+{: .no_toc }
+
+The registry of designers: editors that an addin supplies for a kind of file, shown in a tab of their own. Call [**Designers.Register**](Designers#register) to add one. **As** [**Designers**](Designers). Read-only.
 
 ### FileSystem
 {: .no_toc }
@@ -73,6 +78,16 @@ The Win32 `HWND` of the IDE's main window. **LongPtr**, read-only. Pass to Win32
 {: .no_toc }
 
 The keyboard-shortcut registry. Call [**KeyboardShortcuts.Add**](KeyboardShortcuts#add) to bind a key combination to a callback. **As** [**KeyboardShortcuts**](KeyboardShortcuts). Read-only.
+
+### Menus
+{: .no_toc }
+
+The IDE's menus, for adding commands to them or a menu of the addin's own. **As** [**Menus**](Menus). Read-only.
+
+### ProjectExplorer
+{: .no_toc }
+
+The **Project Explorer** panel: the item selected in it, and a new file made through it. **As** [**ProjectExplorer**](ProjectExplorer). Read-only.
 
 ### Themes
 {: .no_toc }

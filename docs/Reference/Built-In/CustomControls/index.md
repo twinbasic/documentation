@@ -5,7 +5,7 @@ parent: Built-In Packages
 nav_order: 5
 permalink: /tB/Packages/CustomControls/
 has_toc: false
-indexed_from: beta-x-1042
+indexed_from: beta-x-1045
 ---
 
 # CustomControls Package
@@ -53,7 +53,7 @@ Every concrete control implements [**ICustomControl**](Framework/ICustomControl)
 These members are listed on each control's own page; their definitions are identical and are not repeated separately.
 
 <!-- test: bug waynes-controls-ignore-geometry -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A control is drawn where and as the form designer placed it for most of what code sets. Set in the form's `Sub New`, **Left**, **Height** and **Dock** take effect, and **Top**, **Width** and **Visible** do not; set while the form is shown, none of them does --- the control is not moved, resized or hidden, and no error is raised. Each property reads back the value code gave it. Place and size the controls in the form designer. A control's style objects, such as its **BackgroundFill**, are drawn as code sets them.
 
 ## Style objects

@@ -11,9 +11,29 @@ index:
 
 # Add Ins
 
-An addin is a Standard DLL that exports `tbCreateCompilerAddin` and returns an object implementing the [**AddIn**](../../Packages/tbIDE/AddIn) interface. Through the [**Host**](../../Packages/tbIDE/Host) object the IDE passes at startup, an addin can reach the toolbar, tool windows, debug console, current project, keyboard shortcuts, and themes. The [**tbIDE package**](../../Packages/tbIDE/) documents the full API.
+An addin is a Standard DLL that exports `tbCreateCompilerAddin` and returns an object implementing the [**AddIn**](../../Packages/tbIDE/AddIn) interface. Through the [**Host**](../../Packages/tbIDE/Host) object the IDE passes at startup, an addin can reach the toolbar, the IDE's menus, tool windows, debug console, current project, the Project Explorer, keyboard shortcuts and themes, and can add an editor of its own for a kind of file. The [**tbIDE package**](../../Packages/tbIDE/) documents the full API.
 
-The New Project dialog's **Samples** section holds seven addin samples, numbers 10 to 16, the cards named *twinBASIC IDE Addin*, alone or with a variant in brackets (see [Samples](../Starting/Samples)), covering patterns from simple toolbar buttons to HTML DOM-backed tool windows. Each is a complete addin project, with the tbIDE package referenced and the build path set, and Sample 10, *twinBASIC IDE Addin*, is the plainest one to start from. A project started from the **Standard DLL** template has neither setting: [Building and loading an addin](../../Packages/tbIDE/#building-and-loading-an-addin) says what to add. Community addins are listed on the [**Community**](Community) page, and other programs that twinBASIC users share on the [**Community tools**](Community-Tools) page.
+## Add-ins that ship with the IDE
+
+These add-ins are in the install's `addins\win32` and `addins\win64` folders, so every project loads them:
+
+- [Global Search](GlobalSearch) -- searches a project's files from a tool window
+- [Hex Editor](HexEditor) -- shows and edits the bytes of any file
+- [ICO Designer](IcoEditor) -- draws and edits `.ico` files
+- [Diff Compare](DiffCompare) -- compares two files side by side, in one IDE or across two
+- [Data Explorer](DataExplorer) -- shows the rows of a database in a grid
+
+Once a project is open, the **Add-Ins** menu lists them:
+
+![The Add-Ins menu listing five add-ins, each with a tick: ICO Editor, Hex Editor, GlobalSearchAddIn AddIn, Diff Compare and Data Explorer.](Images/AddIns_Menu.png){:width="219" height="149"}
+
+The [Help Add-In](Help) is not one of them: it comes from this documentation, and you install it yourself.
+
+## Writing an add-in
+
+The New Project dialog's **Samples** section holds the add-in samples, numbers 10 to 16 and 24 to 27, the cards named *twinBASIC IDE Addin*, alone or with a variant in brackets (see [Samples](../Starting/Samples)), covering patterns from simple toolbar buttons to HTML DOM-backed tool windows and editors of their own. Samples 15 and 24 to 27 are the projects of the add-ins that ship with the IDE. Each is a complete addin project, with the tbIDE package referenced and the build path set, and Sample 10, *twinBASIC IDE Addin*, is the plainest one to start from. A project started from the **Standard DLL** template has neither setting: [Building and loading an addin](../../Packages/tbIDE/#building-and-loading-an-addin) says what to add. Community addins are listed on the [**Community**](Community) page, and other programs that twinBASIC users share on the [**Community tools**](Community-Tools) page.
+
+## Installing an add-in
 
 twinBASIC supports two addin install locations. The IDE install directory is available to all user accounts on the machine but may require reinstallation after an IDE update. A per-user application data folder persists across IDE upgrades and requires no administrator rights.
 

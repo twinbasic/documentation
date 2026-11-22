@@ -4,7 +4,7 @@ parent: Built-In Packages
 nav_order: 12
 permalink: /tB/Packages/WinNativeCommonCtls/
 has_toc: false
-indexed_from: beta-x-1042
+indexed_from: beta-x-1045
 ---
 
 # WinNativeCommonCtls Package

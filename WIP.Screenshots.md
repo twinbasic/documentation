@@ -302,7 +302,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `cef`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `toolbox-icons`, `projects`, `projects-refs`,
-  `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
+  `projects-start`, the `building`, `starting` and `troubleshooting` setups, `addins`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
   before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
   no IDE page, whose `start` returns a stand-in for the connection and whose shots are `once`.
@@ -1071,6 +1071,36 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
 - The console picture shows the sample's "orange" line in yellow: PrintText ignores its
   colour (BUGS-TO-REPORT, `printtext-colorrgb-ignored`, a NOTE on DebugConsole.md).
 
+## The shipped add-ins' pictures
+
+- **Setup `addins`**: the five DLLs of the install's `addins\win32` (Samples 15 and 24 to 27,
+  never built here) put into the lane's copy, as an install has them; a lane's copy otherwise
+  has no add-ins, which is why `Menu_Add-Ins` shows *no addins loaded*. The project is
+  `test/shots/sample` with `test/shots/addins` staged onto it (two modules of prices, for Diff
+  Compare), and the setup writes the binary files: `Header.bin`, a made-up header of 176 bytes,
+  and `Badge.ico`, a disc drawn at 16, 32 and 48 pixels (the template's icon is 64 by 63, which
+  the ICO Designer reports as non-square). Its pictures are on the Add Ins page (`AddIns_Menu`,
+  the five add-ins) and the four add-in pages (`HexEditor`, `IcoEditor`, `DiffCompare_Menu`,
+  `DiffCompare`, `DataExplorer`, `DataExplorer_Settings`).
+- **The Data Explorer reads a CSV file through the Jet text driver**
+  (`Provider=Microsoft.Jet.OLEDB.4.0`, `Extended Properties="text;HDR=Yes;FMT=Delimited"`), which
+  every Windows has for the 32-bit compiler the lane runs; a `schema.ini` beside it types the
+  columns, so `InStock` is a Yes/No column with tick boxes. The CSV is in `AddinData` under
+  `PACKAGE_ROOT`, so that the connection string shows `C:\tbshots\AddinData`. The grid draws its
+  rows on a canvas: a shot waits for the bar's *of 12 records*, not for a cell's text.
+- **Diff Compare compares two `.twin` files, not text files**: on BETA 1045 Select for compare
+  on a `.txt` file shows *Unable to publish comparison: Automation error* (a lead in
+  [WIP.BugHunt.md](WIP.BugHunt.md)). The side-by-side editor is in the designer container's own
+  children, not its shadow root, and draws a space as a no-break space. Select for compare
+  offers the file to every IDE of the same Windows user, the user's own included if it is open
+  with the add-in, until the lane's IDE closes; the pictures never open **Compare With**, which
+  lists the other IDEs' offers.
+- **`DiffCompare.light.png` shows the code very light grey on white.** The add-in's diff editor
+  has the theme `vs-dark` whatever the IDE's theme (a lead in WIP.BugHunt.md); the picture
+  shows what the IDE draws.
+- **The Hex Editor's Shift+click selects up to the byte before the one clicked**, so the shot
+  clicks byte 42 to select the 26 bytes from 10h.
+
 ## Package server
 
 Taken on BETA 1010, in both themes where the theme shows.
@@ -1512,6 +1542,67 @@ image to the element's box, as for an `<img>` (checked in headless Chromium: a 1
 an `.ico` so (Resource_Preview: the tB icon, an `<embed>` of a `data:image/x-icon` URL). Only a `data:` image is taken; the
 snapshot's `currentSourceURL` is an `<img>`'s alone, so the URL is the `src` attribute.
 
+**A CSS mask is an SVG `<mask>`** (`maskDef` in `snapshot-svg.mjs`, 2026-11-22). The shipped
+add-ins (BETA 1045) draw their toolbar icons, Hex Editor's Undo and Redo and ICO Editor's four, as
+a 20 px `::before` whose background is the text colour, shown through a `mask-image` of an SVG.
+Before `mask-image` was read, each came out a square of that colour, and the picture still passed
+the bar (HexEditor.light 0.14% strongly off: two small squares are few pixels). The mask's layers
+are laid out by `paintBackgroundImages` from the `mask-*` properties, origin and clip the border
+box unless they say otherwise, and kept to the clip box they name even where opaque borders
+cover a background (`exactClip`); the mask is the border box's size, and masks by alpha unless
+`mask-mode` is luminance. Its group encloses the element's filter group, as CSS applies the
+filter first. The `mask-*` styles are in `MISSABLE_STYLES`: a bundle without them draws as
+before, and has the miss `mask-image of a ::before or ::after in its own text colour` where such
+a box shows (`maskUnknown`); on the 601 bundles of 2026-11-22 that was HexEditor and IcoEditor
+alone, in both themes. `bench/mask.html` holds the idiom and the properties, 0.004% off in Edge
+158. Not drawn: `mask-composite` other than add, `mask-border`, and a mask under a transform
+other than a translation (reported).
+
+**An image keeps its element's `image-rendering`** (`rendering` in `snapshot-svg.mjs`,
+2026-11-22): the `<use>` that draws a canvas's picture, an `<img>` or a background tile gets
+`style="image-rendering:..."` unless the value is auto or smooth, and the `<image>` inherits it.
+ICO Editor shows its 48 px icon as a background of 100% of a 384 px box, pixelated; drawn smooth
+it came out a blur, 3% of the picture mildly off and none strongly, so the bar passed it.
+`image-rendering` is in `MISSABLE_STYLES`, with the miss `image-rendering of an image scaled up 2
+times or more` (`renderingUnknown`): a canvas's picture, an `<img>` or a background of a given
+size drawn at least twice its pixels in CSS px. A smaller scale is left out: every icon drawn at
+its size is twice its pixels at device scale 2, and the code editor's canvases are at the
+device's scale, so counting them would ask for a retake of nearly every picture with a code
+editor. On the 601 bundles of 2026-11-22 the miss was IcoEditor's alone, in both themes.
+`bench/image-rendering.html` holds a canvas pixelated, smooth and crisp, an `<img>` and a
+background, the same as Edge 158 to the pixel.
+
+**A textarea's text is set in the lines Chromium wraps it in** (`textareaBreaks` in
+`capture.mjs`, `controlPieces` in `snapshot-svg.mjs`, 2026-11-22). A textarea wraps a line wider
+than its content box (`white-space: pre-wrap` and `overflow-wrap: break-word` are Chromium's
+defaults for one), and the snapshot says nothing about where. The converter drew each line as
+one `<text>` held to its measured width by `textLength`, so Data Explorer's Connection Settings
+showed the ADO connection string squeezed into one line where the PNG has three
+(DataExplorer_Settings, 0.32% strongly off, not written). Capture now asks the page, before
+`textNeeds`, for each textarea that shows text: a copy of its value in a block as wide as its
+content box less its scrollbar, with every style that decides a break, and a range over each
+character, a line starting where a box is lower than the last. The bundle keeps the offsets as
+`breaks`, only for a textarea with a soft break; a wrapped line is drawn without the spaces
+it ends in, which hang past the edge. A bundle without `breaks` draws as before, and has the
+miss `the line breaks of a textarea with a line wider than it` when such a line is at or above
+the last line drawn and the textarea does not scroll across (a scroll width wider than the
+client width means it is not wrapping: the keyboard-shortcuts JSON of Help_Find and
+ManageKeyboardShortcuts, whose one long line is line 699). On the 601 bundles of 2026-11-22
+the miss was DataExplorer_Settings' alone, in both themes. `bench/textarea-wrap.html` holds a
+monospace and a proportional textarea wrapped at spaces, one with a newline between wrapped
+lines, a word longer than the box, a box with a scrollbar, one with `wrap="off"`, and Data
+Explorer's own style (below): 0.025% off in Edge 158, none strongly. A value over 20,000
+characters is not read, and is drawn as its newlines break it.
+
+**A text control's half-leading above its text is floored to a whole px** (`paintTextControl`,
+2026-11-22), as Chromium's `NGLineHeightMetrics::AddLeading` does, the rest going below. Data
+Explorer's textareas set 13 px Consolas (15 px content area) in lines `18.85px` tall: 1 px
+above the text, not 1.925, and every line of the SVG was 1 CSS px low (0.15% strongly off after
+the wrapping fix, 0.008% with this). DOM text is not affected: its boxes come from the snapshot.
+On the 601 bundles of 2026-11-22 it changed DataExplorer_Settings and confirm-merge (its commit
+message textarea, 0.085% to 0.079% off dark, 0.042% to 0.041% light) and no other picture.
+`bench/textarea-wrap.html` fails without it (0.128% strongly).
+
 **Frames** (owner: cross-origin frames in general). A frame of the same site (the
 docked help pane: the documentation on another `localhost` port) is in the IDE's process, and
 `DOMSnapshot.captureSnapshot` returns its document beside the page's: the `<iframe>` node's
@@ -1693,7 +1784,7 @@ grip, a number input's spin buttons, an indeterminate checkbox, conic gradients,
 `-webkit-radial-gradient`, `filter: hue-rotate`, an inset shadow's blur, and a frame of another
 process (which is why Help_Window's docs frame and the Webpage pane are shown from a frozen
 copy: Frames, above). In an inline `<svg>`: a `<foreignObject>`, an `<image>`
-the page cannot read, a `<use>` of another file, a CSS `mask` or `clip-path` on the root, text
+the page cannot read, a `<use>` of another file, a CSS `clip-path` on the root, text
 decoration, geometry set by CSS (`d`, `width`, `x`), and animation (the state at the snapshot
 is drawn). A duplicate id in one document resolves inside the svg first, where the browser
 takes the document's first. The WebView2 download page's Version arrow is an `unsteady`

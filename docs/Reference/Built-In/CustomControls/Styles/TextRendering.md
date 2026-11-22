@@ -128,7 +128,7 @@ When **True**, an underline is drawn beneath each glyph. **Boolean**. Default: *
 The font weight on the OpenType `wght` scale. A member of [**FontWeight**](../Enumerations/FontWeight). Default: **tbNormal**.
 
 <!-- test: bug waynes-fontweight-three-steps -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > Only three weights are drawn: 100 to 500 alike, as regular text; 600 as semibold; and 700 to 900 alike, as bold. See [**FontWeight**](../Enumerations/FontWeight).
 
 ### OnChanged

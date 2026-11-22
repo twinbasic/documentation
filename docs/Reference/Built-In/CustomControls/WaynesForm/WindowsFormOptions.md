@@ -29,7 +29,7 @@ End Sub
 ```
 
 <!-- test: bug waynesform-window-ignores-code -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > The form's window is made from the values the form designer saved, and never from these fields as code has set them. A field set in code --- in `Sub New`, before the form is shown, or while it is shown --- reads back the new value, but the window's border, buttons, place, state and taskbar button stay as designed, and no error is raised. Set the fields in the form designer.
 
 ## Properties

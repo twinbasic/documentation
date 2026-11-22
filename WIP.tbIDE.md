@@ -2,7 +2,7 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-The **addin SDK** — a type-only compiler package. Every public symbol is an interface or a CoClass; the actual implementations live in the IDE binary, and an addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time. Its public symbols are CoClasses, one concrete `Class` (`AddinTimer`) and one interface-only declaration; no `Private` plumbing.
+The **addin SDK** — a type-only compiler package. Every public symbol is an interface or a CoClass; the actual implementations live in the IDE binary, and an addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time. Its public symbols are CoClasses, two concrete classes (`AddinTimer`, and since BETA 1045 `UnsupportedHostAddin`) and interface-only declarations such as `IAsyncResultResolver`; no `Private` plumbing.
 
 The package's own `CHANGELOG.md` is a leftover copy-paste from a different package ("twinBASIC WinNativeForms") and is **not** about tbIDE.
 
@@ -38,14 +38,17 @@ Public symbols, by file:
 
 | File                         | Public symbols                                                        | Role                                                                                                              |
 |------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
-| `Addin.twin`                 | `IAddInV1` + `AddIn` CoClass                                          | The contract every addin's main class implements. One member: `Property Get Name() As String`.                    |
-| `Host.twin`                  | `IHostV1` + `ItbHostEventsV1/V2/V3` + `Host` CoClass                  | Root of the API — passed to `tbCreateCompilerAddin`. Versioned events (see "Versioned event interfaces" below).   |
+| `Addin.twin`                 | `IAddInV1` + `AddIn` CoClass + `Class UnsupportedHostAddin`           | The contract every addin's main class implements. One member: `Property Get Name() As String`. `UnsupportedHostAddin` (BETA 1045) is an `AddIn` with an empty name, for an addin to return when the IDE is too old for it. |
+| `Host.twin`                  | `IHostV1` + `IHostV2 Extends IHostV1` + `ItbHostEventsV1/V2/V3` + `Host` CoClass | Root of the API — passed to `tbCreateCompilerAddin`. V2 (BETA 1045) adds `Menus`, `Designers` and `ProjectExplorer`. Versioned events (see "Versioned event interfaces" below).   |
+| `Designers.twin`             | `IDesignersV1`, `IDesignerFactoryV1`, `IDesignerV1`, `IDesignerHostV1`, `IDesignerToolboxV1`, `IDesignerToolboxItemV1` (+ events), a CoClass each | BETA 1045: an editor of the addin's own for a kind of file. The addin implements `Designer` and `DesignerFactory`; the IDE supplies the rest. |
+| `Menus.twin`                 | `IMenusV1`, `IMenuV1`, `IMenuEntryV1` (+ `IMenuEntryEventsV1`), a CoClass each | BETA 1045: the IDE's menus as properties of `Menus`, `AddCustom`, and the entries an addin adds. |
+| `ProjectExplorer.twin`       | `IProjectExplorerV1` + `ProjectExplorer` CoClass                      | BETA 1045: `SelectedItemPath` and `AddFileUI`.                                                                    |
 | `AddinTimer.twin`            | `Class AddinTimer` (no CoClass)                                       | **The only concrete instantiable class** in the package. `New AddinTimer`; sets `Interval` (ms) + `Enabled`; fires `Timer` event. Internally wraps `SetTimer`/`KillTimer`. |
 | `Button.twin`                | `IButtonV1` + `IButtonEventsV1` + `Button` CoClass                    | Toolbar button. Returned by `Toolbar.AddButton`. `OnClick` event.                                                 |
 | `CodeEditor.twin`            | `ICodeEditorV1 Extends IEditorV1` + `CodeEditor` CoClass              | A code-pane editor — selection, text, Monaco passthrough, `AddMonacoWidget` for inline overlay HTML. Nested `RevealArea` enum. |
 | `DebugConsole.twin`          | `IDebugConsoleV1` + `DebugConsole` CoClass                            | The DEBUG CONSOLE pane. `PrintText` (with optional colour), `Clear`, `SetFocus`.                                  |
 | `Editor.twin`                | `IEditorV1` + `Editor` CoClass                                        | Base interface for editors. Source-side comment: *"Castable to CodeEditor etc."* — i.e. `Dim ce As CodeEditor = editor` works because the underlying object implements both. |
-| `Editors.twin`               | `IEditorsV1` + `Editors` CoClass                                      | Collection of active editors. `Item(Index)` default member, `Count`, `Open(Path, Line, Col, Options)`. Source-side note: *"There is currently only ONE active editor, accessible via Editors(0) syntax"*. |
+| `Editors.twin`               | `IEditorsV1` + `IEditorsV2 Extends IEditorsV1` + `Editors` CoClass    | Collection of active editors. `Item(Index)` default member, `Count`, `Open(Path, Line, Col, Options, Designer)` (V2, BETA 1045; V1's `Open` is now `[Hidden, Restricted] OpenV1`, kept for addins built before, and left undocumented). Source-side note: *"There is currently only ONE active editor, accessible via Editors(0) syntax"*. |
 | `File.twin`                  | `IFileV1` + `IFileV2 Extends IFileV1` + `File` CoClass                | A virtual-FS file. V1: `Data` / `DataLen` / `Text` / `IsDirty`. V2 adds `ReadText(ReadTextFlags)`. Nested `ReadTextFlags` enum (one flag: `CommentsToWhitespace`). |
 | `FileSystem.twin`            | `IFileSystemV1` + `FileSystem` CoClass                                | Tiny — `RootFolder` and `ResolvePath(Path)` (path needs the `twinbasic:/` prefix).                                |
 | `FileSystemItem.twin`        | `IFileSystemItemV1` + `FileSystemItem` CoClass                        | Base for `File` and `Folder`. `Name`, `Path`, `Type`, `Parent`. Nested `FileSystemItemType` enum (`Folder`, `FileVIRTUALDOC`, `FileOTHER`, `FileTWIN`, `FileBAS`, `FileCLS`, `FileUIDESIGNER`, `FileJSON`). |
@@ -53,8 +56,8 @@ Public symbols, by file:
 | `HtmlElement.twin`           | `IHtmlElementV1` + `HtmlElement` CoClass                              | A DOM element inside a tool window. `Properties` (default member — see below), `ChildDomElements`, `Remove`, `AddEventListener(DomEventName, CallbackFunc, Optional Data)`. Plus one `[Hidden]` legacy `AddEventListenerOLD1`. |
 | `HtmlElementProperties.twin` | `IHtmlElementPropertiesV1` (`[COMExtensible(True)]`) + CoClass         | The dynamic property bag on a DOM element. `Item(DomPropertyName)` is the default member; the `[COMExtensible(True)]` attribute is what makes `.style.display = "flex"` resolve through `Item("style").Item("display")` at run time. |
 | `HtmlElementProperty.twin`   | `IHtmlElementPropertyV1` (`[COMExtensible(True)]`) + CoClass           | One value in the bag. `Value` (Get/Let, default member), plus nested `Properties` for chained access (`.style.color = "white"`). |
-| `HtmlElements.twin`          | `IHtmlElementsV1` + `HtmlElements` CoClass                            | The `ChildDomElements` collection. `Item(ID)` default, `Add(ElementID, TagName)` returns the new child. Note `TagName` accepts both standard HTML tags AND the IDE's custom widget tags `chartjs` / `monaco` / `listview` / `virtuallistview`. |
-| `IHtmlEventProperties.twin`  | `IHtmlEventPropertiesV1` (`[COMExtensible(True)]`) + `HtmlEventProperties` CoClass | The event-payload bag. Like `HtmlElementProperties` but read-only and used inside event handler callbacks. |
+| `HtmlElements.twin`          | `IHtmlElementsV1` + `HtmlElements` CoClass                            | The `ChildDomElements` collection. `Item(ID)` default, `Add(ElementID, TagName)` returns the new child. Note `TagName` accepts both standard HTML tags AND the IDE's custom widget tags `chartjs` / `monaco` / `listview` / `virtuallistview`, and since BETA 1045 `monacoDiff` and `datasheet`. |
+| `IHtmlEventProperties.twin`  | `IHtmlEventPropertiesV1` (`[COMExtensible(True)]`) + `IHtmlEventPropertiesV2` + `IAsyncResultResolver` + `HtmlEventProperties` CoClass | The event-payload bag. Like `HtmlElementProperties` but read-only and used inside event handler callbacks. V2 (BETA 1045) adds `AsyncResultResolver`, whose `Resolve` answers the datasheet's requests; both are documented on the HtmlEventProperties page. |
 | `IHtmlEventProperty.twin`    | `IHtmlEventPropertyV1` (`[COMExtensible(True)]`) + `HtmlEventProperty` CoClass | One value in the event bag.                                                                                  |
 | `KeyboardShortcuts.twin`     | `IKeyboardShortcutsV1` + `KeyboardShortcuts` CoClass                  | Single member: `Add(keyString, Callback As LongPtr)`. `keyString` is a literal key like `"{CTRL}{SHIFT}d"` (prefixes `{CTRL}` / `{SHIFT}` / `{ALT}`). |
 | `Project.twin`               | `IProjectV1` + `Project` CoClass                                      | The currently-loaded project. Lifecycle (`Save`, `Close`, `Build`, `Clean`), introspection (`Path`, `Name`, `BaseFolderPath`, `ProjectID`, version + architecture + build-output info), `Evaluate(ExprString)` (debug-console-style expression evaluation), `RootFolder` (entry into the virtual FS), and `LoadMetaData`/`SaveMetaData` (persistent per-addin key/value storage inside the `.twinproj`). Nested `VbBuildType` enum. |
@@ -220,6 +223,36 @@ The `keyString` argument is a literal key with optional `{CTRL}` / `{SHIFT}` / `
 `Themes` is two members: `ActiveThemeName` (the specific theme — `"Classic"`, `"Dark"`, `"Light"`, …) and `ActiveThemeNameGroup` (which collapses to `"dark"` or `"light"`). The grouping is useful for addins that just want to invert colours.
 
 The `Host` event `OnChangedTheme(ThemeName As String)` fires when the user picks a new theme — the parameter is the new value of `ActiveThemeName`. Surface the pair as *"check `ActiveThemeNameGroup` once at startup for initial colour selection, then refresh in `OnChangedTheme`"*.
+
+## The BETA 1045 surface
+
+BETA 1045 added designers, menus, the Project Explorer object and the `datasheet` element, and
+Samples 24 to 27, the four add-ins that ship with the IDE (Hex Editor, ICO Designer, Diff Compare,
+Data Explorer), each with an IDE page under `docs/IDE/AddIns/`. Every answer the pages give that
+the sources do not is measured by an add-in lane, and the lane's tests are the record:
+
+| Lane (`addin-test.bat --only`) | Probe add-in and host | What it settles |
+|---|---|---|
+| `designers` | `test/addin/probes/designers`, `designers-host` | `Register` and the forms of `IconData`, the order of the `Designer` calls, `GetURI`, `SetFileData` and the dirty dot, the toolbox, `Editors.Open` with a designer, `Unregister` |
+| `menus` | `test/addin/probes/menus`, `menus-host`, `unsupported` | `Menu.Id` and `MenuEntry.Id`, placing an entry by `RelativeToCommand`, `BeforeShow`, `AddCustom`, `ShowPopup`, the removals, `SelectedItemPath`, `AddFileUI`, the `Addin*` theme colours, `UnsupportedHostAddin` and `Host.CompilerVersion` |
+| `datasheet` | `test/addin/probes/datasheet` | the element in a tool window, `Ready()`, the four events and their answers, the controller's methods and what they return to twinBASIC, a failed answer |
+| `ico-cur` | the bundled ICO Designer | it refuses a `.cur` file |
+
+Decisions the pages rest on:
+
+- **The datasheet has a page of its own**, `Datasheet.md` (owner: "in full (-ish)"), though it
+  has no class: it is reached through the dynamic properties of its parent element.
+- **`Menu` is written `tbIDE.Menu` in a sample.** The template the samples build in references
+  the VB package, whose `Menu` control wins the bare name; Menu.md and Menus.md say so.
+- **The new interface chains fold onto their CoClass pages**, as the old ones do: `IHostV2` onto
+  Host, `IEditorsV2` onto Editors, `IHtmlEventPropertiesV2` and `IAsyncResultResolver` onto
+  HtmlEventProperties. An `analyze` in audit mode lists every interface member as missing for
+  that reason; read its update mode instead.
+- **The theme colours for addins** are documented on Themes.md and on the IDE's Themes page;
+  High Contrast Dark gets Dark's values (measured, `menus` lane).
+
+The defects these lanes found are entries of BUGS-TO-REPORT.md, each with a callout labelled
+`BETA 1045` on the page it affects.
 
 ## Sample-by-sample idioms to surface
 

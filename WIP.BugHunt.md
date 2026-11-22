@@ -160,6 +160,46 @@ Seen on BETA 1042 by the `commonctls` setup (fixture `test/shots/commonctls`).
 - **`Class_Initialize` and `Sub New` together in a WaynesForm class** give TB5135. BETA 1042,
   the `waynes` setup.
 
+### tbIDE and the add-ins that ship with the IDE
+
+BETA 1045: met in its update, reading the tbIDE sources, Samples 24 to 27 and `ide/main.js`.
+None of them run yet.
+
+- **`DesignerHost` and `DesignerFactory` have one CoClassId**, `30262402-4D7A-4170-9E63-FE158040EC0F`
+  (`Designers.twin`, lines 30 and 101); every other CoClass has its own. Whatever looks a
+  CoClass up by its id may find the wrong one.
+- **`"monacoDiff"` creates its editor with `theme: "vs-dark"`** (`main.js`, the
+  `toolWindowElementAddChild` branch). Monaco's theme is global, so opening Diff Compare in a
+  light IDE theme may turn the IDE's code editor dark too. **Page affected**: none states a
+  colour yet. Seen since (BETA 1045, the `addins` setup of `shoot_docs.mjs`): in the Light
+  theme the comparison draws its code very light grey on a white ground, hardly readable
+  (`DiffCompare.light.png`). Not yet seen whether the code editor turns dark.
+- **Select for compare on a `.txt` file shows "Unable to publish comparison: Automation
+  error"** (Diff Compare, BETA 1045, the `addins` setup in a lane IDE): the same command on a
+  `.twin` file works. Not narrowed: `MenuSelectForCompare_Click` (`DiffCompareAddin.twin` 110)
+  reads `file.Text`, `Host.CurrentProject.Name` and publishes a pipe, and the error is a bare
+  COM one. **Page affected**: DiffCompare.md says the add-in compares "the text of two files".
+- **Sample 24's `HexEditorFactory.New` writes `Set Addin = Addin`** where Sample 25's writes
+  `Set Me.Addin = Addin`. The parameter hides the field (a `tbrun` probe on BETA 1045: the
+  field stays **Nothing**, `Set Me.` sets it), so the Hex Editor's designers get **Nothing** for
+  their `Addin`, and its message boxes (an invalid Find text) should fail. Not run in the add-in:
+  a Find of `zz` in the Hex Editor shows what the user sees.
+- **Sample 25's Undo back to an empty new icon passes an erased array to `SetFileData`**
+  (`IcoEditorDesigner.twin` 2423), where Sample 24's comment says the bridge needs a real
+  zero-element array. New, draw, Undo.
+- **A package's JSON view is gone from the Project Explorer's menu.** BETA 1042's **View As
+  JSON** worked on the rows under `Packages`; 1045 moves it into **Open with → JSON Preview**,
+  which lists it only for the four form extensions, and hides **Open with** on a read-only row,
+  which a package's is (`showContextMenuOpenWithComponent`). The command
+  `tbProjectExplorer_SelectedItemsViewAsJSON` still exists: a key bound to it may still work.
+  **Page affected**: Features/Compiler-IDE/IDE-Features.md and Projects/Files-and-Folders.md
+  now describe forms only; their package pictures are removed.
+- **Open with is hidden when no add-in offers an editor for the file**, and with it **JSON
+  Preview** and **Markdown Preview**: in an IDE whose add-ins did not load (Shift held), a form's
+  JSON view and a `.md` file's preview cannot be reached from the menu.
+- **The Hex Editor's grid tooltip** says Ctrl+C "uses that column", but Ctrl+C always copies hex.
+  **Page affected**: HexEditor.md says what the code does.
+
 ### VBFLXGRD18
 
 - **Without an explicit `Load Form1`**, `Form1.VBFlexGrid1` through the implicit instance

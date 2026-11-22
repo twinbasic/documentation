@@ -38,7 +38,7 @@ Of the [common members](Common), the control has those under [Name and place](Co
 [**Value**](#value) is **True** while the option is selected. The user selects it with a click on the control. The option buttons of one container are a group, of which one is selected at a time; those in a frame or a picture box are a group of their own. The control leaves it to the form to clear the other option buttons of the group when one becomes **True**.
 
 <!-- test: sample optionbuttonw-group -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > The form does not clear the other option buttons of the group, so two of them can be selected at once, by the user or by the program. A program clears them itself, in each button's [**Click**](#click) event:
 
 ```tb probe check_run arch=win32,win64 id=optionbuttonw-group

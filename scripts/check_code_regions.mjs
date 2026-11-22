@@ -86,7 +86,7 @@ import deflist from "markdown-it-deflist";
 import { checkPlaceholders, formatSize, packedDownloads, validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
-import { markdownCopy } from "../builder/markdown-copy.mjs";
+import { isHiddenFence, markdownCopy } from "../builder/markdown-copy.mjs";
 import { injectAnchorHeadings } from "../builder/template.mjs";
 import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
@@ -100,10 +100,13 @@ import { convertText } from "./convert_em_dash_separators.mjs";
 const md = new MarkdownIt({ html: true });
 
 // The literal regions of a source, in document order, as type-tagged strings.
-function codeRegions(src) {
+// With `shown`, a fence marked `hidden` or `probe` is left out, as the page and its markdown
+// copy leave it out (isHiddenFence).
+function codeRegions(src, { shown = false } = {}) {
   const out = [];
   const walk = (tokens) => {
     for (const t of tokens) {
+      if (shown && t.type === "fence" && isHiddenFence(t.info)) continue;
       if (t.type === "fence" || t.type === "code_block" || t.type === "code_inline") {
         out.push(`${t.type}:${t.content}`);
       }
@@ -286,6 +289,12 @@ const COPY_PROBES = [
   ["a placeholder in a code span stays, one beside it is expanded; the page gets its title",
     "Some `{{tbdocs:pages}}` text, {{tbdocs:pages}} pages.\n",
     "# T\n\nSome `{{tbdocs:pages}}` text, 7 pages.\n"],
+  ["a hidden fence and a probe go, with a blank line each; the sample beside them stays",
+    "# T\n\n```tb hidden concat_group=g\nDim a\n```\n\n```tb check_build concat_group=g\na = 1\n```\n\n```tb probe id=p\nx\n```\n\nEnd\n",
+    "# T\n\n```tb check_build concat_group=g\na = 1\n```\n\nEnd\n"],
+  ["a hidden fence inside an alert goes; a fence whose key holds the word stays",
+    "# T\n\n> [!NOTE]\n> x\n>\n> ```tb hidden\n> Dim a\n> ```\n>\n> y\n\n```tb id=hidden\nz\n```\n",
+    "# T\n\n> [!NOTE]\n> x\n>\n> y\n\n```tb id=hidden\nz\n```\n"],
 ];
 
 // The dash normaliser: a source, what the tool must make of it, and how many
@@ -769,7 +778,7 @@ async function main(argv) {
     } catch (err) {
       got = `threw ${err.message}`;
     }
-    if (got === want && compareRegions(codeRegions(src), codeRegions(got)).length === 0) continue;
+    if (got === want && compareRegions(codeRegions(src, { shown: true }), codeRegions(got)).length === 0) continue;
     failed++;
     console.log(`FAIL  probe: ${name}`);
     console.log(`        want ${JSON.stringify(want)}`);
@@ -842,7 +851,7 @@ async function main(argv) {
     // The page's markdown copy, whose links all go through a resolver that rewrites them.
     const page = parseFrontmatter(src);
     const copyFindings = page
-      ? compareRegions(codeRegions(page.content), codeRegions(copyOf(page.content, page.data)))
+      ? compareRegions(codeRegions(page.content, { shown: true }), codeRegions(copyOf(page.content, page.data)))
       : [];
     if (!findings.length && !copyFindings.length) continue;
     touched++;

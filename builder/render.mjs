@@ -21,7 +21,7 @@ import { countPlugin, expandDownloadPlaceholders, findSurvivingPlaceholder } fro
 import { replaceOutsideCode } from "./code-guard.mjs";
 import { TERM_ID_PREFIX } from "./search.mjs";
 import { splitFragment } from "./url.mjs";
-import { markdownCopyUrl } from "./markdown-copy.mjs";
+import { isHiddenFence, markdownCopyUrl } from "./markdown-copy.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
 import { inlineDiagram } from "./inline-diagram.mjs";
 import { checkCalloutLabel, parseCalloutLabel } from "../lib/callout-labels.mjs";
@@ -348,14 +348,6 @@ export function createMarkdownIt(ctx) {
     highlight: ctx.highlighter ? (code, lang) => ctx.highlighter.render(code, lang) : undefined,
   });
 
-  // `hidden` or `probe` as a whitespace-separated token anywhere after the
-  // language. Matched against the raw info string rather than parsed with
-  // scripts/lib/tb-fences.mjs's parseInfo: builder/ must not depend on
-  // scripts/, and these are the two tokens of that markup the renderer cares
-  // about. The word has to stand alone, or a language called `hidden-x` or a
-  // key like `id=hidden` would suppress a fence the author meant to publish.
-  const HIDDEN_FENCE_RE = /^\S+(?:\s+\S+)*?\s+(?:hidden|probe)(?:\s|$)/;
-
   // Override the fence renderer so our highlight callback's wrapper HTML
   // (which starts with <div, not <pre>) is used verbatim. Without this,
   // markdown-it's default fence rule wraps it in another <pre><code>.
@@ -376,8 +368,9 @@ export function createMarkdownIt(ctx) {
     // is a run the gate checks a statement of the page with, and the reader
     // never sees it either. Emitting nothing here keeps both out of the HTML,
     // and therefore out of the search index, the offline mirror and the PDF
-    // book, all of which read the rendered string.
-    if (HIDDEN_FENCE_RE.test(tok.info ?? "")) return "";
+    // book, all of which read the rendered string. The page's markdown copy
+    // leaves it out by the same rule (markdown-copy.mjs, withoutHiddenFences).
+    if (isHiddenFence(tok.info)) return "";
     const html = options.highlight(tok.content, lang);
     if (tok.level > 0 || tok.meta?.nestedInBlock) {
       return html.replace(/<\/div><\/div>$/, "</div>\n</div>") + "\n";

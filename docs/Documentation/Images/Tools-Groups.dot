@@ -172,7 +172,8 @@ digraph tools_groups {
         i7 [label="svgshot/replay"] i10 [label="shot_review"]
         i11 [label="svgshot/chromeshot"]
         i12 [label="svgshot/chrome_try"]
-        i1 -> i3 -> i5 -> i7 -> i12
+        i13 [label="shot_ledger"]
+        i1 -> i3 -> i5 -> i7 -> i12 -> i13
         i2 -> i4 -> i8 -> i10 -> i11
         { rank=same; i3 i4 }
         { rank=same; i5 i8 }
@@ -405,6 +406,8 @@ digraph tools_groups {
          tooltip="Serves a page in the browser for reviewing what the screenshot tools decided about each picture, deciding otherwise, starting runs and committing the result."]
     i11 [URL="Tools-IDE#chromeshot"
          tooltip="Turns what the svgshot Chrome extension saved into a picture: its PNG, its SVG and the bundle a replay draws from, refused when it shows a private word."]
+    i13 [URL="Tools-IDE#shot-ledger"
+         tooltip="Lists the screenshots a move of the staging branch would bring in that the review tool did not commit; the git hook that refuses such a move runs it."]
     i12 [URL="Tools-IDE#chrome-try"
          tooltip="Takes a public page through the Chrome extension in a Chrome of its own, signed in to nothing, to show that the extension still works."]
 

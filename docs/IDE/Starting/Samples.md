@@ -28,6 +28,8 @@ A card shows the sample's name without its number, and the cards are in the orde
 
 **Samples 10 to 16 build into the IDE's own folder.** Their *Build Output Path* is `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`, so a build of one installs the add-in in the folder of the running IDE, as `addins\win32` or `addins\win64`. It loads at the next start of the IDE. Holding <kbd>Shift</kbd> while a project loads stops add-ins loading; see [Opening projects](Opening-Projects#what-happens-as-a-project-loads). [Add Ins](../AddIns/) describes add-ins.
 
+**Samples 24 to 27 build into your own add-ins folder.** Their *Build Output Path* is `${AppData}\twinBASIC\addins\${Architecture}\${ProjectName}.${FileExtension}`, so a build installs the add-in in `%APPDATA%\twinBASIC\addins\win32` or `win64`, for every IDE you start. The IDE's own `addins` folder holds a copy of each of these four already, under the same name.
+
 The other samples build into a `Build` folder beside the project's file, once the project is saved.
 
 ## The samples
@@ -60,18 +62,22 @@ The other samples build into a `Build` folder beside the project's file, once th
 | **21.** Windows Service Simple Example | Standard EXE | A Windows service that runs for 15 seconds, in an EXE that installs itself. Uses the WinServicesLib package | none |
 | **22.** Windows Service Complex Example (inc Event Logging and IPC) | Standard EXE | Two services in one process, which write to the event log and answer requests over named pipes, and a form that installs, starts, stops and queries them. Uses the WinServicesLib, WinEventLogLib and WinNamedPipesLib packages | none |
 | **23.** OOP Inheritance Example (Animals) | Standard EXE | A small class hierarchy that prints to the DEBUG CONSOLE, with **Inherits**, **Protected**, **Overridable**, **Overrides** and an inherited event | [Inheritance](../../../Features/Language/Inheritance) |
+| **24.** twinBASIC IDE Addin (Designer Hex Editor) | Standard DLL | The project of the [Hex Editor](../AddIns/HexEditor) add-in that ships with the IDE: an editor of a file's bytes in a tab of its own, used for `.bin` and `.dat` files and offered for every other file | the [tbIDE reference](../../Packages/tbIDE/) |
+| **25.** twinBASIC IDE Addin (Designer ICO Editor) | Standard DLL | The project of the [ICO Designer](../AddIns/IcoEditor) add-in that ships with the IDE: an editor of `.ico` files, with its drawing tools in the TOOLBOX | the tbIDE reference |
+| **26.** twinBASIC IDE Addin (Designer Diff Compare) | Standard DLL | The project of the [Diff Compare](../AddIns/DiffCompare) add-in that ships with the IDE: commands in the Project Explorer's menu that compare two files side by side, in one IDE or across two | the tbIDE reference |
+| **27.** twinBASIC IDE Addin (Designer Data Explorer) | Standard DLL | The project of the [Data Explorer](../AddIns/DataExplorer) add-in that ships with the IDE: a read-only view of a database in the IDE's datasheet grid, kept in a `.tbdata` file. References ADO 6.0 | the tbIDE reference |
 
-Samples 10 to 16 use the [tbIDE](../../Packages/tbIDE/) package, and its reference uses Samples 10 to 15 as its examples.
+Samples 10 to 16 and 24 to 27 use the [tbIDE](../../Packages/tbIDE/) package, and its reference uses Samples 10 to 15 and 24 to 27 as its examples.
 
 ## Before you run a sample
 
 Most samples run with **Start** (<kbd>F5</kbd>) as they are. These need something more.
 
-**Samples 3, 4, 5, 7 and 9 to 16 are not programs.** Each makes a DLL, a control or a package, so **Start** has nothing to run and ends with a compile error in the console. Build them instead:
+**Samples 3, 4, 5, 7, 9 to 16 and 24 to 27 are not programs.** Each makes a DLL, a control or a package, so **Start** has nothing to run and ends with a compile error in the console. Build them instead:
 
 - A build of Sample 3, 4, 5 or 9 [registers the file](../Building/ActiveX-Registration) for the current user, and **Clean** removes the registration. The file must match the program that loads it: for 64-bit Office, choose **win64** in the [build box](../Building/Build-Configuration).
 - The registration of Sample 4 adds it to the VBA editor, and the registration of Sample 5 adds it to Excel and to Access. Each then loads when that program starts.
-- Samples 10 to 16 install themselves in the IDE, as [Where a sample builds](#where-a-sample-builds) describes.
+- Samples 10 to 16 and 24 to 27 install themselves in the IDE, as [Where a sample builds](#where-a-sample-builds) describes.
 
 **Sample 23 has no `Main`,** so **Start** ends with a compile error there too. Open `Main.twin`, put the caret inside `Sub DemoAnimals` and press <kbd>F6</kbd>. See [Run Or Preview](../Debugging/Running#run-or-preview).
 
@@ -86,4 +92,4 @@ Most samples run with **Start** (<kbd>F5</kbd>) as they are. These need somethin
 
 - [New Project](New-Project) -- the dialog, and **New Project Options**
 - [What Start runs](../Debugging/Running#what-start-runs) -- the startup object, and what **Start** does without one
-- [Add Ins](../AddIns/) -- the add-in samples, 10 to 16
+- [Add Ins](../AddIns/) -- the add-in samples, 10 to 16 and 24 to 27

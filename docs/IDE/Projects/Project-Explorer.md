@@ -102,7 +102,7 @@ These keys work while the tree has the focus.
 The tree scrolls to keep the selected row in view. <kbd>Page Up</kbd>, <kbd>Page Down</kbd>, <kbd>Home</kbd> and <kbd>End</kbd> do not move the selection.
 
 <!-- test: bug tree-space-folder, bug tree-type-to-filter, bug tree-right-arrow-order, bug tree-ctrl-a-error, bug tree-down-hidden-settings -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > Several keys of the tree do not work as they should.
 >
 > - <kbd>Space</kbd> does not open or close a folder. Click the folder's plus or minus box.
@@ -142,6 +142,7 @@ Each object has an icon for its kind and, in grey beside its name, the file it i
 - **Double-click an object** opens its form in the designer if it has one. Otherwise it opens the code at the object's declaration, and moves the focus to the editor.
 - **Double-click a group**, or select it and press <kbd>Enter</kbd>, opens or closes it. <kbd>Left</kbd> and <kbd>Right</kbd> close and open the selected group. <kbd>Enter</kbd> on an object does nothing.
 - <kbd>Up</kbd> and <kbd>Down</kbd> move the selection.
+- **Right-click a row** selects it and opens its menu. **View Object** opens a form in the designer, and shows only on a form. **View Code** opens the code at the object's declaration, and shows on every object that has code, a form included. **Add**, **Rename** and **Delete** are on every row, and are always greyed out: use the file view for them.
 
 ### Search the objects
 
@@ -149,12 +150,12 @@ The **Search** button, or the first letter you type with a row selected, opens a
 
 ![The Project Explorer in its object view, with the search bar open at the top right of the list and Util typed in it. Under MyProject the Modules group lists only Util, beside its file Util.twin, and the Classes and Forms groups list nothing. The VBA, VBRUN and VB packages below are drawn open, and every group shows its full count.](Images/ObjectView_Search.png){:width="267" height="478"}
 
-<!-- test: bug objectview-no-menu, bug objectview-rename-delete-alert, bug objectview-shift-double-click, bug objectview-search-prefix -->
-> [!NOTE] BETA 1042
+<!-- test: bug objectview-rename-delete-alert, bug objectview-shift-double-click, bug objectview-search-prefix, lane ide:projects -->
+> [!NOTE] BETA 1045
 > The object view has some defects.
 >
-> - A right click on a row opens no menu, so the menu's **View Object**, **View Code**, **Add**, **Rename** and **Delete** cannot be reached. To rename or delete an object's file, press <kbd>Ctrl</kbd>+<kbd>R</kbd> to return to the file view.
-> - <kbd>Shift</kbd>+double-click on a form opens its designer, like a plain double-click, and not its code. To open the code, switch to the file view and open the form's `.twin` file.
+> - The commands behind **Rename** and **Delete** are not written: run from a key bound to them, each shows only a message box with its own name. To rename or delete an object's file, press <kbd>Ctrl</kbd>+<kbd>R</kbd> to return to the file view.
+> - <kbd>Shift</kbd>+double-click on a form opens its designer, like a plain double-click, and not its code. To open the code, right-click the form and choose **View Code**.
 > - When the search bar opens because you typed a letter, it holds `>` before the letter. The `>` does not change what is matched.
 
 ## See Also

@@ -243,7 +243,9 @@ has another sample, and `splitBatch` cannot isolate a failure to it.
 A fence marked `hidden` is compiled with the page's other samples and **rendered to
 nothing**: `builder/render.mjs`'s fence rule returns `""` for it, so it is absent from the
 HTML and from everything downstream that reads the rendered string: the search index, the
-offline mirror, the PDF book. Verified across all three trees.
+offline mirror, the PDF book. Verified across all three trees. The page's markdown copy is
+made from the source, not the HTML, and leaves it out by the same rule (`isHiddenFence`,
+`builder/markdown-copy.mjs`).
 
 It exists for fiction invented for one page (`MyServiceA` / `MyServiceB`, `ClientSession`).
 Putting it in a shared stage set would make a template that hundreds of pages build into

@@ -522,8 +522,6 @@ A command with no default key runs from a menu, a button or another command. Any
 | <code><span class="command-prefix">tbMisc_</span>AltKeyStateUp</code> | <kbd>Alt</kbd>, on release | Opens the File menu when the Alt key is released without another key having been pressed, or closes a menu that is open. |
 | <code><span class="command-prefix">tbMisc_</span>PreventDefaultKeyBehaviour</code> | <kbd>Ctrl</kbd>+<kbd>A</kbd>, <kbd>Tab</kbd> | Stops the web view's own handling of the key. The IDE binds it to keys whose default action it does not want. |
 | <code><span class="command-prefix">tbMisc_</span>SaveProjectMetaStateInTwinproj</code> | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> | Saves the project's meta state to the project file and shows a message box. |
-| <code><span class="command-prefix">tbMisc_</span>ShiftKeyStateDown</code> | <kbd>Shift</kbd> | Records that the Shift key is held down. The IDE uses it internally. |
-| <code><span class="command-prefix">tbMisc_</span>ShiftKeyStateUp</code> | <kbd>Shift</kbd>, on release | Records that the Shift key has been released. The IDE uses it internally. |
 | <code><span class="command-prefix">tbMisc_</span>ShowTestMessage</code> |  | Shows a test message box. |
 
 ## `tbOpenEditors_`
@@ -635,6 +633,7 @@ A command with no default key runs from a menu, a button or another command. Any
 | <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsClipboardCut</code> | <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> | In the Project Explorer's file view, cuts the selected items to the clipboard. |
 | <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsDeletePermanently</code> | <kbd>Delete</kbd> | In the Project Explorer's file view, deletes the selected items, after asking if the Ask Before Delete Files option is on. |
 | <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsExport</code> |  | In the Project Explorer's file view, exports the selected items to a folder. |
+| <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsOpen</code> |  | In the Project Explorer's file view, opens the selected file in its default editor. |
 | <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsRename</code> | <kbd>F2</kbd> | In the Project Explorer's file view, renames the selected item. |
 | <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsViewAsJSON</code> |  | In the Project Explorer's file view, opens the selected file as JSON. |
 | <code><span class="command-prefix">tbProjectExplorer_</span>SelectedItemsViewAsMarkdownPreview</code> |  | In the Project Explorer's file view, opens the selected file as a Markdown preview. |
@@ -734,7 +733,7 @@ A command with no default key runs from a menu, a button or another command. Any
 
 | Command | Keys | What it does |
 |---|---|---|
-| `tbShowObjectBrowser` | <kbd>F2</kbd>, on release | Opens the Object Browser, for the text selected in the code editor. |
+| `tbShowObjectBrowser` | <kbd>F2</kbd> | Opens the Object Browser, for the text selected in the code editor. |
 | `tbSignatureHelpCancel` | <kbd>Esc</kbd>, <kbd>Up</kbd>, <kbd>Down</kbd> | Dismisses the signature help that is showing. |
 
 ## See Also

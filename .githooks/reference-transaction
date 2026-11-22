@@ -1,0 +1,17 @@
+#!/bin/sh
+# Refuses a move of staging that brings in a screenshot no commit of the
+# screenshot review tool recorded: scripts/shot_ledger.mjs --hook, on git's
+# lines (<old> <new> <ref>). It runs for every update of a ref, so it starts
+# node only when staging is among them, and only once the update is prepared,
+# the one state in which a hook can still refuse it. See WIP.ShotReview.md,
+# The ledger.
+#
+# Enable it in a clone:  git config core.hooksPath .githooks
+#
+# .gitattributes keeps this file LF in every checkout, for a POSIX Git's sake.
+[ "$1" = prepared ] || exit 0
+lines=$(grep ' refs/heads/staging$') || exit 0
+# git runs it from the top of the working tree the command runs in: a worktree
+# made before the check came has no script to run, and is let through.
+[ -f scripts/shot_ledger.mjs ] || exit 0
+printf '%s\n' "$lines" | exec node scripts/shot_ledger.mjs --hook

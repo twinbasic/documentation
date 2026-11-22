@@ -331,6 +331,7 @@ A copy is the page's source, changed only where the source says something differ
 - the front matter goes, and a page that does not start with a level-1 heading gets one from its `title:`;
 - the `{{tbdocs:...}}` placeholders are expanded;
 - HTML comments go, the `<!-- test: ... -->` markers among them;
+- a fence marked `hidden` or `probe` goes, as it goes from the page: it is context or a check for `examples.bat`, not a sample;
 - a link to another page goes to that page's copy, with its fragment: `[Dim](Dim#syntax)` on a page beside it becomes `[Dim](/tB/Core/Dim.md#syntax)`, so a reader of the copies stays in markdown. The page a link goes to is the one the page's HTML reaches, whether the build resolved the link (a `tb:` shortcut, or a path from the source file's folder) or a browser resolves it against the page's URL, through a `redirect_from:` alias included;
 - a link to a file, such as an image, becomes the URL the page's HTML has.
 

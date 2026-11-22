@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:designers",
+  "tests": [
+    "SetFileData with the saved bytes: the page holds the tab unchanged, but its dot stays"
+  ],
+  "steps": "1. A designer that calls `SetFileData` with changed bytes: the tab shows the dot.\n2. The designer calls `SetFileData` with the bytes the file was opened with. The dot stays.\n3. Close the tab. The IDE asks nothing, as for a tab with no changes."
+}

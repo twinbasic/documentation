@@ -3139,6 +3139,34 @@ Severity: medium. The program's state changes with nothing shown, from moving th
 
 ---
 
+## The hover's hexadecimal for a negative Integer or Long is a literal of a different value
+
+**Describe the bug**
+Since BETA 1044 the hover over an integral value while paused adds its hexadecimal in brackets. The digits are right, but the suffix after them is chosen from the digits alone: `&` for `&H8000` to `&HFFFF`, `^` for `&H80000000` to `&HFFFFFFFF`, whatever the type of the value. For a negative Integer or Long the result is the literal of another number. An Integer of `-1` shows `(&HFFFF&)`, and `&HFFFF&` is the Long `65535`; a Long of `-1` shows `(&HFFFFFFFF^)`, the LongLong `4294967295`. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A procedure that holds `Dim iNeg As Integer = -1`, `Dim lNeg As Long = -1` and a line after them.
+2. Stop at a breakpoint on that line.
+3. Hold the pointer over `iNeg`. The hover reads `iNeg:   -1  (&HFFFF&)`.
+4. Hold the pointer over `lNeg`. The hover reads `lNeg:   -1  (&HFFFFFFFF^)`.
+
+**Expected behavior**
+A literal of the value shown: `(&HFFFF)` for the Integer and `(&HFFFFFFFF)` for the Long, which are `-1` as literals. The suffix is right only where the digits do not fit the type's own literal, as for a Long of `32768`, `(&H8000&)`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+In `ide/main.js`, the hover provider takes the value as unsigned in the width of the type (`BigInt.asUintN`) and then picks the suffix by testing the bits of that unsigned value (`(c & 0xffffffffffff8000n) === 0x8000n` for `&`), not by the type. A Byte of `255` shows `(&HFF)`, a Long of `32768` shows `(&H8000&)` and a LongLong of `-1` shows `(&HFFFFFFFFFFFFFFFF)`, all of them right.
+
+Severity: low. The decimal beside it is right; the hexadecimal misleads only someone who reads it as a literal.
+
+<!-- Reproducer: bugs/hover-hex-negative-suffix/ (mode lane: asserted by `ide-test.bat --only hover-values` (test/ide/hover-values.test.mjs), the tests for iNeg and lNeg, which pass on BETA 1045; the cases b, lBig and llNeg are the controls). No project and no zip. docs/IDE/Debugging/Inspecting.md carries a NOTE (BETA 1045) for it under "Hover"; when a fixed build is released, the NOTE goes and the lane's two tests assert the fixed text. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
 ## An edit at the run-time error panel prints Aborting, and then the rest of the program runs
 
 **Describe the bug**
@@ -3961,7 +3989,7 @@ Severity: low. Nothing wrong can be added.
 ## A package's read-only designer file opens an empty tab besides the notice that it cannot be opened
 
 **Describe the bug**
-A designer file of a referenced package, such as the VB package's `tbObjectDesigner_PROPERTYPAGE.tbppage`, is read-only. Opening it from Project Explorer shows the notification *Can't open designer for a read-only document.*, and also adds a tab of that name and selects it: an empty tab with no close icon. A middle click closes it. It was observed in an IDE started with an `APPDATA` of its own.
+A designer file of a referenced package, such as the VB package's `tbObjectDesigner_PROPERTYPAGE.tbppage`, is read-only. Opening it from Project Explorer shows the notification *Can't open designer for a read-only document.*, and also adds a tab of that name and selects it: an empty tab. Up to BETA 1042 the tab had no close icon, and only a middle click closed it; BETA 1045 gives it one. It was observed in an IDE started with an `APPDATA` of its own.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -3978,9 +4006,9 @@ The notification only, with no tab; or the file shown read-only, as View As JSON
 **Additional context**
 The IDE never reports the file as opened (the open's completion callback is not called), and the page throws a `TypeError` in a websocket request handler.
 
-Severity: low. Cosmetic; the tab closes with a middle click.
+Severity: low. Cosmetic; the tab closes as any other does.
 
-<!-- Reproducer: bugs/readonly-designer-empty-tab/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a package's read-only designer file opens an empty tab of its name besides the notice that it cannot be opened", which passes on BETA 1005; it opens the file with openEditors.openFile, as a double-click in Project Explorer does, and asserts the tab has no close icon). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N8). -->
+<!-- Reproducer: bugs/readonly-designer-empty-tab/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a package's read-only designer file opens an empty tab of its name besides the notice that it cannot be opened", which passes on BETA 1005; it opens the file with openEditors.openFile, as a double-click in Project Explorer does, and asserts the tab has a close icon, as it has since BETA 1045). No project and no zip. docs/IDE/Forms/Designer.md carries a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N8). -->
 
 ---
 
@@ -5458,36 +5486,10 @@ Severity: low. The files are written, beside the folder intended.
 
 ---
 
-## Project Explorer's object view opens no menu on a right click
-
-**Describe the bug**
-Project Explorer's object view (Ctrl+R) has a context menu with View Object, View Code, Add, Rename and Delete, but a right click on a row opens nothing, whether the row is an object, a form or a group. The menu's commands cannot be reached. It was observed in an IDE started with an `APPDATA` of its own, looking for an open menu after each click.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. In Project Explorer, press Ctrl+R for the object view.
-2. Right-click `Startup` (a module), `frmMain` (a form) or `Modules` (a group). No menu opens.
-
-**Expected behavior**
-The menu opened, as a right click on a row of the file view opens the file view's menu.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 1010
-
-**Additional context**
-The list item's `onmousedown` (`ide/main.js`) passes on the left button only. With the menu unreachable, a form's code cannot be opened from the object view, since Shift+double-click opens the designer too (see "Shift+double-click on a form in the object view opens the designer, not the code"). The menu's Rename and Delete do nothing yet either (see "The object view's Rename and Delete commands only show an alert naming the command").
-
-Severity: low. The same commands are in the file view's menu.
-
-<!-- Reproducer: bugs/objectview-no-menu/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "in the object view, a right click on an object, a form or a group opens no menu", which passes on BETA 1010; the control "control: a right click on a row of the file view opens its menu" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects), carries a NOTE for it; when a fixed build is released, that NOTE's item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D29). -->
-
----
-
 ## The object view's Rename and Delete commands only show an alert naming the command
 
 **Describe the bug**
-The commands behind the object view menu's Rename and Delete, `tbProjectExplorer_ObjectList_RenameSelected` and `tbProjectExplorer_ObjectList_DeleteSelected`, show only a browser alert that holds the command's name. Nothing is renamed or deleted. The menu draws the two items disabled, and the menu does not open at all (see "Project Explorer's object view opens no menu on a right click"), so a key bound to the command is the way to run one. It was observed in an IDE started with an `APPDATA` of its own, running the commands and reading the alerts.
+The commands behind the object view menu's Rename and Delete, `tbProjectExplorer_ObjectList_RenameSelected` and `tbProjectExplorer_ObjectList_DeleteSelected`, show only a browser alert that holds the command's name. Nothing is renamed or deleted. The object view's right-click menu, which opens since BETA 1045, draws the two items greyed out, so a key bound to the command is the way to run one. It was observed in an IDE started with an `APPDATA` of its own, running the commands and reading the alerts.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -5507,7 +5509,7 @@ The two commands are `alert(...)` calls in `ide/main.js`.
 
 Severity: low. Rename and Delete in the file view work.
 
-<!-- Reproducer: bugs/objectview-rename-delete-alert/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "the object view's Rename and Delete commands only show an alert naming the command", which passes on BETA 1010; it runs the two commands through the IDE's command call). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its first item, which names Rename and Delete among the commands that cannot be reached), carries a NOTE for it; when a fixed build is released, that item changes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2). -->
+<!-- Reproducer: bugs/objectview-rename-delete-alert/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "the object view's Rename and Delete commands only show an alert naming the command", which passes on BETA 1010; it runs the two commands through the IDE's command call). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, the item on Rename and Delete), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D2). -->
 
 ---
 
@@ -5541,7 +5543,7 @@ Severity: low. Cosmetic.
 ## Shift+double-click on a form in the object view opens the designer, not the code
 
 **Describe the bug**
-In Project Explorer's object view, the code that opens a form tells the designer from the code by the Shift key, but the double-click passes no Shift state to it. Shift+double-click on a form opens its designer, as a plain double-click does. With the object view's menu unreachable, a form's code cannot be opened from the object view at all. It was observed in an IDE started with an `APPDATA` of its own, reading the tabs.
+In Project Explorer's object view, the code that opens a form tells the designer from the code by the Shift key, but the double-click passes no Shift state to it. Shift+double-click on a form opens its designer, as a plain double-click does. It was observed in an IDE started with an `APPDATA` of its own, reading the tabs.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -5556,9 +5558,9 @@ The form's code, `frmMain.twin`, opened.
  - twinBASIC compiler version: BETA 1010
 
 **Additional context**
-A double-click on a module (`Legacy`) opens its code, as it should. The list item's `ondblclick` (`ide/main.js`) passes no `shiftKey`. The menu's View Code is out of reach too (see "Project Explorer's object view opens no menu on a right click").
+A double-click on a module (`Legacy`) opens its code, as it should. The list item's `ondblclick` (`ide/main.js`) passes no `shiftKey`.
 
-Severity: low. The form's `.twin` file opens from the file view.
+Severity: low. Since BETA 1045 the object view's right-click menu opens, and its View Code opens the form's code; so does the form's `.twin` file in the file view.
 
 <!-- Reproducer: bugs/objectview-shift-double-click/ (mode lane: asserted by `ide-test.bat --only "^projects$"` (test/ide/projects.test.mjs), the test "Shift+double-click on a form in the object view opens its designer, not its code", which passes on BETA 1010; the control "control: in the object view, a double-click on a module opens its code" passes too). No project and no zip. docs/IDE/Projects/Project-Explorer.md, in the NOTE at the end of The object view (under Search the objects, its second item), carries a NOTE for it; when a fixed build is released, that item goes. Found 2026-10-12 in the trials for the Projects and files pages (their fact sheet's D30). -->
 
@@ -14093,6 +14095,306 @@ Every line reaches the IDE's page with the class `debugConsoleOutputTextYELLOW`,
 Severity: low. Nothing is lost, but an add-in cannot tell its warnings from its other lines by colour, as the argument promises.
 
 <!-- Reproducer: bugs/printtext-colorrgb-ignored/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only console-colour` (test/addin/console-colour.test.mjs; its add-in is the ConsoleColourProbe, test/addin/probes/consolecolour, which prints a line for each of 0, four RGB colours and the five codes), the three tests named in repro.json, which pass on BETA 1042, win32 (2026-11-14). The reproducer is a cut-down copy of that add-in, compiled clean by `bug_repro.mjs compile`, and not itself run in a lane. Found 2026-11-14 taking the tbIDE pictures (shoot_docs setup tbide, test/shots/tbide), whose DebugConsole_PrintText picture shows DebugConsole.md's sample: its orange line is yellow. docs/Reference/Built-In/tbIDE/DebugConsole.md (PrintText) carries a NOTE labelled BETA 1042 for it; when a fixed build is released, the NOTE goes. -->
+
+---
+
+## The ICO Designer that ships with the IDE opens every .cur file as an unsupported or corrupt icon
+
+**Describe the bug**
+The ICO Designer add-in that ships with BETA 1045 (`addins\win32\tbIcoDesignerAddIn.dll`, the project of Sample 25) registers itself as the default designer for `.ico` and for `.cur`. Its reader takes only a file whose header gives the type 1, an icon, and a cursor file gives 2. So every `.cur` file opens with the status *Unsupported/corrupt ICO: click New icon to replace it.*, and nothing in it is shown. **New** then writes an icon, type 1, over the cursor file, and its hotspot is lost. It was observed in an IDE started with an `APPDATA` of its own, with only that add-in loaded.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project with `Pic.ico`, a 16x16 32-bit icon, and `Pic.cur`, the same picture as a cursor with its hotspot at 0,0.
+2. Double-click `Pic.ico` in the Project Explorer. The ICO Designer shows it, with the status *Imported ICO.*
+3. Double-click `Pic.cur`. The ICO Designer opens, with the status *Unsupported/corrupt ICO: click New icon to replace it.*
+
+**Expected behavior**
+The cursor's pictures are shown and can be edited, and saving keeps the file a cursor, with its hotspot. Or, if the designer is not meant for cursors, it does not register itself for `.cur`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+`DecodeIco` in Sample 25's `IcoEditorCodec.twin` returns at `If U16(input, 0) <> 0 Or U16(input, 2) <> 1 Then Exit Function`. In a cursor's directory entry the two words an icon uses for planes and bit count hold the hotspot, and `EncodeIco` writes 1 and 32 there.
+
+Severity: low. The cursor is not damaged unless **New** is chosen, but the designer offers nothing for it.
+
+<!-- Reproducer: bugs/ico-designer-cur-unreadable/ (mode lane: asserted by `addin-test.bat --only ico-cur` (test/addin/ico-cur.test.mjs), the test for Pic.cur, which passes on BETA 1045; the control, Pic.ico, passes too). No project and no zip: the lane writes both files and loads the install's own DLL. docs/IDE/AddIns/IcoEditor.md carries a NOTE (BETA 1045) for it under "Opening a file"; when a fixed build is released, the NOTE goes. Found 2026-11-22 reading Sample 25 for the update of the docs to BETA 1045. -->
+
+---
+
+## A menu that Menus.AddCustom makes as an add-in's first menu call does not open, and a compiler restart leaves it on the menu bar
+
+**Describe the bug**
+`Host.Menus.AddCustom("Probe", True)` adds a menu to the IDE's menu bar, after **Help**. When it is the add-in's first call that adds anything to a menu, the item appears on the bar but does not open when clicked, and setting the menu's `Caption` or `Visible` does not change it, though reading them back gives the new values. At a compiler restart the item stays, and the add-in, loaded again, adds a second one, as dead as the first. When the add-in has added an entry to another menu first, `AddCustom` gives a menu that works. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/menus`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. An add-in whose `OnProjectLoaded` calls `Set m = Host.Menus.AddCustom("ProbeFirst", True)` and `m.AddEntry "One"` before any other menu call.
+2. Load it and open a project. **ProbeFirst** is on the menu bar after **Help**.
+3. Click **ProbeFirst**. Nothing opens.
+4. `m.Caption = "ProbeFirst2"` leaves the bar item's text as it was; `m.Caption` reads `ProbeFirst2`.
+5. Restart the compiler. The bar now shows **ProbeFirst** twice.
+
+**Expected behavior**
+The menu opens on a click and lists its entries, as it does when the add-in has added an entry somewhere else first; its `Caption` and `Visible` change the bar item; a compiler restart removes it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+In `ide/main.js`, the `addMenu` handler, for a menu with no parent, inserts the bar item and then reads `Object.keys(o.children).length`, where `o` is the add-in's entry in `g_ExtensibilityMenus`. That entry has no `children` until the add-in has added an entry to a menu, so the read throws, the handler's `catch` swallows it, and the click handler and the record the later calls look for are never made. `removeExtensibilityMenus` then cannot find the item at a restart.
+
+Severity: medium. An add-in whose only menu is its own gets a menu that does nothing, and a growing row of them.
+
+<!-- Reproducer: bugs/addcustom-first-menu-dead/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "AddCustom"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## Menus.RemoveAllAddedEntries removes nothing
+
+**Describe the bug**
+`Host.Menus.RemoveAllAddedEntries` is declared to remove the entries the calling add-in has added. It removes none: the page's store of the add-in's entries (`g_ExtensibilityMenus`) is the same before and after the call, the entries still show in their menus, and the add-in's own menus stay on the menu bar. `Menu.RemoveAllAddedEntries` on one menu, such as **FileMenu**, does remove that menu's entries. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/menus`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. An add-in that adds an entry to `Host.Menus.FileMenu`, one to `Host.Menus.ProjectExplorerFileViewContextMenu`, and a menu with `Host.Menus.AddCustom`.
+2. Call `Host.Menus.RemoveAllAddedEntries`.
+3. Open the **File** menu, and right-click a file in the Project Explorer. Both entries are still there, and so is the custom menu.
+
+**Expected behavior**
+Every entry and menu the add-in added is gone, as after `Menu.RemoveAllAddedEntries` on each of its menus.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+The page has a handler for one menu's removal (`removeAllMenuChildren`) and none for all of an add-in's; whatever the compiler sends for `Menus.RemoveAllAddedEntries` changes nothing in the page.
+
+Severity: low. An add-in can remove its entries one menu at a time.
+
+<!-- Reproducer: bugs/menus-removealladdedentries-noop/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "Menus.RemoveAllAddedEntries changes nothing; a compiler restart drops every entry, the add-in adds its own again, and the dead ProbeFirst item stays", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "RemoveAllAddedEntries"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## Menu.ShowPopup on one of the IDE's own menus shows nothing
+
+**Describe the bug**
+`Menu.ShowPopup(ClientX, ClientY)` shows a menu at a point of the IDE's window. On a menu made with `Menus.AddCustom(..., False)` it does, with its top-left exactly at the point. On one of the IDE's own menus, such as `Host.Menus.ProjectExplorerFileViewContextMenu` or `Host.Menus.FileMenu`, nothing opens, whether it is called from a tool window's click handler or a toolbar button's, and no entry's `BeforeShow` fires. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/menus`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. An add-in that adds an entry to `Host.Menus.FileMenu`, and a tool window with a `click` listener that calls `Host.Menus.FileMenu.ShowPopup e.clientX, e.clientY`.
+2. Click in the tool window. Nothing opens.
+3. Control: a `Host.Menus.AddCustom("Popup", False)` menu with an entry, shown the same way, opens at the pointer.
+
+**Expected behavior**
+The menu opens at the point, with the add-in's entries at least, or the declaration says that `ShowPopup` is for a custom menu only.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+The declaration's comment on `AddCustom` suggests an invisible custom menu for `ShowPopup`; nothing says a named menu is refused.
+
+Severity: low.
+
+<!-- Reproducer: bugs/showpopup-named-menu-nothing/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "ShowPopup: a custom menu opens with its top-left at the point given; a named menu shows nothing", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menu.md carries a NOTE (BETA 1045) for it under "ShowPopup"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## ProjectExplorer.AddFileUI returns an empty string when the user cancels, instead of raising the error it is declared to raise
+
+**Describe the bug**
+`Host.ProjectExplorer.AddFileUI(FileExt, SuggestedName, ContentString)` is declared with the description *Returns the created URI, or throws an error if canceled by the user*. When the user presses Escape in the name box, or leaves the name empty, or types an invalid name such as `bad\name`, it returns `""` and raises no error. Sample 27 (Data Explorer) relies on the error: its handler has `On Error GoTo Canceled` and then opens the returned path, so on Escape it goes on to call `Host.ActiveEditors.Open("twinbasic:")` (read in its source, not run). It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/menus`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. An add-in that calls `s = Host.ProjectExplorer.AddFileUI("prb", "MyFile", "hello")` and prints `s`, `Err.Number` and `Err.Description`.
+2. Press Escape in the name box. It prints an empty `s` and `Err.Number` 0.
+3. Control: press Enter. It prints `/<Project>/Sources/MyFile.prb`.
+
+**Expected behavior**
+A run-time error on Escape, an empty name and an invalid name, as the description says; or a description that says an empty string is returned.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+On a cancel the page answers with `sendModalResultFailed` (`projectExplorerAddFileUI` in `ide/main.js`); the call returns an empty string in the add-in.
+
+Severity: low. An add-in that follows the description takes a cancel for a file made.
+
+<!-- Reproducer: bugs/addfileui-cancel-no-error/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "AddFileUI: the name box; Enter returns the new file's path without twinbasic:, and Escape, an empty name and an invalid one return an empty string rather than raise an error", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/ProjectExplorer.md carries a NOTE (BETA 1045) for it under "AddFileUI"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## ProjectExplorer.AddFileUI puts the file in a folder beside Sources whose name starts with "Sources"
+
+**Describe the bug**
+`Host.ProjectExplorer.AddFileUI` makes the new file in the folder selected in the Project Explorer, and when that folder is outside `Sources`, in `Sources` itself: with a folder `Notes` beside `Sources` selected, the file goes into `Sources`. A folder beside `Sources` whose name starts with `Sources`, such as `SourcesExtra`, is taken as inside it, and the file goes into `SourcesExtra`. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/menus`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project with the folders `Notes` and `SourcesExtra` beside `Sources`.
+2. Select `Notes` and call `Host.ProjectExplorer.AddFileUI("prb", "MyFile", "")`; press Enter. It returns `/<Project>/Sources/MyFile.prb`.
+3. Select `SourcesExtra` and do the same. It returns `/<Project>/SourcesExtra/MyFile.prb`.
+
+**Expected behavior**
+Step 3 makes the file in `Sources`, as step 2 does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+`getUICurrentFolder` in `ide/main.js` tests whether the folder is inside `Sources` by whether its path starts with the path of `Sources`, without the `/` after it.
+
+Severity: low.
+
+<!-- Reproducer: bugs/addfileui-sources-prefix/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "AddFileUI with a folder beside Sources selected: the file goes in Sources, unless the folder's name starts with Sources", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/ProjectExplorer.md describes where the file goes, and carries a NOTE (BETA 1045) for it under "AddFileUI"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## An add-in's tool window keeps the --themeAddin colours of the theme it was made in
+
+**Describe the bug**
+BETA 1045 gives add-ins eight theme colours as CSS variables, `--themeAddinBackColor` and the rest. A tool window that an add-in made under one theme keeps that theme's values after the user chooses another: its CSS goes on drawing the old colours until the add-in makes the window again. A designer's tab follows the change, and so does a tool window made after it. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/menus`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Under the Dark theme, an add-in makes a tool window whose CSS is `body { background: var(--themeAddinBackColor) }`. The background is `#2b2b2b`.
+2. Choose **Window → Theme → Light**. The tool window's background stays `#2b2b2b`; the IDE's own panels turn light.
+3. Control: a tool window made now has Light's `#FFFFFF`.
+
+**Expected behavior**
+The variables in an open tool window change with the theme, as they do in a designer.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+`createToolWindowById` in `ide/main.js` copies the eight values onto the tool window's body as inline styles when it makes the window, and nothing copies them again; `resyncTheme`, which `notifyChangedTheme` calls, does it for designers only. The inline values hide the page's own, which do change.
+
+Severity: low. An add-in can make its windows again in `OnChangedTheme`.
+
+<!-- Reproducer: bugs/toolwindow-addin-colours-stale/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "--themeAddin*: a tool window keeps the colours of the theme it was made in; High Contrast Dark has Dark's", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Themes.md carries a NOTE (BETA 1045) for it under "Colours for addins"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## A datasheet draws a 0 as an empty cell
+
+**Describe the bug**
+The `datasheet` element of BETA 1045 draws each value its add-in gives in `onGetRows`. A JSON `0` is drawn as nothing, in a column of type `integer` and in one of type `string` alike, while `1`, `1.5`, `42` and text are drawn. So a grid cannot show a zero, and a zero looks like a null. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/datasheet`) that shows a datasheet in a tool window.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A datasheet whose `onGetInfo` answers `{"recordCount": 2, "columns": [{"name": "n", "type": "integer"}, {"name": "s", "type": "string"}]}`.
+2. Its `onGetRows` answers `[[0, 0], [1, 1]]`.
+3. The first row's two cells are empty; the second row shows `1` and `1`.
+
+**Expected behavior**
+The first row shows `0` and `0`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+A cell is drawn by fin-hypergrid's default renderer (`ide/fin-hypergrid.min.js`), which the datasheet gives the value as it is; the renderer takes a falsy value as no value. A null is drawn as nothing too, so the reader cannot tell the two apart.
+
+Severity: medium. A table of numbers shows blanks where its zeros are, with nothing to say so.
+
+<!-- Reproducer: bugs/datasheet-zero-drawn-blank/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "what the grid draws: the header, a 0 as nothing, no number formatting, a tick only for true", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a WARNING (BETA 1045) for it under "onGetRows", and docs/IDE/AddIns/DataExplorer.md one under "The grid"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## Right, Left, Tab, Home and End in a datasheet throw in the IDE's page and move nothing
+
+**Describe the bug**
+In a `datasheet` with a data cell current, Up and Down move the current record. Right, Left and Tab each throw `TypeError: Cannot read properties of null (reading 'x')` from `ide/fin-hypergrid.min.js`, and Home, End, Ctrl+Home and Ctrl+End throw `page left not yet implemented` or `page right not yet implemented`. None of them moves the cell, the record or the scroll. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/datasheet`) that shows a datasheet in a tool window.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A datasheet with a few columns and rows. Click a data cell.
+2. Press Right. Nothing moves; the page reports an uncaught TypeError.
+3. Press Home. Nothing moves; the page reports `page left not yet implemented`.
+Control: Down moves the current record by one.
+
+**Expected behavior**
+Right, Left and Tab move to the next or previous cell, scrolling the columns into view, and Home and End to the first or last column; or the keys do nothing without an error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+The two strings are fin-hypergrid's own unfinished handlers. The TypeError is in its cell navigation, which finds no cell selection of its own: the datasheet keeps its current record itself and handles Up and Down.
+
+Severity: low. A grid wider than its window can be scrolled sideways only with the scroll bar.
+
+<!-- Reproducer: bugs/datasheet-keys-throw/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "keys: Up and Down move the current record; PageDown scrolls without moving it", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a NOTE (BETA 1045) for it under "What the user does"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## Designers.Unregister crashes the compiler
+
+**Describe the bug**
+`Host.Designers.Unregister(Extension)` ends the compiler with an access violation. The DEBUG CONSOLE prints `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code} [$80004001?<add-in>.dll+...]`, and the statement after the call never runs. It does so for an extension the add-in registered with `Designers.Register` and for one it never registered, and under `On Error Resume Next` too. The add-in, loaded again by the restarted compiler, crashes it again at the same call. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/designers`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. An add-in whose `OnProjectLoaded` calls `Host.Designers.Register "Probe", ".prb", New ProbeFactory` and then `Host.Designers.Unregister ".prb"`, with a `PrintText` after each.
+2. Load it and open a project. The console shows the line after `Register`, then the access violation; the line after `Unregister` never shows.
+3. The IDE restarts the compiler, which loads the add-in and crashes again.
+
+**Expected behavior**
+`Unregister` withdraws the designer, or raises a run-time error the add-in can handle.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+`$80004001` in the exception's text is `E_NOTIMPL`. The IDE's page has no handler for unregistering a designer: nothing in `ide/main.js` removes an entry from `g_registeredCustomDesigners`, which only a compiler restart empties.
+
+Severity: high. One call ends the compiler, and every restart ends it again while the add-in is loaded.
+
+<!-- Reproducer: bugs/designers-unregister-crash/ (mode lane: asserted by `addin-test.bat --only designers` (test/addin/designers.test.mjs), the test "Unregister ends the compiler with an access violation, for a registered extension or not, with an error handler or not", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/designers. docs/Reference/Built-In/tbIDE/Designers.md carries a WARNING (BETA 1045) for it under "Unregister"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+
+---
+
+## A designer's tab keeps its changed mark after SetFileData gives back the saved bytes
+
+**Describe the bug**
+`DesignerHost.SetFileData` gives the IDE a designer's new bytes, and the tab shows the changed mark, a dot. When a later `SetFileData` gives back the bytes the file was saved with, as an Undo to the saved state does, the IDE takes the tab as unchanged (closing it asks nothing) but the dot stays. A save takes it away. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/designers`) loaded into a copy of the install.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A designer that calls `SetFileData` with changed bytes: the tab shows the dot.
+2. The designer calls `SetFileData` with the bytes the file was opened with. The dot stays.
+3. Close the tab. The IDE asks nothing, as for a tab with no changes.
+
+**Expected behavior**
+The dot goes at step 2, as it does after a save.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+In `ide/main.js`, `fileHandler_CustomDesigner.isDirty` sets `cachedIsDirtyState` to `undefined`, and `updateDirtyState` removes the dot only when that cache is truthy. A save clears the dot because it rewrites the close button's class.
+
+Severity: low. The tab says it has changes it does not have.
+
+<!-- Reproducer: bugs/designer-dirty-dot-stays/ (mode lane: asserted by `addin-test.bat --only designers` (test/addin/designers.test.mjs), the test "SetFileData with the saved bytes: the page holds the tab unchanged, but its dot stays", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/designers. docs/Reference/Built-In/tbIDE/DesignerHost.md carries a NOTE (BETA 1045) for it under "SetFileData"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 

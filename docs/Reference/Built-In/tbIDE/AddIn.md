@@ -28,11 +28,13 @@ End Class
 
 The class implementing **AddIn** is also the natural place to hold every other `WithEvents` reference the addin uses ([**Host**](Host), each [**Button**](Button), each [**ToolWindow**](ToolWindow), an optional [**AddinTimer**](AddinTimer), …) --- its lifetime is tied to the addin's loaded state.
 
+An addin that needs a newer IDE than the one that loads it can return the package's [**UnsupportedHostAddin**](UnsupportedHostAddin), an **AddIn** that does nothing.
+
 ## Properties
 
 ### Name
 {: .no_toc }
 
-A short human-readable name for the addin. **String**, read-only. The IDE captures this once when the addin is loaded.
+A short human-readable name for the addin. **String**, read-only. The IDE captures this once when the addin is loaded. The **Add-Ins** menu lists the addin under it; an empty name is drawn as a separator line.
 
 Syntax: *addIn*.**Name** **As String**

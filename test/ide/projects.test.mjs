@@ -1,7 +1,6 @@
 // Project Explorer and Project Settings: the defects that lose nothing, tested against these
 // entries in BUGS-TO-REPORT.md:
 //
-//   "Project Explorer's object view opens no menu on a right click" (bugs/objectview-no-menu)
 //   "The object view's Rename and Delete commands only show an alert naming the command"
 //   (bugs/objectview-rename-delete-alert)
 //   "A letter typed in the object view opens its search box with > before the letter"
@@ -111,14 +110,27 @@ scenario("Project Explorer and Project Settings", (lane) => {
     );
   });
 
-  test("in the object view, a right click on an object, a form or a group opens no menu", async () => {
+  // The object view's menu opens since BETA 1045 (up to 1042 a right click opened none, an entry
+  // since removed from BUGS-TO-REPORT.md). An item marked * is greyed out.
+  async function objMenu(name) {
+    const r = await objRow(name);
+    await k.clickAt(r.x, r.y, { button: "right" });
+    await sleep(500);
+    return (await k.menuItems()).map((i) => (/contextMenuItemDisabled/.test(i.cls) ? `${i.text}*` : i.text));
+  }
+
+  test("in the object view, a right click opens a menu: View Object on a form, View Code on an object with code, and Add, Rename and Delete greyed out", async () => {
     await view(false);
+    const menus = {};
     for (const name of ["Startup", "frmMain", "Modules"]) {
-      const r = await objRow(name);
-      await k.clickAt(r.x, r.y, { button: "right" });
-      await sleep(500);
-      assert.equal(await k.menuOpen(), false, `a right click on ${name} opened a menu`);
+      menus[name] = await objMenu(name);
+      await k.closeMenus();
     }
+    assert.deepEqual(menus, {
+      Startup: ["View Code", "Add*", "Rename*", "Delete*"],
+      frmMain: ["View Object", "View Code", "Add*", "Rename*", "Delete*"],
+      Modules: ["Add*", "Rename*", "Delete*"],
+    });
   });
 
   test("the object view's Rename and Delete commands only show an alert naming the command", async () => {
@@ -157,6 +169,23 @@ scenario("Project Explorer and Project Settings", (lane) => {
       "the designer frmMain.tbform is not the selected tab",
     );
     assert.ok(!tabs.some((x) => x.name === "frmMain.twin"), "frmMain.twin was opened");
+  });
+
+  // After the Shift+double-click test, which needs frmMain.twin not open.
+  test("View Code on a form in the object view opens its code, and View Object its designer", async () => {
+    await view(false);
+    await objMenu("frmMain");
+    await k.pick("View Code");
+    assert.ok(
+      await waitFor(c, async () => (await k.tabs()).some((t) => t.name === "frmMain.twin" && t.selected)),
+      `the tabs are ${J(await k.tabs())}`,
+    );
+    await objMenu("frmMain");
+    await k.pick("View Object");
+    assert.ok(
+      await waitFor(c, async () => (await k.tabs()).some((t) => t.name === "frmMain.tbform" && t.selected)),
+      `the tabs are ${J(await k.tabs())}`,
+    );
   });
 
   test("in the object view, a letter typed with a row selected opens the search box holding > and the letter", async () => {

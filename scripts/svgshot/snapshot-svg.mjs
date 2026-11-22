@@ -73,8 +73,12 @@
 // own (scopeIds), since two icons both have an `id="a"`; an <image> in it passes
 // through compactImage; its text is set in the picture's faces. Not drawn: a
 // <foreignObject>, an <image> that cannot be read, a <use> of another file, an
-// animation (its state when the snapshot was taken is drawn), and a CSS mask or
-// clip-path on the <svg> element itself. The annotation layer and the mouse
+// animation (its state when the snapshot was taken is drawn), and a CSS
+// clip-path on the <svg> element itself.
+//
+// A CSS mask (mask-image and its mask-* properties) is an SVG <mask> over
+// everything the element paints, its layers laid out as background layers are
+// (maskDef). Not drawn: mask-composite other than add, and a mask-border. The annotation layer and the mouse
 // pointer are the exceptions: the caller passes their markup as `overlays`,
 // painted last.
 
@@ -317,6 +321,8 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
 const ZOOMED_LENGTHS = [
   "background-size",
   "background-position",
+  "mask-size",
+  "mask-position",
   ...["top", "right", "bottom", "left"].map((s) => `border-${s}-width`),
   ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
   "outline-width",
@@ -544,6 +550,64 @@ export function accentUnknown(decoded) {
 }
 
 /**
+ * Whether a document has a box a bundle taken before mask-image was read may draw wrongly:
+ * a ::before or ::after, shown, whose background is its own text colour. That is how a page
+ * draws an icon in the text colour through a mask (the shipped add-ins' Undo and Redo, a
+ * 20 px ::before), and drawn without its mask it is a square of that colour.
+ */
+export function maskUnknown(decoded) {
+  return decoded.layouts.some(
+    (l) =>
+      (l.node.name === "::before" || l.node.name === "::after") &&
+      l.style &&
+      l.style.visibility === "visible" &&
+      l.style["mask-image"] === undefined &&
+      l.style["background-color"] !== undefined &&
+      !transparent(l.style["background-color"]) &&
+      l.style["background-color"] === l.style.color,
+  );
+}
+
+/**
+ * Whether a document shows an image scaled up 2 times or more (in CSS px) by an element whose
+ * image-rendering its styles do not hold: a bundle taken before image-rendering was read cannot
+ * say whether it is scaled smooth or pixelated. ICO Editor shows its 48 px icon 8 times larger,
+ * pixelated, as a background of 100%. The images looked at: a <canvas>'s picture (`canvases`, as
+ * measured: {x, y, w, h, href}), an <img>'s, and a background image whose size is given (a
+ * background at its own size is not scaled). An icon drawn at its size, or a canvas at the
+ * device's scale, as the code editor's are, looks much the same either way, and is not counted.
+ */
+export function renderingUnknown(decoded, canvases = []) {
+  const scaledUp = (url, w, h) => {
+    const size = url ? naturalSize(url) : null;
+    return !!size && !size.ratioOnly && size.w > 0 && (w >= size.w * 2 || h >= size.h * 2);
+  };
+  return decoded.layouts.some((l) => {
+    const b = l.bounds;
+    const st = l.style;
+    if (!st || st.visibility !== "visible" || b.w <= 0 || b.h <= 0) return false;
+    if (st["image-rendering"] !== undefined) return false;
+    if (l.node.name === "CANVAS") {
+      const c = canvases.find(
+        (c) => Math.abs(c.x - b.x) < 0.5 && Math.abs(c.y - b.y) < 0.5 && Math.abs(c.w - b.w) < 0.5,
+      );
+      return scaledUp(c?.href, b.w, b.h);
+    }
+    if (l.node.name === "IMG" && scaledUp(l.node.src, b.w, b.h)) return true;
+    const bg = st["background-image"];
+    if (!bg || bg === "none") return false;
+    const sizes = splitTop(st["background-size"] ?? "auto");
+    return splitTop(bg).some((layer, k) => {
+      const m = /^url\("?(.*?)"?\)$/s.exec(layer);
+      const [sw = "auto", sh = sw] = (sizes[k % sizes.length] ?? "auto").split(/\s+/);
+      if (!m || (sw === "auto" && sh === "auto")) return false;
+      const len = (v, ref) => (v.endsWith("%") ? (px(v) / 100) * ref : v.endsWith("px") ? px(v) : ref);
+      return scaledUp(m[1], len(sw, b.w), len(sh, b.h));
+    });
+  });
+}
+
+/**
  * Whether Chromium draws layout object `l` as its native text field rather than
  * by its CSS: a text <input> whose border and background the page leaves as the
  * browser's own, 2px inset rgb(118, 118, 118) on white. Styling either turns the
@@ -584,19 +648,43 @@ export function controlText(node) {
   return hint && !BUTTON_INPUTS.has(type) ? { text: hint, placeholder: true } : null;
 }
 
+/** What renderSvg reports for a textarea with a line wider than it when it was not told where Chromium wraps it. */
+export const LONG_TEXTAREA_LINE = "a textarea's line wider than it, with no line breaks read";
+
 /**
- * The lines of a text control's text, as they are drawn: a textarea's split at
- * its newlines, and a tab (it advances to the next multiple of 8 spaces) as
+ * The lines a text control's text is set in, before tabs are expanded: [{line, from}], `from`
+ * the UTF-16 offset of the line's start in the text. An input's text is one line; a textarea's is
+ * split at its newlines, and also where Chromium wraps it when `starts` gives the offsets at
+ * which its drawn lines start (capture.mjs's textareaBreaks; null: it is not wrapped). A line
+ * that ends where the textarea wraps it is drawn without the spaces it ends in, which hang
+ * past the edge and show nothing.
+ */
+export function controlPieces(text, textarea, starts = null) {
+  if (!textarea) return [{ line: text, from: 0 }];
+  const cuts = starts ?? [0, ...[...text.matchAll(/\n/g)].map((m) => m.index + 1)];
+  return cuts.map((from, k) => {
+    const to = k + 1 < cuts.length ? cuts[k + 1] : text.length;
+    const piece = text.slice(from, to);
+    const hard = /\n$/.test(piece) || to === text.length;
+    const line = piece.replace(/\r?\n$/, "");
+    return { line: hard ? line : line.replace(/[ \t]+$/, ""), from };
+  });
+}
+
+/** A line with each tab (it advances to the next multiple of `tabSize` spaces) as spaces. */
+function expandTabs(line, tabSize) {
+  const size = /^\d+$/.test(tabSize ?? "") ? Number(tabSize) : 8;
+  let out = "";
+  for (const ch of line) out += ch === "\t" ? " ".repeat(size - (out.length % size)) : ch;
+  return out;
+}
+
+/**
+ * The lines of a text control's text, as they are drawn (controlPieces), and a tab as
  * spaces, which an SVG text would draw as one.
  */
-function controlLines(text, textarea, tabSize) {
-  const lines = textarea ? text.split(/\r?\n/) : [text];
-  const size = /^\d+$/.test(tabSize ?? "") ? Number(tabSize) : 8;
-  return lines.map((line) => {
-    let out = "";
-    for (const ch of line) out += ch === "\t" ? " ".repeat(size - (out.length % size)) : ch;
-    return out;
-  });
+function controlLines(text, textarea, tabSize, starts = null) {
+  return controlPieces(text, textarea, starts).map(({ line }) => expandTabs(line, tabSize));
 }
 
 /**
@@ -606,20 +694,24 @@ function controlLines(text, textarea, tabSize) {
  * does not reach. A tab is spaces up to the next stop from the line's start, so the drawn part
  * before an offset is that offset's prefix expanded.
  */
-export function selectedParts(text, textarea, tabSize, start, end) {
-  const raw = textarea ? text.split(/(?<=\n)/) : [text];
-  const out = [];
-  let from = 0;
-  for (const piece of raw) {
-    const line = piece.replace(/\r?\n$/, "");
-    const at = (offset) =>
-      controlLines(line.slice(0, Math.min(Math.max(offset - from, 0), line.length)), false, tabSize)[0].length;
-    const [drawn] = controlLines(line, false, tabSize);
+export function selectedParts(text, textarea, tabSize, start, end, starts = null) {
+  return controlPieces(text, textarea, starts).map(({ line, from }) => {
+    const at = (offset) => expandTabs(line.slice(0, Math.min(Math.max(offset - from, 0), line.length)), tabSize).length;
+    const drawn = expandTabs(line, tabSize);
     const [s, e] = [at(start), at(end)];
-    out.push({ before: drawn.slice(0, s), selected: drawn.slice(s, e), after: drawn.slice(e) });
-    from += piece.length;
-  }
-  return out;
+    return { before: drawn.slice(0, s), selected: drawn.slice(s, e), after: drawn.slice(e) };
+  });
+}
+
+/**
+ * The textareas in `clip` that show text: Chromium wraps a long line of one, which the
+ * snapshot does not say where, so capture.mjs asks the page for it (textareaBreaks) and
+ * renderSvg sets the text in those lines (`breaks`).
+ */
+export function textareasIn(decoded, clip) {
+  return decoded.layouts.filter(
+    (l) => l.node.name === "TEXTAREA" && l.style && l.node.box === l && overlaps(l.bounds, clip) && shownControlText(l),
+  );
 }
 
 /**
@@ -672,9 +764,11 @@ function shownControlText(l) {
  * run an underline has to skip the ink of, [fontKey, text, top, height]: the band
  * below the baseline (CSS px) in which Chromium looks for it (inkBand). `selection` is the text
  * a focused field has selected (capture.mjs's selectionOf), or null: the parts of its lines
- * before, in and after it are runs of their own (selectedParts).
+ * before, in and after it are runs of their own (selectedParts). `breaks` maps a textarea's
+ * layout key to where its drawn lines start (capture.mjs's textareaBreaks), for one Chromium
+ * wraps: its runs are those lines.
  */
-export function textNeeds(decoded, clip, { selection = null } = {}) {
+export function textNeeds(decoded, clip, { selection = null, breaks = null } = {}) {
   const keys = new Set();
   const runs = new Map();
   const skips = new Map();
@@ -690,10 +784,11 @@ export function textNeeds(decoded, clip, { selection = null } = {}) {
     if (l.style && l.node.box === l && overlaps(l.bounds, clip)) {
       const c = shownControlText(l);
       const textarea = l.node.name === "TEXTAREA";
-      if (c) for (const line of controlLines(c.text, textarea, l.style["tab-size"])) add(l.style, line);
+      const starts = (textarea && breaks?.get(l.key)) || null;
+      if (c) for (const line of controlLines(c.text, textarea, l.style["tab-size"], starts)) add(l.style, line);
       const sel = c && !c.placeholder ? selectionIn(selection, l.node) : null;
       if (sel)
-        for (const part of selectedParts(c.text, textarea, l.style["tab-size"], sel.start, sel.end))
+        for (const part of selectedParts(c.text, textarea, l.style["tab-size"], sel.start, sel.end, starts))
           if (part.selected) for (const s of [part.before, part.selected, part.after]) add(l.style, s);
     }
     if (l.text === undefined) continue;
@@ -1556,9 +1651,13 @@ function filterPrimitives(steps) {
  *                  from the field's border box, its opacity, visibility, display, appearance and
  *                  whether it is drawn dark; {failed}, or null for none. null: none was read, and
  *                  each is reported as not drawn
+ * @param breaks    Map(layout object's key => [offset]): where each drawn line of a textarea that
+ *                  Chromium wraps starts in its text (textareasIn; capture.mjs's textareaBreaks),
+ *                  no entry for one it does not wrap. null: none was read, and a textarea with a
+ *                  line wider than it is reported, its lines drawn unwrapped
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
  *                  inkGaps, cut, selection, placeholderColor, canvases, fontsFor, scrollbars, svgs,
- *                  searchButton}, as the parameters
+ *                  searchButton, breaks}, as the parameters
  *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
@@ -1582,6 +1681,7 @@ export function renderSvg(
     scrollbars = null,
     svgs = null,
     searchButton = null,
+    breaks = null,
     frames = null,
   },
 ) {
@@ -1598,6 +1698,7 @@ export function renderSvg(
     scrollbars,
     svgs,
     searchButton,
+    breaks,
     inner: null,
   };
   let env = pageEnv;
@@ -1702,7 +1803,38 @@ export function renderSvg(
     );
   };
 
-  // The effects an element passes to everything it paints: opacity and filter.
+  // A CSS mask as an SVG <mask>: its layers are laid out as background layers are, from the
+  // mask-* properties (origin and clip default to the border box), and drawn into a mask the
+  // size of the border box, outside which a mask shows nothing. An image or a gradient masks
+  // by its alpha (mask-mode match-source or alpha), unless the mode is luminance. The layers
+  // are added up, as mask-composite's default does. Returns the mask's id, or null when no
+  // layer could be drawn.
+  function maskDef(box) {
+    const st = box.style;
+    const b = box.bounds;
+    if (b.w <= 0 || b.h <= 0) return null;
+    if (transformsOf(box.node).length) note("a mask under a transform");
+    const as = {
+      ...st,
+      "background-image": st["mask-image"],
+      "background-size": st["mask-size"] ?? "auto",
+      "background-position": st["mask-position"] ?? "0% 0%",
+      "background-repeat": st["mask-repeat"] ?? "repeat",
+      "background-origin": st["mask-origin"] ?? "border-box",
+      "background-clip": st["mask-clip"] ?? "border-box",
+      "background-blend-mode": "normal",
+    };
+    const layers = paintBackgroundImages({ ...box, style: as }, radii(st, b.w, b.h), borders(st), true);
+    if (!layers.length) return null;
+    const type = splitTop(st["mask-mode"] ?? "match-source").every((m) => m === "luminance") ? "luminance" : "alpha";
+    const body = layers.join("");
+    return def(
+      `m${type}|${num(b.x)}|${num(b.y)}|${num(b.w)}|${num(b.h)}|${body}`,
+      (id) => `<mask id="${id}" maskUnits="userSpaceOnUse" ${rectAttrs(b)} style="mask-type:${type}">${body}</mask>`,
+    );
+  }
+
+  // The effects an element passes to everything it paints: opacity, mask and filter.
   // A filter of colour functions alone carries `bake` ({key, steps, opacity}):
   // the paint loop maps the colours of what it paints instead, where it can
   // (colour-filter.mjs), and opens `open()` where it cannot.
@@ -1713,12 +1845,10 @@ export function renderSvg(
       if (!st || !a.box) continue;
       if (st.opacity !== undefined && px(st.opacity) < 1)
         out.push({ key: `o${a.i}`, open: `<g opacity="${num(px(st.opacity))}">` });
-      if (st.filter && st.filter !== "none") {
-        const steps = filterSteps(st.filter);
-        if (!steps || steps.some((s) => s.fn === "blur")) {
-          note(`filter ${st.filter}`);
-          continue;
-        }
+      const steps = st.filter && st.filter !== "none" ? filterSteps(st.filter) : null;
+      if (st.filter && st.filter !== "none" && (!steps || steps.some((s) => s.fn === "blur")))
+        note(`filter ${st.filter}`);
+      else if (steps) {
         const open = () => `<g filter="url(#${filterDef(steps)})">`;
         // A drop-shadow last, after colour functions alone: its shadow under the group, drawn
         // from a copy of it, and the group itself over the shadow with no filter.
@@ -1736,6 +1866,12 @@ export function renderSvg(
               }
             : { key: `f${a.i}`, open: open() },
         );
+      }
+      // CSS masks what the filter made: the mask's group is outside the filter's (`out` is
+      // reversed, so what is pushed later for an element encloses what was pushed before).
+      if (st["mask-image"] && st["mask-image"] !== "none") {
+        const id = maskDef(a.box);
+        if (id) out.push({ key: `m${a.i}`, open: `<g mask="url(#${id})">` });
       }
     }
     return out.reverse();
@@ -1870,6 +2006,15 @@ export function renderSvg(
       (id) => `<image id="${id}" width="1" height="1" preserveAspectRatio="none" href="${esc(compactImage(url))}"/>`,
     );
 
+  // How an image is scaled: an element's image-rendering other than auto (or smooth, which
+  // Chromium draws as auto) is given to the <use> that draws its image, whose <image> inherits
+  // it. A canvas shown larger than its pixels with pixelated (ICO Editor's 48 px icon at 8x)
+  // otherwise comes out blurred.
+  const rendering = (st) => {
+    const v = st["image-rendering"];
+    return v && v !== "auto" && v !== "smooth" ? ` style="image-rendering:${v}"` : "";
+  };
+
   function paintBox(l) {
     const st = l.style;
     const b = l.bounds;
@@ -1951,14 +2096,16 @@ export function renderSvg(
       );
       if (c) {
         const id = imageDef(c.href);
-        out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
+        out.push(
+          `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"${rendering(st)}/>`,
+        );
         stats.canvases++;
       } else note("canvas without a picture");
     }
     const image = l.node.name === "IMG" ? l.node.src : embeddedImage(l.node);
     if (image) {
       const id = imageDef(image);
-      const use = `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`;
+      const use = `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"${rendering(st)}/>`;
       // Chromium cuts a replaced element to its rounded corners: a page's round avatars.
       if (r.some(([a, c]) => a > 0 && c > 0)) {
         const d = rrectPath(b, r);
@@ -2260,7 +2407,9 @@ export function renderSvg(
     return `<path d="${d}" ${dashStroke(rrectLength(box, radii), s, true)}${clip}/>`;
   }
 
-  function paintBackgroundImages(l, r, bw) {
+  // `exactClip`: each layer shows in the clip box its style names, even where the borders
+  // cover the background (backgroundClip): a mask's layers, which the borders do not cover.
+  function paintBackgroundImages(l, r, bw, exactClip = false) {
     const st = l.style;
     const b = l.bounds;
     const boxes = backgroundBoxes(st, b, r, bw);
@@ -2290,7 +2439,8 @@ export function renderSvg(
       }
       // Where the image is placed (the origin box) and where it shows (the clip box).
       const area = (boxes[origins[k % origins.length]] ?? boxes["padding-box"]).box;
-      const { box: cb, r: cr } = boxes[backgroundClip(clips[k % clips.length], bw, r)] ?? boxes["border-box"];
+      const clipName = clips[k % clips.length];
+      const { box: cb, r: cr } = boxes[exactClip ? clipName : backgroundClip(clipName, bw, r)] ?? boxes["border-box"];
       if (cb.w <= 0 || cb.h <= 0) return;
       const url = m ? m[1].replace(/\\"/g, '"') : null;
       const nat = url ? naturalSize(url) : null;
@@ -2343,7 +2493,9 @@ export function renderSvg(
         tile = (x, y) => `<use href="#${rid}" transform="translate(${num(x)} ${num(y)})"/>`;
       } else {
         const id = imageDef(url);
-        tile = (x, y) => `<use href="#${id}" transform="translate(${num(x)} ${num(y)}) scale(${num(w)} ${num(h)})"/>`;
+        const how = rendering(st);
+        tile = (x, y) =>
+          `<use href="#${id}" transform="translate(${num(x)} ${num(y)}) scale(${num(w)} ${num(h)})"${how}/>`;
       }
       // The first tile that reaches the box, and how many it takes to cover it.
       const startOf = (v0, size, lo) => v0 - Math.ceil((v0 - lo) / size) * size;
@@ -2728,8 +2880,9 @@ export function renderSvg(
 
   // The text of a native <input> or <textarea> is not DOM text. It is set in the
   // content box (the border box less border and padding): in one line centred
-  // vertically for an input, from the top for a textarea (a long line is cut
-  // at the edge, not wrapped), aligned by text-align, and moved by how far the
+  // vertically for an input, from the top for a textarea (in the lines Chromium
+  // wraps it in, env.breaks; a long line of one with wrap="off" is cut at the
+  // edge), aligned by text-align, and moved by how far the
   // control is scrolled. An input's text is clipped to the content box across,
   // and down to its line too where the line is taller (Chromium centres the line
   // on a content box shorter than it and shows it over the padding: the Object
@@ -2771,7 +2924,16 @@ export function renderSvg(
     const shown = c.placeholder
       ? { ...st, color: env.placeholderColor, "-webkit-text-fill-color": env.placeholderColor }
       : st;
-    const lines = controlLines(c.text, textarea, st["tab-size"]);
+    // Where Chromium wraps a textarea's text; with none read, a line wider than the box may be
+    // wrapped or cut, which the picture cannot tell, and it is drawn cut. It is cut when the
+    // textarea scrolls across, and a line below the last one drawn moves none that is drawn.
+    const starts = (textarea && env.breaks?.get(l.key)) || null;
+    const lines = controlLines(c.text, textarea, st["tab-size"], starts);
+    if (textarea && !env.breaks && !(l.client && l.scroll && l.scroll.w > l.client.w + 1)) {
+      const top0 = at.y - (l.scroll?.y ?? 0);
+      const wide = lines.findIndex((line) => (env.textWidth?.(key, line) ?? 0) > at.w + 0.5);
+      if (wide >= 0 && top0 + wide * lh <= shows.y + shows.h) note(LONG_TEXTAREA_LINE);
+    }
     // The text the field has selected: its part of each line, drawn on the selection's ground in
     // its colour; in a window without focus Chromium draws it in other colours, which no page
     // property gives, so it is not drawn.
@@ -2780,7 +2942,7 @@ export function renderSvg(
       note("a text selection in a window without focus");
       sel = null;
     }
-    const parts = sel ? selectedParts(c.text, textarea, st["tab-size"], sel.start, sel.end) : null;
+    const parts = sel ? selectedParts(c.text, textarea, st["tab-size"], sel.start, sel.end, starts) : null;
     const selectedStyle = sel && { ...st, color: sel.color, "-webkit-text-fill-color": sel.color };
     // The text moves by how far the control is scrolled; only a textarea scrolls down.
     const sx = l.scroll?.x ?? 0;
@@ -2795,7 +2957,10 @@ export function renderSvg(
       let x = at.x - sx;
       if (w !== null && align.endsWith("center")) x = at.x + (at.w - w) / 2 - sx;
       else if (w !== null && (align === "right" || align === "end")) x = at.x + at.w - w - sx;
-      const baseline = y + (lh - m.height) / 2 + m.ascent;
+      // Chromium puts the half-leading above the text floored to a whole px, the rest below it
+      // (NGLineHeightMetrics::AddLeading): a textarea's 13 px Consolas in a line 18.85 px tall has
+      // 1 px above its 15, not 1.925.
+      const baseline = y + Math.floor((lh - m.height) / 2) + m.ascent;
       // a selected line: the part before, the selection's ground and its text, the part after
       const widths = part && [part.before, part.selected].map((s) => (s ? env.textWidth?.(key, s) : 0));
       if (part && widths.every((v) => v !== null && v !== undefined)) {

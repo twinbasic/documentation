@@ -64,11 +64,11 @@ Double-click a value to edit it. A text box replaces the value. <kbd>Enter</kbd>
 - A line typed in the Debug Console, such as `s = "it's"`, changes a variable too, and the panel shows the change.
 
 <!-- test: bug variables-edit-apostrophe, lane ide:debugging -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > The edit box cuts a string at an apostrophe, and leaving the box changes the variable. With `s` holding `it's`, double-click `s`, and the box holds only `"it`. A click on another row, or <kbd>Enter</kbd>, with nothing typed, then makes `s` the empty string. <kbd>Escape</kbd> leaves it as it was. Do not edit a string that contains an apostrophe in the panel. Assign it in the [Debug Console](Debug-Console) instead.
 
 <!-- test: bug variables-edit-stale-display, lane ide:debugging -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A **Date** or **Double** row shows a wrong value for a while after you edit it. A **Date** edited to `#1/2/2020#` shows `#12:00:00 AM#`, and a **Double** edited to `7.25` shows `0`. The variable holds the value you typed. The row shows it correctly after the next line you run in the console, or at the next stop. To check the value now, run `? d` in the console, where `d` is the variable.
 
 ### What the tooltip shows
@@ -144,12 +144,20 @@ The IDE builds the expression like this:
 
 ![The same line with items(i).Quantity * price selected, and a popup reading items(i).Quantity * price: 141.6.](Images/Hover_Selection.png){:width="604" height="90"}
 
+Inside a **With** block, pointing at a member such as `.Value` evaluates it on the **With** object, and the popup shows `.Value:   6`.
+
+A value of type **Byte**, **Integer**, **Long** or **LongLong**, or a **Variant** that holds one, is followed by its hexadecimal in brackets: `count:   300  (&H12C)`. The digits are those of the value in the width of its type, so an Integer of `-1` shows `FFFF`. A **Boolean**, a **Double** or a **String** shows the value alone.
+
+<!-- test: bug hover-hex-negative-suffix, lane ide:hover-values -->
+> [!NOTE] BETA 1045
+> After the digits the popup puts `&` when they are `8000` to `FFFF`, and `^` when they are `80000000` to `FFFFFFFF`, whatever the type. For a negative **Integer** or **Long** the bracket then holds the literal of another number: an Integer of `-1` shows `(&HFFFF&)`, which is the Long `65535`, and a Long of `-1` shows `(&HFFFFFFFF^)`. Read the digits, not the suffix.
+
 A user-defined type shows `{user defined type, 8 bytes}` and one line for each field. An object shows its address. A word that is not an expression, such as a keyword or a type name, shows `(compile error: Unrecognized symbol 'For')`. A name that is not in the active frame shows the same message.
 
 Pointing at a function call or at a property runs it, so a function with side effects changes the state of the program.
 
 <!-- test: bug hover-runs-sub, lane ide:debugging -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > Pointing at a call to a **Sub** runs the Sub, and the popup shows `t.Bump:   0`, a value that means nothing. The Sub, and any event handlers it raises, runs once for each hover. Do not point at the name of a procedure that changes the program's state while the program is paused. To read a variable that such a procedure uses, point at the variable.
 
 When the program is not paused, the same pointing shows the compiler's usual hover text, which [IntelliSense](../Code/IntelliSense#hover) describes.

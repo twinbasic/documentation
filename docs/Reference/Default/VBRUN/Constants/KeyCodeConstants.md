@@ -83,3 +83,7 @@ Virtual-key codes reported in the *KeyCode* argument of **KeyDown** and **KeyUp*
 | Constant | Value | Description |
 |----------|-------|-------------|
 | **vbKeyF1**{: #vbKeyF1 } -- **vbKeyF16**{: #vbKeyF16 } | 112 -- 127 | The function keys **F1** through **F16**. |
+| **vbKeyF17**{: #vbKeyF17 } -- **vbKeyF24**{: #vbKeyF24 } | 128 -- 135 | The function keys **F17** through **F24**, `VK_F17` to `VK_F24` in the Windows SDK. |
+
+> [!NOTE]
+> VB6 stops at **vbKeyF16**. **vbKeyF17** to **vbKeyF24** are twinBASIC's.

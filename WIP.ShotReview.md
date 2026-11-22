@@ -96,18 +96,25 @@ has it). Grouped, in this order:
 
 1. **In progress**: pictures a run is taking or drawing now.
 2. **Needs a look**: the queue's rules, below.
-3. **Changed**, most changed first.
-4. **Only noise**: the capture was within noise of `HEAD`'s and the file stays.
-5. **Unchanged**, collapsed.
-6. **Program windows: PNG only** (owner, 2026-11-01): a running program's window, which
+3. **Not taken yet** (owner, 2026-11-22: a shot written and not yet taken showed nowhere on the
+   overview): the pictures the table of shots names with no file under docs, that no run of the
+   session reported. The table is the one the page of every picture reads (`shoot_docs.mjs
+   --list`, kept for `SHOTS_FRESH`); the model takes the table read last, starts a read that is
+   due in the background, and tells the pages when the list changes (`untaken()` in
+   `shot-server.mjs`). A card opens the plain page, with **Retake this picture**; a run's
+   verdict takes the picture into the group it gives, a failure's included.
+4. **Changed**, most changed first.
+5. **Only noise**: the capture was within noise of `HEAD`'s and the file stays.
+6. **Unchanged**, collapsed.
+7. **Program windows: PNG only** (owner, 2026-11-01): a running program's window, which
    Windows draws, so there is no page to draw an SVG from (svgVerdict's `window`, `WINDOW_WHY`).
    One whose PNG changed or was added stays in that group; the *No SVG* filter leaves them out,
    and their page offers no replay.
-7. **Added**, **deleted**.
-8. **Needs a retake** (owner, 2026-11-01): pictures a replay could not draw again from their
+8. **Added**, **deleted**.
+9. **Needs a retake** (owner, 2026-11-01): pictures a replay could not draw again from their
    bundles (`retake` events), whatever their PNG's verdict, until a later run gives them one. A
    replay counts them as done in its progress and says how many beside the count.
-9. **Failed**.
+10. **Failed**.
 
 A row of counts at the top, filters (all, needs a look, overridden, no SVG), and **Resume at
 *n* of *m*** to go back to where the queue was left.
@@ -333,8 +340,46 @@ holds it), and `session/runs/<n>/` per run: `stage/` (the run's `--stage`), `eve
 (each event as it arrived, for what the stage does not hold: failures, pictures not taken,
 the jobs) and `log.txt` (its lines for a person). Closing the tool loses nothing; opening it
 again opens the session, a run that had not ended marked interrupted. A commit archives it
-into `archive/<id>/`. The folder is under the repository's root, so a worktree has a session of
-its own.
+into `archive/<id>/`.
+
+**Every checkout of the clone shares one `.shot-review/`, the main checkout's** (owner,
+2026-11-22). A worktree still has a session of its own, since a session's runs write under
+that checkout's `docs/`, but it lives in `.shot-review/checkouts/<name>/` (`<name>` the
+worktree's folder under `.git/worktrees/`), and the archive and the ledger are the shared
+folder's. `reviewRoots` in `lib/shot-session.mjs` reads it from the checkout's `.git`.
+**Why:** the worktree workflow of WIP.md removes the worktree once `staging` has its commits.
+While each worktree kept its `.shot-review/` inside itself, removing it deleted the session, its
+runs, its verdicts and its archive. Between 2026-11-14 and 2026-11-19, 268 picture files reached
+`staging` that way, and the main checkout's session, opened on 2026-11-11, could only list them as
+changed outside its runs, with nothing to show of their review.
+
+## The ledger
+
+`.shot-review/committed.jsonl` holds a line for each commit the tool makes, written before git
+commits (`recordPictures`, `lib/shot-ledger.mjs`): each picture file of the commit with the git
+blob it will have, or null for one it removes. A blob survives the rebase the worktree workflow
+does before its fast-forward; a commit hash does not.
+
+**`staging` moves only to commits whose screenshots are on record** (owner, 2026-11-22).
+`.githooks/reference-transaction` runs `node scripts/shot_ledger.mjs --hook` whenever a
+transaction moves `refs/heads/staging`, in the `prepared` state, the one in which a hook can
+still refuse. `unrecordedPictures` takes the commits the new tip reaches and neither the old tip
+nor a remote-tracking ref does, keeps the newest state of each screenshot file (a PNG the
+manifest names at either end, and its SVGs), and lists those whose blob no line holds. The hook
+covers a fast-forward, a reset, a rebase that ends on `staging` and a commit made on it.
+
+- **Published commits are left out.** A commit a remote-tracking ref holds is not this clone's
+  to review. A branch pushed before it is merged would therefore pass; pushing is the owner's
+  alone (WIP.md, Don'ts).
+- **A picture outside the manifest is not checked.** The vendored attachments and the hand-made
+  images under `docs/` are no screenshots of the tool.
+- **`SHOT_LEDGER_ALLOW=1` and `shot_ledger.mjs record` are the owner's**, never a session's: the
+  first lets one move through, the second puts a range on record by hand. A session that meets
+  the refusal takes or reviews the pictures through the review tool in its checkout and commits
+  them from it.
+- **A worktree made before the hook has no `scripts/shot_ledger.mjs`**, and the hook, which git
+  runs from the top of whichever working tree the command runs in, lets it through. Staging is
+  fast-forwarded in the main checkout, which has the script.
 
 ## Runs
 

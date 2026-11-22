@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Wrapped textareas</title>
+<!--
+  A textarea wraps a line wider than its content box (white-space: pre-wrap and
+  overflow-wrap: break-word are Chromium's defaults for one), as Data Explorer's
+  Connection Settings do with a long ADO connection string: capture.mjs's
+  textareaBreaks reads where, and paintTextControl draws those lines. Here: a
+  monospace one at a word break, a proportional one with a hard newline between
+  wrapped lines and spaces at the breaks, a word longer than the box (broken
+  inside it), one with a scrollbar (narrower lines), and one with wrap="off",
+  which is cut at the edge instead. Last, Data Explorer's own style: 13px
+  Consolas in lines 18.85px tall, whose half-leading Chromium floors above the
+  text (paintTextControl).
+-->
+<style>
+body { margin: 0; background: #fff; color: #000; }
+textarea { position: absolute; box-sizing: border-box; padding: 6px 8px; border: 1px solid #888; resize: none; }
+.mono { font: 13px Consolas, monospace; }
+.prop { font: 14px "Segoe UI", sans-serif; }
+</style>
+<body>
+<textarea class="mono" style="left:10px;top:10px;width:360px;height:90px">Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\tbshots\AddinData;Extended Properties="text;HDR=Yes;FMT=Delimited"</textarea>
+<textarea class="prop" style="left:390px;top:10px;width:300px;height:110px">The quick brown fox jumps over the lazy dog, then    over the fence.
+A second paragraph that is long enough to wrap as well.</textarea>
+<textarea class="mono" style="left:10px;top:130px;width:200px;height:90px">short ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop end</textarea>
+<textarea class="prop" style="left:230px;top:140px;width:220px;height:70px;overflow-y:scroll">Lines in a box that shows a scrollbar wrap at its edge, not the box's.</textarea>
+<textarea class="mono" wrap="off" style="left:470px;top:140px;width:220px;height:60px">This line is not wrapped, and is cut at the edge of the box.</textarea>
+<textarea class="mono" style="left:9.65px;top:240.09px;width:360px;height:84px;padding:9px 10px;line-height:18.85px">Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\tbshots\AddinData;Extended Properties="text;HDR=Yes;FMT=Delimited"</textarea>
+</body>
+</html>

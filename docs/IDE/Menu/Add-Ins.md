@@ -14,7 +14,9 @@ The Add-Ins menu lists the add-ins that are loaded. [Add Ins](../../AddIns/) exp
 
 ![The Add-Ins menu with one entry, GlobalSearchAddIn AddIn, with a tick beside it.](Images/Menu_Add-Ins_GlobalSearch.png){:width="219" height="57"}
 
-Each add-in has one item, under its own name, with a tick. A DLL that failed to load is listed too, as *Unknown Addin*. See [When an addin does not load](../../AddIns/#when-an-addin-does-not-load).
+Each add-in has one item, under its own name, with a tick. A DLL that failed to load is listed too, as *Unknown Addin*. See [When an addin does not load](../../AddIns/#when-an-addin-does-not-load). An add-in with an empty name, such as one that has found the IDE too old for it and returned [**UnsupportedHostAddin**](../../../Packages/tbIDE/UnsupportedHostAddin), shows as a separator line.
+
+An add-in can add commands of its own to this menu, as to the IDE's other menus; see [**Menus**](../../../Packages/tbIDE/Menus).
 
 The menu cannot switch an add-in off. Choosing an item only shows a floating message, in the IDE's words:
 

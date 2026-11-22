@@ -74,7 +74,7 @@ Next
 ```
 
 <!-- test: bug waynesform-controls-nothing -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > A form's [**Controls**](../WaynesForm/#controls) is **Nothing** whenever code can read it, so this loop raises error 91, *Object variable or With block variable not set*.
 
 ## See Also

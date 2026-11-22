@@ -22,9 +22,15 @@ The commands that change files change the project in memory. Nothing reaches the
 
 A right click on a row opens the menu for the rows selected. A right click on a row that is not selected selects it first. A right click on the empty space below the tree opens the menu with nothing selected, and then only **Add** and **Export...** are available.
 
-![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="219" height="273"}
+![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="219" height="260"}
 
-An item that does not apply is greyed out, not hidden. The keys work when the tree has the focus in the file view.
+An item that does not apply is greyed out, not hidden, except **Open** and **Open with**. The keys work when the tree has the focus in the file view.
+
+**Open**
+: Opens the file, as a double-click does. It is shown for a file that is not read-only.
+
+**Open with**
+: Opens a submenu of the other ways to open the file: **JSON Preview** for a form, a user control, a property page or a report, **Markdown Preview** for a `.md` file, and each editor that an add-in offers for the file, such as the [Hex Editor](../AddIns/HexEditor), which is offered for every file. Choosing one closes the file if it is open, asking first to save its changes, and opens it again that way. **Open with** is shown for a file that is not read-only, when an add-in offers an editor for it: with the add-ins that ship with the IDE, that is every such file.
 
 **Add**
 : Opens a submenu of the things that can be added. See [Adding files](Adding-Files).
@@ -34,9 +40,6 @@ An item that does not apply is greyed out, not hidden. The keys work when the tr
 
 **Copy Name** and **Copy Path**
 : Put the names, or the IDE paths, of the selected rows on the clipboard as text. Several are joined with a semicolon. A path is written as `/<ProjectName>/Sources/Startup.twin`. It is the IDE's path, not a path on disk.
-
-**View As JSON** and **View As Markdown Preview**
-: Open a read-only copy of a file in a tab, as JSON text or as a rendered Markdown preview. See [View as JSON](#view-as-json-and-markdown-preview).
 
 **Rename** (<kbd>F2</kbd>)
 : Changes the name of a file, folder or the project. See [Rename](#rename).
@@ -67,7 +70,7 @@ A name is refused, with a notification in the corner of the window, when it:
 The notification reads **Cannot rename: the new name entered is invalid.** The seven special folders, `Settings`, `Sources`, `Resources`, `References`, `Packages`, `Miscellaneous` and `ImportedTypeLibraries`, cannot be renamed at all: the notification is **Cannot rename: permission denied.**
 
 <!-- test: bug rename-same-name-invalid, lane ide:projects -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > A rename that changes only the case of a name, or nothing, is refused with the same message as an invalid name, so `legacy.bas` cannot be changed to `Legacy.bas` in the tree.
 
 If the file is open in a tab with changes you have not saved, the IDE refuses the rename and shows a box, **Rename/Move failed. Please close the following editors that are preventing the operation:**, with the paths of the files. The same box appears for a folder that holds such a file. Save the file, or close its tab, and rename again. A tab on a file with no unsaved changes does not stop the rename. The tab closes, and the IDE does not open it again under the new name. Bookmarks move with the file.
@@ -83,7 +86,7 @@ A form's designer file and its `.twin` file belong together. After you rename on
 The top row of the tree is the project. Renaming it changes the **Project Name** setting in the `Settings` file. The row, the title bar and the `.twinproj` file keep their names. A name that is not a valid project name gives **Cannot rename the project: the new name entered is invalid.**
 
 <!-- test: bug rename-project-saves -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > Renaming the project also saves it, with the unsaved edits of the open editors, and the title bar's changed mark goes.
 
 ## Move a file or folder by dragging
@@ -96,11 +99,11 @@ Drag a row, or the selected rows, onto a folder. The folder under the pointer is
 - A file dragged in from Windows is not accepted.
 
 <!-- test: bug drag-folder-into-itself, lane ide:projects-loss -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > Dragging a folder onto one of its own files, or onto one of its own subfolders, is accepted with no message. The tree then nests the folder inside itself, about fifty levels deep. The next <kbd>Ctrl</kbd>+<kbd>S</kbd> prints the green `[DONE]` line in the Debug Console, and then an error, and it writes a project file that the IDE cannot open: opening it stops at *Please wait... 25.0%*. Never drop a folder onto anything inside it. If you did, do not save. Close the project with **Discard Changes** in the question that follows, and open it again.
 
 <!-- test: bug drag-special-folder, bug drag-onto-packages-error, lane ide:projects-loss -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > Nothing stops a drag of a special folder. Dragging `Sources` onto `Miscellaneous` moves it there with no message, and the next save keeps it there. Do not drag the special folders. A drop of a file on `Packages` does nothing.
 
 ## Cut, copy and paste
@@ -114,11 +117,11 @@ Drag a row, or the selected rows, onto a folder. The folder under the pointer is
 - The menu greys out **Cut** and **Copy** for a folder. <kbd>Ctrl</kbd>+<kbd>C</kbd> on a folder still puts its path on the clipboard.
 
 <!-- test: bug cut-paste-refused-folder, lane ide:projects-loss -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A file that you cut and paste onto the `Resources` folder itself, or onto `Packages`, is deleted. The IDE shows the notification *cannot create files inside the root resources folder*, which does not say so. The file is gone from the whole tree, and the next save writes the project without it. Do not cut a file into either folder. If a file went, close the project with **Discard Changes** before you save, and the saved project still has it.
 
 <!-- test: bug paste-dotted-folder, lane ide:projects -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > Pasting a file with no extension into a folder whose own name contains a period, such as `v1.2`, creates nothing and gives no message, when a file of that name is in the folder already. The IDE takes the file's extension from the last period of the whole path.
 
 ## Export a file
@@ -133,17 +136,14 @@ The Debug Console prints `[EXPORT]  DONE:` and the full path for each file. If t
 
 This command exports the rows you select. **File → Export Project** exports the whole project, and it empties its folder first; see [Export Project](Saving-and-Exporting#export-project).
 
-## View as JSON and Markdown preview
+## JSON preview and Markdown preview
+{: #view-as-json-and-markdown-preview }
 
-**View As JSON** opens a file as text in a read-only tab, titled `JSON: 'frmMain.tbform':`. It is available for the four kinds of designer file, `.tbform`, `.tbcontrol`, `.tbppage` and `.tbreport`, and for the rows directly under `Packages`. It is greyed out for other files, and for a designer file selected together with other rows.
+**Open with → JSON Preview** opens a file as text in a read-only tab, titled `JSON: 'frmMain.tbform':`. It is in the submenu for the four kinds of designer file, `.tbform`, `.tbcontrol`, `.tbppage` and `.tbreport`, and greyed out when other rows are selected with the file.
 
-The first lines of the tab are a comment that gives the `URI:` of the file and the `SNAPSHOT:` time. The tab is a copy as it was when you chose the command, and it does not follow later changes. It does include the changes that are open in the designer and not yet saved. A second **View As JSON** on the same file opens a second tab of the same name.
+The first lines of the tab are a comment that gives the `URI:` of the file and the `SNAPSHOT:` time. The tab is a copy as it was when you chose the command, and it does not follow later changes. It does include the changes that are open in the designer and not yet saved. A second **JSON Preview** of the same file opens a second tab of the same name.
 
-![The Project Explorer with the Packages folder open and the right-click menu of a package, with View As JSON highlighted.](../../Features/Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png){:width="486" height="409"}
-
-![A package shown as JSON in the editor, listing its components with their events, fields and procedures.](../../Features/Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png){:width="757" height="198"}
-
-**View As Markdown Preview** is available for a `.md` file. It opens the formatted text in a read-only tab titled `MD: 'Notes.md':`, which is a copy as it was when you chose the command.
+**Open with → Markdown Preview** is in the submenu for a `.md` file. It opens the formatted text in a read-only tab titled `MD: 'Notes.md':`, which is a copy as it was when you chose the command.
 
 ## Delete
 {: index="remove [a] file; remove file from project" }
@@ -163,15 +163,15 @@ With the option off, the rows are deleted at once.
 Some folders cannot be deleted. For `Sources`, `References`, `Miscellaneous`, `ImportedTypeLibraries` and the compiler packages under `Packages`, the box is shown, but nothing is deleted and no message follows.
 
 <!-- test: bug delete-unsaved-no-warning, lane ide:projects-loss -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > A file with unsaved changes in an open tab is deleted without a word about the changes. The box is the plain one, the tab closes, and the changes go with the file. A folder that holds such a file is the same. Look for the dot on a tab before you delete its file. The saved copy stays in the `.twinproj` file until the next save, so closing the project with **Discard Changes** brings the file back.
 
 <!-- test: bug delete-project-row, lane ide:projects-loss -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > Deleting the project's own row, the top row of the tree, deletes every file in the project. The box reads like a file's: *Are you sure you want to delete* the project's path. After you confirm, the tree is empty, and the only message is an *IDE internal error* line in the Debug Console. The next <kbd>Ctrl</kbd>+<kbd>S</kbd> prints the green `[DONE]` line and writes a project with no files over the project file. Never delete the top row. If you did, do not save: close the project with **Discard Changes** and open it again.
 
 <!-- test: bug tree-delete-nothing, bug delete-reference-row -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > <kbd>Delete</kbd> with nothing selected shows the box **Are you sure you want to delete the selected items?**, and deletes nothing. Choose **Cancel**. Deleting an entry under `References` removes its row from the tree, but not the reference: it stays in the project's settings. Remove a reference in [Project Settings](References-and-Packages#the-enabled-libraries-list).
 
 ## See Also

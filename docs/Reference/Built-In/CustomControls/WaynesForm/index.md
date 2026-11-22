@@ -34,11 +34,11 @@ End Sub
 ```
 
 <!-- test: bug waynesform-window-ignores-code -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > The form's window is made from the values the form designer saved, and never from the form's properties as code has set them. [**Caption**](#caption), [**Width**](#width), [**Height**](#height), [**Left**](#left), [**Top**](#top) and every member of [**WindowsOptions**](#windowsoptions) set in code --- in `Sub New`, before **Show**, or while the form is shown --- read back the new value, but the title bar, the window's size and place, its border and its buttons stay as designed, and no error is raised. Set them in the form designer. [**BackgroundFill**](#backgroundfill), and the style objects of the form's controls, are drawn as code sets them. In the sample above, only the white background takes effect.
 
 <!-- test: bug waynes-controls-ignore-geometry -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > The form's controls, too, keep most of the place, size and visibility the form designer gave them. In `Sub New`, a control's **Left**, **Height** and **Dock** take effect, and its **Top**, **Width** and **Visible** do not; once the form is shown, none of them does, and no error is raised. See [Controls](../#controls) on the package's page.
 
 [**BackgroundFill**](#backgroundfill) is an ordinary [**Fill**](../Styles/Fill), so the form can display a gradient backdrop or a solid colour --- a soft top-to-bottom wash, for example:
@@ -74,7 +74,7 @@ Syntax: *object*.**Caption** [ = *string* ]
 The [**CustomControlsCollection**](../Framework/CustomControlsCollection) of every control hosted on the form. Inherited from the form base. Read-only --- iterate or look up by index / name to access individual controls.
 
 <!-- test: bug waynesform-controls-nothing -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > **Controls** is **Nothing** whenever code can read it --- in `Sub New`, before **Show** and while the form is shown --- so any use of it, such as `Me.Controls.Count`, raises error 91, *Object variable or With block variable not set*. Reach each control by its name instead (`Me.Label1`).
 
 ### FormDesignerId

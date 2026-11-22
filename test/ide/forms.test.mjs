@@ -959,8 +959,8 @@ scenario("designing forms and reports", (lane) => {
     const close = await c.evaluate(TAB_CLOSE_JS(name));
     t.diagnostic(J({ opened, close }));
     assert.equal(opened?.selected, true);
-    // The tab has no close icon; a middle click closes it.
-    assert.equal(close.icon, false);
+    // Since BETA 1045 the tab has a close icon; up to 1042 only a middle click closed it.
+    assert.equal(close.icon, true);
     await closeTab(name);
   });
 

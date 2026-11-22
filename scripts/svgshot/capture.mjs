@@ -43,6 +43,7 @@ import {
   scrollbarPartList,
   scrollersIn,
   searchFieldsIn,
+  textareasIn,
   textNeeds,
   unzoom,
   viewportScroller,
@@ -57,6 +58,17 @@ async function sha1(text) {
   const hash = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// A CSS mask's layers, read as background's are (snapshot-svg.mjs maskGroup).
+const MASK_STYLES = [
+  "mask-image",
+  "mask-size",
+  "mask-position",
+  "mask-repeat",
+  "mask-origin",
+  "mask-clip",
+  "mask-mode",
+];
 
 // The computed styles the converter reads.
 export const SNAPSHOT_STYLES = [
@@ -113,13 +125,15 @@ export const SNAPSHOT_STYLES = [
   ...["top", "right", "bottom", "left"].map((s) => `padding-${s}`),
   "-webkit-text-fill-color",
   "zoom",
+  ...MASK_STYLES,
+  "image-rendering",
 ];
 
 // The styles a bundle taken before they were read can do without: the converter
 // asks for them only where they matter, and a bundle without them says so as a
-// miss (text-overflow, accent-color, zoom: bundle.mjs drawBundle), so that only the
-// pictures that need one are retaken.
-export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color", "zoom"]);
+// miss (text-overflow, accent-color, zoom, mask-image, image-rendering:
+// bundle.mjs drawBundle), so that only the pictures that need one are retaken.
+export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color", "zoom", ...MASK_STYLES, "image-rendering"]);
 
 // What a scrollbar part's box is drawn from: its styles, and its size along the bar.
 const PART_STYLES = [
@@ -368,6 +382,77 @@ function searchButton() {
     appearance: s.appearance,
     dark,
   };
+}
+
+// Runs in the page, on a textarea (`this`): the UTF-16 offsets at which the lines it draws its
+// value in start, or null when it wraps none of them, so that each line ends at a newline or the
+// end. The value's text is not in the DOM, so it is set in a copy: a block as wide as the
+// textarea's content box less its scrollbar, with every style that decides where a line breaks,
+// and each character's box read with a range: a line starts where a box is lower than the last.
+// A value too long to read in a moment is not read (null).
+function textareaBreaks() {
+  const text = this.value;
+  if (!text || text.length > 20000) return null;
+  const cs = getComputedStyle(this);
+  if (cs.textWrapMode === "nowrap" || /^(pre|nowrap)$/.test(cs.whiteSpace)) return null;
+  const copy = document.createElement("div");
+  const width = this.clientWidth - Number.parseFloat(cs.paddingLeft) - Number.parseFloat(cs.paddingRight);
+  const kept = [
+    "font-family",
+    "font-size",
+    "font-weight",
+    "font-style",
+    "font-stretch",
+    "font-variant",
+    "font-feature-settings",
+    "font-variation-settings",
+    "font-kerning",
+    "letter-spacing",
+    "word-spacing",
+    "text-transform",
+    "text-indent",
+    "tab-size",
+    "white-space",
+    "word-break",
+    "overflow-wrap",
+    "line-break",
+    "hyphens",
+    "direction",
+    "writing-mode",
+    "line-height",
+  ];
+  copy.style.cssText = `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;box-sizing:content-box;padding:0;border:0;margin:0;width:${width}px`;
+  for (const name of kept) copy.style.setProperty(name, cs.getPropertyValue(name));
+  copy.textContent = text;
+  document.body.append(copy);
+  try {
+    const node = copy.firstChild;
+    const range = document.createRange();
+    const starts = [];
+    let soft = false;
+    let last = null;
+    for (let i = 0; i < text.length; i++) {
+      const unit = text.charCodeAt(i);
+      if (unit >= 0xdc00 && unit <= 0xdfff) continue;
+      if (i === 0 || text[i - 1] === "\n") {
+        starts.push(i);
+        last = null;
+      }
+      if (text[i] === "\n") continue;
+      range.setStart(node, i);
+      range.setEnd(node, unit >= 0xd800 && unit <= 0xdbff ? i + 2 : i + 1);
+      const box = range.getClientRects()[0];
+      if (!box) continue;
+      if (last !== null && box.top > last + box.height / 2) {
+        starts.push(i);
+        soft = true;
+      }
+      last = box.top;
+    }
+    return soft ? starts : null;
+  } finally {
+    copy.remove();
+  }
 }
 
 // Runs in the page: whether the document's own text (not a field's) has a selection.
@@ -1110,7 +1195,27 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
   // own fonts, styles and canvases are what its runs are drawn with.
   async function measureDocument({ doc, view, context, geometry, inner }) {
     const selection = await selectionOf(context);
-    const { keys, runs, skips, cuts } = textNeeds(doc, view, { selection });
+    // Where Chromium wraps each textarea's text, which the snapshot does not say: read first,
+    // since the lines it makes are the runs to measure.
+    const breaks = new Map();
+    for (const l of textareasIn(doc, view)) {
+      let object;
+      try {
+        ({ object } = await conn.send("DOM.resolveNode", { backendNodeId: l.node.backendNodeId }));
+        const { result, exceptionDetails } = await conn.send("Runtime.callFunctionOn", {
+          objectId: object.objectId,
+          functionDeclaration: String(textareaBreaks),
+          returnByValue: true,
+        });
+        if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+        if (result.value) breaks.set(l.key, result.value);
+      } catch {
+        // A textarea that has gone since the snapshot: its text is drawn as its newlines break it.
+      } finally {
+        if (object) await conn.send("Runtime.releaseObject", { objectId: object.objectId }).catch(() => {});
+      }
+    }
+    const { keys, runs, skips, cuts } = textNeeds(doc, view, { selection, breaks });
     const overlays = context === undefined ? OVERLAYS : [];
 
     // Each inline <svg> in the view (the annotation layer apart), as its own element in the
@@ -1262,6 +1367,7 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
       svgs: [...svgs],
       scrollbars: [...scrollbars],
       searchButtons: [...searchButtons],
+      breaks: [...breaks],
       inner,
     };
   }

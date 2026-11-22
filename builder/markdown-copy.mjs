@@ -14,6 +14,8 @@
 //   * {{tbdocs:...}} placeholders are expanded, as the render expands them (counts.mjs);
 //   * HTML comments go, as stripHtmlCommentsPlugin takes them out of the HTML: they are notes
 //     for the documentation's maintainers, test markers above all;
+//   * a fence marked `hidden` or `probe` goes, as the render's fence rule leaves it out of the
+//     HTML (isHiddenFence): it is context or a check for the compile gate, not a sample;
 //   * a link to a page goes to that page's copy, `/tB/Core/Dim.md#syntax`, so a reader of the
 //     copies stays in markdown (copyHref). Which page a link goes to is the page's HTML's
 //     answer: the build's (render.mjs, resolveTarget) for a `tb:` shortcut or a path from the
@@ -59,7 +61,8 @@ export function markdownCopyUrl(page) {
  * @param {{rawContent: string, frontmatter: object, permalink: string, srcRel: string}} page
  */
 export function markdownCopy(page, md, { href = (value) => copyHref(value, page, md) } = {}) {
-  const code = maskCode(page.rawContent.replace(/\r\n?/g, "\n"), { md, indented: true });
+  const source = withoutHiddenFences(page.rawContent.replace(/\r\n?/g, "\n"), md);
+  const code = maskCode(source, { md, indented: true });
   let work = code.masked;
   if (work.includes("{{tbdocs:")) {
     if (md.downloads) work = expandDownloadPlaceholders(work, md.downloads, page.permalink);
@@ -113,6 +116,53 @@ function copyLink(entry, fragment, baseurl) {
   const url = entry.markdownUrl !== undefined ? entry.markdownUrl : markdownCopyUrl(entry);
   if (!url) return null;
   return `${baseurl}${encodeSpaces(url)}${fragment ? `#${fragment}` : ""}`;
+}
+
+// ── hidden fences ───────────────────────────────────────────────────────
+
+// `hidden` or `probe` as a whitespace-separated token anywhere after the language. Matched
+// against the raw info string rather than parsed with scripts/lib/tb-fences.mjs's parseInfo:
+// builder/ must not depend on scripts/, and these are the two tokens of that markup the render
+// and the copy care about. The word has to stand alone, or a language called `hidden-x` or a key
+// like `id=hidden` would suppress a fence the author meant to publish.
+const HIDDEN_FENCE_RE = /^\S+(?:\s+\S+)*?\s+(?:hidden|probe)(?:\s|$)/;
+
+/** Whether a fence with this info string is left out of the page: the render's rule and the copy's. */
+export function isHiddenFence(info) {
+  return HIDDEN_FENCE_RE.test(info ?? "");
+}
+
+// A line that could open such a fence, behind any container's markers: a cheap test, so that
+// only the pages that have one are parsed.
+const MAYBE_HIDDEN_OPEN = /^[ \t>:\-*+\d.]*(?:`{3,}|~{3,})[^\n]*?\s(?:hidden|probe)(?:\s|$)/m;
+
+/**
+ * `text` without its hidden fences, each with its lines, and with the blank line after them
+ * when one is also before them, as a comment on lines of its own goes. Which lines a fence has
+ * is markdown-it's answer, so a fence inside an alert, a list item or a definition goes as one
+ * at the top level does.
+ */
+export function withoutHiddenFences(text, md) {
+  if (!MAYBE_HIDDEN_OPEN.test(text)) return text;
+  const drop = md
+    .parse(text, {})
+    .filter((t) => t.type === "fence" && t.map && isHiddenFence(t.info))
+    .map((t) => t.map);
+  if (!drop.length) return text;
+  const lines = text.split("\n");
+  const gone = new Set();
+  for (const [from, to] of drop) {
+    for (let i = from; i < to; i++) gone.add(i);
+    const before = from === 0 || isBlankLine(lines[from - 1]);
+    if (before && to < lines.length - 1 && isBlankLine(lines[to])) gone.add(to);
+  }
+  return lines.filter((_, i) => !gone.has(i)).join("\n");
+}
+
+// A blank line, or one that holds only a container's markers (`>` of an alert), which reads as
+// blank inside it.
+function isBlankLine(line) {
+  return /^[ \t>]*$/.test(line);
 }
 
 // ── comments ────────────────────────────────────────────────────────────

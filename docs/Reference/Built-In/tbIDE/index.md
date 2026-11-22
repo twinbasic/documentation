@@ -4,7 +4,7 @@ parent: Built-In Packages
 nav_order: 11
 permalink: /tB/Packages/tbIDE/
 has_toc: false
-indexed_from: beta-x-1042
+indexed_from: beta-x-1045
 ---
 
 # tbIDE Package
@@ -12,7 +12,7 @@ indexed_from: beta-x-1042
 
 The **tbIDE** package is the **addin SDK** for the twinBASIC IDE. An addin is a Standard DLL that the IDE loads at start-up; the DLL exports one factory function, returns one object implementing the [**AddIn**](AddIn) contract, and from there everything happens through the [**Host**](Host) object the IDE passes in. The package itself is **type-only** --- every public symbol is an interface or a CoClass; the actual implementations live in the twinBASIC IDE binary, and the addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time.
 
-The package is a built-in *compiler* package shipped with twinBASIC. The addin samples 10 to 16 reference it already, but a project started from the **Standard DLL** template does not, and without the reference every name in the package --- `AddIn`, `Host` and the rest --- is *TB5079 Unrecognized datatype symbol*. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab: tick the row **twinBASIC - IDE Extensibility Package**, marked **[BUILT-IN]**, whose library symbol is **tbIDE**, and press **Apply Changes**.
+The package is a built-in *compiler* package shipped with twinBASIC. The addin samples, 10 to 16 and 24 to 27, reference it already, but a project started from the **Standard DLL** template does not, and without the reference every name in the package --- `AddIn`, `Host` and the rest --- is *TB5079 Unrecognized datatype symbol*. Add it through Project → References... (**Ctrl-T**) → the **Available Packages** tab: tick the row **twinBASIC - IDE Extensibility Package**, marked **[BUILT-IN]**, whose library symbol is **tbIDE**, and press **Apply Changes**.
 
 * TOC
 {:toc}
@@ -22,12 +22,12 @@ The package is a built-in *compiler* package shipped with twinBASIC. The addin s
 An addin project has three distinguishing settings:
 
 - **Build type:** Standard DLL.
-- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up. It also scans the same two folders under `%APPDATA%\twinBASIC\addins\`, which an IDE update leaves in place; see [Add Ins](../../IDE/AddIns/). Once the IDE has loaded the addin, this path can no longer be built to; see [Rebuilding an addin the IDE has loaded](#rebuilding-an-addin-the-ide-has-loaded).
+- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up. It also scans the same two folders under `%APPDATA%\twinBASIC\addins\`, which an IDE update leaves in place; see [Add Ins](../../IDE/AddIns/). Once the IDE has loaded the addin, this path can no longer be built to; see [Rebuilding an addin the IDE has loaded](#rebuilding-an-addin-the-ide-has-loaded). Samples 24 to 27 build into the per-user folders instead, with `${AppData}\twinBASIC\addins\${Architecture}\${ProjectName}.${FileExtension}`.
 - **Compiler-package reference** to **tbIDE** (added to the project's references with `isCompilerPackage: true`, `publisher: TWINBASIC-COMPILER`, `symbolId: tbIDE`). This is the binding between the DLL's compile-time types and the IDE's run-time implementations.
 
 The DLL must export one function --- the entry point the IDE calls when it discovers and loads the addin:
 
-```tb check_build
+```tb check_build projname=tbide-myaddin
 Module MainModule
     [DllExport]
     Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
@@ -45,7 +45,7 @@ The addin runs inside the compiler's process, and lasts as long as that process 
 
 A minimal addin class:
 
-```tb check_build
+```tb check_build projname=tbide-myaddin
 Private Class MyAddIn
     Implements AddIn
 
@@ -85,13 +85,14 @@ Keep one copy of the addin in the folder: the IDE loads every DLL in it, so a se
 
 ## The class catalogue
 
-The package's twenty-four `.twin` files declare one interface-and-CoClass pair each (plus one concrete `Class`), grouped here by role for orientation. Every CoClass except [**AddinTimer**](AddinTimer) is **supplied to the addin by the IDE** --- never instantiated with `New`.
+The package's `.twin` files declare interface-and-CoClass pairs, and two concrete classes, grouped here by role for orientation. Most CoClasses are **supplied to the addin by the IDE** --- never instantiated with `New`. The exceptions are the two classes, [**AddinTimer**](AddinTimer) and [**UnsupportedHostAddin**](UnsupportedHostAddin), and the two an addin implements for a designer of its own, [**DesignerFactory**](DesignerFactory) and [**Designer**](Designer).
 
 ### Entry point and root API
 
 - [**AddIn**](AddIn) -- the contract every addin's main class implements. One read-only [**Name**](AddIn#name) property.
 - [**Host**](Host) -- the root API object passed to `tbCreateCompilerAddin`. Exposes the [**CurrentProject**](Host#currentproject), the [**ActiveEditors**](Host#activeeditors), the [**Toolbars**](Host#toolbars), the [**ToolWindows**](Host#toolwindows), the [**DebugConsole**](Host#debugconsole), the [**FileSystem**](Host#filesystem), the [**KeyboardShortcuts**](Host#keyboardshortcuts), the [**Themes**](Host#themes), and a small set of dialog helpers ([**ShowMessageBox**](Host#showmessagebox), [**ShowNotification**](Host#shownotification)).
-- [**AddinTimer**](AddinTimer) -- the package's only user-instantiable class. `New AddinTimer`; set [**Interval**](AddinTimer#interval) and [**Enabled**](AddinTimer#enabled); receives a [**Timer**](AddinTimer#timer) event.
+- [**UnsupportedHostAddin**](UnsupportedHostAddin) -- an **AddIn** with no name, for an addin to return from `tbCreateCompilerAddin` when the IDE is too old for it.
+- [**AddinTimer**](AddinTimer) -- a class the addin creates itself. `New AddinTimer`; set [**Interval**](AddinTimer#interval) and [**Enabled**](AddinTimer#enabled); receives a [**Timer**](AddinTimer#timer) event.
 
 ### Project, editors, and the virtual file system
 
@@ -111,6 +112,18 @@ The package's twenty-four `.twin` files declare one interface-and-CoClass pair e
 - [**Button**](Button) -- a toolbar button created by [**AddButton**](Toolbar#addbutton). Exposes [**OnClick**](Button#onclick).
 - [**ToolWindow**](ToolWindow) -- a dockable / floating HTML-rendered tool window. [**Title**](ToolWindow#title), [**Visible**](ToolWindow#visible), [**Resizable**](ToolWindow#resizable), [**RootDomElement**](ToolWindow#rootdomelement), [**ApplyCss**](ToolWindow#applycss), [**OnClose**](ToolWindow#onclose).
 - [**ToolWindows**](ToolWindows) -- the tool-window factory: [**Add**](ToolWindows#add) creates a new one.
+- [**Menus**](Menus) -- the IDE's menus, each a [**Menu**](Menu): [**AddEntry**](Menu#addentry) adds a command, a [**MenuEntry**](MenuEntry) with a [**Click**](MenuEntry#click) event. [**AddCustom**](Menus#addcustom) adds a menu of the addin's own.
+- [**ProjectExplorer**](ProjectExplorer) -- the **Project Explorer**: the [**SelectedItemPath**](ProjectExplorer#selecteditempath), and [**AddFileUI**](ProjectExplorer#addfileui) to make a new file.
+
+### Designers
+
+A designer is an editor of the addin's own for a kind of file, shown in a tab like a code file. The Hex Editor, the ICO Designer and the Data Explorer that ship with the IDE are designers.
+
+- [**Designers**](Designers) -- [**Register**](Designers#register) offers a designer for files of an extension.
+- [**DesignerFactory**](DesignerFactory) -- implemented by the addin: makes a [**Designer**](Designer) for each tab.
+- [**Designer**](Designer) -- implemented by the addin: the IDE calls it as the tab opens, gets the file's bytes, becomes active and closes.
+- [**DesignerHost**](DesignerHost) -- the tab, passed to the designer: its DOM, its caption, and [**SetFileData**](DesignerHost#setfiledata), which gives the IDE the file's new bytes.
+- [**DesignerToolbox**](DesignerToolbox) and [**DesignerToolboxItem**](DesignerToolboxItem) -- the tools the designer shows in the IDE's TOOLBOX.
 
 ### Tool-window DOM and events
 
@@ -121,13 +134,13 @@ The four `Html*` classes are the addin's view into the DOM inside a tool window.
 - [**HtmlElementProperty**](HtmlElementProperty) -- one settable property in the bag.
 - [**HtmlElementProperties**](HtmlElementProperties) -- the dynamic property bag on a DOM element.
 - [**HtmlEventProperty**](HtmlEventProperty) -- one read-only value in an event payload.
-- [**HtmlEventProperties**](HtmlEventProperties) -- the dynamic event-payload bag passed to every [**AddEventListener**](HtmlElement#addeventlistener) callback.
+- [**HtmlEventProperties**](HtmlEventProperties) -- the dynamic event-payload bag passed to every [**AddEventListener**](HtmlElement#addeventlistener) callback, with an [**AsyncResultResolver**](HtmlEventProperties#asyncresultresolver) to answer the [datasheet](Datasheet)'s requests.
 
 ### Singletons
 
 - [**DebugConsole**](DebugConsole) -- the DEBUG CONSOLE pane. [**PrintText**](DebugConsole#printtext), [**Clear**](DebugConsole#clear), [**SetFocus**](DebugConsole#setfocus).
 - [**KeyboardShortcuts**](KeyboardShortcuts) -- IDE-wide keyboard shortcuts. [**Add**](KeyboardShortcuts#add). The IDE's own commands and their keys are listed in the IDE reference, under [Keyboard Shortcuts](../../../tB/IDE/Reference/Keyboard-Shortcuts).
-- [**Themes**](Themes) -- the IDE's active theme. [**ActiveThemeName**](Themes#activethemename), [**ActiveThemeNameGroup**](Themes#activethemenamegroup).
+- [**Themes**](Themes) -- the IDE's active theme. [**ActiveThemeName**](Themes#activethemename), [**ActiveThemeNameGroup**](Themes#activethemenamegroup), and the [colours for addins](Themes#colours-for-addins).
 
 ## Dynamic DOM property resolution
 
@@ -161,12 +174,14 @@ The compiler does not validate the property names; they are forwarded as strings
 - **`"monaco"`** --- embeds an instance of the **Monaco editor** (the same editor the IDE itself uses for code panes). The element exposes an `.editor` property with `setOption`, `setValue`, `getValue`, and `AddEventListener` (note: event listeners attach to `.editor`, not to the DOM element). See sample 12.
 - **`"listview"`** --- the IDE's built-in listview widget. The element exposes a `.listview` property with `addItem`, `removeItem`, `getItem`, `setShowScrollbarV` / `setShowScrollbarH`, and the events `onClickItem` / `onDblClickItem`. See sample 13.
 - **`"virtuallistview"`** --- a virtual variant of the listview suitable for huge data sets (millions of rows). The element exposes the same `.listview` property plus `setItemCount` and the asynchronous `onAsyncGetItemHTML` event (the listener responds via `eventInfo.setAsyncResult("<html>")`); call `.listview.notifyChangedItem(idx)` to invalidate the internal cache for one row when its underlying data changes. See sample 14.
+- **`"monacoDiff"`** --- two Monaco editors side by side that show the differences between two texts, read-only. The element exposes an `.editor` property with `setOriginalValue`, `setModifiedValue` and `setLanguage`. See sample 26.
+- **`"datasheet"`** --- a grid of rows and columns that asks the addin for its data a block of rows at a time, for any number of rows. It has a page of its own: [Datasheet](Datasheet). See sample 27.
 
 The full per-widget properties and methods are documented by each widget's home project; this package wraps them through the same `[COMExtensible(True)]` mechanism described above.
 
 ## Where the samples live
 
-The addin samples, 10 to 16, ship in the twinBASIC samples folder. They are the canonical reference for "how to use the package end-to-end" and are referenced throughout the per-class pages.
+The addin samples, 10 to 16 and 24 to 27, ship in the twinBASIC samples folder. They are the canonical reference for "how to use the package end-to-end" and are referenced throughout the per-class pages.
 
 | Sample | Project | What it teaches |
 |--------|---------|-----------------|
@@ -177,3 +192,7 @@ The addin samples, 10 to 16, ship in the twinBASIC samples folder. They are the 
 | 14 | `WaynesVirtualListViewAddIn` | A `"virtuallistview"` with 5,000,000 rows backed by `onAsyncGetItemHTML` / `setAsyncResult` / `notifyChangedItem`. |
 | 15 | `tbGlobalSearchAddIn1` | A full-blown Global Search addin: virtual-FS traversal (**For Each** over [**Folder**](Folder)), text reading with comment-stripping ([**File.ReadText**](File#readtext)), editor navigation ([**Editors.Open**](Editors#open)), persistent options via `GetSetting` / `SaveSetting`. |
 | 16 | `WaynesWorldTodoManager` | TODO notes as inline widgets in the code editor ([**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)), each at a line, made again when the active editor changes ([**Host.OnChangedActiveEditor**](Host#onchangedactiveeditor)), listed in a `"listview"` tool window, and kept in the project with [**Project.SaveMetaData**](Project#savemetadata) / [**LoadMetaData**](Project#loadmetadata). |
+| 24 | `tbHexEditorAddin` | The [Hex Editor](../../IDE/AddIns/HexEditor) that ships with the IDE: a [designer](Designers) registered for every file and the default for `.bin` and `.dat`, which edits the bytes and gives them back with [**DesignerHost.SetFileData**](DesignerHost#setfiledata). |
+| 25 | `tbIcoDesignerAddIn` | The [ICO Designer](../../IDE/AddIns/IcoEditor) that ships with the IDE: a designer with its tools in the TOOLBOX ([**DesignerToolbox**](DesignerToolbox)), and an [**AddinTimer**](AddinTimer) that repeats a held button. |
+| 26 | `tbDiffCompareAddin` | [Diff Compare](../../IDE/AddIns/DiffCompare): commands in the Project Explorer's menu ([**Menus**](Menus)) whose [**BeforeShow**](MenuEntry#beforeshow) hides them for a folder, a designer opened without a file through [**Editors.Open**](Editors#open), and the `"monacoDiff"` tag. |
+| 27 | `tbDataExplorerAddin` | The [Data Explorer](../../IDE/AddIns/DataExplorer): an entry in the Project Explorer's **Add** menu that makes a file with [**ProjectExplorer.AddFileUI**](ProjectExplorer#addfileui), and a [datasheet](Datasheet) whose rows come from worker threads through [**AsyncResultResolver**](HtmlEventProperties#asyncresultresolver). |

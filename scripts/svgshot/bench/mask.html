@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>CSS masks</title>
+<!--
+  An icon drawn in the text colour through a mask, as the shipped add-ins draw their
+  Undo and Redo buttons: a ::before whose background is currentColor and whose
+  mask-image is an SVG. Drawn without its mask it is a square of that colour. Beside
+  it, the mask's other properties: a mask that repeats, one placed and sized in px
+  and in %, a gradient mask, one in luminance mode, the -webkit- spelling, a mask
+  over a box with children and a border, and one over a box that a colour filter
+  maps, whose mask is outside the filter.
+-->
+<style>
+body { margin: 0; background: #fff; color: #222; font: 13px "Segoe UI", sans-serif; }
+.row { position: absolute; left: 20px; display: flex; gap: 16px; align-items: center; }
+.r1 { top: 20px; }
+.r2 { top: 100px; }
+button { width: 34px; height: 34px; border: 1px solid #c3cdda; border-radius: 5px; background: #e1e4e6;
+  color: #20232b; display: flex; align-items: center; justify-content: center; padding: 0; }
+button::before { content: ""; display: block; width: 20px; height: 20px; background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+.undo { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 14 4 9l5-5'/%3E%3Cpath d='M4 9h10.5a5.5 5.5 0 0 1 0 11H11'/%3E%3C/svg%3E"); }
+.redo { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 14 5-5-5-5'/%3E%3Cpath d='M20 9H9.5a5.5 5.5 0 0 0 0 11H13'/%3E%3C/svg%3E"); }
+.blue { color: #0969da; }
+.tiles { width: 60px; height: 40px; background: #1f883d;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='4'/%3E%3C/svg%3E"); }
+.placed { width: 60px; height: 40px; background: #cf222e;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Crect width='10' height='10'/%3E%3C/svg%3E");
+  mask-size: 24px 50%; mask-position: 75% 6px; mask-repeat: no-repeat; }
+.fade { width: 80px; height: 40px; background: #0969da; mask-image: linear-gradient(to right, black, transparent); }
+.lum { width: 60px; height: 40px; background: #8250df; mask-mode: luminance;
+  mask-image: linear-gradient(to bottom, white, black); }
+.webkit { width: 40px; height: 40px; background: #bf8700;
+  -webkit-mask-image: radial-gradient(circle, black 60%, transparent 61%); }
+.box { width: 90px; height: 50px; border: 3px solid #1a7f37; background: #f6f8fa; padding: 4px; box-sizing: border-box;
+  mask-image: linear-gradient(135deg, black 55%, transparent 56%); }
+.box p { margin: 0; color: #cf222e; }
+.filtered { width: 50px; height: 40px; background: #0969da; filter: invert(1);
+  mask-image: radial-gradient(circle, black 50%, transparent 51%); }
+</style>
+<div class="row r1">
+  <button class="undo" aria-label="Undo"></button>
+  <button class="redo" aria-label="Redo"></button>
+  <button class="undo blue" aria-label="Undo"></button>
+  <div class="tiles"></div>
+  <div class="placed"></div>
+  <div class="fade"></div>
+</div>
+<div class="row r2">
+  <div class="lum"></div>
+  <div class="webkit"></div>
+  <div class="box"><p>Masked text</p></div>
+  <div class="filtered"></div>
+</div>
+</html>
