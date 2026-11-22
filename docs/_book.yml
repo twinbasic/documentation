@@ -565,6 +565,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbKMode Package
+        subtitle: Declarations for writing a Windows kernel-mode driver
+        landing_page: /tB/Packages/Contributed/tbKMode/
+        page: /tB/Packages/Contributed/tbKMode/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_RES Package
         subtitle: Resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
         landing_page: /tB/Packages/Contributed/TBMANLIB_RES/
@@ -625,13 +632,6 @@ parts:
         subtitle: The CommonDialog class, for the Windows common dialogs
         landing_page: /tB/Packages/Contributed/VBComDlg/
         page: /tB/Packages/Contributed/VBComDlg/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: tbKMode Package
-        subtitle: Declarations for writing a Windows kernel-mode driver
-        landing_page: /tB/Packages/Contributed/tbKMode/
-        page: /tB/Packages/Contributed/tbKMode/
         landing_is_target: true
         outline_closed: true
 

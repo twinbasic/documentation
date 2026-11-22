@@ -10,7 +10,7 @@ about the package beyond its pages; the rules for every contributed package are 
 - **Contributed from 0.3.0.8** (owner, 2026-11-22): Experimental up to 0.3.0.6, with no
   second-agent reproduction (owner waived it). 0.3.0.8 fixed every defect reported on #2, #3 and #4,
   so it is `parent: Contributed Packages`, its line in `Contributed.md`, and its chapter in
-  `_book.yml` after VBComDlg's. Its remaining limits are stated in callouts: SiloContext,
+  `_book.yml` in alphabetical order, after tbFileSysTools's (owner). Its remaining limits are stated in callouts: SiloContext,
   KUSER_SHARED_DATA, ExFreePool2, the names shared with VBA, and twinBASIC's 32-bit FastCall defect.
 - **No driver is ever loaded, installed, signed or started.** Building one is allowed (the probe
   does), and so is reading a built one. Samples are compiled only (`check_build`), never run.
