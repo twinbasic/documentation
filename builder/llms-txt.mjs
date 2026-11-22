@@ -76,9 +76,12 @@ export function renderLlmsTxt(pages, site) {
       '`<link rel="alternate" type="text/markdown">`.',
     "",
     `To find the page that documents a name, read ${absoluteUrl(`/${SYMBOL_INDEX_REL}`, config)}: ` +
-      "every name the reference documents (statements, operators, attributes, and each package's " +
-      "modules, classes, members, enumerations and their values), each with the URL of the page or " +
-      "the heading that documents it, to which `.md` is added as above. " +
+      "every name the reference documents of the language (its statements, keywords, operators, " +
+      "attributes, directives and data types) and of the default and built-in packages (their " +
+      "modules, classes, controls, members, events, enumerations and their values), each with the " +
+      "URL of the page or the heading that documents it. For the markdown, add `.md` to the URL as " +
+      "above, before any `#` fragment. The contributed packages are not in it: the Contributed " +
+      "Packages page, linked below, lists their sections. " +
       `${absoluteUrl(`/${NAV_TREE_REL}`, config)} lists every page, in the order of the site's navigation.`,
     "",
   );
