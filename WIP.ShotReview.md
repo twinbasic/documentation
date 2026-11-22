@@ -96,18 +96,25 @@ has it). Grouped, in this order:
 
 1. **In progress**: pictures a run is taking or drawing now.
 2. **Needs a look**: the queue's rules, below.
-3. **Changed**, most changed first.
-4. **Only noise**: the capture was within noise of `HEAD`'s and the file stays.
-5. **Unchanged**, collapsed.
-6. **Program windows: PNG only** (owner, 2026-11-01): a running program's window, which
+3. **Not taken yet** (owner, 2026-11-22: a shot written and not yet taken showed nowhere on the
+   overview): the pictures the table of shots names with no file under docs, that no run of the
+   session reported. The table is the one the page of every picture reads (`shoot_docs.mjs
+   --list`, kept for `SHOTS_FRESH`); the model takes the table read last, starts a read that is
+   due in the background, and tells the pages when the list changes (`untaken()` in
+   `shot-server.mjs`). A card opens the plain page, with **Retake this picture**; a run's
+   verdict takes the picture into the group it gives, a failure's included.
+4. **Changed**, most changed first.
+5. **Only noise**: the capture was within noise of `HEAD`'s and the file stays.
+6. **Unchanged**, collapsed.
+7. **Program windows: PNG only** (owner, 2026-11-01): a running program's window, which
    Windows draws, so there is no page to draw an SVG from (svgVerdict's `window`, `WINDOW_WHY`).
    One whose PNG changed or was added stays in that group; the *No SVG* filter leaves them out,
    and their page offers no replay.
-7. **Added**, **deleted**.
-8. **Needs a retake** (owner, 2026-11-01): pictures a replay could not draw again from their
+8. **Added**, **deleted**.
+9. **Needs a retake** (owner, 2026-11-01): pictures a replay could not draw again from their
    bundles (`retake` events), whatever their PNG's verdict, until a later run gives them one. A
    replay counts them as done in its progress and says how many beside the count.
-9. **Failed**.
+10. **Failed**.
 
 A row of counts at the top, filters (all, needs a look, overridden, no SVG), and **Resume at
 *n* of *m*** to go back to where the queue was left.

@@ -754,10 +754,12 @@ export function chipsOf(p, entry = null) {
         ? chipHtml(`kept from outside the runs: ${p.outside}`, "review", "a review kept it as it is")
         : chipHtml(`changed outside the runs: ${p.outside}`, "change", "keep it or put it back before the commit"),
     );
+  if (p.untaken)
+    chips.push(chipHtml("not taken yet", "fail", "the table of shots names it, and it has no file under docs"));
   if (p.progress) chips.push(chipHtml("in progress", "progress"));
   if (p.failed) chips.push(chipHtml("failed", "fail", p.failed.error));
   if (p.retake) chips.push(chipHtml("needs a retake", "fail", p.retake.why));
-  if (!p.png && !p.svg && !p.failed && !p.retake && !p.progress && !p.outside)
+  if (!p.png && !p.svg && !p.failed && !p.retake && !p.progress && !p.outside && !p.untaken)
     chips.push(
       p.skipped
         ? chipHtml("not taken", "fail", `run ${p.skipped} was stopped first`)
@@ -976,7 +978,7 @@ ${cards}`;
     generator: REVIEW_GENERATOR,
     title: "Screenshot review",
     head: HEAD,
-    intro: `Every picture this session's runs took or drew, against the baseline ${esc(baseline.short)}${baseline.build ? ` (its pictures taken on BETA ${baseline.build} at newest)` : ""}, and every other picture under docs that differs from it. Each verdict is applied under docs as it arrives, and again when a review decides otherwise.`,
+    intro: `Every picture this session's runs took or drew, against the baseline ${esc(baseline.short)}${baseline.build ? ` (its pictures taken on BETA ${baseline.build} at newest)` : ""}, every other picture under docs that differs from it, and every picture the table of shots names that has no file under docs yet. Each verdict is applied under docs as it arrives, and again when a review decides otherwise.`,
     summary: shown.map((g) => [g.title, g.pictures.length]),
     contents: shown.map((g) => `<li><a href="#g-${g.key}">${esc(g.title)}</a> (${g.pictures.length})</li>`).join("\n"),
     body: `${topNav("overview")}

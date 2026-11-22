@@ -349,7 +349,15 @@ export function createReviewServer({
         facts: r.facts,
         verdicts: shownVerdicts(r),
       })),
-      { exists, measure, outside: outside(), baseline: session.data.baseline.hash, stale, outsideKept },
+      {
+        exists,
+        measure,
+        outside: outside(),
+        baseline: session.data.baseline.hash,
+        stale,
+        outsideKept,
+        untaken: untaken(),
+      },
     );
   // Whether the picture `out` differs between the commit `hash` and the baseline: a verdict
   // judged against that commit's picture then needs a look. One git diff per pair of commits,
@@ -392,6 +400,27 @@ export function createReviewServer({
         },
       );
     return shotTable.loading;
+  }
+  // The pictures the table names with no file under docs (their dark picture's path), for the
+  // overview's Not taken yet. The model is read on every page and cannot wait for the table, so
+  // it takes the table read last, and a read due starts in the background; when the list it
+  // gives is not the one before, the pages are told, so that the overview shows it.
+  let untakenWas = null;
+  const untakenOf = (value) => (value ?? []).map((s) => s.out).filter((out) => !exists(out));
+  function untaken() {
+    if (!shots) return [];
+    if (!shotTable.loading && (!shotTable.value || Date.now() - shotTable.at >= SHOTS_FRESH)) {
+      table().then(
+        (value) => {
+          const now = untakenOf(value);
+          if (now.join("\n") !== untakenWas) sse.send("update", { outs: now, runs: false });
+        },
+        () => {},
+      );
+    }
+    const now = untakenOf(shotTable.value);
+    untakenWas = now.join("\n");
+    return now;
   }
   // The SVG verdicts any session gave each picture, newest first: this session's as its overview
   // has them, then each archived session's, the newest closed first (read once each: a closed
@@ -743,7 +772,9 @@ export function createReviewServer({
   function detail(out, wanted) {
     const m = model();
     const p = m.pictures.find((q) => q.out === out);
-    if (!p) return null;
+    // a picture not taken yet has no verdict: the page of every picture's plain page shows it,
+    // with Retake this picture
+    if (!p || p.untaken) return null;
     let filter = wanted;
     let list = filterPictures(m.pictures, filter, filterOptions);
     let place = neighbours(list, out);
@@ -864,7 +895,8 @@ export function createReviewServer({
     const p = model().pictures.find((q) => q.out === out);
     if (body.action === "keep-outside" || body.action === "put-back")
       return actOutside(p, body.action === "keep-outside" ? "keep" : "put-back");
-    if (!p || (p.outside && !p.png && !p.svg)) throw new Error(`${out} has no verdict of this session to act on`);
+    if (!p || p.untaken || (p.outside && !p.png && !p.svg))
+      throw new Error(`${out} has no verdict of this session to act on`);
     const m = manifest();
     let from;
     switch (body.action) {

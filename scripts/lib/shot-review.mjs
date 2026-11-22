@@ -14,6 +14,7 @@ import { WINDOW_WHY } from "./shot-stage.mjs";
 export const GROUPS = [
   ["progress", "In progress"],
   ["look", "Needs a look"],
+  ["untaken", "Not taken yet"],
   ["changed", "Changed, most changed first"],
   ["noise", "Only noise"],
   ["outside", "Changed outside the session's runs"],
@@ -155,6 +156,7 @@ export const isWindow = (p) => !!p.svg?.window;
  * file is under docs/.
  */
 export function groupOf(p, exists) {
+  if (p.untaken) return "untaken";
   if (p.outside) return "outside";
   if (p.progress) return "progress";
   if (p.failed || p.png?.state === "failed") return "failed";
@@ -205,8 +207,13 @@ export function groupOf(p, exists) {
  * commit and the baseline: the picture it was judged against has changed. A move to a commit
  * that changed no picture leaves every verdict as it was.
  *
+ * `untaken` lists the pictures the table of shots names that have no file under docs/ (the dark
+ * picture's path): one no run of the session reported is in the group Not taken yet, `untaken`
+ * true, so that a shot written and never taken shows on the overview (owner, 2026-11-22). One a
+ * run reported is in the group its verdicts give it, a failure's included.
+ *
  * Returns {pictures, groups}: each picture {out, png, svg, failed, retake, skipped, progress,
- * outside, outsideParts, outsideKept, group, measure}, `png` and `svg` with the run that gave
+ * outside, outsideParts, outsideKept, untaken, group, measure}, `png` and `svg` with the run that gave
  * them as `run`, `failed` and
  * `retake` {run, error | why} or null, `skipped` the run that did not take it, or null;
  * `progress` whether a run that is running still owes it a verdict; `measure` how much it
@@ -222,6 +229,7 @@ export function reviewPictures(
     baseline = null,
     stale = () => true,
     outsideKept = () => false,
+    untaken = [],
   } = {},
 ) {
   const byOut = new Map();
@@ -238,6 +246,7 @@ export function reviewPictures(
         outside: null,
         outsideParts: [],
         outsideKept: false,
+        untaken: false,
       });
     return byOut.get(out);
   };
@@ -285,6 +294,7 @@ export function reviewPictures(
     p.outsideParts = unexplained;
     p.outsideKept = !!outsideKept(out, unexplained);
   }
+  for (const out of untaken) if (!byOut.has(out)) at(out).untaken = true;
   const pictures = [...byOut.values()].sort((a, b) => (a.out < b.out ? -1 : a.out > b.out ? 1 : 0));
   for (const p of pictures) {
     if (

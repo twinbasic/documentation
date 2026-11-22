@@ -418,6 +418,7 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
       [
         "progress",
         "look",
+        "untaken",
         "changed",
         "noise",
         "outside",
@@ -481,6 +482,20 @@ describe("what the screenshot review shows (shot-review.mjs, shot-pages.mjs)", (
     const { groups } = reviewPictures(runs, { measure: (p) => share[p.out] });
     const by = Object.fromEntries(groups.map((g) => [g.key, g.pictures.map((p) => p.out)]));
     assert.deepEqual([by.look, by.changed], [[C], [B, A]]);
+  });
+
+  test("a picture the table names with no file is Not taken yet until a run reports it", () => {
+    const runs = [run(1, "shoot_docs", false, [jobs(A)], { [A]: { png: { state: "failed" } } })];
+    const { pictures, groups } = reviewPictures(runs, { untaken: [A, B] });
+    const at = (out) => pictures.find((p) => p.out === out);
+    // B no run reported; A's run failed, which its own group says
+    assert.deepEqual([at(B).group, at(B).untaken, at(A).group, at(A).untaken], ["untaken", true, "failed", false]);
+    assert.deepEqual(
+      groups.find((g) => g.key === "untaken").pictures.map((p) => p.out),
+      [B],
+    );
+    assert.match(chipsOf(at(B)), /not taken yet/);
+    assert.doesNotMatch(chipsOf(at(B)), /no verdict/);
   });
 
   test("a picture no run reported is changed outside the runs, and a verdict judged against another baseline needs a look", () => {
@@ -2310,9 +2325,11 @@ onStop(process.stdin, () => {
       "svg",
       svgVerdict({ state: "not written", verdict: { faithful: false, share: 0.4 } }),
     );
+    const UNTAKEN = "IDE/Images/Untaken.png";
     let table = [
       { out: A, setup: "s", once: true, window: false },
       { out: C, setup: "s", once: false, window: false },
+      { out: UNTAKEN, setup: "s", once: false, window: false },
     ];
     let reads = 0;
     const app = createReviewServer({
@@ -2359,8 +2376,15 @@ onStop(process.stdin, () => {
         body: "{}",
       });
       assert.equal(acted.status, 404);
-      // the overview links to the page
-      assert.match(await (await fetch(`${at}/`)).text(), /<a href="\/all">All pictures<\/a>/);
+      // the overview links to the page, and lists the picture the table names with no file under
+      // docs, whose page is the plain one, with its retake
+      const overview = await (await fetch(`${at}/`)).text();
+      assert.match(overview, /<a href="\/all">All pictures<\/a>/);
+      assert.match(overview, /Not taken yet \(1\)/);
+      assert.match(overview, /IDE\/Images\/Untaken\.png<\/a><\/h3>\n<p class="chips">[^\n]*not taken yet/);
+      const untakenPage = await (await fetch(at + hrefs.picture(UNTAKEN))).text();
+      assert.match(untakenPage, /No run of this session reported this picture/);
+      assert.match(untakenPage, /Retake this picture/);
       // a table that cannot be read is said so, on a server that has none yet
       table = null;
       const app2 = createReviewServer({
