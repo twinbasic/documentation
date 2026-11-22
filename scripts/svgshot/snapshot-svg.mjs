@@ -648,19 +648,43 @@ export function controlText(node) {
   return hint && !BUTTON_INPUTS.has(type) ? { text: hint, placeholder: true } : null;
 }
 
+/** What renderSvg reports for a textarea with a line wider than it when it was not told where Chromium wraps it. */
+export const LONG_TEXTAREA_LINE = "a textarea's line wider than it, with no line breaks read";
+
 /**
- * The lines of a text control's text, as they are drawn: a textarea's split at
- * its newlines, and a tab (it advances to the next multiple of 8 spaces) as
+ * The lines a text control's text is set in, before tabs are expanded: [{line, from}], `from`
+ * the UTF-16 offset of the line's start in the text. An input's text is one line; a textarea's is
+ * split at its newlines, and also where Chromium wraps it when `starts` gives the offsets at
+ * which its drawn lines start (capture.mjs's textareaBreaks; null: it is not wrapped). A line
+ * that ends where the textarea wraps it is drawn without the spaces it ends in, which hang
+ * past the edge and show nothing.
+ */
+export function controlPieces(text, textarea, starts = null) {
+  if (!textarea) return [{ line: text, from: 0 }];
+  const cuts = starts ?? [0, ...[...text.matchAll(/\n/g)].map((m) => m.index + 1)];
+  return cuts.map((from, k) => {
+    const to = k + 1 < cuts.length ? cuts[k + 1] : text.length;
+    const piece = text.slice(from, to);
+    const hard = /\n$/.test(piece) || to === text.length;
+    const line = piece.replace(/\r?\n$/, "");
+    return { line: hard ? line : line.replace(/[ \t]+$/, ""), from };
+  });
+}
+
+/** A line with each tab (it advances to the next multiple of `tabSize` spaces) as spaces. */
+function expandTabs(line, tabSize) {
+  const size = /^\d+$/.test(tabSize ?? "") ? Number(tabSize) : 8;
+  let out = "";
+  for (const ch of line) out += ch === "\t" ? " ".repeat(size - (out.length % size)) : ch;
+  return out;
+}
+
+/**
+ * The lines of a text control's text, as they are drawn (controlPieces), and a tab as
  * spaces, which an SVG text would draw as one.
  */
-function controlLines(text, textarea, tabSize) {
-  const lines = textarea ? text.split(/\r?\n/) : [text];
-  const size = /^\d+$/.test(tabSize ?? "") ? Number(tabSize) : 8;
-  return lines.map((line) => {
-    let out = "";
-    for (const ch of line) out += ch === "\t" ? " ".repeat(size - (out.length % size)) : ch;
-    return out;
-  });
+function controlLines(text, textarea, tabSize, starts = null) {
+  return controlPieces(text, textarea, starts).map(({ line }) => expandTabs(line, tabSize));
 }
 
 /**
@@ -670,20 +694,24 @@ function controlLines(text, textarea, tabSize) {
  * does not reach. A tab is spaces up to the next stop from the line's start, so the drawn part
  * before an offset is that offset's prefix expanded.
  */
-export function selectedParts(text, textarea, tabSize, start, end) {
-  const raw = textarea ? text.split(/(?<=\n)/) : [text];
-  const out = [];
-  let from = 0;
-  for (const piece of raw) {
-    const line = piece.replace(/\r?\n$/, "");
-    const at = (offset) =>
-      controlLines(line.slice(0, Math.min(Math.max(offset - from, 0), line.length)), false, tabSize)[0].length;
-    const [drawn] = controlLines(line, false, tabSize);
+export function selectedParts(text, textarea, tabSize, start, end, starts = null) {
+  return controlPieces(text, textarea, starts).map(({ line, from }) => {
+    const at = (offset) => expandTabs(line.slice(0, Math.min(Math.max(offset - from, 0), line.length)), tabSize).length;
+    const drawn = expandTabs(line, tabSize);
     const [s, e] = [at(start), at(end)];
-    out.push({ before: drawn.slice(0, s), selected: drawn.slice(s, e), after: drawn.slice(e) });
-    from += piece.length;
-  }
-  return out;
+    return { before: drawn.slice(0, s), selected: drawn.slice(s, e), after: drawn.slice(e) };
+  });
+}
+
+/**
+ * The textareas in `clip` that show text: Chromium wraps a long line of one, which the
+ * snapshot does not say where, so capture.mjs asks the page for it (textareaBreaks) and
+ * renderSvg sets the text in those lines (`breaks`).
+ */
+export function textareasIn(decoded, clip) {
+  return decoded.layouts.filter(
+    (l) => l.node.name === "TEXTAREA" && l.style && l.node.box === l && overlaps(l.bounds, clip) && shownControlText(l),
+  );
 }
 
 /**
@@ -736,9 +764,11 @@ function shownControlText(l) {
  * run an underline has to skip the ink of, [fontKey, text, top, height]: the band
  * below the baseline (CSS px) in which Chromium looks for it (inkBand). `selection` is the text
  * a focused field has selected (capture.mjs's selectionOf), or null: the parts of its lines
- * before, in and after it are runs of their own (selectedParts).
+ * before, in and after it are runs of their own (selectedParts). `breaks` maps a textarea's
+ * layout key to where its drawn lines start (capture.mjs's textareaBreaks), for one Chromium
+ * wraps: its runs are those lines.
  */
-export function textNeeds(decoded, clip, { selection = null } = {}) {
+export function textNeeds(decoded, clip, { selection = null, breaks = null } = {}) {
   const keys = new Set();
   const runs = new Map();
   const skips = new Map();
@@ -754,10 +784,11 @@ export function textNeeds(decoded, clip, { selection = null } = {}) {
     if (l.style && l.node.box === l && overlaps(l.bounds, clip)) {
       const c = shownControlText(l);
       const textarea = l.node.name === "TEXTAREA";
-      if (c) for (const line of controlLines(c.text, textarea, l.style["tab-size"])) add(l.style, line);
+      const starts = (textarea && breaks?.get(l.key)) || null;
+      if (c) for (const line of controlLines(c.text, textarea, l.style["tab-size"], starts)) add(l.style, line);
       const sel = c && !c.placeholder ? selectionIn(selection, l.node) : null;
       if (sel)
-        for (const part of selectedParts(c.text, textarea, l.style["tab-size"], sel.start, sel.end))
+        for (const part of selectedParts(c.text, textarea, l.style["tab-size"], sel.start, sel.end, starts))
           if (part.selected) for (const s of [part.before, part.selected, part.after]) add(l.style, s);
     }
     if (l.text === undefined) continue;
@@ -1620,9 +1651,13 @@ function filterPrimitives(steps) {
  *                  from the field's border box, its opacity, visibility, display, appearance and
  *                  whether it is drawn dark; {failed}, or null for none. null: none was read, and
  *                  each is reported as not drawn
+ * @param breaks    Map(layout object's key => [offset]): where each drawn line of a textarea that
+ *                  Chromium wraps starts in its text (textareasIn; capture.mjs's textareaBreaks),
+ *                  no entry for one it does not wrap. null: none was read, and a textarea with a
+ *                  line wider than it is reported, its lines drawn unwrapped
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
  *                  inkGaps, cut, selection, placeholderColor, canvases, fontsFor, scrollbars, svgs,
- *                  searchButton}, as the parameters
+ *                  searchButton, breaks}, as the parameters
  *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
@@ -1646,6 +1681,7 @@ export function renderSvg(
     scrollbars = null,
     svgs = null,
     searchButton = null,
+    breaks = null,
     frames = null,
   },
 ) {
@@ -1662,6 +1698,7 @@ export function renderSvg(
     scrollbars,
     svgs,
     searchButton,
+    breaks,
     inner: null,
   };
   let env = pageEnv;
@@ -2843,8 +2880,9 @@ export function renderSvg(
 
   // The text of a native <input> or <textarea> is not DOM text. It is set in the
   // content box (the border box less border and padding): in one line centred
-  // vertically for an input, from the top for a textarea (a long line is cut
-  // at the edge, not wrapped), aligned by text-align, and moved by how far the
+  // vertically for an input, from the top for a textarea (in the lines Chromium
+  // wraps it in, env.breaks; a long line of one with wrap="off" is cut at the
+  // edge), aligned by text-align, and moved by how far the
   // control is scrolled. An input's text is clipped to the content box across,
   // and down to its line too where the line is taller (Chromium centres the line
   // on a content box shorter than it and shows it over the padding: the Object
@@ -2886,7 +2924,16 @@ export function renderSvg(
     const shown = c.placeholder
       ? { ...st, color: env.placeholderColor, "-webkit-text-fill-color": env.placeholderColor }
       : st;
-    const lines = controlLines(c.text, textarea, st["tab-size"]);
+    // Where Chromium wraps a textarea's text; with none read, a line wider than the box may be
+    // wrapped or cut, which the picture cannot tell, and it is drawn cut. It is cut when the
+    // textarea scrolls across, and a line below the last one drawn moves none that is drawn.
+    const starts = (textarea && env.breaks?.get(l.key)) || null;
+    const lines = controlLines(c.text, textarea, st["tab-size"], starts);
+    if (textarea && !env.breaks && !(l.client && l.scroll && l.scroll.w > l.client.w + 1)) {
+      const top0 = at.y - (l.scroll?.y ?? 0);
+      const wide = lines.findIndex((line) => (env.textWidth?.(key, line) ?? 0) > at.w + 0.5);
+      if (wide >= 0 && top0 + wide * lh <= shows.y + shows.h) note(LONG_TEXTAREA_LINE);
+    }
     // The text the field has selected: its part of each line, drawn on the selection's ground in
     // its colour; in a window without focus Chromium draws it in other colours, which no page
     // property gives, so it is not drawn.
@@ -2895,7 +2942,7 @@ export function renderSvg(
       note("a text selection in a window without focus");
       sel = null;
     }
-    const parts = sel ? selectedParts(c.text, textarea, st["tab-size"], sel.start, sel.end) : null;
+    const parts = sel ? selectedParts(c.text, textarea, st["tab-size"], sel.start, sel.end, starts) : null;
     const selectedStyle = sel && { ...st, color: sel.color, "-webkit-text-fill-color": sel.color };
     // The text moves by how far the control is scrolled; only a textarea scrolls down.
     const sx = l.scroll?.x ?? 0;
@@ -2910,7 +2957,10 @@ export function renderSvg(
       let x = at.x - sx;
       if (w !== null && align.endsWith("center")) x = at.x + (at.w - w) / 2 - sx;
       else if (w !== null && (align === "right" || align === "end")) x = at.x + at.w - w - sx;
-      const baseline = y + (lh - m.height) / 2 + m.ascent;
+      // Chromium puts the half-leading above the text floored to a whole px, the rest below it
+      // (NGLineHeightMetrics::AddLeading): a textarea's 13 px Consolas in a line 18.85 px tall has
+      // 1 px above its 15, not 1.925.
+      const baseline = y + Math.floor((lh - m.height) / 2) + m.ascent;
       // a selected line: the part before, the selection's ground and its text, the part after
       const widths = part && [part.before, part.selected].map((s) => (s ? env.textWidth?.(key, s) : 0));
       if (part && widths.every((v) => v !== null && v !== undefined)) {

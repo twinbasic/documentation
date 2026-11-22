@@ -215,6 +215,7 @@ import {
   backgroundClip,
   bordersCover,
   canvasColor,
+  controlPieces,
   decodeSnapshot,
   blendWithWhite,
   decoratingBoxes,
@@ -798,6 +799,29 @@ describe("a text field whose own text is transparent", () => {
   });
 });
 
+describe("a textarea's lines (controlPieces)", () => {
+  test("are its newlines' with no breaks read, and an input's text is one line", () => {
+    assert.deepEqual(controlPieces("ab\r\ncd\n\nef", true), [
+      { line: "ab", from: 0 },
+      { line: "cd", from: 4 },
+      { line: "", from: 7 },
+      { line: "ef", from: 8 },
+    ]);
+    assert.deepEqual(controlPieces("a\nb", false), [{ line: "a\nb", from: 0 }]);
+  });
+
+  test("are where Chromium wraps it, a wrapped line without the spaces that hang past the edge", () => {
+    const text = "one two  three\nfour  ";
+    assert.deepEqual(controlPieces(text, true, [0, 4, 9, 15]), [
+      { line: "one", from: 0 },
+      { line: "two", from: 4 },
+      // a line its newline ends, and the last, keep their spaces
+      { line: "three", from: 9 },
+      { line: "four  ", from: 15 },
+    ]);
+  });
+});
+
 describe("a text field's selection", () => {
   test("selectedParts splits each line at the selection, a tab expanded from the line's start", () => {
     assert.deepEqual(selectedParts("360", false, "8", 0, 3), [{ before: "", selected: "360", after: "" }]);
@@ -808,6 +832,11 @@ describe("a text field's selection", () => {
       { before: "", selected: "    c", after: "d" },
       // a line after the range is after the selection whole
       { before: "", selected: "", after: "ef" },
+    ]);
+    // a line the textarea wraps: the selection is split where it is drawn
+    assert.deepEqual(selectedParts("ab cd", true, "8", 1, 4, [0, 3]), [
+      { before: "a", selected: "b", after: "" },
+      { before: "", selected: "c", after: "d" },
     ]);
   });
 

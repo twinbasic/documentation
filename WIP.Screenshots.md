@@ -1542,6 +1542,37 @@ editor. On the 601 bundles of 2026-11-22 the miss was IcoEditor's alone, in both
 `bench/image-rendering.html` holds a canvas pixelated, smooth and crisp, an `<img>` and a
 background, the same as Edge 158 to the pixel.
 
+**A textarea's text is set in the lines Chromium wraps it in** (`textareaBreaks` in
+`capture.mjs`, `controlPieces` in `snapshot-svg.mjs`, 2026-11-22). A textarea wraps a line wider
+than its content box (`white-space: pre-wrap` and `overflow-wrap: break-word` are Chromium's
+defaults for one), and the snapshot says nothing about where. The converter drew each line as
+one `<text>` held to its measured width by `textLength`, so Data Explorer's Connection Settings
+showed the ADO connection string squeezed into one line where the PNG has three
+(DataExplorer_Settings, 0.32% strongly off, not written). Capture now asks the page, before
+`textNeeds`, for each textarea that shows text: a copy of its value in a block as wide as its
+content box less its scrollbar, with every style that decides a break, and a range over each
+character, a line starting where a box is lower than the last. The bundle keeps the offsets as
+`breaks`, only for a textarea with a soft break; a wrapped line is drawn without the spaces
+it ends in, which hang past the edge. A bundle without `breaks` draws as before, and has the
+miss `the line breaks of a textarea with a line wider than it` when such a line is at or above
+the last line drawn and the textarea does not scroll across (a scroll width wider than the
+client width means it is not wrapping: the keyboard-shortcuts JSON of Help_Find and
+ManageKeyboardShortcuts, whose one long line is line 699). On the 601 bundles of 2026-11-22
+the miss was DataExplorer_Settings' alone, in both themes. `bench/textarea-wrap.html` holds a
+monospace and a proportional textarea wrapped at spaces, one with a newline between wrapped
+lines, a word longer than the box, a box with a scrollbar, one with `wrap="off"`, and Data
+Explorer's own style (below): 0.025% off in Edge 158, none strongly. A value over 20,000
+characters is not read, and is drawn as its newlines break it.
+
+**A text control's half-leading above its text is floored to a whole px** (`paintTextControl`,
+2026-11-22), as Chromium's `NGLineHeightMetrics::AddLeading` does, the rest going below. Data
+Explorer's textareas set 13 px Consolas (15 px content area) in lines `18.85px` tall: 1 px
+above the text, not 1.925, and every line of the SVG was 1 CSS px low (0.15% strongly off after
+the wrapping fix, 0.008% with this). DOM text is not affected: its boxes come from the snapshot.
+On the 601 bundles of 2026-11-22 it changed DataExplorer_Settings and confirm-merge (its commit
+message textarea, 0.085% to 0.079% off dark, 0.042% to 0.041% light) and no other picture.
+`bench/textarea-wrap.html` fails without it (0.128% strongly).
+
 **Frames** (owner: cross-origin frames in general). A frame of the same site (the
 docked help pane: the documentation on another `localhost` port) is in the IDE's process, and
 `DOMSnapshot.captureSnapshot` returns its document beside the page's: the `<iframe>` node's
