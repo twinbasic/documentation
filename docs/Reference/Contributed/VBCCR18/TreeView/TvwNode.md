@@ -61,7 +61,7 @@ Debug.Print TreeView1.Nodes("b").FirstSibling.Text
 [**Root**](#root) is meant to return the root-level node a node hangs from, but it does not.
 
 <!-- test: TreeViewTests.Root_OfANodeInALaterBranch_IsItsTopLevelAncestor -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > **Root** returns the first node of the root level, whichever node it is asked of. For a node in the first branch that is the right node, and for a node in any later branch it is the wrong one. A program that needs the top of a branch goes up with [**Parent**](#parent) until it is **Nothing**.
 
 [**FirstVisible**](#firstvisible), [**LastVisible**](#lastvisible), [**NextVisible**](#nextvisible) and [**PreviousVisible**](#previousvisible) go through the nodes that are shown, which are all those that are not inside a closed branch, in the order of the tree.
@@ -337,7 +337,7 @@ A value of the program's own, which the node does not use. **Variant**. A new no
 The label of the node. **String**. It is the default member, so `Node = "New"` sets the text.
 
 <!-- test: TreeViewTests.Text_LongerThan259_IsReadBackWhole -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > The property returns at most 259 characters of a longer text, with no error. The same holds for the node's part of [**FullPath**](#fullpath) and for the texts the sorting compares. A program that keeps longer texts keeps them itself, for instance in [**Tag**](#tag).
 
 ### ToolTipText

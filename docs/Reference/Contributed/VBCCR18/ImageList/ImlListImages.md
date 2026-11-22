@@ -160,7 +160,7 @@ A call without a picture, with **Nothing** or with an empty picture, such as `Lo
 <!-- /test -->
 
 <!-- test: ImageListTests.Add_DuplicateKey_LeavesTheWindowsListAsItWas -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > A call that raises error 457 for its key has already stored its picture. The collection is as it was, and the picture stays in the image list of Windows after the last one, where a control that the list is given to finds one picture more than [**Count**](#count) says. A program asks [**Exists**](#exists) before it adds a picture with a key that the list may have.
 
 The first picture added sets the size of the list, and what the list does with a bitmap of another size and with a bitmap's mask color is under [Filling the list](.#filling-the-list) and [Transparent parts](.#transparent-parts).

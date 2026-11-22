@@ -444,11 +444,8 @@ Syntax: *object*.**GetLine**( *LineNumber* ) **As String**
 *LineNumber*
 : *required* A **Long**: the number of the line, counted from 1, or 0 for the line of the insertion point.
 
-<!-- test: TextBoxWTests.GetLine_Negative_Raises380, TextBoxWTests.GetLine_PastTheLastLine_Raises380, TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380 -->
+<!-- test: TextBoxWTests.GetLine_Negative_Raises380, TextBoxWTests.GetLine_PastTheLastLine_Raises380 -->
 A negative number, or a number greater than the number of lines, raises run-time error 380.
-
-> [!NOTE] 1.8.141.0
-> In a 64-bit program a number greater than the number of lines raises run-time error 6, *Overflow*, in **GetLine**, and [**ScrollToLine**](#scrolltoline) raises nothing and does not scroll.
 <!-- /test -->
 
 ### GetLineCount
@@ -512,7 +509,9 @@ Syntax: *object*.**ScrollToLine** *LineNumber*
 *LineNumber*
 : *required* A **Long**: the number of the line, counted from 1.
 
-A negative number, or a number greater than the number of lines, raises run-time error 380. The note under [**GetLine**](#getline) says what a 64-bit program does.
+<!-- test: TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380 -->
+A negative number, or a number greater than the number of lines, raises run-time error 380.
+<!-- /test -->
 
 ### ShowBalloonTip
 {: .no_toc }

@@ -95,7 +95,7 @@ A negative *Index*, and one greater than [**Count**](#count) + 1, raises run-tim
 <!-- /test -->
 
 <!-- test: ListViewColumnsTests.Add_NegativeWidth_AddsNoColumn, ListViewColumnsTests.Add_AlignmentNotAMember_AddsNoColumn -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > A call that raises error 380 for its *Width* or its *Alignment* has already put the column into the collection. The control has no such column, and [**Count**](#count) is one more than the columns the control shows; the members of that **LvwColumnHeader** then work on a column that is not there. A program checks a width and an alignment before it adds a column with them.
 
 Adding a column in front of others leaves the subitems of the items where they are, so the later columns then show other texts; see [Subitems](Items#subitems).

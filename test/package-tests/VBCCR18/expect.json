@@ -1,5 +1,5 @@
 {
-  "version": "1.8.141.0",
+  "version": "1.8.142.0",
   "cases": {
     "CommandLinkTests.GetIdealHeight_NoteThatWraps_IsHigher": {
       "fails": "1 of 2 checks failed: GetIdealHeight with a note of three lines at 300 pixels is more than with a note of one word: expected True, got False"
@@ -90,18 +90,6 @@
     },
     "TabStripTests.Add_DuplicateKey_LeavesNoTabInTheWindow": {
       "fails": "1 of 1 checks failed: the tabs of the window against Tabs.Count after the refused call: expected 2, got 3"
-    },
-    "TextBoxWTests.GetLine_PastTheLastLine_Raises380": {
-      "win32": "pass",
-      "win64": {
-        "fails": "1 of 1 checks failed: GetLine(9) in a text of two lines: expected 380, got 6"
-      }
-    },
-    "TextBoxWTests.ScrollToLine_PastTheLastLine_Raises380": {
-      "win32": "pass",
-      "win64": {
-        "fails": "1 of 1 checks failed: ScrollToLine 9 in a text of two lines: expected 380, got 0"
-      }
     },
     "ToolBarTests.Buttons_Add_DuplicateKey_AddsNothingToTheWindow": {
       "fails": "1 of 1 checks failed: the buttons the window of the toolbar has after the refused Add: expected 1, got 2"

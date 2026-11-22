@@ -304,7 +304,7 @@ Syntax: *object*.**HitTest**( *X*, *Y* )
 : *required* The position as two **Single** values, measured from the list's top left corner in the scale units of the control's container, as the OLE drag-and-drop events give it.
 
 <!-- test: VListBoxTests.HitTest_EmptyList_ReturnsMinus1 -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > In an empty list the method returns 0, not -1, for a position where the first item would be.
 
 ### HitTestInsertMark

@@ -382,7 +382,7 @@ An assignment selects the item or removes its selection, and raises [**Click**](
 Whether [**AddItem**](#additem) without an index puts each new item in alphabetical order. **Boolean**. Default: **False**. An **AddItem** with an index puts the item at that index all the same.
 
 <!-- test: ListBoxWTests.Sorted_SetAtRunTime_LeavesTheItemsInPlace -->
-> [!NOTE] 1.8.141.0
+> [!NOTE] 1.8.142.0
 > An assignment of **True** at run time does not sort the items already in the list, and the items added afterward are placed as if the list were sorted. Set **Sorted** before the first item is added.
 
 ### Style
@@ -494,7 +494,7 @@ Syntax: *object*.**HitTest**( *X*, *Y* )
 : *required* The position as two **Single** values, measured from the list's top left corner in the scale units of the control's container, as the OLE drag-and-drop events give it.
 
 <!-- test: ListBoxWTests.HitTest_EmptyList_ReturnsMinus1 -->
-> [!WARNING] 1.8.141.0
+> [!WARNING] 1.8.142.0
 > In an empty list the method returns 0, not -1, for a position where the first item would be.
 
 ### HitTestInsertMark
