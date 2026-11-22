@@ -693,7 +693,8 @@ scenario("Starting a project", (lane) => {
     await k.fresh();
     assert.deepEqual(await search("sample 10"), [["twinBASIC IDE Addin", "$\\Sample <<10>>.    twinBASIC IDE Addin"]]);
     assert.deepEqual(await search("vbp"), [["Import from <<VBP>>...", "$"]]);
-    assert.equal((await search("$")).length, 34);
+    // Every item of the IDE's own; BETA 1045 added samples 24 to 27.
+    assert.equal((await search("$")).length, 38);
   });
 
   test("control: a search row of a Recent project shows its path, marked", async () => {

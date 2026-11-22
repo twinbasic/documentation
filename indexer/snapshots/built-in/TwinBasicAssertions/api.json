@@ -2,7 +2,7 @@
   "format": 4,
   "package": "TwinBasicAssertions",
   "project": "Assert",
-  "version": "beta-x-1042",
+  "version": "beta-x-1045",
   "types": [
     {
       "name": "Exact",

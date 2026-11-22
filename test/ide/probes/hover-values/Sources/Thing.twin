@@ -1,0 +1,5 @@
+' A class for the With block of the hover test.
+Class Thing
+    Public Value As Long
+    Public Label As String
+End Class

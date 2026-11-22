@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:datasheet",
+  "tests": [
+    "keys: Up and Down move the current record; PageDown scrolls without moving it"
+  ],
+  "steps": "1. A datasheet with a few columns and rows. Click a data cell.\n2. Press Right. Nothing moves; the page reports an uncaught TypeError.\n3. Press Home. Nothing moves; the page reports `page left not yet implemented`.\nControl: Down moves the current record by one."
+}

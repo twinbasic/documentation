@@ -67,6 +67,26 @@ The interface's **DefaultMember** is [**Item**](#item) --- so `eventInfo("target
 
 ## Properties
 
+### AsyncResultResolver
+{: .no_toc }
+
+The answer to an event that the IDE waits for: the requests of a [datasheet](Datasheet). **As** **IAsyncResultResolver**, read-only. Its one method, **Resolve**, gives the answer:
+
+Syntax: *eventInfo*.**AsyncResultResolver.Resolve** *retval*
+
+*retval*
+: *required* The answer. **Variant**; a datasheet takes a **String** of JSON.
+
+The handler may call **Resolve** before it returns, or keep the resolver and call it later, from another thread or a timer. The handler of a datasheet's `onGetRows` in Sample 27 gives the resolver to a worker thread, which reads the rows from the database and resolves with them:
+
+```tb check_build
+Private Sub OnGetInfo(ByVal e As HtmlEventProperties)
+    e.AsyncResultResolver.Resolve "{""recordCount"": 0, ""columns"": []}"
+End Sub
+```
+
+An event of a virtual listview, `onAsyncGetItemHTML`, is answered with `setAsyncResult` instead; see [Asynchronous events](#asynchronous-events-setasyncresult).
+
 ### Item
 {: .no_toc }
 

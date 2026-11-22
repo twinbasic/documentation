@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:menus",
+  "tests": [
+    "AddFileUI with a folder beside Sources selected: the file goes in Sources, unless the folder's name starts with Sources"
+  ],
+  "steps": "1. A project with the folders `Notes` and `SourcesExtra` beside `Sources`.\n2. Select `Notes` and call `Host.ProjectExplorer.AddFileUI(\"prb\", \"MyFile\", \"\")`; press Enter. It returns `/<Project>/Sources/MyFile.prb`.\n3. Select `SourcesExtra` and do the same. It returns `/<Project>/SourcesExtra/MyFile.prb`."
+}

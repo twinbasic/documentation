@@ -194,7 +194,7 @@ scenario("language", (lane) => {
     await openFile(c, FILE, { line: DIM_LINE, column: 1 });
   });
 
-  test("en-gb.lang names the warnings and the error TB5079, and no pack that ships with the IDE names a code", async (t) => {
+  test("en-gb.lang names the warnings and the error TB5079, the Dutch, Hungarian and Swedish packs the same codes, and no other pack that ships with the IDE names a code", async (t) => {
     const codes = await c.evaluate(PACK_CODES_JS);
     t.diagnostic(JSON.stringify(codes));
     const british = codes["en-gb.lang"];
@@ -206,7 +206,11 @@ scenario("language", (lane) => {
       "en-gb.lang names a code that is neither a warning nor TB5079",
     );
     assert.ok(!british.includes("TB5179"), "en-gb.lang names TB5179");
-    const shipped = Object.entries(codes).filter(([f, k]) => f !== "en-gb.lang" && f !== "zz-zz.lang" && k.length);
+    // In BETA 1045 the Dutch, Hungarian and Swedish packs translate the same messages.
+    const translated = ["hu-hu.lang", "nl-nl.lang", "sv-sv.lang"];
+    for (const f of translated) assert.deepEqual(codes[f], british, `${f} names other codes than en-gb.lang`);
+    const others = ["en-gb.lang", "zz-zz.lang", ...translated];
+    const shipped = Object.entries(codes).filter(([f, k]) => !others.includes(f) && k.length);
     assert.deepEqual(shipped, [], "a shipped pack names a code");
   });
 

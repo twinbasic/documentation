@@ -1,0 +1,11 @@
+' What the IDE does with an add-in that returns tbIDE's UnsupportedHostAddin,
+' whose Name is empty: the samples of BETA 1045 return it on an older host.
+' This one always does. menus.test.mjs reads the Add-Ins menu and the DEBUG
+' CONSOLE; the line below says the entry point ran.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Host.DebugConsole.PrintText "[UnsupportedProbe] returning UnsupportedHostAddin"
+        Return New UnsupportedHostAddin()
+    End Function
+End Module

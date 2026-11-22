@@ -1,0 +1,296 @@
+' The Menus, ProjectExplorer and theme-colour features of tbIDE new in BETA
+' 1045, for menus.test.mjs. As the project loads it adds a custom menu-bar menu
+' as its very first menu call (ProbeFirst), entries on the Project Explorer's
+' file-view context menu and the File menu, a second custom menu after those
+' (ProbeAfter) and an invisible one for ShowPopup (ProbePopup). Its toolbar
+' buttons change, remove and add entries, print SelectedItemPath, call
+' AddFileUI and open tool windows that paint with the --themeAddin* variables
+' and call ShowPopup from a click. Every line it prints starts "[MenusProbe]".
+' It saves nothing.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New MenusProbeAddin(Host)
+    End Function
+End Module
+
+' One menu entry's events, printed with the entry's tag.
+Private Class EntryWatch
+    Private WithEvents Entry As MenuEntry
+    Private EntryTag As String
+    Private Owner As MenusProbeAddin
+
+    Public Sub New(ByVal Owner As MenusProbeAddin, ByVal Tag As String, ByVal Entry As MenuEntry)
+        Set Me.Owner = Owner
+        EntryTag = Tag
+        Set Me.Entry = Entry
+    End Sub
+
+    Private Sub Entry_Click()
+        Owner.Say "click " & EntryTag
+    End Sub
+
+    Private Sub Entry_BeforeShow()
+        Owner.OnBeforeShow EntryTag
+    End Sub
+End Class
+
+Private Class MenusProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents CaptionButton As Button
+    Private WithEvents HideButton As Button
+    Private WithEvents RemoveButton As Button
+    Private WithEvents RemoveFileButton As Button
+    Private WithEvents RemoveAllButton As Button
+    Private WithEvents LateButton As Button
+    Private WithEvents SelectedButton As Button
+    Private WithEvents AddFileButton As Button
+    Private WithEvents ShowButton As Button
+    Private WithEvents Show2Button As Button
+    Private WithEvents PopupPEButton As Button
+    Private Watches As New Collection
+    Private PE As Menu
+    Private CustomFirst As Menu
+    Private CustomAfter As Menu
+    Private PopupMenu As Menu
+    Private BeforeShowEntry As MenuEntry
+    Private Toggled As MenuEntry
+    Private RemoveMe As MenuEntry
+    Private Shows As Long
+    Private Pane As ToolWindow
+    Private Pane2 As ToolWindow
+
+    Private Const OPEN_CMD As String = "tbProjectExplorer_SelectedItemsOpen"
+    Private Const ICON As String = "<svg xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 16 16""><rect x=""2"" y=""2"" width=""12"" height=""12"" fill=""#238BE6""/></svg>"
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "MenusProbe AddIn"
+    End Property
+
+    Public Sub Say(ByVal Text As String)
+        Host.DebugConsole.PrintText "[MenusProbe] " & Text
+    End Sub
+
+    Private Function Watch(ByVal Tag As String, ByVal Entry As MenuEntry) As MenuEntry
+        Watches.Add New EntryWatch(Me, Tag, Entry)
+        Return Entry
+    End Function
+
+    Private Sub Host_OnProjectLoaded()
+        ' AddCustom as the add-in's very first menu call.
+        Set CustomFirst = Host.Menus.AddCustom("ProbeFirst", True)
+        Watch "first item", CustomFirst.AddEntry("First item")
+
+        Set PE = Host.Menus.ProjectExplorerFileViewContextMenu
+        Watch "before open", PE.AddEntry("P before Open", , OPEN_CMD, -1)
+        Watch "after open 1", PE.AddEntry("P after Open 1", , OPEN_CMD, 1)
+        Watch "after open 0", PE.AddEntry("P after Open 0", , OPEN_CMD, 0)
+        Watch "after open 0b", PE.AddEntry("P after Open 0b", , OPEN_CMD, 0)
+        Watch "unknown", PE.AddEntry("P unknown command", , "tbNoSuchCommand", -1)
+        Watch "no relative", PE.AddEntry("P no relative")
+        PE.AddEntry
+        Watch("hidden", PE.AddEntry("P hidden")).Visible = False
+        Watch("disabled", PE.AddEntry("P disabled")).Enabled = False
+        Watch("checked", PE.AddEntry("P checked", ICON)).Checked = True
+        Watch "icon", PE.AddEntry("P icon", ICON)
+        Dim SubEntry As MenuEntry = Watch("submenu", PE.AddEntry("P submenu"))
+        Dim Child1 As MenuEntry = Watch("child 1", SubEntry.Children.AddEntry("P child 1"))
+        Watch("child 2", SubEntry.Children.AddEntry("P child 2")).BeforeShowEvents = True
+        Set BeforeShowEntry = Watch("before show", PE.AddEntry("P before show"))
+        BeforeShowEntry.BeforeShowEvents = True
+        Set Toggled = Watch("toggled", PE.AddEntry("P toggled"))
+        Set RemoveMe = Watch("remove me", PE.AddEntry("P remove me"))
+
+        With Host.Menus.FileMenu
+            Watch "file end", .AddEntry("P file end")
+            Watch "file before save", .AddEntry("P file before Save", , "tbEditor_Save", -1)
+        End With
+
+        ' AddCustom after entries elsewhere, and an invisible one for ShowPopup.
+        Set CustomAfter = Host.Menus.AddCustom("ProbeAfter", True)
+        Watch "after item", CustomAfter.AddEntry("After item")
+        Set PopupMenu = Host.Menus.AddCustom("ProbePopup", False)
+        Watch "popup 1", PopupMenu.AddEntry("Popup item 1")
+        Watch "popup 2", PopupMenu.AddEntry("Popup item 2")
+
+        ' What the objects say of themselves.
+        Dim s As String
+        On Error Resume Next
+        s = s & " pe=" & PE.Id
+        s = s & " pecaption=" & PE.Caption
+        s = s & " pevisible=" & PE.Visible
+        s = s & " first=" & CustomFirst.Id
+        s = s & " firstcaption=" & CustomFirst.Caption
+        s = s & " popupvisible=" & PopupMenu.Visible
+        s = s & " entry=" & BeforeShowEntry.Id
+        s = s & " entryparent=" & BeforeShowEntry.Parent.Id
+        s = s & " entrycaption=" & BeforeShowEntry.Caption
+        s = s & " sub=" & SubEntry.Id
+        s = s & " subchildren=" & SubEntry.Children.Id
+        s = s & " child=" & Child1.Id
+        s = s & " childparent=" & Child1.Parent.Id
+        On Error GoTo 0
+        Say "ids" & s
+
+        With Host.Toolbars(0)
+            Set CaptionButton = .AddButton("MenusProbeCaption", "Menus probe: captions")
+            Set HideButton = .AddButton("MenusProbeHide", "Menus probe: hide")
+            Set RemoveButton = .AddButton("MenusProbeRemove", "Menus probe: remove one")
+            Set RemoveFileButton = .AddButton("MenusProbeRemoveFile", "Menus probe: File menu RemoveAllAddedEntries")
+            Set RemoveAllButton = .AddButton("MenusProbeRemoveAll", "Menus probe: Menus.RemoveAllAddedEntries")
+            Set LateButton = .AddButton("MenusProbeLate", "Menus probe: add a late entry")
+            Set SelectedButton = .AddButton("MenusProbeSelected", "Menus probe: SelectedItemPath")
+            Set AddFileButton = .AddButton("MenusProbeAddFile", "Menus probe: AddFileUI")
+            Set ShowButton = .AddButton("MenusProbeShow", "Menus probe: tool window")
+            Set Show2Button = .AddButton("MenusProbeShow2", "Menus probe: second tool window")
+            Set PopupPEButton = .AddButton("MenusProbePopupPE", "Menus probe: ShowPopup of the Project Explorer menu")
+        End With
+        Say "version <" & Host.CompilerVersion & ">"
+        Say "loaded theme=" & Host.Themes.ActiveThemeName
+    End Sub
+
+    Public Sub OnBeforeShow(ByVal Tag As String)
+        If Tag <> "before show" Then
+            Say "beforeshow " & Tag
+            Exit Sub
+        End If
+        Shows = Shows + 1
+        BeforeShowEntry.Caption = "P before show " & Shows
+        Toggled.Visible = (Shows Mod 2 = 0)
+        If Shows = 2 Then Watch "added in beforeshow", PE.AddEntry("P added in BeforeShow")
+        Say "beforeshow " & Shows
+    End Sub
+
+    Private Sub Host_OnChangedTheme(ByVal ThemeName As String)
+        Say "theme changed " & ThemeName
+    End Sub
+
+    Private Sub CaptionButton_OnClick()
+        CustomFirst.Caption = "ProbeFirst2"
+        CustomAfter.Caption = "ProbeAfter2"
+        On Error Resume Next
+        Host.Menus.FileMenu.Caption = "Renamed"
+        Say "named caption error " & Err.Number
+        On Error GoTo 0
+        Say "captions first=" & CustomFirst.Caption & " after=" & CustomAfter.Caption & " file=" & Host.Menus.FileMenu.Caption
+    End Sub
+
+    Private Sub HideButton_OnClick()
+        CustomFirst.Visible = False
+        CustomAfter.Visible = False
+        Say "hidden first=" & CustomFirst.Visible & " after=" & CustomAfter.Visible
+    End Sub
+
+    Private Sub RemoveButton_OnClick()
+        RemoveMe.Remove
+        Say "removed one"
+    End Sub
+
+    Private Sub RemoveFileButton_OnClick()
+        Host.Menus.FileMenu.RemoveAllAddedEntries
+        Say "removed file menu entries"
+    End Sub
+
+    Private Sub RemoveAllButton_OnClick()
+        Host.Menus.RemoveAllAddedEntries
+        Say "removed all entries"
+    End Sub
+
+    Private Sub LateButton_OnClick()
+        Watch "late", Host.Menus.FileMenu.AddEntry("P late")
+        Say "added late"
+    End Sub
+
+    Private Sub SelectedButton_OnClick()
+        On Error GoTo Failed
+        Say "selected <" & Host.ProjectExplorer.SelectedItemPath & ">"
+        Exit Sub
+    Failed:
+        Say "selected error " & Err.Number & " <" & Err.Description & ">"
+    End Sub
+
+    Private Sub AddFileButton_OnClick()
+        On Error GoTo Failed
+        Dim r As String = Host.ProjectExplorer.AddFileUI("prb", "MyFile", "hello")
+        Say "addfile ok <" & r & ">"
+        Exit Sub
+    Failed:
+        Say "addfile error " & Err.Number & " <" & Err.Description & ">"
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        Set Pane = MakePane("MenusProbeWin", "MENUS PROBE")
+    End Sub
+
+    Private Sub Show2Button_OnClick()
+        Set Pane2 = MakePane("MenusProbeWin2", "MENUS PROBE 2")
+    End Sub
+
+    Private Function MakePane(ByVal Id As String, ByVal Title As String) As ToolWindow
+        Dim w As ToolWindow = Host.ToolWindows.Add("Menus probe", Id)
+        w.Title = Title
+        With w.RootDomElement
+            With .Properties
+                .suggestedWidth = "400px"
+                .suggestedHeight = "300px"
+            End With
+            With .ChildDomElements.Add(Id & "Theme", "div")
+                .Properties.innerText = "theme box"
+                .Properties.style.padding = "10px"
+                .Properties.style.background = "var(--themeAddinBackColor)"
+                .Properties.style.color = "var(--themeAddinForeColor)"
+            End With
+            With .ChildDomElements.Add(Id & "PopupCustom", "div")
+                .Properties.innerText = "popup: custom menu"
+                .Properties.style.padding = "10px"
+                .AddEventListener("click", AddressOf PopupCustomClick)
+            End With
+            With .ChildDomElements.Add(Id & "PopupNamed", "div")
+                .Properties.innerText = "popup: Project Explorer menu"
+                .Properties.style.padding = "10px"
+                .AddEventListener("click", AddressOf PopupNamedClick)
+            End With
+            With .ChildDomElements.Add(Id & "PopupFile", "div")
+                .Properties.innerText = "popup: File menu"
+                .Properties.style.padding = "10px"
+                .AddEventListener("click", AddressOf PopupFileClick)
+            End With
+        End With
+        w.Visible = True
+        Say "shown " & Id
+        Return w
+    End Function
+
+    Private Sub PopupCustomClick(ByVal e As HtmlEventProperties)
+        Dim x As Long = CLng(e.clientX)
+        Dim y As Long = CLng(e.clientY)
+        Say "popup custom at " & x & "," & y
+        PopupMenu.ShowPopup x, y
+    End Sub
+
+    Private Sub PopupNamedClick(ByVal e As HtmlEventProperties)
+        Dim x As Long = CLng(e.clientX)
+        Dim y As Long = CLng(e.clientY)
+        Say "popup named at " & x & "," & y
+        PE.ShowPopup x, y
+    End Sub
+
+    Private Sub PopupFileClick(ByVal e As HtmlEventProperties)
+        Dim x As Long = CLng(e.clientX)
+        Dim y As Long = CLng(e.clientY)
+        Say "popup file at " & x & "," & y
+        Host.Menus.FileMenu.ShowPopup x, y
+    End Sub
+
+    ' The Project Explorer's menu, which holds entries with BeforeShowEvents,
+    ' shown from a toolbar button rather than from a DOM event.
+    Private Sub PopupPEButton_OnClick()
+        Say "popup pe from button"
+        PE.ShowPopup 300, 300
+    End Sub
+End Class

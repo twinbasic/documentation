@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:menus",
+  "tests": [
+    "ShowPopup: a custom menu opens with its top-left at the point given; a named menu shows nothing"
+  ],
+  "steps": "1. An add-in that adds an entry to `Host.Menus.FileMenu`, and a tool window with a `click` listener that calls `Host.Menus.FileMenu.ShowPopup e.clientX, e.clientY`.\n2. Click in the tool window. Nothing opens.\n3. Control: a `Host.Menus.AddCustom(\"Popup\", False)` menu with an entry, shown the same way, opens at the pointer."
+}

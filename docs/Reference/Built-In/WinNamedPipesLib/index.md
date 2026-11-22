@@ -4,7 +4,7 @@ parent: Built-In Packages
 nav_order: 9
 permalink: /tB/Packages/WinNamedPipesLib/
 has_toc: false
-indexed_from: beta-x-1042
+indexed_from: beta-x-1045
 ---
 
 # WinNamedPipesLib Package

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:designers",
+  "tests": [
+    "Unregister ends the compiler with an access violation, for a registered extension or not, with an error handler or not"
+  ],
+  "steps": "1. An add-in whose `OnProjectLoaded` calls `Host.Designers.Register \"Probe\", \".prb\", New ProbeFactory` and then `Host.Designers.Unregister \".prb\"`, with a `PrintText` after each.\n2. Load it and open a project. The console shows the line after `Register`, then the access violation; the line after `Unregister` never shows.\n3. The IDE restarts the compiler, which loads the add-in and crashes again."
+}

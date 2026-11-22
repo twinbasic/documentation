@@ -1,0 +1,8 @@
+' The host project of designers.test.mjs. The files beside this one carry the
+' extensions the DesignersProbe add-in registers designers for; this module is
+' only there so that the project compiles.
+Module Main
+    Public Sub Main()
+        Debug.Print "designers host"
+    End Sub
+End Module

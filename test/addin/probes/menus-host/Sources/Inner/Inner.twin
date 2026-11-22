@@ -1,0 +1,5 @@
+Module Inner
+    Public Function Answer() As Long
+        Return 42
+    End Function
+End Module

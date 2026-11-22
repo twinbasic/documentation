@@ -1,0 +1,28 @@
+' test/ide/hover-values.test.mjs stops at the line marked STOP inside the With block, and
+' hovers over each variable of Values and over the With block's members. It finds the
+' line by its mark.
+Module Startup
+
+    Public Sub Main()
+        Values
+    End Sub
+
+    Public Sub Values()
+        Dim b As Byte = 255
+        Dim i1 As Integer = 1
+        Dim iNeg As Integer = -1
+        Dim lBig As Long = 32768
+        Dim lNeg As Long = -1
+        Dim llNeg As LongLong = -1
+        Dim f As Boolean = True
+        Dim d As Double = 1.5
+        Dim v As Variant = CLng(300)
+        Dim t As New Thing
+        t.Value = 6
+        t.Label = "six"
+        With t
+            Debug.Print .Value, .Label   ' @STOP
+        End With
+        Debug.Print b, i1, iNeg, lBig, lNeg, llNeg, f, d, v
+    End Sub
+End Module

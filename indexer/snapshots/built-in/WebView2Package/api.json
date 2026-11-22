@@ -2,7 +2,7 @@
   "format": 4,
   "package": "WebView2Package",
   "project": "WebView2Package",
-  "version": "beta-x-1042",
+  "version": "beta-x-1045",
   "types": [
     {
       "name": "ControlAlt",

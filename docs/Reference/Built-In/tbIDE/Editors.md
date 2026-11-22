@@ -53,7 +53,7 @@ The returned object is an [**Editor**](Editor) but is usually castable to a more
 
 Opens (or re-focuses) the editor for a given file, optionally positioning the caret at a specific line and column.
 
-Syntax: *editors*.**Open** *Path* [, *LineNumber* ] [, *ColumnNumber* ] [, *Options* ]
+Syntax: *editors*.**Open** *Path* [, *LineNumber* ] [, *ColumnNumber* ] [, *Options* ] [, *Designer* ]
 
 *Path*
 : *required* The virtual-FS path of the file to open. **String**. Typically starts with `"twinbasic:/"`; the value returned by [**FileSystemItem.Path**](FileSystemItem#path) or [**Editor.Path**](Editor#path) is always a valid argument.
@@ -66,6 +66,15 @@ Syntax: *editors*.**Open** *Path* [, *LineNumber* ] [, *ColumnNumber* ] [, *Opti
 
 *Options*
 : *optional* An [**EditorOpenOptions**](#editoropenoptions) value. Default [**NONE**](#EditorOpenOptions_NONE).
+
+*Designer*
+: *optional* A designer of the addin's own to open in a new tab, for no file. **As** [**Designer**](Designer). With it, *Path* and the other arguments are not used: the IDE opens a tab named *(unnamed)* and calls the designer's [**OnAttached**](Designer#onattached) and [**OnActivated**](Designer#onactivated), and no [**OnFileDataChanged**](Designer#onfiledatachanged). **Open** returns before **OnAttached** is called. The designer's [**DesignerHost.GetURI**](DesignerHost#geturi) is an empty string, and its [**Caption**](DesignerHost#caption) names the tab. After a restart of the compiler the tab shows *Sorry, unable to recover this document*.
+
+Sample 26 opens its comparisons this way:
+
+```tb inert=pseudo
+Host.ActiveEditors.Open "", Designer:=New DiffCompareDesigner(Me, OriginalPath, ModifiedPath)
+```
 
 After **Open** returns, the requested file is the active editor; call `Editors.Item(0).SetFocus` to give it keyboard focus.
 

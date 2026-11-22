@@ -312,6 +312,10 @@ parts:
         pages:
           - /tB/IDE/AddIns/
           - /tB/IDE/AddIns/GlobalSearch
+          - /tB/IDE/AddIns/HexEditor
+          - /tB/IDE/AddIns/IcoEditor
+          - /tB/IDE/AddIns/DiffCompare
+          - /tB/IDE/AddIns/DataExplorer
           - /Community/Add-Ins
           - /Community/Tools
         no_descent: true

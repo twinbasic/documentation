@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "addin:menus",
+  "tests": [
+    "AddFileUI: the name box; Enter returns the new file's path without twinbasic:, and Escape, an empty name and an invalid one return an empty string rather than raise an error"
+  ],
+  "steps": "1. An add-in that calls `s = Host.ProjectExplorer.AddFileUI(\"prb\", \"MyFile\", \"hello\")` and prints `s`, `Err.Number` and `Err.Description`.\n2. Press Escape in the name box. It prints an empty `s` and `Err.Number` 0.\n3. Control: press Enter. It prints `/<Project>/Sources/MyFile.prb`."
+}

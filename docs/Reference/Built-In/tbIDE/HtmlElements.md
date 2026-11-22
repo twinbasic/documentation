@@ -40,7 +40,7 @@ Syntax: *htmlElements*.**Add**( *ElementID*, *TagName* ) **As** [**HtmlElement**
 : *required* A DOM `id` for the new element. **String**. Pick distinct IDs across the tool window --- they double as the key for [**Item**](#item) lookups.
 
 *TagName*
-: *required* The HTML tag name. **String**. Standard tags (`"div"`, `"span"`, `"input"`, `"h1"`, `"label"`, `"img"`, …) work as expected; the IDE additionally accepts four custom-widget tags described in [Tool-window DOM tags](.#tool-window-dom-tags) on the package overview: `"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`.
+: *required* The HTML tag name. **String**. Standard tags (`"div"`, `"span"`, `"input"`, `"h1"`, `"label"`, `"img"`, …) work as expected; the IDE additionally accepts the custom-widget tags described in [Tool-window DOM tags](.#tool-window-dom-tags) on the package overview: `"chartjs"`, `"monaco"`, `"monacoDiff"`, `"listview"`, `"virtuallistview"` and `"datasheet"`.
 
   An `"iframe"` shows a web page inside the tool window: set its `src` property to the page's URL, and set it again to show another. The page scrolls, and follows its own links, and a `"load"` listener hears each page load. The page is a document of its own, so keys pressed while it has the focus go to it: an addin's [keyboard shortcuts](KeyboardShortcuts) do not fire there. Its `prefers-color-scheme` is the one Windows sets for apps, not the IDE's theme, so a page that follows it can be light in a dark IDE.
 

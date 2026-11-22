@@ -1,0 +1,232 @@
+' The custom-designer API of BETA 1045, measured by designers.test.mjs. As the
+' project loads, the add-in registers designers for the extensions of the files
+' in probes/designers-host (see Host_OnProjectLoaded) and, when TB_DESIGNERS_UNREGISTER says so, calls Unregister. Each designer
+' logs every call the IDE makes on it, and puts two items in the TOOLBOX:
+' Change, which sets the file's bytes to the ones it last had and one "!", and
+' Restore, which sets them to the first bytes this designer was given. A toolbar
+' button opens a designer with Editors.Open.
+' Every line it prints starts "[DesignersProbe] " and a counter, which restarts
+' with each compiler; it saves no setting.
+Module MainModule
+    Public ProbeHost As Host
+    Public Seq As Long
+    Public Instances As Long
+
+    ' A 4 by 4 PNG, one colour.
+    Public Const PNG_HEX As String = "89504E470D0A1A0A0000000D4948445200000004000000040802000000269309290000001149444154789C63509870018E1888E3000065521801FA941B110000000049454E44AE426082"
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New DesignersProbeAddin(Host)
+    End Function
+
+    Public Sub Say(ByVal Text As String)
+        Seq = Seq + 1
+        ProbeHost.DebugConsole.PrintText "[DesignersProbe] " & Seq & " " & Text
+    End Sub
+
+    ' "n=<count> hex=<bytes>" for a byte array, empty or not.
+    Public Function Describe(ByRef b() As Byte) As String
+        Dim n As Long, i As Long, s As String
+        On Error Resume Next
+        n = UBound(b) - LBound(b) + 1
+        On Error GoTo 0
+        s = "n=" & n & " hex="
+        For i = 0 To n - 1
+            If i >= 24 Then
+                s = s & "..."
+                Exit For
+            End If
+            s = s & Right$("0" & Hex$(b(LBound(b) + i)), 2)
+        Next
+        Return s
+    End Function
+
+    Public Function HexBytes(ByVal h As String) As Byte()
+        Dim b() As Byte, i As Long
+        ReDim b(Len(h) \ 2 - 1)
+        For i = 0 To UBound(b)
+            b(i) = CByte("&H" & Mid$(h, i * 2 + 1, 2))
+        Next
+        Return b
+    End Function
+
+    Public Function SvgIcon(ByVal Colour As String) As String
+        Return "<svg xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 16 16"" width=""16"" height=""16"">" & _
+            "<rect x=""1"" y=""1"" width=""14"" height=""14"" fill=""" & Colour & """/></svg>"
+    End Function
+End Module
+
+Private Class DesignersProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ExplicitButton As Button
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+        Set ProbeHost = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "DesignersProbe AddIn"
+    End Property
+
+    Private Sub Reg(ByVal Name As String, ByVal Extension As String, ByVal IsDefault As Boolean, Optional ByVal IconData As Variant)
+        On Error Resume Next
+        If IsMissing(IconData) Then
+            Host.Designers.Register Name, Extension, New ProbeFactory(Name), IsDefault
+        Else
+            Host.Designers.Register Name, Extension, New ProbeFactory(Name), IsDefault, IconData
+        End If
+        Say "register " & Name & " " & Extension & " err=" & Err.Number
+    End Sub
+
+    Private Sub Host_OnProjectLoaded()
+        Say "loaded " & Host.CompilerVersion
+        Reg "Probe Default", ".prb", True, SvgIcon("#d03030")
+        Reg "Probe Other", ".prb", False, SvgIcon("#30a030")
+        Reg "Probe NoDot", "prb", False
+        Reg "Probe Any", ".*", False
+        Reg "Probe Prolog", ".prx", True, "<?xml version=""1.0"" encoding=""UTF-8""?>" & SvgIcon("#3030d0")
+        Reg "Probe Png", ".prp", True, HexBytes(PNG_HEX)
+        ' TB_DESIGNERS_UNREGISTER, when the scenario sets it, is "resume <ext>" or
+        ' "plain <ext>": Unregister that extension under On Error Resume Next,
+        ' or with no error handler.
+        Dim u() As String
+        u = Split(Environ$("TB_DESIGNERS_UNREGISTER") & " ", " ")
+        If u(0) = "resume" Then
+            Say "unregister " & u(1) & " begin, resume"
+            On Error Resume Next
+            Host.Designers.Unregister u(1)
+            Say "unregister " & u(1) & " end err=" & Err.Number
+            On Error GoTo 0
+        ElseIf u(0) = "plain" Then
+            Say "unregister " & u(1) & " begin, plain"
+            Host.Designers.Unregister u(1)
+            Say "unregister " & u(1) & " end"
+        End If
+        With Host.Toolbars(0)
+            Set ExplicitButton = .AddButton("DesignersProbeExplicit", "Designers probe: Editors.Open")
+        End With
+        Say "ready"
+    End Sub
+
+    Private Sub ExplicitButton_OnClick()
+        Say "explicit open begin"
+        On Error Resume Next
+        Host.ActiveEditors.Open "twinbasic:/DesignersHost/Sources/Other.xyz", Designer:=New ProbeDesigner("Explicit")
+        Say "explicit open end err=" & Err.Number & " " & Err.Description
+    End Sub
+End Class
+
+Private Class ProbeFactory
+    Implements DesignerFactory
+    Private Tag As String
+
+    Public Sub New(ByVal TagName As String)
+        Tag = TagName
+    End Sub
+
+    Private Function DesignerFactory_CreateDesigner() As Designer
+        Say "create " & Tag
+        Return New ProbeDesigner(Tag)
+    End Function
+End Class
+
+Private Class ProbeDesigner
+    Implements Designer
+    Private Tag As String
+    Private Site As DesignerHost
+    Private Original() As Byte
+    Private Current() As Byte
+    Private HasOriginal As Boolean
+    Private Pushing As Boolean
+    Private WithEvents ChangeItem As DesignerToolboxItem
+    Private WithEvents RestoreItem As DesignerToolboxItem
+
+    Public Sub New(ByVal TagName As String)
+        Instances = Instances + 1
+        Tag = TagName & "#" & Instances
+    End Sub
+
+    Private Sub Designer_OnAttached(ByVal DesignerHost As DesignerHost)
+        Dim uri As String, cap As String, tip As String
+        Set Site = DesignerHost
+        On Error Resume Next
+        uri = "(error)"
+        uri = Site.GetURI
+        Say Tag & " attached uri=[" & uri & "] err=" & Err.Number
+        Err.Clear
+        cap = "(error)"
+        cap = Site.Caption
+        tip = "(error)"
+        tip = Site.Tooltip
+        Say Tag & " caption=[" & cap & "] tooltip=[" & tip & "] err=" & Err.Number
+        Err.Clear
+        Site.RootDomElement.ChildDomElements.Add("probeBody" & Instances, "div").Properties.innerText = "Designers probe: " & Tag
+        Say Tag & " body err=" & Err.Number
+        Err.Clear
+        With Site.Toolbox
+            Set ChangeItem = .AddItem("Change", SvgIcon("#d0a030"))
+            Set RestoreItem = .AddItem("Restore")
+        End With
+        Say Tag & " toolbox err=" & Err.Number
+        Say Tag & " attached end"
+    End Sub
+
+    Private Sub Designer_OnFileDataChanged(ByRef byteData() As Byte)
+        Say Tag & " data " & Describe(byteData) & IIf(Pushing, " inside SetFileData", "")
+        Current = byteData
+        If Not HasOriginal Then
+            Original = byteData
+            HasOriginal = True
+        End If
+    End Sub
+
+    Private Sub Designer_OnActivated()
+        Say Tag & " activated"
+    End Sub
+
+    Private Sub Designer_OnDeactivated()
+        Say Tag & " deactivated"
+    End Sub
+
+    Private Sub Designer_OnSaveCompleted()
+        Say Tag & " saved"
+    End Sub
+
+    Private Sub Designer_OnClosing()
+        Say Tag & " closing"
+    End Sub
+
+    Private Sub Designer_OnClosed()
+        Say Tag & " closed"
+    End Sub
+
+    Private Sub Push(ByRef b() As Byte)
+        Say Tag & " set begin " & Describe(b)
+        Pushing = True
+        On Error Resume Next
+        Site.SetFileData b
+        Pushing = False
+        Say Tag & " set end err=" & Err.Number
+        If Err.Number = 0 Then Current = b
+    End Sub
+
+    Private Sub ChangeItem_OnClick()
+        Dim b() As Byte, n As Long
+        Say Tag & " click Change"
+        If Not HasOriginal Then Exit Sub
+        b = Current
+        n = UBound(b) + 1
+        ReDim Preserve b(n)
+        b(n) = 33
+        Push b
+    End Sub
+
+    Private Sub RestoreItem_OnClick()
+        Say Tag & " click Restore"
+        If Not HasOriginal Then Exit Sub
+        Push Original
+    End Sub
+End Class

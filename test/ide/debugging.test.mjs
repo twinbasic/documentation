@@ -448,7 +448,8 @@ scenario("running and debugging", (lane) => {
   test("control: hovering over a variable while paused shows its value", async () => {
     await pausedInLocals();
     await openFile(c, FILE, { line: LOCALS_END, column: 1 });
-    assert.equal(await hover(LOCALS_END, columnOf(LOCALS_END, "Value")), "t.Value:   6");
+    // Since BETA 1044 an integral value is followed by its hexadecimal (hover-values.test.mjs).
+    assert.equal(await hover(LOCALS_END, columnOf(LOCALS_END, "Value")), "t.Value:   6  (&H6)");
     assert.deepEqual(await consoleLine("? t.Value"), ["? t.Value", "6"]);
   });
 
@@ -456,7 +457,7 @@ scenario("running and debugging", (lane) => {
     await pausedInLocals();
     await openFile(c, FILE, { line: BUMP, column: 1 });
     const before = (await consoleLine("? t.Value"))[1];
-    assert.equal(await hover(BUMP, columnOf(BUMP, "Bump")), "t.Bump:   0");
+    assert.equal(await hover(BUMP, columnOf(BUMP, "Bump")), "t.Bump:   0  (&H0)");
     const after = (await consoleLine("? t.Value"))[1];
     assert.equal(Number(after), Number(before) + 1, `t.Value went from ${before} to ${after}`);
   });

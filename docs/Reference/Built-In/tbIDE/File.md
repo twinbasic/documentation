@@ -76,10 +76,10 @@ Syntax: *file*.**Text** **As String**
 
 A text-with-options accessor --- the [**Text**](#text) view, but with optional transforms applied. Currently the only option strips comments and replaces them with whitespace; future versions may add more.
 
-Syntax: *file*.**ReadText**( *Options* ) **As String**
+Syntax: *file*.**ReadText**( [ *Options* ] ) **As String**
 
 *Options*
-: *required* A [**ReadTextFlags**](#readtextflags) value. Pass `0` for raw text equivalent to reading [**Text**](#text); pass [**CommentsToWhitespace**](#ReadTextFlags_CommentsToWhitespace) to mask out comments while preserving line and column positions of every non-comment character.
+: *optional* A [**ReadTextFlags**](#readtextflags) value. Leave it out, or pass `0`, for raw text equivalent to reading [**Text**](#text); pass [**CommentsToWhitespace**](#ReadTextFlags_CommentsToWhitespace) to mask out comments while preserving line and column positions of every non-comment character.
 
 Valid on every text file kind ([**FileTWIN**](FileSystemItem#FileSystemItemType_FileTWIN), [**FileBAS**](FileSystemItem#FileSystemItemType_FileBAS), [**FileCLS**](FileSystemItem#FileSystemItemType_FileCLS), [**FileVIRTUALDOC**](FileSystemItem#FileSystemItemType_FileVIRTUALDOC), [**FileUIDESIGNER**](FileSystemItem#FileSystemItemType_FileUIDESIGNER), [**FileJSON**](FileSystemItem#FileSystemItemType_FileJSON)); calling on a [**FileOTHER**](FileSystemItem#FileSystemItemType_FileOTHER) is not supported.
 

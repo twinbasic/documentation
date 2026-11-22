@@ -1,0 +1,249 @@
+' The datasheet element of BETA 1045, in a tool window. A toolbar button opens
+' the window, adds the element and registers its four events on the window's
+' root, as Sample 27 does on its designer's root. Everything else is asked for
+' by datasheet.test.mjs through the page:
+'
+' - how each handler answers is read, as the event arrives, from the root's
+'   probeInfo and probeRows properties (see OnGetInfo and OnGetRows);
+' - a command is put in the root's probeCmd property and the hidden button
+'   #dscmd clicked; the add-in runs it through the controller from
+'   twinBASIC and prints what came back (see RunCommand).
+'
+' Every line it prints starts "[DatasheetProbe]", and the scenario reads them.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New DatasheetProbeAddin(Host)
+    End Function
+End Module
+
+Private Class DatasheetProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ShowButton As Button
+    Private WithEvents Later As AddinTimer
+    Private Pane As ToolWindow
+    Private Root As HtmlElement
+    Private Sheet As HtmlElement
+    ' Resolvers kept for the timer, each with its reply.
+    Private Pending As New Collection
+    Private PendingReply As New Collection
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+        Set Later = New AddinTimer
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "DatasheetProbe AddIn"
+    End Property
+
+    Private Sub Say(ByVal Text As String)
+        Host.DebugConsole.PrintText "[DatasheetProbe] " & Text
+    End Sub
+
+    Private Sub Host_OnProjectLoaded()
+        Set ShowButton = Host.Toolbars(0).AddButton("DatasheetProbeShow", "Datasheet probe")
+        Say "loaded"
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        Set Pane = Host.ToolWindows.Add("Datasheet probe", "DatasheetProbeData")
+        Pane.Title = "DATASHEET PROBE"
+        Set Root = Pane.RootDomElement
+        With Root.Properties
+            .suggestedWidth = "900px"
+            .suggestedHeight = "560px"
+        End With
+        With Root.ChildDomElements.Add("dscmd", "button")
+            .Properties.innerText = "cmd"
+            .Properties.style.display = "none"
+            .AddEventListener("click", AddressOf CmdClick)
+        End With
+        Set Sheet = Root.ChildDomElements.Add("ds", "datasheet")
+        With Sheet.Properties.style
+            .width = "100%"
+            .height = "420px"
+        End With
+        Root.AddEventListener("onGetInfo", AddressOf OnGetInfo)
+        Root.AddEventListener("onGetRows", AddressOf OnGetRows)
+        Root.AddEventListener("onRightClickColumnHeader", AddressOf OnRightClickColumnHeader)
+        Root.AddEventListener("onChangedColumnWidths", AddressOf OnChangedColumnWidths)
+        Pane.Visible = True
+        Say "shown"
+    End Sub
+
+    ' A property of the root the scenario set, as a string; "" when it is not set.
+    Private Function Mode(ByVal Name As String) As String
+        On Error Resume Next
+        Mode = CStr(Root.Properties.Item(Name).Value)
+    End Function
+
+    ' onGetInfo. probeInfo is the reply, verbatim, unless it is one of:
+    '   (none)          return without calling Resolve
+    '   (long)          Resolve a Long, 5
+    '   (timer)<json>   keep the resolver and Resolve <json> 500 ms later
+    '   (late)<json>    the same, 4000 ms later
+    Private Sub OnGetInfo(ByVal e As HtmlEventProperties)
+        Dim m As String = Mode("probeInfo")
+        Say "info asked, argsIpcCached " & CStr(e.argsIpcCached)
+        If m = "(none)" Then
+            Say "info not resolved"
+            Return
+        ElseIf m = "(long)" Then
+            Dim n As Variant = CLng(5)
+            e.AsyncResultResolver.Resolve n
+        ElseIf Left$(m, 7) = "(timer)" Then
+            Defer e.AsyncResultResolver, Mid$(m, 8), 500
+            Say "info resolve deferred"
+            Return
+        ElseIf Left$(m, 6) = "(late)" Then
+            Defer e.AsyncResultResolver, Mid$(m, 7), 4000
+            Say "info resolve deferred"
+            Return
+        Else
+            Dim s As Variant = m
+            e.AsyncResultResolver.Resolve s
+        End If
+        Say "info resolved"
+    End Sub
+
+    ' onGetRows. probeRows is one of:
+    '   ""              the rows asked for (RowJson)
+    '   (none)          return without calling Resolve
+    '   (short)         one row fewer than asked for
+    '   (timer)         the rows asked for, 500 ms later
+    Private Sub OnGetRows(ByVal e As HtmlEventProperties)
+        Dim first As Long = CLng(e.start)
+        Dim last As Long = CLng(e.end)
+        Dim m As String = Mode("probeRows")
+        Say "rows " & first & "-" & last
+        If m = "(none)" Then Return
+        Dim stop_ As Long = last
+        If m = "(short)" Then stop_ = last - 1
+        Dim json As String = "["
+        Dim r As Long
+        For r = first To stop_ - 1
+            If r > first Then json &= ","
+            json &= RowJson(r)
+        Next
+        json &= "]"
+        If m = "(timer)" Then
+            Defer e.AsyncResultResolver, json, 500
+            Return
+        End If
+        Dim v As Variant = json
+        e.AsyncResultResolver.Resolve v
+    End Sub
+
+    ' Row r of the three columns id (integer), name (string) and flag
+    ' (boolean). Rows 0 to 7 hold the values whose display is measured.
+    Private Function RowJson(ByVal r As Long) As String
+        Select Case r
+            Case 0: Return "[0,null,true]"
+            Case 1: Return "[1,42,false]"
+            Case 2: Return "[2,true,null]"
+            Case 3: Return "[3,1.5,1]"
+            Case 4: Return "[4,""x"",""true""]"
+            Case 5: Return "[5,{""a"":1},false]"
+            Case 6: Return "[1234567.891,""Name 6"",true]"
+            Case 7: Return "[""seven"",0,false]"
+        End Select
+        Return "[" & r & ",""Name " & r & """," & IIf(r Mod 2 = 0, "true", "false") & "]"
+    End Function
+
+    ' Keep a resolver, to be called with Reply when the timer fires.
+    Private Sub Defer(ByVal Resolver As IAsyncResultResolver, ByVal Reply As String, ByVal Ms As Long)
+        Pending.Add Resolver
+        PendingReply.Add Reply
+        Later.Interval = Ms
+        Later.Enabled = True
+    End Sub
+
+    Private Sub Later_Timer()
+        Later.Enabled = False
+        Dim i As Long
+        For i = 1 To Pending.Count
+            Dim resolver As IAsyncResultResolver = Pending(i)
+            Dim v As Variant = PendingReply(i)
+            resolver.Resolve v
+        Next
+        Say "timer resolved " & Pending.Count
+        Set Pending = New Collection
+        Set PendingReply = New Collection
+    End Sub
+
+    Private Sub OnRightClickColumnHeader(ByVal e As HtmlEventProperties)
+        Say "rightclick columnIndex " & CStr(e.columnIndex) & " clientX " & CStr(e.clientX) & _
+            " clientY " & CStr(e.clientY) & " x " & CStr(e.x) & " y " & CStr(e.y)
+        Dim v As Variant = "OK"
+        e.AsyncResultResolver.Resolve v
+    End Sub
+
+    Private Sub OnChangedColumnWidths(ByVal e As HtmlEventProperties)
+        Dim w As String
+        On Error Resume Next
+        w = CStr(e.widths)
+        If Err.Number <> 0 Then w = "(error " & Err.Number & ")"
+        On Error GoTo 0
+        Say "widths changed " & w
+        Dim v As Variant = "OK"
+        e.AsyncResultResolver.Resolve v
+    End Sub
+
+    Private Sub CmdClick(ByVal e As HtmlEventProperties)
+        Dim c As String = Mode("probeCmd")
+        Dim result As String
+        On Error GoTo Failed
+        result = RunCommand(c)
+        Say "cmd " & c & " -> " & result
+        Return
+    Failed:
+        Say "cmd " & c & " -> error " & Err.Number & " " & Err.Description
+    End Sub
+
+    Private Function Shown(ByVal v As Variant) As String
+        If IsObject(v) Then Return TypeName(v)
+        If IsEmpty(v) Then Return "Empty"
+        If IsNull(v) Then Return "Null"
+        Return TypeName(v) & " " & CStr(v)
+    End Function
+
+    ' A command is a name and up to two arguments, separated by "|".
+    Private Function RunCommand(ByVal c As String) As String
+        Dim p() As String = Split(c & "||", "|")
+        Dim v As Variant
+        With Root.Properties
+            Select Case p(0)
+                Case "ready"
+                    .Ready()
+                    Return "done"
+                Case "load": v = .controller.loadData()
+                Case "refresh": v = .controller.refresh()
+                Case "state": Return CStr(.controller.getState()) & " / " & CStr(.controller.getLastError())
+                Case "isready": v = .controller.isReady()
+                Case "sheetstate": v = Sheet.Properties.controller.getState()
+                Case "timeout": v = .controller.setTimeout(CLng(p(1)))
+                Case "zoom": v = .controller.setZoom(CLng(p(1)))
+                Case "zoomtext": v = .controller.setZoom(p(1))
+                Case "nulls": v = .controller.showNulls(CBool(p(1)))
+                Case "lines": v = .controller.showGridLines(CBool(p(1)))
+                Case "alt": v = .controller.showAlternateRowColors(CBool(p(1)))
+                Case "widths": v = .controller.getColumnWidths()
+                Case "setwidths": v = .controller.setColumnWidths(p(1))
+                Case "autofit": v = .controller.autoFitColumnWidths()
+                Case "reset": v = .controller.resetColumnWidths()
+                Case "sorted": v = .controller.setColumnIsSorted(CLng(p(1)), CBool(p(2)))
+                Case "filtered": v = .controller.setColumnIsFiltered(CLng(p(1)), CBool(p(2)))
+                Case "nav": v = .controller.navigateToRecord(CLng(p(1)))
+                Case "selected": v = .controller.getSelectedRows()
+                Case "selectall": v = .controller.selectAllRows()
+                Case "flash": v = .controller.flashMessage(p(1), CLng(p(2)))
+                Case "rootelement": v = .controller.getRootElement()
+                Case "grid": v = .controller.getGrid()
+                Case Else: Return "unknown command"
+            End Select
+        End With
+        Return Shown(v)
+    End Function
+End Class
