@@ -98,7 +98,7 @@
     "ImageDllCharacteristics": "The `IMAGE_DLLCHARACTERISTICS_` flags of the optional header's **DllCharacteristics**, such as `IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE`, `IMAGE_DLLCHARACTERISTICS_NX_COMPAT` and `IMAGE_DLLCHARACTERISTICS_WDM_DRIVER`, with the reserved `IMAGE_LIBRARY_` flags.",
     "ImageFileCharacteristics": "The `IMAGE_FILE_` flags of **IMAGE_FILE_HEADER.Characteristics**, such as `IMAGE_FILE_EXECUTABLE_IMAGE`, `IMAGE_FILE_LARGE_ADDRESS_AWARE` and `IMAGE_FILE_DLL`.",
     "ImageLoadConfigGuardFlags": "The `IMAGE_GUARD_` flags of the load configuration directory's **GuardFlags**: which Control Flow Guard, return flow and related protections the image has, such as `IMAGE_GUARD_CF_INSTRUMENTED`, with the mask and shift of the stride of the guard function table.",
-    "ImageMachineType": "The `IMAGE_FILE_MACHINE_` values of **IMAGE_FILE_HEADER.Machine**: the processor the file is for, such as `IMAGE_FILE_MACHINE_I386`, `IMAGE_FILE_MACHINE_AMD64` and `IMAGE_FILE_MACHINE_ARM64`. See the warning below.",
+    "ImageMachineType": "The `IMAGE_FILE_MACHINE_` values of **IMAGE_FILE_HEADER.Machine**: the processor the file is for, such as `IMAGE_FILE_MACHINE_I386`, `IMAGE_FILE_MACHINE_AMD64` and `IMAGE_FILE_MACHINE_ARM64`. See below the table.",
     "ImageSectionCharacteristics": "The `IMAGE_SCN_` flags of **IMAGE_SECTION_HEADER.Characteristics**: what the section contains, its alignment in an object file (`IMAGE_SCN_ALIGN_`), and how it is mapped, such as `IMAGE_SCN_MEM_EXECUTE` and `IMAGE_SCN_MEM_NOT_PAGED`.",
     "ImageSubsystemType": "The `IMAGE_SUBSYSTEM_` values of the optional header's **Subsystem**: the subsystem an image runs in, such as `IMAGE_SUBSYSTEM_NATIVE` for a driver and `IMAGE_SUBSYSTEM_WINDOWS_GUI`."
   },

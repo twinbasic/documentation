@@ -42,12 +42,12 @@ embedded from the store, and `src/<id>.twin` as its one module, built with `tbbu
 | `stack` | `IoGetNextIrpStackLocation` and `IoSkipCurrentIrpStackLocation`, procedures of the package that call no routine of the kernel |
 | `copied` | the same two procedures copied into the driver's own module under other names |
 | `ordinal` | `ZwCreateUserProcess` through a Declare of the driver's own with `Alias "#2"`, which the 64-bit kernel exports with no name; the driver imports `#2` |
-| `x86exports` | Declares of the package that name, in a 32-bit build, routines the 32-bit `ntoskrnl.exe` does not export: the fast mutexes, `KeGetCurrentIrql`, `KeRaiseIrqlToDpcLevel`, `KfRaiseIrql`, `KeAcquireSpinLock` (`KfAcquireSpinLock`) and `KeReleaseSpinLock`, which the package names in the 32-bit `hal.dll` from 0.3.0.6, `KeLowerIrql`, which names `KfLowerIrql` of `ntoskrnl.exe`, and the `Rtl...BitsEx` routines, which no 32-bit file exports |
+| `x86exports` | Declares of the package that name, in a 32-bit build, routines the 32-bit `ntoskrnl.exe` does not export: the fast mutexes, `KeGetCurrentIrql`, `KeRaiseIrqlToDpcLevel`, `KfRaiseIrql`, `KeAcquireSpinLock` (`KfAcquireSpinLock`) and `KeReleaseSpinLock`, which the package names in the 32-bit `hal.dll` from 0.3.0.6, and `KeLowerIrql` (`KfLowerIrql`), which it names there from 0.3.0.8; in a 64-bit build the `Rtl...BitsEx` routines too, which no 32-bit file exports and which the package declares for a 64-bit build only from 0.3.0.8 |
 
 The twinBASIC compiler compiles a package's code with the package's own settings, not the
 project's. In 0.3.0.5 the package's `Settings` set none of a driver's, so its procedures were
 compiled as user-mode code: `interlocked` (64-bit) and `stack` failed with the published settings,
-and passed with the suggested ones. From 0.3.0.6 the package's `Settings` set the five, and on BETA
-1042 every scenario passes with the published settings but `x86exports` in a 32-bit build: its
-imports are the package's Declares, of which `KeLowerIrql` names the wrong file and the
-`Rtl...BitsEx` name routines the 32-bit kernel lacks, whatever the settings.
+and passed with the suggested ones. From 0.3.0.6 the package's `Settings` set the five. In 0.3.0.6 `x86exports` failed in a 32-bit
+build, since `KeLowerIrql` named the wrong file and the `Rtl...BitsEx` routines the 32-bit kernel
+lacks, whatever the settings; with 0.3.0.8, on BETA 1042, every scenario passes with the published
+settings.

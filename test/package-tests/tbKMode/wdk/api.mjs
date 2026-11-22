@@ -15,16 +15,26 @@ export function snapshot() {
   return cached;
 }
 
-/** The Types and Enums declared inside Module `mod`. */
-export function typesOf(mod) {
-  return snapshot().types.filter((t) => t.in === mod);
+/**
+ * The Modules a module's page holds: Module `mod` and any other Module of its file, `<mod>.twin`
+ * (tbKMode 0.3.0.8 declares ImageMachineType in a Module SuppressedWarnings of modImage.twin, to
+ * turn a warning off).
+ */
+function modulesOf(mod) {
+  const mods = snapshot().types.filter((t) => t.kind === "module" && t.file === `${mod}.twin`);
+  if (!mods.some((t) => t.name === mod)) throw new Error(`the snapshot has no Module ${mod}`);
+  return mods;
 }
 
-/** The members of Module `mod`: its Declares, procedures, Delegates, Consts and variables. */
+/** The Types and Enums declared inside Module `mod`, or another Module of its file. */
+export function typesOf(mod) {
+  const names = new Set(modulesOf(mod).map((t) => t.name));
+  return snapshot().types.filter((t) => names.has(t.in));
+}
+
+/** The members of Module `mod` and the other Modules of its file: their Declares, procedures, Delegates, Consts and variables. */
 export function membersOf(mod) {
-  const m = snapshot().types.find((t) => t.kind === "module" && t.name === mod);
-  if (!m) throw new Error(`the snapshot has no Module ${mod}`);
-  return m.members ?? [];
+  return modulesOf(mod).flatMap((t) => t.members ?? []);
 }
 
 /**

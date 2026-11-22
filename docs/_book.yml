@@ -565,6 +565,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbKMode Package
+        subtitle: Declarations for writing a Windows kernel-mode driver
+        landing_page: /tB/Packages/Contributed/tbKMode/
+        page: /tB/Packages/Contributed/tbKMode/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_RES Package
         subtitle: Resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
         landing_page: /tB/Packages/Contributed/TBMANLIB_RES/
@@ -683,7 +690,7 @@ left_out:
     no_descent: true
 
   # A package moves here from its chapter when it is listed under
-  # Experimental Packages, and gets its chapter back (after VBComDlg's) when
+  # Experimental Packages, and gets its chapter back (in alphabetical order) when
   # it moves back to Contributed Packages. A section's pages share its folder
   # URL, so one entry covers a package; a prefix ending in `/` cannot match
   # another package whose name begins the same (TBMANLIB, TBMANLIB_Aes).
@@ -706,4 +713,3 @@ left_out:
       - /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
       - /tB/Packages/Contributed/TBMANLIB_Xml/
       - /tB/Packages/Contributed/WinReg/
-      - /tB/Packages/Contributed/tbKMode/

@@ -41,9 +41,10 @@ Every member that `ntimage.h` declares has the value of its constant or enumerat
 {{table:enums}}
 <!-- /test -->
 
-<!-- test: ImageFieldTests.MachineTypes_EqualTheMachineField -->
-> [!WARNING] 0.3.0.6
-> The members of **ImageMachineType** above `&H7FFF`, such as **IMAGE_FILE_MACHINE_AMD64** (`&H8664&`) and **IMAGE_FILE_MACHINE_ARM64** (`&HAA64&`), are positive **Long** values, but **IMAGE_FILE_HEADER.Machine** is an **Integer**, which holds them as negative numbers: `hdr.Machine = IMAGE_FILE_MACHINE_AMD64` is **False** for the header of an AMD64 image. A driver compares `hdr.Machine And &HFFFF&` with the constant.
+<!-- test: ImageFieldTests.MachineTypes_EqualTheMachineField, ImageValueTests.ImageMachineType_Values -->
+The members of **ImageMachineType** above `&H7FFF`, such as **IMAGE_FILE_MACHINE_AMD64** and **IMAGE_FILE_MACHINE_ARM64**, hold the bits of the C value as an **Integer** does: **IMAGE_FILE_MACHINE_AMD64** is `&H8664`, -31132, not the **Long** 34404. **IMAGE_FILE_HEADER.Machine** is an **Integer**, so `hdr.Machine = IMAGE_FILE_MACHINE_AMD64` is **True** for the header of an AMD64 image. The enumeration is declared in a module of its own in the package's file `modImage.twin`, **SuppressedWarnings**, which turns off [TB0012](../../../../Features/Compiler-IDE/Compiler-Warnings#tb0012-possible-hex-literal-misuse) for these literals; its members are used without a module name.
+<!-- /test -->
+
 
 ## Constants
 
