@@ -58,6 +58,17 @@ async function sha1(text) {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// A CSS mask's layers, read as background's are (snapshot-svg.mjs maskGroup).
+const MASK_STYLES = [
+  "mask-image",
+  "mask-size",
+  "mask-position",
+  "mask-repeat",
+  "mask-origin",
+  "mask-clip",
+  "mask-mode",
+];
+
 // The computed styles the converter reads.
 export const SNAPSHOT_STYLES = [
   "display",
@@ -113,13 +124,15 @@ export const SNAPSHOT_STYLES = [
   ...["top", "right", "bottom", "left"].map((s) => `padding-${s}`),
   "-webkit-text-fill-color",
   "zoom",
+  ...MASK_STYLES,
+  "image-rendering",
 ];
 
 // The styles a bundle taken before they were read can do without: the converter
 // asks for them only where they matter, and a bundle without them says so as a
-// miss (text-overflow, accent-color, zoom: bundle.mjs drawBundle), so that only the
-// pictures that need one are retaken.
-export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color", "zoom"]);
+// miss (text-overflow, accent-color, zoom, mask-image, image-rendering:
+// bundle.mjs drawBundle), so that only the pictures that need one are retaken.
+export const MISSABLE_STYLES = new Set(["text-overflow", "accent-color", "zoom", ...MASK_STYLES, "image-rendering"]);
 
 // What a scrollbar part's box is drawn from: its styles, and its size along the bar.
 const PART_STYLES = [

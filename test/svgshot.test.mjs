@@ -227,9 +227,11 @@ import {
   framesIn,
   frameView,
   inlineSvgsIn,
+  maskUnknown,
   nativeTextField,
   naturalSize,
   oneLine,
+  renderingUnknown,
   renderSvg,
   scopeIds,
   selectedParts,
@@ -4876,6 +4878,205 @@ describe("a clip of one axis, and of a disc", () => {
     const disc = draw(page("hidden", "hidden", "50px"));
     assert.equal((disc.match(/<clipPath /g) ?? []).length, 2);
     assert.match(disc, /<clipPath id="[^"]*"><path d="M60 10[^"]*A50 50 0 0 1/);
+  });
+});
+
+describe("CSS masks", () => {
+  // An icon as the shipped add-ins draw Undo: a ::before of 20 by 20 at 10,10, its background
+  // the text colour, shown through a mask. `mask` holds the mask-* styles, or null for a bundle
+  // taken before they were read; `filter` a filter on the ::before.
+  const ICON = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'/%3E\")";
+  function page({ mask = {}, filter = null } = {}) {
+    const names = ["display", "visibility", "color", "background-color", "filter"];
+    const maskNames = mask ? Object.keys(mask) : [];
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (ground, own = false) => [
+      ...["block", "visible", "rgb(32, 35, 43)", ground, own && filter ? filter : "none"].map(s),
+      ...maskNames.map((k) => (own ? s(mask[k]) : s(k === "mask-image" ? "none" : "auto"))),
+    ];
+    const nodes = ["#document", "HTML", "BODY", "BUTTON", "::before"];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2, 3],
+            nodeType: [9, 1, 1, 1, 1],
+            nodeName: nodes.map(s),
+            nodeValue: nodes.map(() => -1),
+            attributes: nodes.map(() => []),
+          },
+          layout: {
+            nodeIndex: [1, 2, 3, 4],
+            styles: [
+              style("rgba(0, 0, 0, 0)"),
+              style("rgba(0, 0, 0, 0)"),
+              style("rgb(225, 228, 230)"),
+              style("rgb(32, 35, 43)", true),
+            ],
+            bounds: [
+              [0, 0, 100, 100],
+              [0, 0, 100, 100],
+              [4, 4, 32, 32],
+              [10, 10, 20, 20],
+            ],
+            text: [-1, -1, -1, -1],
+            paintOrders: [0, 1, 2, 3],
+            offsetRects: [[], [], [], []],
+            clientRects: [[], [], [], []],
+            scrollRects: [[], [], [], []],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, [...names, ...maskNames]);
+  }
+  const draw = (doc) =>
+    renderSvg(doc, { clip: { x: 0, y: 0, w: 100, h: 100 }, metrics: () => ({ ascent: 12, height: 15, line: 15 }) }).svg;
+  const icon = {
+    "mask-image": ICON,
+    "mask-size": "contain",
+    "mask-position": "50% 50%",
+    "mask-repeat": "no-repeat",
+  };
+
+  test("draws what the element paints under a <mask> of its border box, by the image's alpha", () => {
+    const svg = draw(page({ mask: icon }));
+    const m =
+      /<mask id="([^"]+)" maskUnits="userSpaceOnUse" x="10" y="10" width="20" height="20" style="mask-type:alpha">(.*?)<\/mask>/.exec(
+        svg,
+      );
+    assert.ok(m, svg);
+    // the image, placed as a background of that size would be
+    assert.match(m[2], /<use href="#[^"]+" transform="translate\(10 10\) scale\(20 20\)"\/>/);
+    // (the button clips it: the page gives no overflow, which the converter reads as a clip)
+    assert.match(
+      svg,
+      new RegExp(
+        `<g mask="url\\(#${m[1]}\\)">(<g clip-path="[^"]+">)?<rect x="10" y="10" width="20" height="20" fill="rgb\\(32, 35, 43\\)"/>`,
+      ),
+    );
+    // the button under it is not masked
+    assert.match(svg, /<rect x="4" y="4" width="32" height="32" fill="rgb\(225, 228, 230\)"\/><g mask=/);
+  });
+
+  test("masks by luminance only when mask-mode says so", () => {
+    assert.match(draw(page({ mask: { ...icon, "mask-mode": "luminance" } })), /style="mask-type:luminance"/);
+    assert.match(draw(page({ mask: { ...icon, "mask-mode": "match-source" } })), /style="mask-type:alpha"/);
+  });
+
+  test("masks what the element's filter made: the mask's group encloses the filter's", () => {
+    const svg = draw(page({ mask: icon, filter: "drop-shadow(rgb(0, 0, 0) 1px 1px 2px)" }));
+    assert.match(svg, /<g mask="url\(#[^"]+\)"><g>/);
+  });
+
+  test("draws a box with no mask as before", () => {
+    assert.doesNotMatch(draw(page()), /<mask|mask=/);
+    assert.doesNotMatch(draw(page({ mask: null })), /<mask|mask=/);
+  });
+
+  test("a bundle taken before mask-image was read cannot say whether a ::before in its own colour is masked", () => {
+    assert.equal(maskUnknown(page({ mask: null })), true);
+    assert.equal(maskUnknown(page({ mask: { "mask-image": "none" } })), false);
+    assert.equal(maskUnknown(page({ mask: icon })), false);
+  });
+});
+
+describe("image-rendering", () => {
+  const PIXEL =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  // An <img> or a <canvas> of 96 by 96 at 10,10; `rendering` its image-rendering, or null
+  // for a bundle taken before it was read.
+  function page(name, rendering) {
+    const names = ["display", "visibility", ...(rendering === null ? [] : ["image-rendering"])];
+    const strings = [];
+    const s = (v) => {
+      const i = strings.indexOf(v);
+      return i >= 0 ? i : strings.push(v) - 1;
+    };
+    const style = (own) => [
+      ...["block", "visible"].map(s),
+      ...(rendering === null ? [] : [s(own ? rendering : "auto")]),
+    ];
+    const nodes = ["#document", "HTML", "BODY", name];
+    const snapshot = {
+      strings,
+      documents: [
+        {
+          documentURL: s("http://localhost:1/"),
+          frameId: s("PAGE"),
+          nodes: {
+            parentIndex: [-1, 0, 1, 2],
+            nodeType: [9, 1, 1, 1],
+            nodeName: nodes.map(s),
+            nodeValue: nodes.map(() => -1),
+            attributes: nodes.map(() => []),
+            currentSourceURL: { index: [3], value: [s(PIXEL)] },
+          },
+          layout: {
+            nodeIndex: [1, 2, 3],
+            styles: [style(false), style(false), style(true)],
+            bounds: [
+              [0, 0, 200, 200],
+              [0, 0, 200, 200],
+              [10, 10, 96, 96],
+            ],
+            text: [-1, -1, -1],
+            paintOrders: [0, 1, 2],
+            offsetRects: [[], [], []],
+            clientRects: [[], [], []],
+            scrollRects: [[], [], []],
+          },
+          textBoxes: { layoutIndex: [], bounds: [], start: [], length: [] },
+        },
+      ],
+    };
+    return decodeSnapshot(snapshot, names);
+  }
+  const draw = (doc) =>
+    renderSvg(doc, {
+      clip: { x: 0, y: 0, w: 200, h: 200 },
+      metrics: () => ({ ascent: 12, height: 15, line: 15 }),
+      canvases: [{ x: 10, y: 10, w: 96, h: 96, href: PIXEL }],
+    }).svg;
+
+  test("gives an image scaled pixelated or crisp its element's rendering, and leaves auto and smooth alone", () => {
+    for (const name of ["IMG", "CANVAS"]) {
+      assert.match(draw(page(name, "pixelated")), /scale\(96 96\)" style="image-rendering:pixelated"\/>/, name);
+      assert.match(draw(page(name, "crisp-edges")), /style="image-rendering:crisp-edges"/, name);
+      assert.doesNotMatch(draw(page(name, "auto")), /image-rendering/, name);
+      assert.doesNotMatch(draw(page(name, "smooth")), /image-rendering/, name);
+    }
+  });
+
+  test("a bundle taken before image-rendering was read cannot say how an image scaled up 2 times or more is drawn", () => {
+    // the canvas's picture and the <img>'s source are one pixel, shown 96 px wide
+    const small = [{ x: 10, y: 10, w: 96, h: 96, href: PIXEL }];
+    assert.equal(renderingUnknown(page("CANVAS", null), small), true);
+    assert.equal(renderingUnknown(page("CANVAS", "auto"), small), false);
+    assert.equal(renderingUnknown(page("IMG", null)), true);
+    assert.equal(renderingUnknown(page("IMG", "pixelated")), false);
+    // a canvas whose picture was not read, or one at the device's scale, looks the same either way
+    assert.equal(renderingUnknown(page("CANVAS", null)), false);
+    const pngOf = (w, h) => {
+      const b = Buffer.alloc(24);
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+      b.writeUInt32BE(13, 8);
+      b.write("IHDR", 12);
+      b.writeUInt32BE(w, 16);
+      b.writeUInt32BE(h, 20);
+      return `data:image/png;base64,${b.toString("base64")}`;
+    };
+    assert.equal(renderingUnknown(page("CANVAS", null), [{ ...small[0], href: pngOf(192, 192) }]), false);
+    assert.equal(renderingUnknown(page("CANVAS", null), [{ ...small[0], href: pngOf(96, 96) }]), false);
+    assert.equal(renderingUnknown(page("CANVAS", null), [{ ...small[0], href: pngOf(48, 48) }]), true);
   });
 });
 

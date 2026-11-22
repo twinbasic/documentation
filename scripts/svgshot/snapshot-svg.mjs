@@ -73,8 +73,12 @@
 // own (scopeIds), since two icons both have an `id="a"`; an <image> in it passes
 // through compactImage; its text is set in the picture's faces. Not drawn: a
 // <foreignObject>, an <image> that cannot be read, a <use> of another file, an
-// animation (its state when the snapshot was taken is drawn), and a CSS mask or
-// clip-path on the <svg> element itself. The annotation layer and the mouse
+// animation (its state when the snapshot was taken is drawn), and a CSS
+// clip-path on the <svg> element itself.
+//
+// A CSS mask (mask-image and its mask-* properties) is an SVG <mask> over
+// everything the element paints, its layers laid out as background layers are
+// (maskDef). Not drawn: mask-composite other than add, and a mask-border. The annotation layer and the mouse
 // pointer are the exceptions: the caller passes their markup as `overlays`,
 // painted last.
 
@@ -317,6 +321,8 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
 const ZOOMED_LENGTHS = [
   "background-size",
   "background-position",
+  "mask-size",
+  "mask-position",
   ...["top", "right", "bottom", "left"].map((s) => `border-${s}-width`),
   ...["top-left", "top-right", "bottom-right", "bottom-left"].map((c) => `border-${c}-radius`),
   "outline-width",
@@ -541,6 +547,64 @@ export function accentUnknown(decoded) {
       l.style.appearance !== "none" &&
       l.style["accent-color"] === undefined,
   );
+}
+
+/**
+ * Whether a document has a box a bundle taken before mask-image was read may draw wrongly:
+ * a ::before or ::after, shown, whose background is its own text colour. That is how a page
+ * draws an icon in the text colour through a mask (the shipped add-ins' Undo and Redo, a
+ * 20 px ::before), and drawn without its mask it is a square of that colour.
+ */
+export function maskUnknown(decoded) {
+  return decoded.layouts.some(
+    (l) =>
+      (l.node.name === "::before" || l.node.name === "::after") &&
+      l.style &&
+      l.style.visibility === "visible" &&
+      l.style["mask-image"] === undefined &&
+      l.style["background-color"] !== undefined &&
+      !transparent(l.style["background-color"]) &&
+      l.style["background-color"] === l.style.color,
+  );
+}
+
+/**
+ * Whether a document shows an image scaled up 2 times or more (in CSS px) by an element whose
+ * image-rendering its styles do not hold: a bundle taken before image-rendering was read cannot
+ * say whether it is scaled smooth or pixelated. ICO Editor shows its 48 px icon 8 times larger,
+ * pixelated, as a background of 100%. The images looked at: a <canvas>'s picture (`canvases`, as
+ * measured: {x, y, w, h, href}), an <img>'s, and a background image whose size is given (a
+ * background at its own size is not scaled). An icon drawn at its size, or a canvas at the
+ * device's scale, as the code editor's are, looks much the same either way, and is not counted.
+ */
+export function renderingUnknown(decoded, canvases = []) {
+  const scaledUp = (url, w, h) => {
+    const size = url ? naturalSize(url) : null;
+    return !!size && !size.ratioOnly && size.w > 0 && (w >= size.w * 2 || h >= size.h * 2);
+  };
+  return decoded.layouts.some((l) => {
+    const b = l.bounds;
+    const st = l.style;
+    if (!st || st.visibility !== "visible" || b.w <= 0 || b.h <= 0) return false;
+    if (st["image-rendering"] !== undefined) return false;
+    if (l.node.name === "CANVAS") {
+      const c = canvases.find(
+        (c) => Math.abs(c.x - b.x) < 0.5 && Math.abs(c.y - b.y) < 0.5 && Math.abs(c.w - b.w) < 0.5,
+      );
+      return scaledUp(c?.href, b.w, b.h);
+    }
+    if (l.node.name === "IMG" && scaledUp(l.node.src, b.w, b.h)) return true;
+    const bg = st["background-image"];
+    if (!bg || bg === "none") return false;
+    const sizes = splitTop(st["background-size"] ?? "auto");
+    return splitTop(bg).some((layer, k) => {
+      const m = /^url\("?(.*?)"?\)$/s.exec(layer);
+      const [sw = "auto", sh = sw] = (sizes[k % sizes.length] ?? "auto").split(/\s+/);
+      if (!m || (sw === "auto" && sh === "auto")) return false;
+      const len = (v, ref) => (v.endsWith("%") ? (px(v) / 100) * ref : v.endsWith("px") ? px(v) : ref);
+      return scaledUp(m[1], len(sw, b.w), len(sh, b.h));
+    });
+  });
 }
 
 /**
@@ -1702,7 +1766,38 @@ export function renderSvg(
     );
   };
 
-  // The effects an element passes to everything it paints: opacity and filter.
+  // A CSS mask as an SVG <mask>: its layers are laid out as background layers are, from the
+  // mask-* properties (origin and clip default to the border box), and drawn into a mask the
+  // size of the border box, outside which a mask shows nothing. An image or a gradient masks
+  // by its alpha (mask-mode match-source or alpha), unless the mode is luminance. The layers
+  // are added up, as mask-composite's default does. Returns the mask's id, or null when no
+  // layer could be drawn.
+  function maskDef(box) {
+    const st = box.style;
+    const b = box.bounds;
+    if (b.w <= 0 || b.h <= 0) return null;
+    if (transformsOf(box.node).length) note("a mask under a transform");
+    const as = {
+      ...st,
+      "background-image": st["mask-image"],
+      "background-size": st["mask-size"] ?? "auto",
+      "background-position": st["mask-position"] ?? "0% 0%",
+      "background-repeat": st["mask-repeat"] ?? "repeat",
+      "background-origin": st["mask-origin"] ?? "border-box",
+      "background-clip": st["mask-clip"] ?? "border-box",
+      "background-blend-mode": "normal",
+    };
+    const layers = paintBackgroundImages({ ...box, style: as }, radii(st, b.w, b.h), borders(st), true);
+    if (!layers.length) return null;
+    const type = splitTop(st["mask-mode"] ?? "match-source").every((m) => m === "luminance") ? "luminance" : "alpha";
+    const body = layers.join("");
+    return def(
+      `m${type}|${num(b.x)}|${num(b.y)}|${num(b.w)}|${num(b.h)}|${body}`,
+      (id) => `<mask id="${id}" maskUnits="userSpaceOnUse" ${rectAttrs(b)} style="mask-type:${type}">${body}</mask>`,
+    );
+  }
+
+  // The effects an element passes to everything it paints: opacity, mask and filter.
   // A filter of colour functions alone carries `bake` ({key, steps, opacity}):
   // the paint loop maps the colours of what it paints instead, where it can
   // (colour-filter.mjs), and opens `open()` where it cannot.
@@ -1713,12 +1808,10 @@ export function renderSvg(
       if (!st || !a.box) continue;
       if (st.opacity !== undefined && px(st.opacity) < 1)
         out.push({ key: `o${a.i}`, open: `<g opacity="${num(px(st.opacity))}">` });
-      if (st.filter && st.filter !== "none") {
-        const steps = filterSteps(st.filter);
-        if (!steps || steps.some((s) => s.fn === "blur")) {
-          note(`filter ${st.filter}`);
-          continue;
-        }
+      const steps = st.filter && st.filter !== "none" ? filterSteps(st.filter) : null;
+      if (st.filter && st.filter !== "none" && (!steps || steps.some((s) => s.fn === "blur")))
+        note(`filter ${st.filter}`);
+      else if (steps) {
         const open = () => `<g filter="url(#${filterDef(steps)})">`;
         // A drop-shadow last, after colour functions alone: its shadow under the group, drawn
         // from a copy of it, and the group itself over the shadow with no filter.
@@ -1736,6 +1829,12 @@ export function renderSvg(
               }
             : { key: `f${a.i}`, open: open() },
         );
+      }
+      // CSS masks what the filter made: the mask's group is outside the filter's (`out` is
+      // reversed, so what is pushed later for an element encloses what was pushed before).
+      if (st["mask-image"] && st["mask-image"] !== "none") {
+        const id = maskDef(a.box);
+        if (id) out.push({ key: `m${a.i}`, open: `<g mask="url(#${id})">` });
       }
     }
     return out.reverse();
@@ -1870,6 +1969,15 @@ export function renderSvg(
       (id) => `<image id="${id}" width="1" height="1" preserveAspectRatio="none" href="${esc(compactImage(url))}"/>`,
     );
 
+  // How an image is scaled: an element's image-rendering other than auto (or smooth, which
+  // Chromium draws as auto) is given to the <use> that draws its image, whose <image> inherits
+  // it. A canvas shown larger than its pixels with pixelated (ICO Editor's 48 px icon at 8x)
+  // otherwise comes out blurred.
+  const rendering = (st) => {
+    const v = st["image-rendering"];
+    return v && v !== "auto" && v !== "smooth" ? ` style="image-rendering:${v}"` : "";
+  };
+
   function paintBox(l) {
     const st = l.style;
     const b = l.bounds;
@@ -1951,14 +2059,16 @@ export function renderSvg(
       );
       if (c) {
         const id = imageDef(c.href);
-        out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
+        out.push(
+          `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"${rendering(st)}/>`,
+        );
         stats.canvases++;
       } else note("canvas without a picture");
     }
     const image = l.node.name === "IMG" ? l.node.src : embeddedImage(l.node);
     if (image) {
       const id = imageDef(image);
-      const use = `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`;
+      const use = `<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"${rendering(st)}/>`;
       // Chromium cuts a replaced element to its rounded corners: a page's round avatars.
       if (r.some(([a, c]) => a > 0 && c > 0)) {
         const d = rrectPath(b, r);
@@ -2260,7 +2370,9 @@ export function renderSvg(
     return `<path d="${d}" ${dashStroke(rrectLength(box, radii), s, true)}${clip}/>`;
   }
 
-  function paintBackgroundImages(l, r, bw) {
+  // `exactClip`: each layer shows in the clip box its style names, even where the borders
+  // cover the background (backgroundClip): a mask's layers, which the borders do not cover.
+  function paintBackgroundImages(l, r, bw, exactClip = false) {
     const st = l.style;
     const b = l.bounds;
     const boxes = backgroundBoxes(st, b, r, bw);
@@ -2290,7 +2402,8 @@ export function renderSvg(
       }
       // Where the image is placed (the origin box) and where it shows (the clip box).
       const area = (boxes[origins[k % origins.length]] ?? boxes["padding-box"]).box;
-      const { box: cb, r: cr } = boxes[backgroundClip(clips[k % clips.length], bw, r)] ?? boxes["border-box"];
+      const clipName = clips[k % clips.length];
+      const { box: cb, r: cr } = boxes[exactClip ? clipName : backgroundClip(clipName, bw, r)] ?? boxes["border-box"];
       if (cb.w <= 0 || cb.h <= 0) return;
       const url = m ? m[1].replace(/\\"/g, '"') : null;
       const nat = url ? naturalSize(url) : null;
@@ -2343,7 +2456,9 @@ export function renderSvg(
         tile = (x, y) => `<use href="#${rid}" transform="translate(${num(x)} ${num(y)})"/>`;
       } else {
         const id = imageDef(url);
-        tile = (x, y) => `<use href="#${id}" transform="translate(${num(x)} ${num(y)}) scale(${num(w)} ${num(h)})"/>`;
+        const how = rendering(st);
+        tile = (x, y) =>
+          `<use href="#${id}" transform="translate(${num(x)} ${num(y)}) scale(${num(w)} ${num(h)})"${how}/>`;
       }
       // The first tile that reaches the box, and how many it takes to cover it.
       const startOf = (v0, size, lo) => v0 - Math.ceil((v0 - lo) / size) * size;

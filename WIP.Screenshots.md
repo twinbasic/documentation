@@ -1512,6 +1512,36 @@ image to the element's box, as for an `<img>` (checked in headless Chromium: a 1
 an `.ico` so (Resource_Preview: the tB icon, an `<embed>` of a `data:image/x-icon` URL). Only a `data:` image is taken; the
 snapshot's `currentSourceURL` is an `<img>`'s alone, so the URL is the `src` attribute.
 
+**A CSS mask is an SVG `<mask>`** (`maskDef` in `snapshot-svg.mjs`, 2026-11-22). The shipped
+add-ins (BETA 1045) draw their toolbar icons, Hex Editor's Undo and Redo and ICO Editor's four, as
+a 20 px `::before` whose background is the text colour, shown through a `mask-image` of an SVG.
+Before `mask-image` was read, each came out a square of that colour, and the picture still passed
+the bar (HexEditor.light 0.14% strongly off: two small squares are few pixels). The mask's layers
+are laid out by `paintBackgroundImages` from the `mask-*` properties, origin and clip the border
+box unless they say otherwise, and kept to the clip box they name even where opaque borders
+cover a background (`exactClip`); the mask is the border box's size, and masks by alpha unless
+`mask-mode` is luminance. Its group encloses the element's filter group, as CSS applies the
+filter first. The `mask-*` styles are in `MISSABLE_STYLES`: a bundle without them draws as
+before, and has the miss `mask-image of a ::before or ::after in its own text colour` where such
+a box shows (`maskUnknown`); on the 601 bundles of 2026-11-22 that was HexEditor and IcoEditor
+alone, in both themes. `bench/mask.html` holds the idiom and the properties, 0.004% off in Edge
+158. Not drawn: `mask-composite` other than add, `mask-border`, and a mask under a transform
+other than a translation (reported).
+
+**An image keeps its element's `image-rendering`** (`rendering` in `snapshot-svg.mjs`,
+2026-11-22): the `<use>` that draws a canvas's picture, an `<img>` or a background tile gets
+`style="image-rendering:..."` unless the value is auto or smooth, and the `<image>` inherits it.
+ICO Editor shows its 48 px icon as a background of 100% of a 384 px box, pixelated; drawn smooth
+it came out a blur, 3% of the picture mildly off and none strongly, so the bar passed it.
+`image-rendering` is in `MISSABLE_STYLES`, with the miss `image-rendering of an image scaled up 2
+times or more` (`renderingUnknown`): a canvas's picture, an `<img>` or a background of a given
+size drawn at least twice its pixels in CSS px. A smaller scale is left out: every icon drawn at
+its size is twice its pixels at device scale 2, and the code editor's canvases are at the
+device's scale, so counting them would ask for a retake of nearly every picture with a code
+editor. On the 601 bundles of 2026-11-22 the miss was IcoEditor's alone, in both themes.
+`bench/image-rendering.html` holds a canvas pixelated, smooth and crisp, an `<img>` and a
+background, the same as Edge 158 to the pixel.
+
 **Frames** (owner: cross-origin frames in general). A frame of the same site (the
 docked help pane: the documentation on another `localhost` port) is in the IDE's process, and
 `DOMSnapshot.captureSnapshot` returns its document beside the page's: the `<iframe>` node's
@@ -1693,7 +1723,7 @@ grip, a number input's spin buttons, an indeterminate checkbox, conic gradients,
 `-webkit-radial-gradient`, `filter: hue-rotate`, an inset shadow's blur, and a frame of another
 process (which is why Help_Window's docs frame and the Webpage pane are shown from a frozen
 copy: Frames, above). In an inline `<svg>`: a `<foreignObject>`, an `<image>`
-the page cannot read, a `<use>` of another file, a CSS `mask` or `clip-path` on the root, text
+the page cannot read, a `<use>` of another file, a CSS `clip-path` on the root, text
 decoration, geometry set by CSS (`d`, `width`, `x`), and animation (the state at the snapshot
 is drawn). A duplicate id in one document resolves inside the svg first, where the browser
 takes the document's first. The WebView2 download page's Version arrow is an `unsteady`

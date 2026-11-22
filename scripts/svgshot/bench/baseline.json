@@ -16,6 +16,11 @@
       "pct96": 0,
       "tile": 0.138
     },
+    "image-rendering": {
+      "pct32": 0,
+      "pct96": 0,
+      "tile": 0
+    },
     "inline-svg": {
       "pct32": 0.004,
       "pct96": 0,
@@ -30,6 +35,11 @@
       "pct32": 0.001,
       "pct96": 0,
       "tile": 0.006
+    },
+    "mask": {
+      "pct32": 0.004,
+      "pct96": 0,
+      "tile": 0.043
     },
     "outline": {
       "pct32": 0.033,

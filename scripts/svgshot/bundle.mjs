@@ -54,7 +54,9 @@ import {
   accentUnknown,
   decodeSnapshot,
   ellipsisLines,
+  maskUnknown,
   oneLine,
+  renderingUnknown,
   renderSvg,
   unzoom,
   useImageTools,
@@ -248,6 +250,12 @@ export function drawBundle(bundle) {
     if (accentUnknown(doc)) misses.add("accent-color of a checked checkbox or radio button");
   // Nor, before zoom was read, the size of what an element its inline style zooms holds.
   for (const doc of measured.keys()) if (doc.zoomUnknown) misses.add("zoom of an element its inline style zooms");
+  // Nor, before mask-image was read, whether a box in its own text colour is an icon's mask.
+  for (const doc of measured.keys())
+    if (maskUnknown(doc)) misses.add("mask-image of a ::before or ::after in its own text colour");
+  // Nor, before image-rendering was read, whether an image scaled up is smooth or pixelated.
+  for (const [doc, m] of measured)
+    if (renderingUnknown(doc, m.page.canvases)) misses.add("image-rendering of an image scaled up 2 times or more");
 
   const mine = measured.get(decoded);
   if (!mine) throw new Error("the bundle has no measurements of the page");

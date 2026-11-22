@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>image-rendering</title>
+<!--
+  A canvas of 12 by 12 pixels shown 8 times larger, as ICO Editor shows its icon:
+  pixelated, smooth (auto) and crisp-edges; and an <img> and a background image of
+  the same pixels, pixelated.
+-->
+<style>
+body { margin: 0; background: #fff; }
+.row { position: absolute; left: 20px; top: 20px; display: flex; gap: 20px; }
+canvas, img, .bg { width: 96px; height: 96px; display: block; }
+.px { image-rendering: pixelated; }
+.crisp { image-rendering: crisp-edges; }
+.bg { image-rendering: pixelated; background-size: 96px 96px; }
+</style>
+<div class="row">
+  <canvas class="px" width="12" height="12"></canvas>
+  <canvas width="12" height="12"></canvas>
+  <canvas class="crisp" width="12" height="12"></canvas>
+  <img class="px" alt="">
+  <div class="bg"></div>
+</div>
+<script>
+  const colours = ["#0969da", "#ffffff", "#f0883e", "#1f883d"];
+  const src = document.createElement("canvas");
+  src.width = src.height = 12;
+  const g = src.getContext("2d");
+  for (let y = 0; y < 12; y++)
+    for (let x = 0; x < 12; x++) {
+      g.fillStyle = colours[(x + 2 * y + ((x * y) % 3)) % 4];
+      g.fillRect(x, y, 1, 1);
+    }
+  for (const c of document.querySelectorAll("canvas")) c.getContext("2d").drawImage(src, 0, 0);
+  const url = src.toDataURL();
+  document.querySelector("img").src = url;
+  document.querySelector(".bg").style.backgroundImage = `url(${url})`;
+</script>
+</html>
