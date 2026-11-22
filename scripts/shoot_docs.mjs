@@ -114,6 +114,9 @@
 //               the tbIDE section's pictures of its toolbar buttons, its tool window floating
 //               and docked by a drag, and its DEBUG CONSOLE lines; tbide-sample10 Sample 10
 //               built and loaded, for its window of styled div elements
+//   addins      the add-ins that ship with the IDE, the install's own DLLs, and the sample with
+//               test/shots/addins and the files the setup writes: the Add-Ins menu, the Hex
+//               Editor, the ICO Designer, Diff Compare and the Data Explorer (on a CSV file)
 //   codelens   test/shots/codelens: a procedure run by its CodeLens bar, the editor above
 //               the DEBUG CONSOLE
 //   memory      test/shots/memory: Sub Main run to its Stop, and the MEMORY 1 pane showing
@@ -260,6 +263,7 @@ import { staleBundle, writeJudged } from "./svgshot/redraw.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
+import { loadedAddins } from "./lib/tb-ide-addins.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import {
   activateWindow,
@@ -2039,6 +2043,7 @@ const SETUPS = {
   },
   tbide: { start: startTbIde, prepare: prepareTbIde },
   "tbide-sample10": { start: startTbIdeSample10, prepare: prepareTbIdeSample10 },
+  addins: { start: startAddins, prepare: prepareAddins },
   codelens: { start: startCodeLens, prepare: prepareSample },
   memory: { start: startMemory, prepare: prepareSample },
   package: { start: startPackage, prepare: prepareSample },
@@ -16059,6 +16064,474 @@ const tbIdeShots = [
   },
 ];
 
+// ---- addins: the add-ins that ship with the IDE, the install's own DLLs (Samples 15 and 24 to
+// 27, never built here) put into the lane's copy of the install, as an install has them in
+// its addins folders, with the sample open and test/shots/addins staged onto it: two modules of
+// prices for Diff Compare (modules, not text files: on BETA 1045 Select for compare on a .txt
+// file shows "Unable to publish comparison: Automation error"). What the pictures need besides
+// is written as the setup starts: a
+// small binary file for the Hex Editor, an icon of three sizes for the ICO Designer (both
+// binary, so not in the fixture), and a .tbdata file whose connection string reads a CSV file
+// through the Jet text driver, which every Windows has for a 32-bit compiler. The CSV file is
+// in a folder of the tool's own, ADDINS_DATA under PACKAGE_ROOT, so that the connection
+// settings show SHOWN_ROOT and never the user's profile.
+//
+// Diff Compare's Select for compare offers the file to every IDE of the same Windows user
+// through a named pipe, the user's own IDE included if one is open with the add-in, until the
+// IDE that offered it closes: the offer names SampleProject and a price list, and changes
+// nothing. The pictures never open Compare With, which lists the other IDEs' offers.
+
+const ADDINS = path.join(REPO_ROOT, "test", "shots", "addins");
+const ADDINS_IMAGE = (name) => `IDE/AddIns/Images/${name}.png`;
+const ADDINS_DATA = path.join(PACKAGE_ROOT, "AddinData");
+const SHIPPED_ADDINS = [
+  "tbGlobalSearchAddIn1.dll",
+  "tbHexEditorAddin.dll",
+  "tbIcoDesignerAddIn.dll",
+  "tbDiffCompareAddin.dll",
+  "tbDataExplorerAddin.dll",
+];
+// The names the Add-Ins menu lists them by, once each has loaded.
+const SHIPPED_NAMES = ["Hex Editor", "ICO Editor", "Diff Compare", "Data Explorer"];
+
+// The products the Data Explorer shows, and schema.ini's types for them: InStock is a Yes/No
+// column, which the grid shows as tick boxes.
+const PRODUCTS = [
+  ["Code", "Name", "Category", "Price", "InStock"],
+  [101, "Widget, small", "Widgets", "4.75", 1],
+  [102, "Widget, large", "Widgets", "7.25", 1],
+  [103, "Bracket", "Fittings", "3.40", 0],
+  [104, "Hinge", "Fittings", "2.80", 1],
+  [105, "Spring", "Springs", "0.95", 1],
+  [106, "Spring, heavy", "Springs", "1.60", 1],
+  [107, "Washer", "Fittings", "0.15", 1],
+  [108, "Bolt, M6", "Fixings", "0.40", 1],
+  [109, "Bolt, M8", "Fixings", "0.55", 0],
+  [110, "Nut, M6", "Fixings", "0.10", 1],
+  [111, "Nut, M8", "Fixings", "0.12", 1],
+  [112, "Gear wheel", "Gears", "12.90", 0],
+];
+const PRODUCTS_SCHEMA =
+  "[Products.csv]\r\nFormat=CSVDelimited\r\nColNameHeader=True\r\nCol1=Code Long\r\n" +
+  "Col2=Name Text Width 40\r\nCol3=Category Text Width 20\r\nCol4=Price Currency\r\nCol5=InStock Bit\r\n";
+const productsCsv = () =>
+  PRODUCTS.map((r) => r.map((v) => (/[,"]/.test(String(v)) ? `"${v}"` : v)).join(",")).join("\r\n") + "\r\n";
+
+// Header.bin: a made-up file header of 176 bytes, a magic, a version, a count and a size, a
+// name in UTF-16, and text, among bytes that are not text.
+function headerBin() {
+  const b = Buffer.alloc(176);
+  Buffer.from("TBDATA01", "ascii").copy(b, 0);
+  b.writeUInt16LE(3, 8);
+  b.writeUInt16LE(12, 10);
+  b.writeUInt32LE(0x00012c00, 12);
+  Buffer.from("Widget, small\0", "utf16le").copy(b, 16);
+  for (let i = 48; i < b.length; i++) b[i] = (i * 37 + 11) & 0xff;
+  Buffer.from("Price list, 2026", "ascii").copy(b, 96);
+  return b;
+}
+
+// Badge.ico: one 32-bit picture, with its mask, at each of 16, 32 and 48 pixels: a blue disc
+// with a white ring and an orange centre, drawn at 4 by 4 samples a pixel.
+function badgeIcon() {
+  const sizes = [16, 32, 48];
+  const colourAt = (u, v) => {
+    const r = Math.hypot(u - 0.5, v - 0.5);
+    if (r > 0.47) return null;
+    if (r < 0.16) return [0xf2, 0x8c, 0x28];
+    if (r > 0.27 && r < 0.35) return [0xff, 0xff, 0xff];
+    const t = v;
+    return [Math.round(0x2a + 0x20 * (1 - t)), Math.round(0x6c + 0x40 * (1 - t)), 0xd8];
+  };
+  const pictures = sizes.map((n) => {
+    const xor = Buffer.alloc(n * n * 4);
+    const stride = Math.ceil(n / 32) * 4;
+    const and = Buffer.alloc(stride * n);
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        let [r, g, bl, a] = [0, 0, 0, 0];
+        for (let sy = 0; sy < 4; sy++) {
+          for (let sx = 0; sx < 4; sx++) {
+            const c = colourAt((x + (sx + 0.5) / 4) / n, (y + (sy + 0.5) / 4) / n);
+            if (!c) continue;
+            r += c[0];
+            g += c[1];
+            bl += c[2];
+            a++;
+          }
+        }
+        // rows bottom up, BGRA, colour not premultiplied
+        const p = ((n - 1 - y) * n + x) * 4;
+        if (a) {
+          xor[p] = Math.round(bl / a);
+          xor[p + 1] = Math.round(g / a);
+          xor[p + 2] = Math.round(r / a);
+        }
+        xor[p + 3] = Math.round((a / 16) * 255);
+        if (!a) and[(n - 1 - y) * stride + (x >> 3)] |= 0x80 >> (x & 7);
+      }
+    }
+    const dib = Buffer.alloc(40);
+    dib.writeUInt32LE(40, 0);
+    dib.writeInt32LE(n, 4);
+    dib.writeInt32LE(n * 2, 8);
+    dib.writeUInt16LE(1, 12);
+    dib.writeUInt16LE(32, 14);
+    dib.writeUInt32LE(xor.length + and.length, 20);
+    return { n, data: Buffer.concat([dib, xor, and]) };
+  });
+  const head = Buffer.alloc(6 + 16 * pictures.length);
+  head.writeUInt16LE(1, 2);
+  head.writeUInt16LE(pictures.length, 4);
+  let offset = head.length;
+  pictures.forEach(({ n, data }, i) => {
+    const e = 6 + 16 * i;
+    head[e] = n;
+    head[e + 1] = n;
+    head.writeUInt16LE(1, e + 4);
+    head.writeUInt16LE(32, e + 6);
+    head.writeUInt32LE(data.length, e + 8);
+    head.writeUInt32LE(offset, e + 12);
+    offset += data.length;
+  });
+  return Buffer.concat([head, ...pictures.map((p) => p.data)]);
+}
+
+async function startAddins(run) {
+  const { lane } = run;
+  run.step = "open";
+  for (const dll of SHIPPED_ADDINS) lane.placeAddin(path.join(path.dirname(ide), "addins", "win32", dll));
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with ${path.relative(REPO_ROOT, ADDINS)}`);
+  const src = stageSample(run);
+  cpSync(ADDINS, src, { recursive: true });
+  const data = path.join(src, "Sources", "Data");
+  mkdirSync(data, { recursive: true });
+  writeFileSync(path.join(data, "Header.bin"), headerBin());
+  writeFileSync(path.join(src, "Resources", "ICON", "Badge.ico"), badgeIcon());
+  mkdirSync(ADDINS_DATA, { recursive: true });
+  writeFileSync(path.join(ADDINS_DATA, "Products.csv"), productsCsv());
+  writeFileSync(path.join(ADDINS_DATA, "schema.ini"), PRODUCTS_SCHEMA);
+  const connection = `Provider=Microsoft.Jet.OLEDB.4.0;Data Source=${ADDINS_DATA};Extended Properties="text;HDR=Yes;FMT=Delimited"`;
+  writeFileSync(
+    path.join(data, "Products.tbdata"),
+    `${JSON.stringify({ connection, source: "SELECT * FROM [Products.csv]", timeoutSeconds: 60 }, null, 2)}\n`,
+  );
+  return lane.open(src);
+}
+
+// Every shipped add-in loaded: Global Search's button, and the others in the Add-Ins menu's list.
+async function prepareAddins(run) {
+  const { c } = run;
+  await globalSearchLoaded(c);
+  const loaded = await waitFor(
+    c,
+    async () => {
+      const names = (await loadedAddins(c)).map((a) => a.name);
+      return SHIPPED_NAMES.every((n) => names.includes(n));
+    },
+    { timeout: 30000, interval: 250 },
+  );
+  if (!loaded) throw new Error(`not every shipped add-in loaded: ${JSON.stringify(await loadedAddins(c))}`);
+  return prepareSample(run);
+}
+
+const ADDIN_FILE = (rest) => SAMPLE_FILE(rest);
+// The designer showing: its container's shadow root, as `root` in `js`.
+const inDesigner = (c, js) =>
+  c.evaluate(`(() => {
+  const host = [...document.querySelectorAll(".testDesignerContainer")].find((e) => e.getBoundingClientRect().width);
+  const root = host && host.shadowRoot;
+  if (!root) return null;
+  return (${js})(root);
+})()`);
+const designerBox = `(e) => { if (!e) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; }`;
+// A rectangle of an element in the designer's shadow root, by selector.
+const designerRect = (c, sel) =>
+  inDesigner(c, `(root) => (${designerBox})(root.querySelector(${JSON.stringify(sel)}))`);
+
+// The designer and the editor's tab strip above it.
+async function designerWithTabs(c) {
+  const d = await c.evaluate(`(() => {
+  const host = [...document.querySelectorAll(".testDesignerContainer")].find((e) => e.getBoundingClientRect().width);
+  const tab = [...document.querySelectorAll(".tabItem")].find((t) => t.getBoundingClientRect().width);
+  if (!host || !tab) return null;
+  const h = host.getBoundingClientRect();
+  const strip = tab.parentElement.getBoundingClientRect();
+  return { x: h.x, y: strip.y, width: h.width, height: h.bottom - strip.y };
+})()`);
+  if (!d) throw new Error("no designer is showing");
+  return d;
+}
+
+// Opens a file of the project as a double-click in the Project Explorer does, and waits for its
+// designer to say it is ready (`ready`, a function of the shadow root).
+async function openInDesigner(c, rest, ready, what) {
+  const r = await c.evaluate(`(() => {
+  const n = fs.tree.resolvePath("twinbasic:" + ${JSON.stringify(ADDIN_FILE(rest))});
+  if (!n) return "missing";
+  openEditors.openFile(n, false, false, false);
+  return "ok";
+})()`);
+  if (r !== "ok") throw new Error(`the project has no file ${rest}`);
+  if (!(await waitFor(c, () => inDesigner(c, ready), { timeout: 30000, interval: 200 }))) {
+    const shown = await inDesigner(c, `(root) => (${DEEP_TEXT})(root).replace(/\\s+/g, " ").slice(0, 400)`);
+    throw new Error(`${rest} opened in no ${what}; the designer shows: ${JSON.stringify(shown)}`);
+  }
+  await quiet(c);
+  await frames(c);
+}
+
+// A real click with Shift held.
+async function shiftClickAt(c, x, y) {
+  await c.send("Input.dispatchKeyEvent", {
+    type: "rawKeyDown",
+    key: "Shift",
+    code: "ShiftLeft",
+    windowsVirtualKeyCode: 16,
+    modifiers: 8,
+  });
+  await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, modifiers: 8 });
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await c.send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1, modifiers: 8 });
+  }
+  await c.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Shift", code: "ShiftLeft", windowsVirtualKeyCode: 16 });
+}
+
+const HEX_READY = `(root) => !!root.querySelector("#hex-byte-0")`;
+const hexByte = (c, i) => designerRect(c, `#hex-byte-${i}`);
+const hexStatus = (c) =>
+  inDesigner(c, `(root) => root.querySelector("#hex-status, .hex-status")?.textContent ?? root.textContent`);
+
+const ICO_READY = `(root) => /Imported ICO/.test(root.textContent)`;
+// The text of a shadow root and of every shadow root inside it.
+const DEEP_TEXT = `(root) => { let t = ""; const walk = (r) => { t += r.textContent + "\\n"; for (const e of r.querySelectorAll("*")) if (e.shadowRoot) walk(e.shadowRoot); }; walk(root); return t; }`;
+// The grid draws its rows on a canvas: the bar at the bottom says they are read, and a frame or
+// two later they are drawn.
+const DATA_READY = `(root) => /of 12 records/.test((${DEEP_TEXT})(root))`;
+
+// The grid's canvases, in the designer and the shadow roots inside it, drawn the same at three
+// readings in a row, 200 ms apart: the grid goes on drawing rows for a while after the bar says
+// they are read, and a capture taken meanwhile never settles.
+async function gridStill(c) {
+  const drawn = () =>
+    inDesigner(
+      c,
+      `(root) => { const out = []; const walk = (r) => { for (const e of r.querySelectorAll("*")) { if (e.tagName === "CANVAS" && e.width) out.push(e.toDataURL()); if (e.shadowRoot) walk(e.shadowRoot); } }; walk(root); return out.join("|"); }`,
+    );
+  let last = await drawn();
+  let same = 0;
+  const still = await waitFor(
+    c,
+    async () => {
+      const now = await drawn();
+      same = now && now === last ? same + 1 : 0;
+      last = now;
+      return same >= 2;
+    },
+    { timeout: 20000, interval: 200 },
+  );
+  if (!still) throw new Error("the Data Explorer's grid kept drawing for 20 s");
+}
+
+// The Project Explorer with Sources and Pricing open, and a price list's right-click menu, the
+// row selected first with a left click.
+async function priceListMenu(c, file) {
+  await peFolders(c, { Resources: false, Sources: true });
+  await peOpen(c, "Pricing", true);
+  await peSelect(c, file);
+  await peRightClick(c, file);
+}
+
+// A real click on the item of the open menu whose text starts with `text`.
+async function chooseMenuItem(c, text) {
+  const it = (await menuItems(c)).find((i) => i.text.startsWith(text));
+  if (!it)
+    throw new Error(`the menu has no item "${text}": ${JSON.stringify((await menuItems(c)).map((i) => i.text))}`);
+  await mouseMove(c, it.x + 20, it.y + it.height / 2);
+  await frames(c);
+  await clickAt(c, it.x + 20, it.y + it.height / 2);
+}
+
+// Prices2025.twin selected for compare, and the menu of Prices2026.twin open. A dialog the add-in
+// shows (it says so when it cannot offer the file) fails the picture.
+async function compareMenu(c) {
+  await priceListMenu(c, "Prices2025.twin");
+  await chooseMenuItem(c, "Select for compare");
+  await sleep(500);
+  const box = (await modals(c)).pop();
+  if (box)
+    throw new Error(
+      `Select for compare showed a dialog: ${await c.evaluate(`${TOP_MODAL}?.innerText.replace(/\\s+/g, " ")`)}`,
+    );
+  await closeMenus(c);
+  await priceListMenu(c, "Prices2026.twin");
+  const has = await waitFor(
+    c,
+    async () => (await menuItems(c)).some((i) => i.text.startsWith("Compare with selected")),
+    {
+      timeout: 5000,
+      interval: 100,
+    },
+  );
+  if (!has)
+    throw new Error(
+      `the menu of Prices2026.twin has no Compare with selected: ${JSON.stringify((await menuItems(c)).map((i) => i.text))}`,
+    );
+}
+
+const addinsReset = async (c) => {
+  await resetUi(c);
+  await closeTabs(c, [], { discard: true });
+};
+
+const shippedAddinShots = [
+  menuShot("AddIns_Menu", "Add-Ins", null, { setup: "addins", out: ADDINS_IMAGE("AddIns_Menu") }),
+  {
+    // Header.bin in the Hex Editor: the version at 08h typed over, 04 for 03, and the name in
+    // UTF-16 selected
+    out: ADDINS_IMAGE("HexEditor"),
+    setup: "addins",
+    async take({ c }) {
+      await addinsReset(c);
+      await openInDesigner(c, "Sources/Data/Header.bin", HEX_READY, "Hex Editor");
+      const b8 = await hexByte(c, 8);
+      if (!b8) throw new Error("the Hex Editor shows no byte 8");
+      await clickAt(c, b8.x + 3, b8.y + b8.height / 2);
+      await typeText(c, "04");
+      if (
+        !(await waitFor(c, () => inDesigner(c, `(root) => root.querySelector("#hex-byte-8")?.textContent === "04"`)))
+      ) {
+        throw new Error("typing 04 over byte 8 did not change it");
+      }
+      const from = await hexByte(c, 16);
+      // a Shift+click selects up to the byte before the one clicked
+      const to = await hexByte(c, 42);
+      await clickAt(c, from.x + 3, from.y + from.height / 2);
+      await shiftClickAt(c, to.x + to.width - 3, to.y + to.height / 2);
+      if (!(await waitFor(c, async () => /Selected 26\b/.test(await hexStatus(c))))) {
+        throw new Error(`the Hex Editor did not select 26 bytes: ${await hexStatus(c)}`);
+      }
+      await parkMouse(c);
+      return capture(c, "HexEditor", snapOut(await designerWithTabs(c)), {});
+    },
+  },
+  {
+    // Badge.ico in the ICO Designer, the Pencil chosen in the TOOLBOX beside it
+    out: ADDINS_IMAGE("IcoEditor"),
+    setup: "addins",
+    async take({ c }) {
+      await addinsReset(c);
+      await openInDesigner(c, "Resources/ICON/Badge.ico", ICO_READY, "ICO Designer");
+      const toolbox = await dockedRect(c, "TOOLBOX");
+      if (!toolbox) throw new Error("the TOOLBOX is not docked");
+      const pencil = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "TOOLBOX");
+  const p = h?.closest(".toolWindowContainer");
+  const e = p && [...p.querySelectorAll("*")].find((e) => e.children.length === 0 && e.textContent.trim() === "Pencil");
+  const r = e && e.getBoundingClientRect();
+  return r && r.width ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+      if (!pencil) throw new Error("the TOOLBOX shows no Pencil");
+      await clickAt(c, pencil.x + pencil.width / 2, pencil.y + pencil.height / 2);
+      if (!(await waitFor(c, () => inDesigner(c, `(root) => /Tool: Pencil/.test(root.textContent)`)))) {
+        throw new Error("a click on the Pencil did not choose it");
+      }
+      await parkMouse(c);
+      return capture(c, "IcoEditor", snapOut(union(toolbox, await designerWithTabs(c))), {});
+    },
+  },
+  {
+    // the right-click menu of Prices2026.twin once Prices2025.twin is selected for compare, as a
+    // cut-out
+    out: ADDINS_IMAGE("DiffCompare_Menu"),
+    setup: "addins",
+    async take({ c }) {
+      await addinsReset(c);
+      try {
+        await compareMenu(c);
+        await parkMouse(c);
+        await frames(c);
+        return await capture(c, "DiffCompare_Menu", snapOut(grow(await rectOf(c, "#contextMenu"), OUTLINE)), {
+          keep: ["#contextMenu"],
+        });
+      } finally {
+        await closeMenus(c);
+      }
+    },
+  },
+  {
+    // the two price lists compared: Prices2025.twin on the left, Prices2026.twin on the right
+    out: ADDINS_IMAGE("DiffCompare"),
+    setup: "addins",
+    async take({ c }) {
+      await addinsReset(c);
+      await compareMenu(c);
+      await chooseMenuItem(c, "Compare with selected");
+      const shown = await waitFor(
+        c,
+        async () => {
+          const tab = (await editorTabs(c)).some(
+            (t) => t.name.includes("Prices2025.twin") && t.name.includes("Prices2026.twin"),
+          );
+          // the side-by-side editor is in the designer's own children, beside its shadow root; it
+          // draws a space as a no-break space, which \s matches
+          const lines = await inDesigner(
+            c,
+            `(root) => [...root.host.querySelectorAll(".modified .view-line")].some((e) => /Spring,\\s+heavy/.test(e.textContent))`,
+          );
+          return tab && lines;
+        },
+        { timeout: 20000, interval: 200 },
+      );
+      if (!shown)
+        throw new Error(
+          `Compare with selected opened no comparison: ${JSON.stringify((await editorTabs(c)).map((t) => t.name))}`,
+        );
+      await sleep(500);
+      await quiet(c);
+      await parkMouse(c);
+      return capture(c, "DiffCompare", snapOut(await designerWithTabs(c)), {});
+    },
+  },
+  {
+    // Products.tbdata: twelve products from a CSV file, read through the Jet text driver
+    out: ADDINS_IMAGE("DataExplorer"),
+    setup: "addins",
+    async take({ c }) {
+      await addinsReset(c);
+      await openInDesigner(c, "Sources/Data/Products.tbdata", DATA_READY, "Data Explorer");
+      await parkMouse(c);
+      await gridStill(c);
+      return capture(c, "DataExplorer", snapOut(await designerWithTabs(c)), {});
+    },
+  },
+  {
+    // the same file's connection settings, opened from the header's button
+    out: ADDINS_IMAGE("DataExplorer_Settings"),
+    setup: "addins",
+    async take({ c }) {
+      await addinsReset(c);
+      await openInDesigner(c, "Sources/Data/Products.tbdata", DATA_READY, "Data Explorer");
+      const b = await designerRect(c, "#DataExplorerSettings");
+      if (!b) throw new Error("the Data Explorer has no settings button");
+      await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+      const shown = await waitFor(
+        c,
+        () =>
+          inDesigner(
+            c,
+            `(root) => { const p = root.querySelector("#DataExplorerSettingsPanel"); const t = root.querySelector("#DESettingsBody textarea, #DESettingsBody input"); return !!p && p.style.display !== "none" && !!t && /Jet/.test(t.value); }`,
+          ),
+        { timeout: 10000, interval: 100 },
+      );
+      if (!shown) throw new Error("the settings button showed no connection settings");
+      await frames(c);
+      await parkMouse(c);
+      return capture(c, "DataExplorer_Settings", snapOut(await designerWithTabs(c)), {});
+    },
+  },
+];
+
 // ---------------------------------------------------------------- the table of shots
 
 // Each shot is a picture: `out` its path under the output folder, `setup` the IDE
@@ -16151,6 +16624,7 @@ const SHOTS = [
   ...vbccrShots,
   ...comDlgShots,
   ...tbIdeShots,
+  ...shippedAddinShots,
   ...codeLensShots,
   memoryShot,
   packageBuildShot,
@@ -16265,6 +16739,7 @@ const JOB_SECONDS = {
   dialogs: 60,
   tbide: 40,
   "tbide-sample10": 30,
+  addins: 60,
   codelens: 35,
   memory: 30,
   package: 25,
@@ -16383,7 +16858,7 @@ if (!tidy) die(2, "could not record the registry, so it could not be put back af
 // The SaveSetting application names of the add-ins a setup loads. What they have saved is
 // the user's (an installed copy of the add-in reads the same key): a run starts from none,
 // and puts it back at the end.
-const ADDIN_SETTINGS = { help: SETTINGS, "global-search": GS_SETTINGS, designer: GS_SETTINGS };
+const ADDIN_SETTINGS = { help: SETTINGS, "global-search": GS_SETTINGS, designer: GS_SETTINGS, addins: GS_SETTINGS };
 const savedApps = [...new Set(wanted.filter((name) => ADDIN_SETTINGS[name]).map((name) => ADDIN_SETTINGS[name]))];
 const settingsBefore = savedApps.length ? snapshotKeys(savedApps.map(settingsKey)) : null;
 if (settingsBefore) deleteSettings(savedApps);
@@ -16396,6 +16871,7 @@ const removePackageRoot = !existsSync(PACKAGE_ROOT)
   : () => {
       if (wanted.includes("package-server")) rmSync(PACKAGES_APPDATA, { recursive: true, force: true });
       if (wanted.includes("import")) rmSync(VBP_ROOT, { recursive: true, force: true });
+      if (wanted.includes("addins")) rmSync(ADDINS_DATA, { recursive: true, force: true });
     };
 
 const running = new Set(); // the jobs with an IDE open: { lane, server }

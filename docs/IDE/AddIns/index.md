@@ -23,6 +23,10 @@ These add-ins are in the install's `addins\win32` and `addins\win64` folders, so
 - [Diff Compare](DiffCompare) -- compares two files side by side, in one IDE or across two
 - [Data Explorer](DataExplorer) -- shows the rows of a database in a grid
 
+Once a project is open, the **Add-Ins** menu lists them:
+
+![The Add-Ins menu listing five add-ins, each with a tick: ICO Editor, Hex Editor, GlobalSearchAddIn AddIn, Diff Compare and Data Explorer.](Images/AddIns_Menu.png){:width="219" height="149"}
+
 The [Help Add-In](Help) is not one of them: it comes from this documentation, and you install it yourself.
 
 ## Writing an add-in

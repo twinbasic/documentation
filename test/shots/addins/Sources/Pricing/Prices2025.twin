@@ -1,0 +1,17 @@
+Module Prices2025
+
+    ' Prices include delivery inside the city.
+    Public Const FreeDeliveryOver As Currency = 100
+
+    Public Function PriceOf(ByVal item As String) As Currency
+        Select Case item
+            Case "Widget, small": Return 4.5
+            Case "Widget, large": Return 7.25
+            Case "Bracket": Return 3.1
+            Case "Hinge": Return 2.8
+            Case "Spring": Return 0.95
+            Case Else: Err.Raise 5, , "No price for " & item
+        End Select
+    End Function
+
+End Module

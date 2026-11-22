@@ -171,7 +171,14 @@ None of them run yet.
 - **`"monacoDiff"` creates its editor with `theme: "vs-dark"`** (`main.js`, the
   `toolWindowElementAddChild` branch). Monaco's theme is global, so opening Diff Compare in a
   light IDE theme may turn the IDE's code editor dark too. **Page affected**: none states a
-  colour yet.
+  colour yet. Seen since (BETA 1045, the `addins` setup of `shoot_docs.mjs`): in the Light
+  theme the comparison draws its code very light grey on a white ground, hardly readable
+  (`DiffCompare.light.png`). Not yet seen whether the code editor turns dark.
+- **Select for compare on a `.txt` file shows "Unable to publish comparison: Automation
+  error"** (Diff Compare, BETA 1045, the `addins` setup in a lane IDE): the same command on a
+  `.twin` file works. Not narrowed: `MenuSelectForCompare_Click` (`DiffCompareAddin.twin` 110)
+  reads `file.Text`, `Host.CurrentProject.Name` and publishes a pipe, and the error is a bare
+  COM one. **Page affected**: DiffCompare.md says the add-in compares "the text of two files".
 - **Sample 24's `HexEditorFactory.New` writes `Set Addin = Addin`** where Sample 25's writes
   `Set Me.Addin = Addin`. The parameter hides the field (a `tbrun` probe on BETA 1045: the
   field stays **Nothing**, `Set Me.` sets it), so the Hex Editor's designers get **Nothing** for

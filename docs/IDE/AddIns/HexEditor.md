@@ -19,6 +19,8 @@ A file whose extension is `.bin` or `.dat` opens in the Hex Editor when you doub
 
 The editor opens in a tab of its own, like a code file. It has a toolbar at the top, the bytes in the middle and a footer at the bottom.
 
+![The Hex Editor tab for Header.bin, marked as changed. The toolbar holds Undo, Redo, Overwrite, 16 B/row, Byte and Tools. Under the column headings 00 to 0F and ASCII are eleven rows of 16 bytes. The byte at 08 has been changed to 04 and is highlighted, and the 26 bytes from offset 10 spell Widget, small in UTF-16, selected in both columns. The footer shows the offset 0000002A and the status line: Selected 26, Size 176 B, 16 B/row, Byte, HEX / OVR, Undo 1 Redo 0, Edited byte at 00000008h.](Images/HexEditor.png){:width="878" height="556"}
+
 ## Reading the bytes
 
 Each row starts with its offset, eight hexadecimal digits, then the bytes in hexadecimal, then the same bytes as text. A byte that is not a printable character shows as a dot in the text column. Bytes you have changed since the file was last saved are highlighted.

@@ -302,7 +302,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   alone), `programs`, `vbflexgrid`, `xcalendar`, `dialogs`, `webview2`, `cef`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `tour`, `code-chapter`, `debugging`, `assert`, `forms-chapter`, `toolbox-icons`, `projects`, `projects-refs`,
-  `projects-start`, the `building`, `starting` and `troubleshooting` setups, `customcontrols`, `code` and `sample9` (all described
+  `projects-start`, the `building`, `starting` and `troubleshooting` setups, `addins`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`, with `closing` to read what only its page can say
   before the IDE ends, `end` to check or give back what it holds after, and `noPage` for a setup with
   no IDE page, whose `start` returns a stand-in for the connection and whose shots are `once`.
@@ -1070,6 +1070,36 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   user's profile, as it loads, so the setup empties the console first.
 - The console picture shows the sample's "orange" line in yellow: PrintText ignores its
   colour (BUGS-TO-REPORT, `printtext-colorrgb-ignored`, a NOTE on DebugConsole.md).
+
+## The shipped add-ins' pictures
+
+- **Setup `addins`**: the five DLLs of the install's `addins\win32` (Samples 15 and 24 to 27,
+  never built here) put into the lane's copy, as an install has them; a lane's copy otherwise
+  has no add-ins, which is why `Menu_Add-Ins` shows *no addins loaded*. The project is
+  `test/shots/sample` with `test/shots/addins` staged onto it (two modules of prices, for Diff
+  Compare), and the setup writes the binary files: `Header.bin`, a made-up header of 176 bytes,
+  and `Badge.ico`, a disc drawn at 16, 32 and 48 pixels (the template's icon is 64 by 63, which
+  the ICO Designer reports as non-square). Its pictures are on the Add Ins page (`AddIns_Menu`,
+  the five add-ins) and the four add-in pages (`HexEditor`, `IcoEditor`, `DiffCompare_Menu`,
+  `DiffCompare`, `DataExplorer`, `DataExplorer_Settings`).
+- **The Data Explorer reads a CSV file through the Jet text driver**
+  (`Provider=Microsoft.Jet.OLEDB.4.0`, `Extended Properties="text;HDR=Yes;FMT=Delimited"`), which
+  every Windows has for the 32-bit compiler the lane runs; a `schema.ini` beside it types the
+  columns, so `InStock` is a Yes/No column with tick boxes. The CSV is in `AddinData` under
+  `PACKAGE_ROOT`, so that the connection string shows `C:\tbshots\AddinData`. The grid draws its
+  rows on a canvas: a shot waits for the bar's *of 12 records*, not for a cell's text.
+- **Diff Compare compares two `.twin` files, not text files**: on BETA 1045 Select for compare
+  on a `.txt` file shows *Unable to publish comparison: Automation error* (a lead in
+  [WIP.BugHunt.md](WIP.BugHunt.md)). The side-by-side editor is in the designer container's own
+  children, not its shadow root, and draws a space as a no-break space. Select for compare
+  offers the file to every IDE of the same Windows user, the user's own included if it is open
+  with the add-in, until the lane's IDE closes; the pictures never open **Compare With**, which
+  lists the other IDEs' offers.
+- **`DiffCompare.light.png` shows the code very light grey on white.** The add-in's diff editor
+  has the theme `vs-dark` whatever the IDE's theme (a lead in WIP.BugHunt.md); the picture
+  shows what the IDE draws.
+- **The Hex Editor's Shift+click selects up to the byte before the one clicked**, so the shot
+  clicks byte 42 to select the 26 bytes from 10h.
 
 ## Package server
 

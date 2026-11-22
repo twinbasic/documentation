@@ -23,6 +23,8 @@ A file whose extension is `.ico` or `.cur` opens in the ICO Designer when you do
 
 An icon file holds one picture for each size. The designer works with seven sizes, each a square: 16, 24, 32, 48, 64, 128 and 256 pixels. When a file opens, the designer shows its largest picture. A picture of another size in the file, such as 20 or 96 pixels, is not shown, and neither is a second picture of a size the designer already has.
 
+![The ICO Designer tab for Badge.ico, with the TOOLBOX beside it listing the drawing tools and Pencil chosen. The designer shows the 48 by 48 picture, a blue disc with a white ring and an orange centre, zoomed to 8 times on a grid of pixels. On the right are the size buttons, 16, 32 and 48 ticked and the others marked with a circle, the previews and the palette. The status line reads 48 × 48, Original: 48×48, Zoom: 8×, Tool: Pencil, Grid: On, Undo: 0 / Redo: 0, Pencil selected.](Images/IcoEditor.png){:width="1009" height="585"}
+
 ## Sizes
 
 A row of buttons above the picture chooses the size you see and edit. A size the file has is marked with a tick. A size it lacks is marked with a circle: the designer shows a preview of it, made by scaling the nearest size the file has, and the preview is not saved. Drawing on a preview adds that size to the icon.

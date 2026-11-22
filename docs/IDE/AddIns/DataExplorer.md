@@ -27,6 +27,8 @@ To make one, choose **Add → Add DATA EXPLORER (.tbdata)** in the **Project Exp
 
 The settings open on their own for a new file, and from the header's **Database connection settings** button at any time.
 
+![The Connection Settings panel over the grid of Products.tbdata. It holds the Choose a template list, the ADO connection string Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\tbshots\AddinData;Extended Properties="text;HDR=Yes;FMT=Delimited", and the Data Source SELECT * FROM [Products.csv], with Cancel and Apply settings at the bottom.](Images/DataExplorer_Settings.png){:width="878" height="556"}
+
 **Choose a template**
 : Puts an example connection string into the box below, for Microsoft Access (Jet or ACE), SQLite through ODBC, SQL Server (the OLE DB driver or ODBC), MySQL, MariaDB, PostgreSQL, or any ODBC data source name. Edit the path, the server and the names in it. The driver or provider it names must be installed on your computer.
 
@@ -47,6 +49,8 @@ The settings open on their own for a new file, and from the header's **Database 
 ## The grid
 
 The grid shows the rows a block at a time, fetching each as you scroll to it, so a large table opens quickly. A row not fetched yet shows grey bars. The bar at the bottom moves to the first, previous, next and last record, or to the record whose number you type, and says how many records there are.
+
+![The Data Explorer tab for Products.tbdata. The header holds the zoom buttons, the settings button, Tools and Refresh. The grid has the columns Code, Name, Category, Price and InStock, and twelve rows of products, from 101 Widget, small to 112 Gear wheel; InStock shows a tick box, ticked for most rows. The first row is marked as the current one. The bar at the bottom shows record 1 of 12 records.](Images/DataExplorer.png){:width="878" height="556"}
 
 A column of **Yes/No** values shows a tick box. A null value is blank unless **Show Nulls** is on.
 

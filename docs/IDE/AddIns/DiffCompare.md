@@ -20,7 +20,11 @@ The add-in adds its commands to the menu you get by right-clicking a file in the
 1. Right-click the first file and choose **Select for compare**.
 2. Right-click the second file and choose **Compare with selected**. This command shows only after a file has been selected for compare.
 
+![The right-click menu of a file in the Project Explorer. Under the IDE's own commands, from Open to Delete Permanently, are the add-in's three: Select for compare, Compare with selected and Compare With, which opens a submenu.](Images/DiffCompare_Menu.png){:width="219" height="362"}
+
 The comparison opens in a tab of its own, named *first* ↔ *second*. The first file is on the left, under **ORIGINAL**, and the second on the right, under **MODIFIED**. Hold the pointer over a name in the header to see the file's full path.
+
+![The tab Prices2025.twin ↔ Prices2026.twin. On the left, under ORIGINAL Prices2025.twin, the lines that differ are marked in red: the module's name, the delivery constant and the prices of two items. On the right, under MODIFIED Prices2026.twin, the same lines are marked in green, with the changed characters brighter, and the line Case "Spring, heavy": Return 1.6 is added, with a hatched gap opposite it on the left.](Images/DiffCompare.png){:width="878" height="556"}
 
 The comparison shows the text of the first file as it is when you choose **Compare with selected**, not when you chose **Select for compare**.
 
