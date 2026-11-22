@@ -13,7 +13,7 @@
 // scratch repositories.
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -45,10 +45,13 @@ import {
   openSession,
   parseSession,
   readEvents,
+  reviewRoots,
   runPaths,
   sessionPaths,
   STAGED_TOOLS,
+  sharedRootOf,
 } from "../scripts/lib/shot-session.mjs";
+import { ledgerFile, readLedger, recordPictures, unrecordedPictures } from "../scripts/lib/shot-ledger.mjs";
 import {
   allPictures,
   appliedVerdict,
@@ -2906,6 +2909,17 @@ if (cleanupArgs.includes("--cleanup")) {
         git("show", "--name-status", "--format=", "HEAD"),
         "M\tdocs/IDE/Images/A.png\nA\tdocs/IDE/Images/A.svg\nM\tdocs/IDE/Page.md\nA\ttest/shots/manifest.json\n",
       );
+      // the ledger holds the commit's pictures at the blobs it committed, the page and the manifest not
+      const ledger = fs.readFileSync(path.join(reviewRoot, "committed.jsonl"), "utf8").trim().split("\n");
+      const last = JSON.parse(ledger.at(-1));
+      assert.deepEqual(
+        [last.message, last.checkout, last.files],
+        [
+          "Screenshots: A",
+          null,
+          ["A.png", "A.svg"].map((f) => [`docs/IDE/Images/${f}`, git("rev-parse", `HEAD:docs/IDE/Images/${f}`).trim()]),
+        ],
+      );
       assert.equal(git("show", "HEAD:docs/IDE/Page.md"), pageText([20, 15], "Old line."));
       assert.equal(fs.readFileSync(pageFile, "utf8"), pageText([20, 15], "Edited line."));
       assert.equal(git("status", "--porcelain"), " M docs/IDE/Page.md\n M other.txt\n");
@@ -3077,5 +3091,171 @@ describe("the event channel's ping (lib/sse.mjs)", () => {
     const pinged = await read(createSseChannel({ ping: 40 }), 150);
     assert.ok((pinged.match(/event: ping\ndata: \{\}\n\n/g) ?? []).length >= 2, JSON.stringify(pinged));
     assert.doesNotMatch(await read(createSseChannel(), 150), /event: ping/);
+  });
+});
+
+describe("the review folder every checkout shares, and the ledger that guards staging", () => {
+  test("a worktree's session is in the main checkout's folder, under checkouts/<name>; the archive and the ledger are the shared folder's", () => {
+    const top = fs.mkdtempSync(path.join(os.tmpdir(), "shot-review-roots-"));
+    try {
+      const main = path.join(top, "main");
+      fs.mkdirSync(path.join(main, ".git", "worktrees", "wt"), { recursive: true });
+      const wt = path.join(top, "wt");
+      fs.mkdirSync(wt);
+      fs.writeFileSync(path.join(wt, ".git"), `gitdir: ${path.join(main, ".git", "worktrees", "wt")}\n`);
+      const shared = path.join(main, ".shot-review");
+      const wtRoot = path.join(shared, "checkouts", "wt");
+      assert.deepEqual(reviewRoots(main), { shared, root: shared });
+      assert.deepEqual(reviewRoots(wt), { shared, root: wtRoot });
+      assert.equal(sharedRootOf(wtRoot), shared);
+      assert.equal(sharedRootOf(shared), shared);
+      assert.equal(sessionPaths(wtRoot).dir, path.join(wtRoot, "session"));
+      assert.equal(sessionPaths(wtRoot).archive, path.join(shared, "archive"));
+      assert.equal(ledgerFile(wtRoot), path.join(shared, "committed.jsonl"));
+      assert.equal(ledgerFile(shared), path.join(shared, "committed.jsonl"));
+      // no git, or a .git file naming a submodule's folder: the checkout's own
+      const plain = path.join(top, "plain");
+      fs.mkdirSync(plain);
+      const own = path.join(plain, ".shot-review");
+      assert.deepEqual(reviewRoots(plain), { shared: own, root: own });
+      const sub = path.join(top, "sub");
+      fs.mkdirSync(sub);
+      fs.writeFileSync(path.join(sub, ".git"), `gitdir: ${path.join(main, ".git", "modules", "sub")}\n`);
+      assert.equal(reviewRoots(sub).root, path.join(sub, ".shot-review"));
+
+      // a worktree's session, committed, is archived in the shared archive, which any checkout lists
+      const base = () => ({ hash: "a".repeat(40), short: "aaaaaaaa", build: null });
+      const session = openSession(wtRoot, base);
+      assert.equal(session.archive({ hash: "b".repeat(40), short: "bbbbbbbb", message: "m" }), "bbbbbbbb");
+      assert.ok(fs.existsSync(path.join(shared, "archive", "bbbbbbbb", "session", "session.json")));
+      assert.deepEqual(
+        listArchived(shared).map((a) => a.id),
+        ["bbbbbbbb"],
+      );
+      assert.deepEqual(
+        listArchived(wtRoot).map((a) => a.id),
+        ["bbbbbbbb"],
+      );
+    } finally {
+      fs.rmSync(top, { recursive: true, force: true });
+    }
+  });
+
+  // The hook end to end, in a scratch repository holding copies of the files it runs: a branch
+  // with a screenshot no commit of the tool recorded does not reach staging; on record, it does,
+  // after a rebase too; a commit made on staging is checked the same way.
+  test("the reference-transaction hook refuses a move of staging that brings in an unrecorded screenshot", async (t) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "shot-ledger-"));
+    t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
+    // git's exit and everything it and the hook said, stdout and stderr
+    const run = (args, env = {}) => {
+      const r = spawnSync("git", args, { cwd: repo, encoding: "utf8", env: { ...process.env, ...env } });
+      return { ok: r.status === 0, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+    };
+    // the steps that only set the scene run without hooks: each run of one costs a shell
+    const git = (...args) => {
+      const r = run(["-c", "core.hooksPath=.no-hooks", ...args]);
+      assert.ok(r.ok, `git ${args.join(" ")}: ${r.out}`);
+      return r.out;
+    };
+    if (!run(["init", "-q", "-b", "staging"]).ok) {
+      t.skip("no git");
+      return;
+    }
+    for (const [k, v] of [
+      ["core.autocrlf", "false"],
+      ["user.name", "t"],
+      ["user.email", "t@t"],
+      ["commit.gpgsign", "false"],
+      ["core.hooksPath", ".githooks"],
+    ])
+      git("config", k, v);
+    for (const f of [
+      ".githooks/reference-transaction",
+      "scripts/shot_ledger.mjs",
+      "scripts/lib/shot-ledger.mjs",
+      "scripts/lib/shot-session.mjs",
+      "lib/cli.mjs",
+      "lib/repo-paths.mjs",
+    ]) {
+      fs.mkdirSync(path.dirname(path.join(repo, f)), { recursive: true });
+      fs.copyFileSync(path.join(REPO_ROOT, f), path.join(repo, f));
+    }
+    fs.mkdirSync(path.join(repo, "test", "shots"), { recursive: true });
+    fs.writeFileSync(
+      path.join(repo, "test", "shots", "manifest.json"),
+      JSON.stringify({ format: 1, pictures: { "IDE/Images/A.png": { build: 1045 } } }),
+    );
+    fs.writeFileSync(path.join(repo, ".gitignore"), ".shot-review/\n");
+    git("add", ".");
+    git("commit", "-q", "-m", "tools");
+    const images = path.join(repo, "docs", "IDE", "Images");
+    fs.mkdirSync(images, { recursive: true });
+    const tip = (ref) => git("rev-parse", ref).trim();
+    const review = path.join(repo, ".shot-review");
+    const A = ["docs/IDE/Images/A.png", "docs/IDE/Images/A.svg"];
+
+    // a branch that takes A, and a picture the manifest does not name
+    git("switch", "-q", "-c", "work");
+    fs.writeFileSync(path.join(images, "A.png"), "png one");
+    fs.writeFileSync(path.join(images, "A.svg"), "<svg/>");
+    fs.writeFileSync(path.join(images, "Other.png"), "not a screenshot");
+    git("add", ".");
+    git("commit", "-q", "-m", "A taken outside the tool");
+    assert.deepEqual(
+      unrecordedPictures({ repo, from: "staging", to: "work", recorded: readLedger(review) }).map((f) => f.path),
+      A,
+    );
+    git("switch", "-q", "staging");
+    const before = tip("staging");
+    let r = run(["merge", "-q", "--ff-only", "work"]);
+    assert.equal(r.ok, false, "the fast-forward went through");
+    assert.match(r.out, /brings in 2 screenshot file\(s\) that no commit of the review tool recorded/);
+    assert.match(r.out, /docs\/IDE\/Images\/A\.png/);
+    assert.doesNotMatch(r.out, /Other\.png/);
+    assert.equal(tip("staging"), before);
+
+    // on record, as the tool records it before committing, it goes through, after a rebase too
+    git("switch", "-q", "work");
+    const recorded = await recordPictures(review, { repo, paths: [...A, "docs/IDE/Page.md"], message: "A" });
+    assert.deepEqual(
+      recorded,
+      A.map((f) => [f, tip(`HEAD:${f}`)]),
+    );
+    git("switch", "-q", "staging");
+    fs.writeFileSync(path.join(repo, "other.txt"), "o\n");
+    git("add", "other.txt");
+    git("commit", "-q", "-m", "staging moves on");
+    git("rebase", "-q", "staging", "work");
+    git("switch", "-q", "staging");
+    r = run(["merge", "-q", "--ff-only", "work"]);
+    assert.ok(r.ok, r.out);
+    assert.equal(tip("staging"), tip("work"));
+
+    // a commit on staging is checked too
+    fs.writeFileSync(path.join(images, "A.png"), "png two");
+    git("add", ".");
+    r = run(["commit", "-q", "-m", "A retaken outside the tool"]);
+    assert.equal(r.ok, false, "the commit went through");
+    assert.match(r.out, /A\.png/);
+    await recordPictures(review, { repo, paths: [A[0]], message: "A again" });
+    r = run(["commit", "-q", "-m", "A retaken"]);
+    assert.ok(r.ok, r.out);
+
+    // a removal needs a line that records it as removed; the owner's way through lets one move pass
+    git("rm", "-q", A[1]);
+    git("commit", "-q", "-m", "A's SVG removed outside the tool");
+    git("branch", "-q", "removed");
+    git("reset", "-q", "--hard", "HEAD~1");
+    assert.deepEqual(unrecordedPictures({ repo, from: "staging", to: "removed", recorded: readLedger(review) }), [
+      { path: A[1], blob: null, commit: tip("removed") },
+    ]);
+    r = run(["merge", "-q", "--ff-only", "removed"], { SHOT_LEDGER_ALLOW: "1" });
+    assert.ok(r.ok, r.out);
+    assert.match(r.out, /A\.svg {2}\(removed\)/);
+    assert.match(r.out, /let through, since SHOT_LEDGER_ALLOW=1 is set/);
+    assert.deepEqual(await recordPictures(review, { repo, paths: [A[1]], message: "A's SVG removed" }), [[A[1], null]]);
+    assert.deepEqual(unrecordedPictures({ repo, from: "HEAD~1", to: "HEAD", recorded: readLedger(review) }), []);
+    assert.equal(fs.readFileSync(ledgerFile(review), "utf8").trim().split("\n").length, 3);
   });
 });

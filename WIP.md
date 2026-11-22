@@ -315,7 +315,7 @@ and what actually collides inside one project.
 - `addin-test.bat` — tests IDE add-ins by operating an IDE; outside every gate and outside CI; run `build.bat` first: [WIP.Harness.md](WIP.Harness.md#rules).
 - `ide-test.bat` --- the same runner for scenarios that operate the IDE itself rather than an add-in: [WIP.Harness.md](WIP.Harness.md#rules).
 - `try-help-addin.bat` --- opens one IDE on the user's desktop with the help add-in built and loaded, to try it by hand: [WIP.Harness.md](WIP.Harness.md#rules).
-- `node scripts/shoot_docs.mjs` --- writes the documentation's IDE screenshots. **A run that would write under `docs/` is a run of the review session** (owner; [WIP.ShotReview.md](WIP.ShotReview.md#one-way-to-take-pictures), rule 1). **The Windows user name must never be in a published picture.** Read [WIP.Screenshots.md](WIP.Screenshots.md#rules) before running or changing it.
+- `node scripts/shoot_docs.mjs` --- writes the documentation's IDE screenshots. **A run that would write under `docs/` is a run of the review session** (owner; [WIP.ShotReview.md](WIP.ShotReview.md#one-way-to-take-pictures), rule 1), and its pictures reach `staging` only as the review tool committed them (`node scripts/shot_ledger.mjs`; `SHOT_LEDGER_ALLOW` and `record` are the owner's). **The Windows user name must never be in a published picture.** Read [WIP.Screenshots.md](WIP.Screenshots.md#rules) before running or changing it.
 - The GitHub pictures of `Documentation/Building.md` are the owner's to take, with the Chrome extension in `scripts/svgshot/` (see the `gh` Don't): [WIP.Screenshots.md](WIP.Screenshots.md#rules).
 - **The build also writes** the help add-in's project file and its archive, a markdown copy of each page with `/llms.txt`, and the whole nav as a file of its own: the rules for each are in WIP.Build.md ([The help add-in's project file](WIP.Build.md#the-help-add-ins-project-file), [The help archive](WIP.Build.md#the-help-archive), [Markdown copies and llms.txt](WIP.Build.md#markdown-copies-and-llmstxt), [The nav](WIP.Build.md#the-nav-a-part-on-each-page-the-whole-in-one-file)).
 - `node scripts/bug_repro.mjs` --- the reproducer projects under `bugs/<slug>/` for the entries of [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): [WIP.BugHunt.md](WIP.BugHunt.md#reproducers).
@@ -372,7 +372,10 @@ ask when starting, and without a no, proceed. `git worktree add -b <name>
 `staging`, fast-forward `staging` in the main checkout (git refuses while a file the branch
 changes has uncommitted changes there), then remove the junction on its own (`cmd /c rmdir
 <worktree>\node_modules`; a recursive delete would follow it into the main checkout's
-`node_modules`), then the worktree and the branch.
+`node_modules`), then the worktree and the branch. A worktree's screenshot review session is
+in the main checkout's `.shot-review/`, so removing the worktree keeps it; **`staging` refuses
+to move to commits whose screenshots the review tool did not commit**
+(`.githooks/reference-transaction`; [WIP.ShotReview.md, The ledger](WIP.ShotReview.md#the-ledger)).
 
 **Lint before every commit:** `node scripts/check_lint.mjs`, a fraction of a second. It
 runs Biome's linter and formatter check over the tooling and the site's scripts, and

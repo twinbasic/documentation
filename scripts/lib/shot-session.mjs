@@ -13,6 +13,14 @@
 //                                  applied (shot-apply.mjs's holdPicture, shot-verdicts.mjs)
 //   archive/<id>/session/          a closed session, as session/ was: a commit closes one, and
 //                                  <id> is the commit's short hash
+//   committed.jsonl                the pictures each commit of the tool committed, and their blobs
+//                                  (shot-ledger.mjs), written before the commit
+//
+// Every checkout of a clone shares one folder, the main checkout's .shot-review (owner,
+// 2026-11-22): the main checkout's session is in it, a worktree's in checkouts/<name>/ under it
+// (its own session, since a session's runs write under that checkout's docs/), and the archive and
+// the ledger are the folder's own, for every checkout. So removing a worktree removes nothing of
+// its session, and what it committed stays on record for the check that guards staging.
 //
 // session.json is {format, created, baseline: {hash, short, build, moved}, runs, place, closed}: `build`
 // the newest build the manifest at the baseline records, or null, and `moved` {at, from} when
@@ -31,14 +39,49 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 
-/** The folder that holds the session and the archived ones. */
-export const REVIEW_ROOT = path.join(REPO_ROOT, ".shot-review");
+/** The folder under the shared one that holds each worktree's own, by the worktree's name. */
+export const CHECKOUTS = "checkouts";
+
+/**
+ * The review folders of the checkout `repo`: {shared, root}, `shared` the folder every checkout of
+ * the clone shares (the main checkout's .shot-review) and `root` the one that holds this
+ * checkout's session: `shared` itself in the main checkout, `shared/checkouts/<name>` in a
+ * worktree, `<name>` the worktree's name in git (its folder under .git/worktrees). Read from the
+ * checkout's .git, a folder in the main checkout and a file naming the worktree's git folder in a
+ * worktree; anything else (no git, a submodule, a separate git folder) keeps the checkout's own.
+ */
+export function reviewRoots(repo = REPO_ROOT) {
+  const own = { shared: path.join(repo, ".shot-review"), root: path.join(repo, ".shot-review") };
+  const dotGit = path.join(repo, ".git");
+  let text;
+  try {
+    if (statSync(dotGit).isDirectory()) return own;
+    text = readFileSync(dotGit, "utf8");
+  } catch {
+    return own;
+  }
+  const m = /^gitdir:\s*(.+?)\s*$/m.exec(text);
+  if (!m) return own;
+  const gitDir = path.resolve(repo, m[1]);
+  const common = path.dirname(path.dirname(gitDir));
+  if (path.basename(path.dirname(gitDir)) !== "worktrees" || path.basename(common).toLowerCase() !== ".git") return own;
+  const shared = path.join(path.dirname(common), ".shot-review");
+  return { shared, root: path.join(shared, CHECKOUTS, path.basename(gitDir)) };
+}
+
+/** The shared folder of the session root `root` (reviewRoots): a worktree's is two folders up. */
+export const sharedRootOf = (root) =>
+  path.basename(path.dirname(root)) === CHECKOUTS ? path.dirname(path.dirname(root)) : root;
+
+/** The folder that holds this checkout's session, and (sharedRootOf) the archived ones. */
+export const REVIEW_ROOT = reviewRoots().root;
 
 export const SESSION_FORMAT = 1;
 
@@ -64,7 +107,7 @@ export function optionOf(run, option) {
   return k >= 0 ? (run.args[k + 1] ?? null) : null;
 }
 
-/** The files of the session under `root` (REVIEW_ROOT). */
+/** The files of the session under `root` (REVIEW_ROOT); the archive is the shared folder's. */
 export const sessionPaths = (root) => {
   const dir = path.join(root, "session");
   return {
@@ -72,7 +115,7 @@ export const sessionPaths = (root) => {
     file: path.join(dir, "session.json"),
     lock: path.join(dir, "lock"),
     runs: path.join(dir, "runs"),
-    archive: path.join(root, "archive"),
+    archive: path.join(sharedRootOf(root), "archive"),
   };
 };
 

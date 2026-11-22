@@ -31,6 +31,7 @@ import { readBundle } from "../svgshot/bundle.mjs";
 import { decodePng, pngSize } from "./png.mjs";
 import { svgOf } from "./shot-apply.mjs";
 import { changeMap, shareOff, strengthPicture } from "./shot-change.mjs";
+import { recordPictures } from "./shot-ledger.mjs";
 import { hashOf } from "./shot-manifest.mjs";
 import {
   allHtml,
@@ -1061,6 +1062,9 @@ export function createReviewServer({
       .filter((f) => f.part === "page")
       .map((f) => ({ path: f.path, text: texts.get(f.path) }));
     const done = (async () => {
+      // On record before git commits, so that the hook guarding staging finds it (shot-ledger.mjs);
+      // a page's text in `contents` is no picture, so what the working tree holds is what is hashed
+      await recordPictures(session.root, { repo: repoRoot, paths, message });
       const made = await commitPaths(repoRoot, { paths, added, message, contents });
       let next;
       try {
