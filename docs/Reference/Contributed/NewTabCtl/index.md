@@ -16,7 +16,7 @@ The **NewTabCtl** contributed package provides the **NewTab** control, a contain
 The control is EduardoVB's tab control for VB6, published on GitHub as an ActiveX control. This package is the same code as a twinBASIC package, so a project needs no OCX to be registered. The package describes itself as "NewTab: tabbed control (by EduardoVB, experimental 64-bit compatible version)". Its tab orientation constants keep the names of those of the VB6 SSTab control (`TABCTL32.OCX`), such as `ssTabOrientationTop`. This section documents version 10.0.289.0, published under the MIT licence.
 
 <!-- test: compile IconCharHex_PropertyPageNotFound, compile HighlightMode_PropertyPageNotFound, compile HighlightModeSelectedTab_PropertyPageNotFound, compile Theme_PropertyPageNotFound -->
-> [!NOTE] 10.0.289.0, BETA 1042
+> [!NOTE] 10.0.289.0, BETA 1045
 > The package does not compile, so a project that references it does not build. Four properties of the **NewTab** control, **IconCharHex**, **HighlightMode**, **HighlightModeSelectedTab** and **Theme**, each name a property page in a `VB_Invoke_Property` attribute: `pagNewTabIcons`, `pagHighlightMode` or `pagNewTabThemes`. The package holds no property page of those names, and twinBASIC reports each attribute with TB5259, *Failed to find named PropertyPage*.
 
 This section has this page only. The members of the **NewTab** control are not documented yet.

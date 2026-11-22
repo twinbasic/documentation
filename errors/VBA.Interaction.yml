@@ -1,5 +1,5 @@
 # The VBA Interaction module: its non-interactive procedures (batch 6a) and its interactive ones (batch 6b). Format: WIP.Errors.md.
-beta: 1042
+beta: 1045
 pages:
   Reference/Default/VBA/Interaction/Choose.md:
     rows:

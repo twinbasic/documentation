@@ -38,7 +38,7 @@ The item's name (the last segment of its [**Path**](#path)). **String**, read-on
 The folder that contains this item. **As** [**Folder**](Folder). Read-only. The **Parent** of the project's folder, [**Project.RootFolder**](Project#rootfolder), is the file system's root, [**FileSystem.RootFolder**](FileSystem#rootfolder), whose **Path** is `twinbasic:/`.
 
 <!-- test: bug rootfolder-parent-error, lane addin:parent -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > Reading **Parent** of the file system's root raises error -2147467259 (`&H80004005`), *Automation error*, rather than returning **Nothing**. The read itself raises it, so neither `Is Nothing` nor **TypeName** can test the value. In an event handler with no error handler, the error ends the handler without a message. Tell the root by its **Path**, `twinbasic:/`, rather than by its **Parent**.
 
 ### Path

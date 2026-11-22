@@ -10,7 +10,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/FontWeight
 The weight of a font face, on the standard 100 -- 900 scale used by OpenType's `wght` axis and by CSS's `font-weight`. Assigned to [**FontStyle.Weight**](../Styles/TextRendering#weight). A [**FontStyle**](../Styles/TextRendering#fontstyle-class) has no font name, so the face is the package's choice.
 
 <!-- test: bug waynes-fontweight-three-steps -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > The text is drawn in Segoe UI, in three weights only: 100 to 500 alike, in its regular face; 600 in Segoe UI Semibold; and 700 to 900 alike, in Segoe UI Bold. So **tbThin**, **tbExtraLight**, **tbLight** and **tbMedium** draw as **tbNormal**, and **tbExtraBold** and **tbHeavy** as **tbBold**, though Windows has Segoe UI Light and Black.
 
 | Constant | Value | Description |

@@ -53,11 +53,11 @@ Host.DebugConsole.PrintText "Warning: something looks off", RGB(255, 128, 0) ' o
 ![The DEBUG CONSOLE with the two lines Operation completed and Warning: something looks off, both drawn in the same yellow.](Images/DebugConsole_PrintText.png){:width="420" height="96"}
 
 <!-- test: bug printtext-colorrgb-ignored -->
-> [!NOTE] BETA 1042
+> [!NOTE] BETA 1045
 > *ColorRGB* has no effect: every line an addin prints is drawn in the yellow of the IDE's own message lines, whatever the value, as the picture shows for the sample's orange line.
 
 <!-- test: bug console-cleared-at-open -->
-> [!WARNING] BETA 1042
+> [!WARNING] BETA 1045
 > Text that an addin prints while the first project of the IDE's session loads can be erased a moment later: the IDE empties the pane a second time as the project's console options are applied. Text printed once the project has loaded stays. See the [Debug Console](../../../tB/IDE/Debugging/Debug-Console) page.
 
 ### SetFocus
