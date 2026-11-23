@@ -75,7 +75,18 @@ The build path above writes the DLL into the IDE's own `addins` folder, and the 
 [LINKER] FAILED to create output file '...\addins\win32\MyAddIn.dll' (error code 32)
 ```
 
-and then names the process that holds the file, the IDE's own compiler, `twinBASIC_win32_noDEP.exe`. Error code 32 is Windows' *file in use*. To change an addin and build it again, build it somewhere else and copy it in while the IDE is closed:
+and then names the process that holds the file, the IDE's own compiler, `twinBASIC_win32_noDEP.exe`. Error code 32 is Windows' *file in use*. The same happens in the per-user `addins` folder under `%APPDATA%`.
+
+The easiest way to build the addin again is to build it into the per-user folder, and to restart the compiler without its addins for the build:
+
+1. Set the addin project's [Build Output Path](../../IDE/Project-Settings#build-output-path) to `${AppData}\twinBASIC\addins\${Architecture}\${ProjectName}.${FileExtension}`, the path samples 24 to 27 use. If an earlier build is in the installation's `addins` folder, delete it there while the IDE is closed.
+2. Hold <kbd>Shift</kbd> while you [restart the compiler](../../IDE/Building/Build-Configuration#restart-the-compiler), with the toolbar button or **Tools → Restart the compiler**. The DEBUG CONSOLE says `[IDE] SHIFT KEY DETECTED: DISABLED LOADING OF ADDINS`, and the new compiler does not load the addin, so nothing holds the DLL. See [Opening projects](../../IDE/Starting/Opening-Projects#what-happens-as-a-project-loads) for what else a load with <kbd>Shift</kbd> held skips.
+3. Build. The new DLL replaces the old one.
+4. Restart the compiler again, without <kbd>Shift</kbd>. It loads the new build.
+
+![The toolbar's build target box, win32, and the Restart the compiler button after it, ringed, with the label + Shift under the button. An arrow leads to the DEBUG CONSOLE, at its second line, [IDE] SHIFT KEY DETECTED: DISABLED LOADING OF ADDINS, under the line restarting from MEMORY and the project's path.](Images/Restart_Without_Addins.png){:width="795" height="158"}
+
+Alternatively, build the addin somewhere else and copy it in while the IDE is closed:
 
 1. Set the addin project's [Build Output Path](../../IDE/Project-Settings#build-output-path) to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`, the path the other project templates use.
 2. Build. The DLL goes into a `Build` folder beside the `.twinproj`, as `MyAddIn_win32.dll`.

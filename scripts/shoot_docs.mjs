@@ -2041,7 +2041,7 @@ const SETUPS = {
     start: (run) => startPrograms(run, WAYNES_SHOTS),
     prepare: (run) => preparePrograms(run, "WaynesShots"),
   },
-  tbide: { start: startTbIde, prepare: prepareTbIde },
+  tbide: { start: startTbIde, prepare: prepareTbIde, end: endBuilding },
   "tbide-sample10": { start: startTbIdeSample10, prepare: prepareTbIdeSample10 },
   addins: { start: startAddins, prepare: prepareAddins },
   codelens: { start: startCodeLens, prepare: prepareSample },
@@ -15785,6 +15785,11 @@ const TBIDE_IMAGE = (name) => `Reference/Built-In/tbIDE/Images/${name}.png`;
 const TBIDE_BUTTON = (n) => `addinButton-MyAddInButton${n}`;
 const TBIDE_WINDOW = "MyAddIn.MyWindowPosition";
 const S10_WINDOW = "WaynesWindowData";
+// What the console prints when the compiler restarts with Shift held, and the floated console
+// that shows it: wide enough for its two lines on one row each, and tall enough for both in
+// either theme, so that fitConsole does not grow it (grown, it came out 19 px taller in dark).
+const SHIFT_LINE = "[IDE] SHIFT KEY DETECTED: DISABLED LOADING OF ADDINS";
+const SHIFT_CONSOLE = { width: 560, height: 110 };
 
 async function startTbIde(run) {
   const { lane, work } = run;
@@ -15797,8 +15802,11 @@ async function startTbIde(run) {
   say(run.name, `building ${path.relative(REPO_ROOT, TBIDE)} into a copy of ${ide}`);
   await lane.addAddin(src);
   run.step = "open";
-  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)}`);
-  return lane.open(stageSample(run));
+  // in a folder under the tool's own, shown as SHOWN_ROOT: a restart of the compiler prints the
+  // project's path (Restart_Without_Addins)
+  const dir = runFolder(run, "TbIde");
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} in ${dir}`);
+  return lane.open(stageSample(run), { folder: dir });
 }
 
 async function startTbIdeSample10(run) {
@@ -16037,6 +16045,102 @@ const tbIdeShots = [
         if (!printed) throw new Error(`Action 2 printed no lines: ${JSON.stringify(await consoleText(c))}`);
         return await consolePicture(c, "DebugConsole_PrintText", 2);
       } finally {
+        await clearConsole(c);
+        await unfloatPanel(c, "DEBUG CONSOLE");
+      }
+    },
+  },
+  {
+    // index.md's Rebuilding an addin the IDE has loaded: the toolbar's restart button, ringed,
+    // "+ Shift" under it, and an arrow to the line the console prints when the compiler restarts
+    // with Shift held. The restart is a real one, Shift held down in the page as a person holds
+    // it (the page follows Shift by keydown and keyup since BETA 1045), and MyAddIn's buttons not
+    // coming back says the add-in did not load. Then a restart without Shift loads it again.
+    out: TBIDE_IMAGE("Restart_Without_Addins"),
+    setup: "tbide",
+    async take({ c }) {
+      await resetUi(c);
+      const shift = { key: "Shift", code: "ShiftLeft", windowsVirtualKeyCode: 16 };
+      let held = false;
+      try {
+        await floatPanel(c, "DEBUG CONSOLE", SHIFT_CONSOLE);
+        await clearConsole(c);
+        const pid = await compilerPid(c);
+        await c.send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...shift, modifiers: 8 });
+        held = true;
+        await click(c, "restartIcon");
+        await compilerBack(c, pid);
+        const shown = await waitFor(c, async () => (await consoleText(c)).includes(SHIFT_LINE), {
+          timeout: 15000,
+          interval: 100,
+        });
+        await c.send("Input.dispatchKeyEvent", { type: "keyUp", ...shift });
+        held = false;
+        if (!shown) throw new Error(`the console has no ${SHIFT_LINE} line: ${JSON.stringify(await consoleText(c))}`);
+        if (await rectOf(c, `#${TBIDE_BUTTON(2)}`)) throw new Error("MyAddIn loaded with Shift held");
+        // what else the restart printed: the picture shows the console's lines since it was emptied
+        const lines = await c.evaluate("debugConsoleContent.dataNodes.map((l) => l.replace(/<[^>]*>/g, ''))");
+        say(c.shot.name, `  the console's lines: ${JSON.stringify(lines)}`);
+        const { reference, prefer, ignore } = c.shot;
+        Object.assign(c.shot, { reference: null, prefer: null, ignore: null });
+        let made;
+        try {
+          await resetUi(c);
+          // the button with the build target's box before it, by which a reader finds it
+          const icon = await rectOf(c, "#restartIcon");
+          const target = await rectOf(c, "#buildConfigSelector");
+          const bar = await toolbarRect(c);
+          if (!icon || !target || !bar) throw new Error("the toolbar has no restart button or no build target box");
+          const left = target.x - 8;
+          // on the right, short of the next button, which a wider clip shows a sliver of
+          const iconClip = snapOut({ x: left, y: bar.y, width: icon.x + icon.width + 3 - left, height: bar.height });
+          const iconPng = await capture(c, "Restart_Without_Addins-button", iconClip, { away: () => parkMouse(c) });
+          const consolePng = await consolePicture(c, "Restart_Without_Addins-console", lines.length);
+          const consoleClip = snapOut(await rectOf(c, panelSel("DEBUG CONSOLE")));
+          const row = await c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(panelSel("DEBUG CONSOLE"))});
+  const e = [...p.querySelectorAll(".listItems .listitem")].find((x) => x.textContent.includes(${JSON.stringify(SHIFT_LINE)}) && x.getBoundingClientRect().height);
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+          if (!row) throw new Error("the console draws no row with the line");
+          made = [
+            { png: iconPng, clip: iconClip, anchors: { restart: icon }, column: 0 },
+            { png: consolePng, clip: consoleClip, anchors: { line: row }, column: 1 },
+          ];
+        } finally {
+          Object.assign(c.shot, { reference, prefer, ignore });
+        }
+        try {
+          const { box } = await composite(
+            c,
+            made,
+            [
+              { type: "ring", on: { ref: "restart" } },
+              { type: "label", text: "+ Shift", on: { ref: "restart" }, side: "below", gap: 10 },
+              {
+                type: "arrow",
+                from: { of: { ref: "restart" }, at: "right", dx: 12 },
+                to: { of: { ref: "line" }, at: "left", dx: -4 },
+              },
+            ],
+            { gap: 72, margin: 24, align: { from: "restart", to: "line", dy: 0 } },
+          );
+          return await capture(c, "Restart_Without_Addins", snapOut(box), { away: () => parkMouse(c) });
+        } finally {
+          await uncomposite(c);
+        }
+      } finally {
+        if (held) await c.send("Input.dispatchKeyEvent", { type: "keyUp", ...shift });
+        // the add-in loaded again by a restart without Shift; the console emptied while it is
+        // floated, since docked its Clear button is not shown
+        if (!(await rectOf(c, `#${TBIDE_BUTTON(2)}`))) {
+          const pid = await compilerPid(c);
+          await click(c, "restartIcon");
+          await compilerBack(c, pid);
+          await addinButtonShown(c, TBIDE_BUTTON(2), "MyAddIn");
+        }
         await clearConsole(c);
         await unfloatPanel(c, "DEBUG CONSOLE");
       }

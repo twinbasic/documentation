@@ -1059,6 +1059,19 @@ line the page quotes. Its pictures are under `docs/IDE/Troubleshooting/Images/`.
   with `LoadResDataInternal`**, as the install's add-in samples do: `LoadResData` is the VB
   package's, which neither an add-in sample nor the Standard DLL template references (TB5079
   without it); the class and the project must not share a name (TB5139).
+- **`Restart_Without_Addins`** (index.md, *Rebuilding an addin the IDE has loaded*; Wayne
+  Phillips' procedure, which the owner tried by hand): a composite of the toolbar from the build
+  target box to the restart button, ringed with "+ Shift" under it, and an arrow to the console's
+  `[IDE] SHIFT KEY DETECTED: DISABLED LOADING OF ADDINS`. The restart is real: Shift is held in
+  the page by `Input.dispatchKeyEvent` (since BETA 1045 the page follows Shift by keydown and
+  keyup, not by the `tbMisc_ShiftKeyState…` commands), the button clicked, and MyAddIn's buttons
+  not coming back confirm the add-in did not load; a restart without Shift loads it again. The
+  restart prints `restarting from MEMORY [<project path>]` above the line, so the setup opens
+  its project in `TbIde` under the tool's folder (`runFolder`, shown as `C:\tbshots\TbIde`,
+  removed by `endBuilding`): in the lane's work folder the path held the Windows user name. The
+  console is floated 110 px tall, which holds both lines in either theme: grown by `fitConsole`
+  it came out 19 px taller in dark than in Light. It is emptied while floated, since docked its
+  Clear button has no size.
 - **Docking is a real drag** (`dockAboveProperties`): the grip at the left of a floating
   panel's title bar starts the IDE's own drag on the press (a `dragstart` it makes itself), and
   the docked panels take HTML drag events, so the mouse is pressed on the grip and moved with
