@@ -2,7 +2,7 @@
   "format": 4,
   "package": "tbFileSysTools",
   "project": "tbFileSysTools",
-  "version": "1.9.0.0",
+  "version": "2.0.0.0",
   "types": [
     {
       "name": "Drive",
@@ -324,6 +324,7 @@
         {"name":"NormalizeTextFile","kind":"function","vis":"public","signature":"Public Function NormalizeTextFile(ByVal filePath As String, Optional ByVal toEncoding As TextEncoding = encUtf8, Optional ByVal toNewLine As NewlineType = nlWindows, Optional ByVal fromEncoding As TextEncoding = encAutoDetect, Optional ByVal toAttributes As FileAttribute = faNoChange) As Boolean","returnType":"Boolean","description":"Rewrites a text file in place in the target encoding and newline style (source auto-detected). toAttributes enforces a target attribute set (settable bits only); NoChange (the default) preserves the file's current attributes, including ReadOnly. Skips the write when content is already in target form. Refuses binary files. Returns True if the file was modified."},
         {"name":"OpenTextFile","kind":"function","vis":"public","signature":"Public Function OpenTextFile(ByVal filePath As String, Optional ByVal ioMode As IOMode = ForReading, Optional ByVal create As Boolean = False, Optional ByVal encoding As TextEncoding = encAutoDetect, Optional ByVal writeModeLineEnding As NewlineType = nlWindows) As TextStream","returnType":"TextStream","description":"Opens a text file and returns a streaming TextStream. For reading, omit encoding (encAutoDetect) to detect it from a head sample. For writing/appending, encoding selects the output encoding (default UTF-8, no BOM). Encodings whose chunk boundaries cannot be managed (UTF-7, unclassifiable code pages) transparently fall back to a buffered path."},
         {"name":"PathExists","kind":"function","vis":"private","signature":"Private Function PathExists(ByVal path As String) As Boolean","returnType":"Boolean"},
+        {"name":"PathParts","kind":"function","vis":"private","signature":"Private Function PathParts(ByVal path As String, ByVal rootLen As Long) As Collection","returnType":"Collection"},
         {"name":"PeekWord","kind":"function","vis":"private","signature":"Private Function PeekWord(ByVal p As LongPtr) As Integer","returnType":"Integer"},
         {"name":"PtrToStringW","kind":"function","vis":"private","signature":"Private Function PtrToStringW(ByVal pStr As LongPtr, ByVal charLen As Long) As String","returnType":"String"},
         {"name":"ReadStream","kind":"sub","vis":"public","signature":"Public Sub ReadStream(ByVal filePath As String, ByRef stream() As Byte, Optional ByVal maxBytesToRead As Long = -1)","description":"Reads the file specified into a byte array."},

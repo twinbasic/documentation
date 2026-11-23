@@ -1,6 +1,21 @@
 {
   "format": 1,
   "pictures": {
+    "Documentation/Images/confirm-merge.light.png": {
+      "png": {
+        "decision": {
+          "keep": "new",
+          "capture": "ca9d47768c6993891413a22b8b8507977cd56bcd"
+        }
+      },
+      "svg": {
+        "decision": {
+          "accept": true,
+          "svg": "d5223fe9e030fc3437f0571c2608d55f3462318d",
+          "png": "ca9d47768c6993891413a22b8b8507977cd56bcd"
+        }
+      }
+    },
     "Features/Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png": {
       "build": 1034
     },
@@ -835,6 +850,12 @@
     },
     "Reference/Built-In/tbIDE/Images/DebugConsole_PrintText.png": {
       "build": 1042
+    },
+    "Reference/Built-In/tbIDE/Images/Restart_Without_Addins.light.png": {
+      "build": 1045
+    },
+    "Reference/Built-In/tbIDE/Images/Restart_Without_Addins.png": {
+      "build": 1045
     },
     "Reference/Built-In/tbIDE/Images/Sample10.light.png": {
       "build": 1042

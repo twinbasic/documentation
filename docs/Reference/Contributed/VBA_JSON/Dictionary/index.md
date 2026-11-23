@@ -10,8 +10,8 @@ has_toc: false
 
 A string-keyed collection that maps **String** keys to **Variant** values, backed by a twinBASIC **Collection**.
 
-<!-- test: DictionaryTests.Item_StoresAndReadsAValue, DictionaryTests.Item_HoldsAnyVariant, DictionaryTests.Item_Set_StoresAnObjectReference, DictionaryTests.ParseJsonResult_IsAPackageDictionary -->
-**Dictionary** is the object type returned by the JSON parser when a JSON object is decoded. Keys are strings, compared as the backing **Collection** compares its keys: without regard to case. Values can be any **Variant**---numbers, strings, **Boolean**, **Null** (for JSON `null`), or nested **Dictionary** and **Collection** objects (a JSON array becomes a **Collection**).
+<!-- test: DictionaryTests.Item_StoresAndReadsAValue, DictionaryTests.Item_HoldsAnyVariant, DictionaryTests.Item_Set_StoresAnObjectReference, DictionaryTests.ParseJsonResult_IsAPackageDictionary, DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys -->
+**Dictionary** is the object type returned by the JSON parser when a JSON object is decoded. Keys are strings, compared with regard to case, as JSON keys are: `d("a")` and `d("A")` are two entries. Values can be any **Variant**---numbers, strings, **Boolean**, **Null** (for JSON `null`), or nested **Dictionary** and **Collection** objects (a JSON array becomes a **Collection**).
 
 ```tb check_build
 Dim d As New Dictionary
@@ -24,12 +24,17 @@ Debug.Print d("age")    ' 30
 ```
 <!-- /test -->
 
-<!-- test: DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys, ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries -->
-> [!WARNING] 2.3.1.1
-> Keys are compared without regard to case, so `d("a")` and `d("A")` are one entry: the second assignment replaces the first value. **ParseJson** therefore merges the keys `id` and `ID` of one JSON object into one entry that holds the last value, and the other value is lost without an error. JSON keys are case-sensitive, and so are the keys of the **Scripting.Dictionary** that VBA-JSON uses on Windows.
-
 * TOC
 {:toc}
+
+## Constructors
+
+### New
+{: .no_toc }
+
+Creates an empty **Dictionary**, and sets its backing **Collection** to compare keys with regard to case.
+
+Syntax: **New Dictionary**
 
 ## Properties
 
@@ -118,15 +123,15 @@ Assigning to an existing key replaces the current value: **Item Let/Set** remove
 <!-- /test -->
 
 <!-- test: DictionaryTests.Item_MissingKey_RaisesError5, DictionaryTests.Item_MissingKey_ScriptingDictionaryAddsTheKey -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > Reading a key that is not there raises run-time error 5 and adds nothing. A **Scripting.Dictionary** returns **Empty** and adds the key.
 
 <!-- test: DictionaryTests.Item_Replace_MovesTheKeyToTheEnd, DictionaryTests.Item_Replace_ScriptingDictionaryKeepsThePosition -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > Assigning to an existing key moves the entry to the end of the **For Each** and **Keys** order. A **Scripting.Dictionary** keeps the entry where it was, so code that writes a value back into a parsed object changes the order of the keys that **ConvertToJson** writes.
 
 <!-- test: compile Count, compile Add, compile Remove, compile Exists, compile Items, compile RemoveAll, compile CompareMode, compile Key -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > **Dictionary** has only the **Item** and **Keys** members. The other members of **Scripting.Dictionary**---**Count**, **Exists**, **Add**, **Remove**, **RemoveAll**, **Items**, **Key** and **CompareMode**---do not exist, and code that uses one does not compile.
 
 <!-- test: DictionaryTests.Keys_CountedByTheBoundsOfTheArray -->

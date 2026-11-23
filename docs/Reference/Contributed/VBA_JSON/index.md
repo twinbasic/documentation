@@ -2,20 +2,21 @@
 title: VBA_JSON Package
 parent: Contributed Packages
 has_toc: false
-indexed_from: 2.3.1.1
+indexed_from: 2.3.2.1
 permalink: /tB/Packages/Contributed/VBA_JSON/
 ---
 
 # VBA_JSON Package
 {: .no_toc }
 
-**Author:** Tim Hall, published on TWINSERV by WaynePhillipsEA. **Version:** 2.3.1.1. **On GitHub:** [VBA-tools/VBA-JSON](https://github.com/VBA-tools/VBA-JSON) and [VBA-tools/VBA-UTC](https://github.com/VBA-tools/VBA-UTC), the VBA libraries the package is made from.
+**Author:** Tim Hall, published on TWINSERV by WaynePhillipsEA. **Version:** 2.3.2.1. **On GitHub:** [VBA-tools/VBA-JSON](https://github.com/VBA-tools/VBA-JSON) and [VBA-tools/VBA-UTC](https://github.com/VBA-tools/VBA-UTC), the VBA libraries the package is made from.
 
 The **VBA_JSON** contributed package provides JSON parsing and serialization for VBA and twinBASIC projects, along with UTC and ISO 8601 date-conversion utilities. The package exposes a **JsonConverter** standard module containing the primary **ParseJson** and **ConvertToJson** functions, and a **Dictionary** class used to represent JSON objects in memory.
 
 ## Classes
 
 - [Dictionary](Dictionary/) -- a string-keyed collection that maps String keys to Variant values, returned by ParseJson for JSON objects
+  - [New](Dictionary/#new) -- creates an empty dictionary whose keys are compared with regard to case
   - [Item](Dictionary/Item) -- returns or sets the value stored under a given key (default member)
   - [Keys](Dictionary/Keys) -- returns all keys stored in the dictionary as a Variant array
 

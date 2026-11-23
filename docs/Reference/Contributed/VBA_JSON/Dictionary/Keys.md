@@ -19,7 +19,7 @@ The property returns a **Variant** containing an array of **String** values, one
 <!-- /test -->
 
 <!-- test: DictionaryTests.Item_Replace_MovesTheKeyToTheEnd, DictionaryTests.Item_Replace_ScriptingDictionaryKeepsThePosition -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > Assigning to an existing key moves the entry to the end of the order. A **Scripting.Dictionary** keeps the entry where it was.
 
 ### Example

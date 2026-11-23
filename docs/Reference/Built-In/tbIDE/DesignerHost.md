@@ -87,7 +87,7 @@ Syntax: *host*.**SetFileData** *bytes*
 *bytes*
 : *required* The whole file. **Byte()**, passed **ByRef**. For an empty file, Sample 24 passes an array with no elements, made with `SafeArrayCreateVector`, rather than an erased one, which its comments say the IDE does not take.
 
-The IDE keeps the bytes as the tab's contents, and the tab is marked as changed. The file on disk changes only when the project or the tab is saved; then the designer's [**OnSaveCompleted**](Designer#onsavecompleted) runs. **SetFileData** calls no [**OnFileDataChanged**](Designer#onfiledatachanged).
+The IDE keeps the bytes as the tab's contents, and the tab is marked as changed. The file on disk changes only when the project is saved, which <kbd>Ctrl</kbd>+<kbd>S</kbd> in the tab also does. Saving the tab, or closing it with **Save**, runs the designer's [**OnSaveCompleted**](Designer#onsavecompleted); closing it with **Save** puts the bytes into the project the IDE holds, not on the disk. **SetFileData** calls no [**OnFileDataChanged**](Designer#onfiledatachanged).
 
 Call it at each change, as Samples 24, 25 and 27 do, so that a save writes what the user sees and a restart of the compiler gives the designer its unsaved bytes back.
 

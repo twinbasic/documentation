@@ -2,7 +2,8 @@
   "mode": "lane",
   "lane": "addin:menus",
   "tests": [
-    "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it"
+    "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it",
+    "after a compiler restart the dead ProbeFirst item stays beside the new one, which does not open either"
   ],
-  "steps": "1. An add-in whose `OnProjectLoaded` calls `Set m = Host.Menus.AddCustom(\"ProbeFirst\", True)` and `m.AddEntry \"One\"` before any other menu call.\n2. Load it and open a project. **ProbeFirst** is on the menu bar after **Help**.\n3. Click **ProbeFirst**. Nothing opens.\n4. `m.Caption = \"ProbeFirst2\"` leaves the bar item's text as it was; `m.Caption` reads `ProbeFirst2`.\n5. Restart the compiler. The bar now shows **ProbeFirst** twice."
+  "steps": "1. An add-in whose `OnProjectLoaded` calls `Set m = Host.Menus.AddCustom(\"ProbeFirst\", True)` and `m.AddEntry \"One\"` before any other menu call.\n2. Load it and open a project. **ProbeFirst** is on the menu bar after **Help**.\n3. Click **ProbeFirst**. Nothing opens.\n4. `m.Caption = \"ProbeFirst2\"` leaves the bar item's text as it was; `m.Caption` reads `ProbeFirst2`.\n5. Restart the compiler. The bar now shows **ProbeFirst** twice, and neither opens."
 }

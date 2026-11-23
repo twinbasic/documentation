@@ -2,7 +2,7 @@
   "mode": "lane",
   "lane": "addin:datasheet",
   "tests": [
-    "keys: Up and Down move the current record; PageDown scrolls without moving it"
+    "keys: Home and End throw; after Up or Down, Right, Left, Tab and Shift+Down throw and move nothing"
   ],
-  "steps": "1. A datasheet with a few columns and rows. Click a data cell.\n2. Press Right. Nothing moves; the page reports an uncaught TypeError.\n3. Press Home. Nothing moves; the page reports `page left not yet implemented`.\nControl: Down moves the current record by one."
+  "steps": "1. A datasheet with a few columns and rows. Click a data cell.\n2. Press Home. Nothing moves; the page reports `page left not yet implemented`. End, Ctrl+Home and Ctrl+End do the same.\n3. Click a data cell, then press Down: the current record moves down one.\n4. Press Right. Nothing moves; the page reports an uncaught `TypeError: Cannot read properties of null (reading 'x')`. Left, Tab and Shift+Down do the same, until the next click.\nControl: Right pressed straight after a click moves the current cell one column right."
 }

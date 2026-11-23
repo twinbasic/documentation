@@ -2,7 +2,7 @@
   "mode": "lane",
   "lane": "addin:menus",
   "tests": [
-    "--themeAddin*: a tool window keeps the colours of the theme it was made in; High Contrast Dark has Dark's"
+    "--themeAddin*: a tool window keeps the values of the theme it was made in"
   ],
   "steps": "1. Under the Dark theme, an add-in makes a tool window whose CSS is `body { background: var(--themeAddinBackColor) }`. The background is `#2b2b2b`.\n2. Choose **Window → Theme → Light**. The tool window's background stays `#2b2b2b`; the IDE's own panels turn light.\n3. Control: a tool window made now has Light's `#FFFFFF`."
 }

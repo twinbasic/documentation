@@ -41,23 +41,23 @@ The following table summarises how each VBA type maps to JSON:
 <!-- /test -->
 
 <!-- test: ConvertToJsonTests.Dictionary_KeyWithAQuote_IsEscaped, ConvertToJsonTests.Dictionary_KeyWithABackslash_IsEscaped, ConvertToJsonTests.Dictionary_KeyWithALineFeed_IsEscaped -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > The keys of a **Dictionary** are written without escapes. A key that holds a quote, a backslash or a control character gives text that is not valid JSON (the key `a"b` is written as `"a"b"`), and a program that reads it fails or reads a different key.
 
 <!-- test: ConvertToJsonTests.String_ThatIsNotANumber_IsQuoted -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > The rule for a large-number **String** looks only at the characters, so a string of 16 to 100 digits, periods, `E` and `e` is written without quotes even when it is not a JSON number. `"0000123456789012"` (leading zeros), 16 letters `E` and 16 periods all give text that is not valid JSON.
 
 <!-- test: ConvertToJsonTests.Array_LowerBoundBelowZero_IsWritten, ConvertToJsonTests.Array_TwoDimensions_SecondLowerBoundBelowZero_IsWritten -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > An array whose lower bound is below zero is not written correctly, and no error is raised. An array from -1 to 1 gives `[]`, and an array of two dimensions whose second dimension starts below zero gives `[null,null]`.
 
 <!-- test: DatesTests.ConvertToJson_DateBefore1601_Raises10014, DatesTests.ConvertToIso_DateBefore30December1899_AppliesTheZoneRules, DatesTests.ConvertToIso_DateBefore1601_Raises10014 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > A **Date** before 30 December 1899 is written as a wrong time, and one before 1 January 1601 as a meaningless date, with no error. See [**ConvertToIso**](ConvertToIso).
 
 <!-- test: ConvertToJsonTests.Scalars_Double_IsWrittenWith15SignificantDigits -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > A **Double** is written with at most 15 significant digits, as **CStr** gives it: 1 / 3 gives `0.333333333333333` and 0.1 + 0.2 gives `0.3`. Reading the text back gives a **Double** that can differ from the original in the last digits.
 
 <!-- test: ConvertToJsonTests.Whitespace_Omitted_IsCompact, ConvertToJsonTests.Whitespace_Integer_IndentsEachLevelByThatManySpaces, ConvertToJsonTests.Whitespace_Integer_NestedCollectionAndNull, ConvertToJsonTests.Whitespace_String_RepeatsItsFirstCharacterOncePerLevel, ConvertToJsonTests.Whitespace_Arrays_AreIndentedLikeCollections -->

@@ -14136,7 +14136,7 @@ Steps to reproduce the behavior:
 2. Load it and open a project. **ProbeFirst** is on the menu bar after **Help**.
 3. Click **ProbeFirst**. Nothing opens.
 4. `m.Caption = "ProbeFirst2"` leaves the bar item's text as it was; `m.Caption` reads `ProbeFirst2`.
-5. Restart the compiler. The bar now shows **ProbeFirst** twice.
+5. Restart the compiler. The bar now shows **ProbeFirst** twice, and neither opens.
 
 **Expected behavior**
 The menu opens on a click and lists its entries, as it does when the add-in has added an entry somewhere else first; its `Caption` and `Visible` change the bar item; a compiler restart removes it.
@@ -14150,7 +14150,7 @@ In `ide/main.js`, the `addMenu` handler, for a menu with no parent, inserts the 
 
 Severity: medium. An add-in whose only menu is its own gets a menu that does nothing, and a growing row of them.
 
-<!-- Reproducer: bugs/addcustom-first-menu-dead/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "AddCustom"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/addcustom-first-menu-dead/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the tests "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it" and "after a compiler restart the dead ProbeFirst item stays beside the new one, which does not open either", which pass on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "AddCustom"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14177,7 +14177,7 @@ The page has a handler for one menu's removal (`removeAllMenuChildren`) and none
 
 Severity: low. An add-in can remove its entries one menu at a time.
 
-<!-- Reproducer: bugs/menus-removealladdedentries-noop/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "Menus.RemoveAllAddedEntries changes nothing; a compiler restart drops every entry, the add-in adds its own again, and the dead ProbeFirst item stays", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "RemoveAllAddedEntries"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/menus-removealladdedentries-noop/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "Menus.RemoveAllAddedEntries changes nothing: the entries and the custom menus stay", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "RemoveAllAddedEntries"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14283,9 +14283,11 @@ The variables in an open tool window change with the theme, as they do in a desi
 **Additional context**
 `createToolWindowById` in `ide/main.js` copies the eight values onto the tool window's body as inline styles when it makes the window, and nothing copies them again; `resyncTheme`, which `notifyChangedTheme` calls, does it for designers only. The inline values hide the page's own, which do change.
 
-Severity: low. An add-in can make its windows again in `OnChangedTheme`.
+A `datasheet` in such a tool window keeps the old theme too: it reads the variables from its root, which computes the window's stale values, so after a switch from Dark to Light it goes on painting Dark's colours.
 
-<!-- Reproducer: bugs/toolwindow-addin-colours-stale/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "--themeAddin*: a tool window keeps the colours of the theme it was made in; High Contrast Dark has Dark's", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Themes.md carries a NOTE (BETA 1045) for it under "Colours for addins"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+Severity: low. An add-in can set its own elements' colours in `OnChangedTheme`, but not a datasheet's, which reads only the variables.
+
+<!-- Reproducer: bugs/toolwindow-addin-colours-stale/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "--themeAddin*: a tool window keeps the values of the theme it was made in", which passes on BETA 1045; the datasheet's part by the datasheet lane's test "a theme change: a grid in a tool window keeps the colours of the theme the window was made in"). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Themes.md carries a NOTE (BETA 1045) for it under "Colours for addins"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14312,35 +14314,36 @@ A cell is drawn by fin-hypergrid's default renderer (`ide/fin-hypergrid.min.js`)
 
 Severity: medium. A table of numbers shows blanks where its zeros are, with nothing to say so.
 
-<!-- Reproducer: bugs/datasheet-zero-drawn-blank/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "what the grid draws: the header, a 0 as nothing, no number formatting, a tick only for true", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a WARNING (BETA 1045) for it under "onGetRows", and docs/IDE/AddIns/DataExplorer.md one under "The grid"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/datasheet-zero-drawn-blank/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "a 0 draws nothing, in an integer column and in a string column", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a WARNING (BETA 1045) for it under "onGetRows", and docs/IDE/AddIns/DataExplorer.md one under "The grid"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
-## Right, Left, Tab, Home and End in a datasheet throw in the IDE's page and move nothing
+## Home and End in a datasheet throw, and after Up or Down so do Right, Left, Tab and Shift+Down
 
 **Describe the bug**
-In a `datasheet` with a data cell current, Up and Down move the current record. Right, Left and Tab each throw `TypeError: Cannot read properties of null (reading 'x')` from `ide/fin-hypergrid.min.js`, and Home, End, Ctrl+Home and Ctrl+End throw `page left not yet implemented` or `page right not yet implemented`. None of them moves the cell, the record or the scroll. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/datasheet`) that shows a datasheet in a tool window.
+In a `datasheet`, Home, End, Ctrl+Home and Ctrl+End always throw `page left not yet implemented` or `page right not yet implemented` from `ide/fin-hypergrid.min.js`, and move nothing. Right, Left and Tab move the current cell, and Shift+Down the current record, after a click on a data cell; but once Up or Down has moved the current record, each of the four throws `TypeError: Cannot read properties of null (reading 'x')` from the same file and moves nothing, until the next click. Up and Down go on working. None of the keys that throw moves the cell, the record or the scroll. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/datasheet`) that shows a datasheet in a tool window.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. A datasheet with a few columns and rows. Click a data cell.
-2. Press Right. Nothing moves; the page reports an uncaught TypeError.
-3. Press Home. Nothing moves; the page reports `page left not yet implemented`.
-Control: Down moves the current record by one.
+2. Press Home. Nothing moves; the page reports `page left not yet implemented`. End, Ctrl+Home and Ctrl+End do the same.
+3. Click a data cell, then press Down: the current record moves down one.
+4. Press Right. Nothing moves; the page reports an uncaught TypeError. Left, Tab and Shift+Down do the same, until the next click.
+Control: Right pressed straight after a click moves the current cell one column right.
 
 **Expected behavior**
-Right, Left and Tab move to the next or previous cell, scrolling the columns into view, and Home and End to the first or last column; or the keys do nothing without an error.
+Right, Left, Tab and Shift+Down do what they do after a click whichever key moved the current record, and Home and End move to the first or last column; or the keys do nothing without an error.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1045
 
 **Additional context**
-The two strings are fin-hypergrid's own unfinished handlers. The TypeError is in its cell navigation, which finds no cell selection of its own: the datasheet keeps its current record itself and handles Up and Down.
+The two strings are fin-hypergrid's own unfinished handlers. The TypeError is in its cell navigation, which finds no cell selection of its own: the datasheet keeps its current record itself and handles Up and Down, and a click sets fin-hypergrid's selection again.
 
-Severity: low. A grid wider than its window can be scrolled sideways only with the scroll bar.
+Severity: low. A grid wider than its window can be scrolled sideways only with the scroll bar once Up or Down has been used.
 
-<!-- Reproducer: bugs/datasheet-keys-throw/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "keys: Up and Down move the current record; PageDown scrolls without moving it", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a NOTE (BETA 1045) for it under "What the user does"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/datasheet-keys-throw/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "keys: Home and End throw; after Up or Down, Right, Left, Tab and Shift+Down throw and move nothing", which passes on BETA 1045; its control is the test "keys after a click: Right, Left and Tab move the current cell, Shift+Down the current record". Narrowed 2026-11-23: the first account said Right, Left and Tab always throw, which held only after Up or Down). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a NOTE (BETA 1045) for it under "What the user does"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14394,7 +14397,7 @@ In `ide/main.js`, `fileHandler_CustomDesigner.isDirty` sets `cachedIsDirtyState`
 
 Severity: low. The tab says it has changes it does not have.
 
-<!-- Reproducer: bugs/designer-dirty-dot-stays/ (mode lane: asserted by `addin-test.bat --only designers` (test/addin/designers.test.mjs), the test "SetFileData with the saved bytes: the page holds the tab unchanged, but its dot stays", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/designers. docs/Reference/Built-In/tbIDE/DesignerHost.md carries a NOTE (BETA 1045) for it under "SetFileData"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/designer-dirty-dot-stays/ (mode lane: asserted by `addin-test.bat --only designers` (test/addin/designers.test.mjs), the tests "SetFileData with the saved bytes: the page holds the tab unchanged, but its dot stays" and "closing a tab the page holds unchanged: no question; OnClosing, OnDeactivated, OnClosed", which pass on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/designers. docs/Reference/Built-In/tbIDE/DesignerHost.md carries a NOTE (BETA 1045) for it under "SetFileData"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14491,4 +14494,92 @@ A kernel-mode driver has to bind its Declares in the import table, since the ker
 Severity: high for 32-bit drivers: no `__fastcall` routine of the kernel can be called, and the driver corrupts its stack with no diagnostic. Low otherwise: a user-mode program rarely needs both.
 
 <!-- Reproducer: bugs/declare-fastcall-static-binding-32bit/ (mode run, exe; expect is tbrun exit 5, a byte swap other than &H78563412 from the IDE run and the exe's access violation). The two-parameter case and the run-time-binding control were run with tbrun --exe on scratch trees that are not kept, against tbKMode's stand-in for ntoskrnl.exe (test/package-tests/tbKMode/exe/fake-kernel). Found 2026-11-22 moving the tbKMode section to 0.3.0.6. docs/Reference/Contributed/tbKMode/index.md carries a WARNING labelled BETA 1042 under "Building a driver"; when a fixed build is released, the WARNING goes, and tbKMode's 32-bit exe cases run past their FastCall routines again. -->
+
+---
+
+## A `Collection` whose `KeyCompareMode` is `vbBinaryCompare` adds an item with a `vbNullString` key with no key at all
+
+**Describe the bug**
+`Collection.Add Item, Key` with a *Key* that is `vbNullString` (a `String` variable never assigned, whose `StrPtr` is 0) stores the item under the key `""` when the collection's `KeyCompareMode` is `vbTextCompare`, the default. When it is `vbBinaryCompare`, the same call adds the item with no key: `Count` goes up, but `Exists("")` is `False`, `Item("")` raises 5, *Invalid procedure call or argument*, and `Keys` has no entry for it. No error is raised by the `Add`. The literal `""` works in both modes, and `vbNullString = ""` is `True`, so the two values are one key everywhere else.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `collection-binary-nullstring-key.twinproj` (attached as `collection-binary-nullstring-key.zip`).
+2. Run its test cases, the module below. On BETA 1045 the two controls pass and the three other cases fail.
+
+The module is meant to be adapted as a regression test.
+```vb
+' Regression tests: a Collection whose KeyCompareMode is vbBinaryCompare keeps an item added
+' with a vbNullString key under the key "", as the same Collection does with
+' vbTextCompare, and as it does with the key "" written as a literal. On BETA 1045 the item
+' is added with no key: Count goes up, but Exists("") is False, Item("") raises 5 and Keys
+' has no entry. vbNullString and "" are the same String value (vbNullString = "" is True);
+' they differ only in StrPtr, which is 0 for vbNullString.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' A Collection with one item, 1, added under `Key` with the compare mode given.
+    Private Function OneItem(ByVal Mode As VbCompareMethod, ByVal Key As String) As Collection
+        Dim c As New Collection
+        c.KeyCompareMode = Mode
+        c.Add 1, Key
+        Return c
+    End Function
+
+    ' The item under the key "", or the error number that reading it raises, negated.
+    Private Function ItemOfEmptyKey(ByVal c As Collection) As Long
+        On Error Resume Next
+        ItemOfEmptyKey = c.Item("")
+        If Err.Number Then ItemOfEmptyKey = -Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_TextCompare_NullStringKey_IsTheEmptyKey()
+        Dim c As Collection = OneItem(vbTextCompare, vbNullString)
+        Assert.Strict.IsTrue c.Exists("")
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(c)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_BinaryCompare_LiteralEmptyKey_IsTheEmptyKey()
+        Dim c As Collection = OneItem(vbBinaryCompare, "")
+        Assert.Strict.IsTrue c.Exists("")
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(c)
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_Exists()
+        Assert.Strict.IsTrue OneItem(vbBinaryCompare, vbNullString).Exists("")
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_ItemReadsIt()
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(OneItem(vbBinaryCompare, vbNullString))
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_IsInKeys()
+        Dim k As Variant = OneItem(vbBinaryCompare, vbNullString).Keys
+        Assert.Strict.AreEqual 1&, CLng(UBound(k) - LBound(k) + 1)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The item is stored under the key `""`, as with `vbTextCompare` and as with the literal `""` in either mode: `Exists("")` is `True`, `Item("")` returns it, and `Keys` lists `""`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+Severity: medium: the item is still counted and still enumerated, so nothing fails until a lookup by its key, which then raises 5 for a key the program did add. A `String` that holds text a program built up from nothing is often `vbNullString`. The contributed package VBA_JSON 2.3.2.1 meets it: its `Dictionary` class now sets `vbBinaryCompare` on its backing `Collection`, and its parser builds an object's key from nothing, so `ParseJson("{"""":1}")` gives a `Dictionary` with no keys, and reading the key `""` raises 5. VBA_JSON 2.3.1.1, on the text compare, kept the key.
+
+A 64-bit build gives the same results. VB6 and VBA cannot be compared: their `Collection` has no `KeyCompareMode`, and always compares keys as text.
+
+What does not reproduce it: the literal `""` as the key with `vbBinaryCompare`, and `vbNullString` as the key with `vbTextCompare` or with the compare mode left at its default.
+
+<!-- Reproducer: bugs/collection-binary-nullstring-key/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines); run on BETA 1045, 32-bit and 64-bit, with `bug_repro.mjs run`, and `verify` says it reproduces. Found 2026-11-23 moving the VBA_JSON section to 2.3.2.1, whose test case ParseJsonTests.EmptyKey_IsAKey started to fail; narrowed by copying the package's Dictionary and JsonConverter into a probe, then to a Collection alone. docs/Reference/Contributed/VBA_JSON/JsonConverter/ParseJson.md and JsonConverter/index.md carry a NOTE labelled BETA 1045 naming this reproducer; when a fixed build is released, the NOTE goes, and the case passes again (its expect.json entry goes with `package-tests.bat VBA_JSON --update`). -->
 

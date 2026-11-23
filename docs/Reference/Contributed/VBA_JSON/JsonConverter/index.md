@@ -75,28 +75,28 @@ All carriage returns, line feeds, and tab characters are removed from *JsonStrin
 <!-- /test -->
 
 <!-- test: ParseJsonTests.Strings_NewlineEscape_IsALineFeed -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > The escape `\n` is read as a carriage return followed by a line feed, two characters, and not as the one line feed that JSON defines. The text `"a\nb"` gives `"a" & vbCr & vbLf & "b"`, and a text read and written again with **ConvertToJson** changes from `\n` to `\r\n`.
 
 <!-- test: ParseJsonTests.Error_ArrayThatIsNotClosed_Raises10001, ParseJsonTests.Error_StringInAnArrayThatIsNotClosed_Raises10001, ParseJsonTests.Error_ObjectThatIsNotClosed_Raises10001 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > Text that ends before an array is closed, such as `[1,2` or `["abc`, does not return: the parser keeps adding empty items to the array. An object that is not closed raises error 10001, but an unclosed array inside an object hangs the same way.
 
-<!-- test: DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys, ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries -->
-> [!WARNING] 2.3.1.1
-> Keys that differ only in case, such as `id` and `ID` in one JSON object, become one entry of the **Dictionary**, which holds the last value; the other value is lost without an error.
-
 <!-- test: ParseJsonTests.Error_NumberBeyondTheRangeOfADouble_RaisesOverflow -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > A number outside the range of a **Double**, such as `1e999`, raises run-time error 6 (Overflow) and not error 10001.
 
 <!-- test: ParseJsonTests.Error_EmptyText_Raises10001, ParseJsonTests.Error_TopLevelValueThatIsNotAnObjectOrArray_Raises10001, ParseJsonTests.Error_UnquotedKey_Raises10001, ParseJsonTests.Error_MissingColon_Raises10001, ParseJsonTests.Error_UnrecognisedValue_Raises10001, ParseJsonTests.Error_Message_ShowsTheTextAndACaret, ParseJsonTests.Error_Message_ShowsTenCharactersEachSideOfTheError -->
 Raises run-time error 10001 with the source `"JSONConverter"` and a diagnostic message that shows the text around the error, with a caret marking the position, if the parser meets text it cannot read, such as a top-level value that is not an object or array, an unquoted key, a missing colon, a trailing comma or an unrecognised value.
 <!-- /test -->
 
-<!-- test: ParseJsonTests.Lenient_MissingCommas_AreAccepted, ParseJsonTests.Lenient_TextAfterTheTopLevelValue_IsIgnored, ParseJsonTests.Lenient_SingleQuotedStringsAndKeys_AreAccepted, ParseJsonTests.Lenient_NumbersJsonDoesNotAllow_AreAccepted, ParseJsonTests.Lenient_UnknownEscape_DropsTheBackslash, ParseJsonTests.DuplicateKeys_LastValueWins, ParseJsonTests.EmptyKey_IsAKey -->
-The parser is lenient: it does not check for commas between items, and it ignores any text after the top-level value. It also accepts strings and keys in single quotes, a number with a leading zero or a leading plus sign or ending in a period, and an escape it does not know, which it reads as the character after the backslash. A key that appears twice keeps its last value.
+<!-- test: ParseJsonTests.Lenient_MissingCommas_AreAccepted, ParseJsonTests.Lenient_TextAfterTheTopLevelValue_IsIgnored, ParseJsonTests.Lenient_SingleQuotedStringsAndKeys_AreAccepted, ParseJsonTests.Lenient_NumbersJsonDoesNotAllow_AreAccepted, ParseJsonTests.Lenient_UnknownEscape_DropsTheBackslash, ParseJsonTests.DuplicateKeys_LastValueWins, ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries -->
+The parser is lenient: it does not check for commas between items, and it ignores any text after the top-level value. It also accepts strings and keys in single quotes, a number with a leading zero or a leading plus sign or ending in a period, and an escape it does not know, which it reads as the character after the backslash. A key that appears twice keeps its last value. Keys that differ only in case, such as `id` and `ID`, are separate entries.
 <!-- /test -->
+
+<!-- test: ParseJsonTests.EmptyKey_IsAKey, bug collection-binary-nullstring-key -->
+> [!WARNING] BETA 1045
+> An entry whose key is the empty string, as in `{"":1}`, is lost: the **Dictionary** that **ParseJson** returns does not list the key in **Keys**, and reading it raises run-time error 5. The cause is a defect of twinBASIC's **Collection**, which the **Dictionary** keeps its entries in.
 
 ### ConvertToJson
 
@@ -117,23 +117,23 @@ Returns a **String** containing the JSON representation of *JsonValue*.
 <!-- /test -->
 
 <!-- test: ConvertToJsonTests.Dictionary_KeyWithAQuote_IsEscaped, ConvertToJsonTests.Dictionary_KeyWithABackslash_IsEscaped, ConvertToJsonTests.Dictionary_KeyWithALineFeed_IsEscaped -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > The keys of a **Dictionary** are written without escapes. A key that holds a quote, a backslash or a control character gives text that is not valid JSON (the key `a"b` is written as `"a"b"`), and a program that reads it fails or reads a different key.
 
 <!-- test: ConvertToJsonTests.String_ThatIsNotANumber_IsQuoted -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > The rule for a large-number **String** looks only at the characters, so a string of 16 to 100 digits, periods, `E` and `e` is written without quotes even when it is not a JSON number. `"0000123456789012"` (leading zeros), 16 letters `E` and 16 periods all give text that is not valid JSON.
 
 <!-- test: ConvertToJsonTests.Array_LowerBoundBelowZero_IsWritten, ConvertToJsonTests.Array_TwoDimensions_SecondLowerBoundBelowZero_IsWritten -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > An array whose lower bound is below zero is not written correctly, and no error is raised. An array from -1 to 1 gives `[]`, and an array of two dimensions whose second dimension starts below zero gives `[null,null]`.
 
 <!-- test: DatesTests.ConvertToJson_DateBefore1601_Raises10014, DatesTests.ConvertToIso_DateBefore30December1899_AppliesTheZoneRules, DatesTests.ConvertToIso_DateBefore1601_Raises10014 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > A **Date** before 30 December 1899 is written as a wrong time, and one before 1 January 1601 as a meaningless date, with no error. See [**ConvertToIso**](ConvertToIso).
 
 <!-- test: ConvertToJsonTests.Scalars_Double_IsWrittenWith15SignificantDigits -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > A **Double** is written with at most 15 significant digits, as **CStr** gives it: 1 / 3 gives `0.333333333333333` and 0.1 + 0.2 gives `0.3`. Reading the text back gives a **Double** that can differ from the original in the last digits.
 
 ### ParseUtc

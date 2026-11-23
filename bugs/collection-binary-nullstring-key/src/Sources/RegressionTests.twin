@@ -1,0 +1,56 @@
+' Regression tests: a Collection whose KeyCompareMode is vbBinaryCompare keeps an item added
+' with a vbNullString key under the key "", as the same Collection does with
+' vbTextCompare, and as it does with the key "" written as a literal. On BETA 1045 the item
+' is added with no key: Count goes up, but Exists("") is False, Item("") raises 5 and Keys
+' has no entry. vbNullString and "" are the same String value (vbNullString = "" is True);
+' they differ only in StrPtr, which is 0 for vbNullString.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' A Collection with one item, 1, added under `Key` with the compare mode given.
+    Private Function OneItem(ByVal Mode As VbCompareMethod, ByVal Key As String) As Collection
+        Dim c As New Collection
+        c.KeyCompareMode = Mode
+        c.Add 1, Key
+        Return c
+    End Function
+
+    ' The item under the key "", or the error number that reading it raises, negated.
+    Private Function ItemOfEmptyKey(ByVal c As Collection) As Long
+        On Error Resume Next
+        ItemOfEmptyKey = c.Item("")
+        If Err.Number Then ItemOfEmptyKey = -Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_TextCompare_NullStringKey_IsTheEmptyKey()
+        Dim c As Collection = OneItem(vbTextCompare, vbNullString)
+        Assert.Strict.IsTrue c.Exists("")
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(c)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_BinaryCompare_LiteralEmptyKey_IsTheEmptyKey()
+        Dim c As Collection = OneItem(vbBinaryCompare, "")
+        Assert.Strict.IsTrue c.Exists("")
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(c)
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_Exists()
+        Assert.Strict.IsTrue OneItem(vbBinaryCompare, vbNullString).Exists("")
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_ItemReadsIt()
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(OneItem(vbBinaryCompare, vbNullString))
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_IsInKeys()
+        Dim k As Variant = OneItem(vbBinaryCompare, vbNullString).Keys
+        Assert.Strict.AreEqual 1&, CLng(UBound(k) - LBound(k) + 1)
+    End Sub
+
+End Module

@@ -9,9 +9,10 @@
 //
 // Each test states what BETA 1045 does. If one fails after an IDE update, the
 // IDE has changed: update the tbIDE pages that rest on it,
-// docs/Reference/Built-In/tbIDE/Datasheet.md, HtmlElements.md and
-// HtmlEventProperties.md, then .claude/beta1045/probe-datasheet.md's answer,
-// and then this file.
+// docs/Reference/Built-In/tbIDE/Datasheet.md, HtmlElements.md,
+// HtmlEventProperties.md and Themes.md, then the steps of the reproducers that
+// name a test here (bugs/datasheet-*/repro.json), and then this file. A test
+// whose comment names an IDE defect asserts the defect: it fails once it is fixed.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -322,8 +323,7 @@ scenario("The datasheet element in a tool window", (lane) => {
     assert.equal(await cmd(c, "load"), "String OK");
     assert.ok(await waitFor(c, async (c) => (await state(c)) === "ready", { timeout: 10000, interval: 50 }));
     assert.equal(await lastError(c), "");
-    await sleep(1000);
-    const lines = await probeLines(c, mark);
+    const lines = await linesUpTo(mark, "rows 128-256");
     assert.deepEqual(lines.slice(0, 4), [
       "cmd load -> String OK",
       "info asked, argsIpcCached True",
@@ -347,20 +347,29 @@ scenario("The datasheet element in a tool window", (lane) => {
   // The probe's rows 0 to 7 (RowJson). Grid column 0 is the record selector,
   // whose triangle at the current record is a moveTo too; 1 to 3 are id
   // (integer), name (string) and flag (boolean).
-  test("what the grid draws: the header, a 0 as nothing, no number formatting, a tick only for true", async () => {
+  test("what the grid draws: the header, no number formatting, a tick only for true", async () => {
     const p = await painted(c);
     assert.deepEqual(p.header, { 1: { text: "id" }, 2: { text: "Full name" }, 3: { text: "flag" } });
-    const rows = Object.fromEntries([0, 1, 2, 3, 4, 5, 6, 7].map((r) => [r, p[r]]));
+    // Rows 1 to 6 hold no 0; rows 0 and 7 are the next test's.
+    const rows = Object.fromEntries([1, 2, 3, 4, 5, 6].map((r) => [r, p[r]]));
     assert.deepEqual(rows, {
-      0: { 0: { tick: true }, 3: { tick: true } }, // [0, null, true]: the 0 draws nothing
       1: { 1: { text: "1" }, 2: { text: "42" } }, // [1, 42, false]: false is an empty box
       2: { 1: { text: "2" }, 2: { text: "true" }, 3: { dash: true } }, // [2, true, null]
       3: { 1: { text: "3" }, 2: { text: "1.5" } }, // [3, 1.5, 1]: 1 is an empty box
       4: { 1: { text: "4" }, 2: { text: "x" } }, // [4, "x", "true"]: so is "true"
       5: { 1: { text: "5" }, 2: { text: "[object Object]" } }, // [5, {"a":1}, false]
       6: { 1: { text: "1234567.891" }, 2: { text: "Name 6" }, 3: { tick: true } },
-      7: { 1: { text: "seven" } }, // ["seven", 0, false]: text in an integer column; 0 again nothing
     });
+    // The cells beside the zeros draw as they should.
+    assert.deepEqual(p["0"]?.["3"], { tick: true }); // [0, null, true]
+    assert.deepEqual(p["7"]?.["1"], { text: "seven" }); // ["seven", 0, false]: text in an integer column
+  });
+
+  // An IDE defect, datasheet-zero-drawn-blank: a cell holding the number 0 draws nothing.
+  test("a 0 draws nothing, in an integer column and in a string column", async () => {
+    const p = await painted(c);
+    assert.deepEqual(p["0"], { 0: { tick: true }, 3: { tick: true } }); // [0, null, true]: no "0" in column 1
+    assert.deepEqual(p["7"], { 1: { text: "seven" } }); // ["seven", 0, false]: no "0" in column 2
   });
 
   test("showNulls(True) draws a null as the text null, except in a boolean column", async () => {
@@ -443,12 +452,16 @@ scenario("The datasheet element in a tool window", (lane) => {
   });
 
   test("navigateToRecord: 1-based, clamped, truncated; getSelectedRows zero-based", async () => {
-    const at = async (n) => [await cmd(c, `nav|${n}`), await cmd(c, "selected"), (await navigator(c)).record];
+    const at = async (n, how = "nav") => [
+      await cmd(c, `${how}|${n}`),
+      await cmd(c, "selected"),
+      (await navigator(c)).record,
+    ];
     assert.deepEqual(await at(150), ["String OK", "String 149:149", "150"]);
     assert.deepEqual(await at(0), ["String OK", "String 0:0", "1"]);
     assert.deepEqual(await at(99999), ["String OK", "String 299:299", "300"]);
-    // CLng(12.7) is 13 before the call: the probe passes a Long.
-    assert.deepEqual(await at(12.7), ["String OK", "String 12:12", "13"]);
+    // A Double from twinBASIC: 12.7 is record 12, its fraction dropped.
+    assert.deepEqual(await at(12.7, "navdouble"), ["String OK", "String 11:11", "12"]);
     assert.equal(await cmd(c, "selectall"), "Null");
     assert.equal(await cmd(c, "selected"), "String 0:299");
     await cmd(c, "nav|1");
@@ -506,59 +519,121 @@ scenario("The datasheet element in a tool window", (lane) => {
     );
   });
 
+  // The current record, read until it is `want` or a second has passed.
+  const selectedIs = async (want) =>
+    (await waitFor(c, async () => ((await cmd(c, "selected")) === want ? want : null), {
+      timeout: 1000,
+      interval: 100,
+    })) ?? (await cmd(c, "selected"));
+
   test("keys: Up and Down move the current record; PageDown scrolls without moving it", async (t) => {
     await press(c, await cellPoint(c, 2, 8));
-    assert.equal(await cmd(c, "selected"), "String 8:8");
+    assert.equal(await selectedIs("String 8:8"), "String 8:8");
     await pressKey(c, "ArrowDown");
-    await sleep(200);
-    assert.equal(await cmd(c, "selected"), "String 9:9");
+    assert.equal(await selectedIs("String 9:9"), "String 9:9");
     await pressKey(c, "ArrowUp");
     await pressKey(c, "ArrowUp");
-    await sleep(200);
-    assert.equal(await cmd(c, "selected"), "String 7:7");
-    await pressKey(c, "ArrowDown", { shift: true });
-    await sleep(200);
-    assert.equal(await cmd(c, "selected"), "String 7:7");
-    // The keys left to Hypergrid: each throws inside fin-hypergrid.min.js, and
-    // neither the current record nor the current cell moves.
-    const TYPE_ERROR = "TypeError: Cannot read properties of null (reading 'x')";
-    for (const [key, mods, threw] of [
-      ["ArrowRight", {}, TYPE_ERROR],
-      ["Tab", {}, TYPE_ERROR],
-      ["ArrowLeft", {}, TYPE_ERROR],
-      ["Home", {}, "page left not yet implemented"],
-      ["End", {}, "page right not yet implemented"],
-      ["End", { ctrl: true }, "page right not yet implemented"],
-      ["Home", { ctrl: true }, "page left not yet implemented"],
-    ]) {
-      const n = exceptions.length;
-      await pressKey(c, key, mods);
-      await sleep(250);
-      const name = `${mods.ctrl ? "Ctrl+" : ""}${key}`;
-      assert.deepEqual(
-        {
-          name,
-          selected: await cmd(c, "selected"),
-          cell: await c.evaluate(`${GRID}.selectionModel.getLastSelection()?.origin`),
-          vscroll: await vscroll(c),
-          threw: exceptions.slice(n).map((e) => ({ message: e.description || e.value, file: path.basename(e.url) })),
-        },
-        {
-          name,
-          selected: "String 7:7",
-          cell: { x: 2, y: 7 },
-          vscroll: 0,
-          threw: [{ message: threw, file: "fin-hypergrid.min.js" }],
-        },
-      );
-    }
-    exceptions.length = 0; // asserted above; the run's last test reports any others
+    assert.equal(await selectedIs("String 7:7"), "String 7:7");
     const v0 = await vscroll(c);
     await pressKey(c, "PageDown");
-    await sleep(300);
+    assert.ok(await waitFor(c, async () => (await vscroll(c)) > v0, { timeout: 2000, interval: 100 }));
     t.diagnostic(`PageDown: from ${v0} to ${await vscroll(c)}`);
     assert.equal(await cmd(c, "selected"), "String 7:7");
-    assert.ok((await vscroll(c)) > v0);
+    await cmd(c, "nav|1");
+  });
+
+  // What one key does from a fresh click on the data cell in column 2, row 7: the current record,
+  // the current cell, the scroll and what the page threw. `before` keys are pressed first.
+  async function keyFromClick(key, mods = {}, before = []) {
+    await cmd(c, "nav|1");
+    await press(c, await cellPoint(c, 2, 7));
+    assert.equal(await selectedIs("String 7:7"), "String 7:7");
+    for (const [k, m] of before) {
+      await pressKey(c, k, m);
+      await sleep(250);
+    }
+    const n = exceptions.length;
+    await pressKey(c, key, mods);
+    await sleep(250);
+    const r = {
+      selected: await cmd(c, "selected"),
+      cell: await c.evaluate(`${GRID}.selectionModel.getLastSelection()?.origin ?? null`),
+      vscroll: await vscroll(c),
+      threw: exceptions.slice(n).map((e) => ({ message: e.description || e.value, file: path.basename(e.url) })),
+    };
+    return r;
+  }
+
+  test("keys after a click: Right, Left and Tab move the current cell, Shift+Down the current record", async () => {
+    const n0 = exceptions.length;
+    const got = {};
+    for (const [name, key, mods] of [
+      ["Right", "ArrowRight", {}],
+      ["Left", "ArrowLeft", {}],
+      ["Tab", "Tab", {}],
+      ["Shift+Down", "ArrowDown", { shift: true }],
+    ]) {
+      got[name] = await keyFromClick(key, mods);
+    }
+    const moved = (selected, x, y) => ({ selected, cell: { x, y }, vscroll: 0, threw: [] });
+    assert.deepEqual(got, {
+      Right: moved("String 7:7", 3, 7),
+      Left: moved("String 7:7", 1, 7),
+      Tab: moved("String 7:7", 3, 7),
+      "Shift+Down": moved("String 8:8", 2, 8),
+    });
+    assert.equal(exceptions.length, n0);
+    await cmd(c, "nav|1");
+  });
+
+  // IDE defects, datasheet-keys-throw: Home and End are not implemented, and once Up or Down
+  // has moved the current record, the keys that move the current cell throw until the next click.
+  test("keys: Home and End throw; after Up or Down, Right, Left, Tab and Shift+Down throw and move nothing", async () => {
+    const n0 = exceptions.length;
+    const TYPE_ERROR = "TypeError: Cannot read properties of null (reading 'x')";
+    const stayed = (selected, x, y, message) => ({
+      selected,
+      cell: { x, y },
+      vscroll: 0,
+      threw: [{ message, file: "fin-hypergrid.min.js" }],
+    });
+    const got = {};
+    for (const [name, key, mods, before] of [
+      ["Home", "Home", {}, []],
+      ["End", "End", {}, []],
+      ["Ctrl+Home", "Home", { ctrl: true }, []],
+      ["Ctrl+End", "End", { ctrl: true }, []],
+      ["Right after Down", "ArrowRight", {}, [["ArrowDown", {}]]],
+      ["Left after Down", "ArrowLeft", {}, [["ArrowDown", {}]]],
+      ["Tab after Down", "Tab", {}, [["ArrowDown", {}]]],
+      ["Shift+Down after Down", "ArrowDown", { shift: true }, [["ArrowDown", {}]]],
+      ["Right after Up", "ArrowRight", {}, [["ArrowUp", {}]]],
+      [
+        "Right after Down and Right",
+        "ArrowRight",
+        {},
+        [
+          ["ArrowDown", {}],
+          ["ArrowRight", {}],
+        ],
+      ],
+    ]) {
+      got[name] = await keyFromClick(key, mods, before);
+    }
+    assert.deepEqual(got, {
+      Home: stayed("String 7:7", 2, 7, "page left not yet implemented"),
+      End: stayed("String 7:7", 2, 7, "page right not yet implemented"),
+      "Ctrl+Home": stayed("String 7:7", 2, 7, "page left not yet implemented"),
+      "Ctrl+End": stayed("String 7:7", 2, 7, "page right not yet implemented"),
+      "Right after Down": stayed("String 8:8", 2, 8, TYPE_ERROR),
+      "Left after Down": stayed("String 8:8", 2, 8, TYPE_ERROR),
+      "Tab after Down": stayed("String 8:8", 2, 8, TYPE_ERROR),
+      "Shift+Down after Down": stayed("String 8:8", 2, 8, TYPE_ERROR),
+      "Right after Up": stayed("String 6:6", 2, 6, TYPE_ERROR),
+      "Right after Down and Right": stayed("String 8:8", 2, 8, TYPE_ERROR),
+    });
+    // Asserted above. Only these go: the run's last test reports any others, earlier ones included.
+    exceptions.splice(n0);
     await cmd(c, "nav|1");
   });
 
@@ -606,24 +681,36 @@ scenario("The datasheet element in a tool window", (lane) => {
     await cmd(c, "nav|1");
   });
 
+  // The probe's lines since `mark` once `last` is among them, or after `timeout` ms.
+  const linesUpTo = async (mark, last, timeout = 5000) =>
+    (await waitFor(
+      c,
+      async () => {
+        const l = await probeLines(c, mark);
+        return l.includes(last) ? l : null;
+      },
+      { timeout, interval: 100 },
+    )) ?? (await probeLines(c, mark));
+  const stateIs = async (want, timeout = 5000) =>
+    (await waitFor(c, async () => ((await state(c)) === want ? want : null), { timeout, interval: 100 })) ??
+    (await state(c));
+
   test("refresh asks onGetInfo again; a new column count is SCHEMA_CHANGED; the old count recovers", async () => {
     let mark = await consoleMark(c);
     await setReplies(c, { info: INFO() });
     assert.equal(await cmd(c, "refresh"), "String OK");
-    await sleep(1000);
-    assert.equal(await state(c), "ready");
-    assert.deepEqual(await probeLines(c, mark), [
+    assert.deepEqual(await linesUpTo(mark, "rows 128-256"), [
       "cmd refresh -> String OK",
       "info asked, argsIpcCached True",
       "info resolved",
       "rows 0-128",
       "rows 128-256",
     ]);
+    assert.equal(await state(c), "ready");
     mark = await consoleMark(c);
     await setReplies(c, { info: INFO(4) });
     assert.equal(await cmd(c, "refresh"), "String OK");
-    await sleep(1000);
-    assert.equal(await state(c), "error");
+    assert.equal(await stateIs("error"), "error");
     assert.equal(
       await lastError(c),
       "SCHEMA_CHANGED: provider column count changed from 3 to 4; recreate the datasheet with loadData() in a new designer",
@@ -632,44 +719,67 @@ scenario("The datasheet element in a tool window", (lane) => {
     mark = await consoleMark(c);
     await setReplies(c, { info: INFO(3, 50) });
     assert.equal(await cmd(c, "refresh"), "String OK");
-    await sleep(1000);
-    assert.equal(await state(c), "ready");
+    assert.deepEqual((await linesUpTo(mark, "rows 0-50")).slice(3), ["rows 0-50"]);
+    assert.equal(await stateIs("ready"), "ready");
     assert.equal(await lastError(c), "");
-    assert.deepEqual((await probeLines(c, mark)).slice(3), ["rows 0-50"]);
     assert.equal((await navigator(c)).text, "of 50 records");
+    mark = await consoleMark(c);
     await setReplies(c, { info: INFO() });
     await cmd(c, "refresh");
-    await sleep(1000);
+    await linesUpTo(mark, "rows 128-256");
   });
 
   test("a reply with a row too few: the page is asked again after 750, 1500, 3000 and 6000 ms, then no more until refresh", async (t) => {
     await setReplies(c, { rows: "(short)" });
     await rowsAsked(c);
     assert.equal(await cmd(c, "refresh"), "String OK");
-    await sleep(13000);
-    const asked = await rowsAsked(c);
-    const t0 = asked[0].t;
-    const page0 = asked.filter((a) => a.start === 0).map((a) => Math.round(a.t - t0));
-    t.diagnostic(
-      `page 0 asked at ${JSON.stringify(page0)} ms; page 128 ${asked.filter((a) => a.start === 128).length} time(s)`,
+    // Every request is kept here: rowsAsked empties the page's list.
+    const asked = [];
+    const page0 = () => asked.filter((a) => a.start === 0);
+    assert.ok(
+      await waitFor(
+        c,
+        async () => {
+          asked.push(...(await rowsAsked(c)));
+          return page0().length >= 5;
+        },
+        { timeout: 15000, interval: 200 },
+      ),
+      `page 0 asked ${page0().length} times`,
     );
-    assert.equal(page0.length, 5);
-    const gaps = page0.slice(1).map((v, i) => v - page0[i]);
+    // The back-off is capped at 12000 ms: a sixth request would come within that of the fifth.
+    await sleep(12500);
+    asked.push(...(await rowsAsked(c)));
+    const t0 = asked[0].t;
+    const at = page0().map((a) => Math.round(a.t - t0));
+    t.diagnostic(
+      `page 0 asked at ${JSON.stringify(at)} ms; page 128 ${asked.filter((a) => a.start === 128).length} time(s)`,
+    );
+    assert.equal(at.length, 5);
+    const gaps = at.slice(1).map((v, i) => v - at[i]);
     for (const [i, want] of [750, 1500, 3000, 6000].entries())
       assert.ok(gaps[i] >= want && gaps[i] < want + 200, `gaps ${JSON.stringify(gaps)}`);
     // Row failures leave the state and the last error alone.
     assert.equal(await state(c), "ready");
     assert.equal(await lastError(c), "");
     await setReplies(c, { rows: "" });
-    await sleep(1500);
-    assert.deepEqual(await rowsAsked(c), []);
     assert.equal(await cmd(c, "refresh"), "String OK");
-    await sleep(1000);
+    const again = await waitFor(
+      c,
+      async () => {
+        const a = await rowsAsked(c);
+        return a.length ? a : null;
+      },
+      { timeout: 5000, interval: 100 },
+    );
+    await sleep(300);
     assert.deepEqual(
-      (await rowsAsked(c)).map((a) => a.start),
+      [...(again ?? []), ...(await rowsAsked(c))].map((a) => a.start),
       [0, 128],
     );
-    assert.equal((await painted(c))["0"]?.["3"]?.tick, true);
+    assert.ok(
+      await waitFor(c, async () => (await painted(c))["0"]?.["3"]?.tick === true, { timeout: 3000, interval: 200 }),
+    );
   });
 
   test("onGetRows returning without Resolve fails the page at once, and it is asked again after 750 ms", async (t) => {
@@ -688,10 +798,80 @@ scenario("The datasheet element in a tool window", (lane) => {
     await setReplies(c, { rows: "(timer)" });
     const mark = await consoleMark(c);
     assert.equal(await cmd(c, "refresh"), "String OK");
-    await sleep(2500);
-    t.diagnostic(`lines: ${JSON.stringify(await probeLines(c, mark))}`);
+    // Both pages asked for, and both answered by the timer after the handlers returned: the
+    // counts of its "timer resolved <n>" lines add up to 2.
+    const resolved = (l) =>
+      l.filter((x) => x.startsWith("timer resolved ")).reduce((s, x) => s + Number(x.slice(15)), 0);
+    const lines =
+      (await waitFor(
+        c,
+        async () => {
+          const l = await probeLines(c, mark);
+          return resolved(l) >= 2 ? l : null;
+        },
+        { timeout: 5000, interval: 100 },
+      )) ?? (await probeLines(c, mark));
+    t.diagnostic(`lines: ${JSON.stringify(lines)}`);
+    assert.ok(lines.includes("rows 0-128") && lines.includes("rows 128-256"), JSON.stringify(lines));
+    assert.equal(resolved(lines), 2, JSON.stringify(lines));
     assert.equal(await state(c), "ready");
-    assert.equal((await painted(c))["0"]?.["3"]?.tick, true);
+    assert.ok(
+      await waitFor(c, async () => (await painted(c))["0"]?.["3"]?.tick === true, { timeout: 3000, interval: 200 }),
+    );
+  });
+
+  // The theme switched through the Window > Theme list, as menus.test.mjs does; the IDE runs with
+  // --no-save-ide-settings, so the choice is not saved.
+  async function chooseTheme(label) {
+    await c.evaluate(`executeIdeCommand("tbThemes_ShowList")`);
+    const at = await waitFor(
+      c,
+      () =>
+        c.evaluate(`(() => {
+      const l = ${JSON.stringify(label)};
+      const it = [...document.querySelectorAll("#contextMenu > *")].find((e) => { const t = e.innerText.trim(); return t === l || t.startsWith(l + " ("); });
+      if (!it) return null;
+      const q = it.getBoundingClientRect();
+      return q.width ? { x: q.x + q.width / 2, y: q.y + q.height / 2 } : null;
+    })()`),
+      { timeout: 3000, interval: 100 },
+    );
+    assert.ok(at, `the theme list has no item ${label}`);
+    await press(c, at);
+    assert.ok(
+      await waitFor(c, async () => (await c.evaluate("getThemeName()")) === label.toLowerCase(), { timeout: 5000 }),
+      `the theme is not ${label}`,
+    );
+    await c.evaluate("try { hideContextMenu() } catch {}");
+    await sleep(500);
+  }
+
+  // The colours the grid paints with, and the --themeAddin* values its root computes.
+  const GRID_COLOURS_JS = `(() => { const g = ${GRID}; const p = g.properties; const r = ${CTL}.getRootElement();
+    const cs = getComputedStyle(r);
+    return { theme: getThemeName(), back: p.backgroundColor, color: p.color, header: p.columnHeaderBackgroundColor,
+      rootBack: cs.getPropertyValue("--themeAddinBackColor").trim(),
+      rootControl: cs.getPropertyValue("--themeAddinControlBackColor").trim() }; })()`;
+
+  // An IDE defect, toolwindow-addin-colours-stale: the tool window's body keeps the --themeAddin*
+  // values of the theme it was made in, so the grid, which reads them, keeps Dark's colours.
+  test("a theme change: a grid in a tool window keeps the colours of the theme the window was made in", async (t) => {
+    const colours = () => c.evaluate(GRID_COLOURS_JS);
+    const dark = await colours();
+    assert.deepEqual(dark, {
+      theme: "dark",
+      back: "#494343",
+      color: "#e0dede",
+      header: "#423e3e",
+      rootBack: "#2b2b2b",
+      rootControl: "#575050",
+    });
+    await chooseTheme("Light");
+    await sleep(500);
+    const light = await colours();
+    await chooseTheme("Dark");
+    t.diagnostic(JSON.stringify(light));
+    assert.deepEqual(light, { ...dark, theme: "light" });
   });
 
   test("nothing else threw in the page", () => {

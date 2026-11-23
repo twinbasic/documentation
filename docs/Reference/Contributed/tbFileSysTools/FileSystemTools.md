@@ -52,7 +52,7 @@ These rules apply to every procedure on the page. Each entry states only what de
 - A path longer than 260 characters works in most procedures, among them [**CreateFolder**](#createfolder), [**FileExists**](#fileexists), [**StringToTextFile**](#stringtotextfile), [**TextFileToString**](#textfiletostring), [**CopyFile**](#copyfile), [**MoveFile**](#movefile), [**Rename**](#rename), [**DeleteFile**](#deletefile), [**DeleteFolder**](#deletefolder), [**GetFile**](#getfile) and [**GetFilePaths**](#getfilepaths). The Scripting Runtime does not accept such a path: its **FileExists** and **FolderExists** return **False** for it, **GetFile** raises error 53 and **OpenTextFile** raises error 76.
 
 <!-- test: LongPathTests.LongPath_Procedures_Work, LongPathTests.GetFileVersion_PathOver260_ReturnsEmpty, LongPathTests.FileShortPath_PathOver260_ReturnsPath, LongPathTests.SetCurrentDir_PathOver260_Raises75, LongPathTests.DeleteFile_WildcardInLongFolder_Raises53, LongPathTests.CopyFile_WildcardInLongFolder_Raises53 -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] 2.0.0.0
 > These stop at the limit. [**GetFileVersion**](#getfileversion) returns an empty string, and [**File.ShortPath**](File#shortpath) returns the path as it is. [**SetCurrentDir**](#setcurrentdir) raises error 75. A path with a wildcard in it is not found: [**DeleteFile**](#deletefile) and [**CopyFile**](#copyfile) raise error 53 for `deep\*.dll`, where `deep` is a folder with a long path. [**Folder.Files**](Folder#files), [**Folder.SubFolders**](Folder#subfolders) and [**Folder.Size**](Folder#size) raise error 76 for a folder whose own path has 258 characters or more (see the note under [**Folder.Files**](Folder#files)), and [**GetRelativePath**](#getrelativepath) can return a wrong path (see its warning).
 
 ```tb check_build check_run
@@ -347,15 +347,15 @@ Syntax: **GetRelativePath** ( *basePath*, *targetPath* [, *basePathIsFolder* [, 
 : *optional* A **Boolean**. **True** (default) treats *basePath* as a folder. **False** treats it as a file when it exists as one, and the relative path starts from the folder that holds it. A *basePath* that does not exist is treated as a file when this is **False**.
 
 *trimLeadingDotSlash*
-: *optional* A **Boolean**. Windows starts a path that goes down with `.\`. **True** (default) removes it, so the result is `src` and not `.\src`. **False** keeps it.
+: *optional* A **Boolean**. A result that goes down, or that is the base itself, starts with `.\`. **True** (default) removes it, so the result is `src` and not `.\src`, and `.` and not `.\`. **False** keeps it. A result that goes up, such as `..\Lib`, has no `.\` either way.
 
-Both paths are first made absolute with [**GetAbsolutePathName**](#getabsolutepathname). A *targetPath* that exists as a folder is treated as one; any other, one that does not exist included, is treated as a file. So `GetRelativePath("C:\a", "C:\a")` returns `..\a` when the folder `C:\a` does not exist.
+Both paths are first made absolute with [**GetAbsolutePathName**](#getabsolutepathname). The relative path is then worked out from the names in the two paths, compared without regard to letter case, and neither path has to exist. Whether *targetPath* is a file or a folder makes no difference, so `GetRelativePath("C:\a", "C:\a")` returns `.`.
 
-Returns the absolute *targetPath* when there is no relative path, for example when the two paths are on different drives, and when only *targetPath* is longer than 260 characters.
+Returns the absolute *targetPath* when there is no relative path: when the two paths are on different drives, or on different network shares.
 
 <!-- test: PathTests.GetRelativePath_Base258, PathTests.GetRelativePath_Base259, PathTests.GetRelativePath_Base260, PathTests.GetRelativePath_Base264, PathTests.GetRelativePath_Base300 -->
-> [!WARNING] 1.9.0.0
-> When *basePath* is 259 characters or longer, the result can be a relative path that leads to the wrong place, and no error is raised. For a target `x\y.txt` below such a base, the result starts with `..\` and the last name of the base, instead of being `x\y.txt`. A base path of 258 characters or fewer gives the right result.
+Paths longer than 260 characters give the same result as short ones.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print GetRelativePath("C:\Projects\App", "C:\Projects\Lib\core.txt")   ' ..\Lib\core.txt
@@ -369,7 +369,7 @@ Dim shortBase As String, longBase As String
 shortBase = "C:\" & String$(100, "a")
 longBase = "C:\" & String$(130, "a") & "\" & String$(130, "b")
 Debug.Print GetRelativePath(shortBase, shortBase & "\x\y.txt")           ' x\y.txt
-Debug.Print GetRelativePath(longBase, longBase & "\x\y.txt") = "x\y.txt"   ' False
+Debug.Print GetRelativePath(longBase, longBase & "\x\y.txt")             ' x\y.txt
 ```
 
 ### GetTempName
@@ -526,8 +526,7 @@ Errors:
 
 - 58 when a folder, or a file, with that path exists.
 - 76 when the parent does not exist and *createIntermediates* is **False**.
-- 52 when the last component holds a character that is not allowed in a name, the wildcards `*` and `?` among them.
-- 75 when the last component is the reserved device name `con` (the message ends with the Windows code 87), and 76 when it is `nul`.
+- 52 when the last component holds a character that is not allowed in a name, the wildcards `*` and `?` among them, or is a reserved device name such as `con` or `nul`.
 
 ```tb check_build check_run
 Dim work As String
@@ -682,15 +681,15 @@ A file is never replaced: when the destination file exists, error 58 is raised. 
 
 Moving a file onto itself does nothing and returns its path, except that error 70 is raised when the file is in use. A change of letter case alone is also a move onto itself, so it changes nothing; use [**Rename**](#rename) for it.
 
-Errors: 53 when a wildcard matches no file, or matches only folders; 76 when the destination folder of a wildcard move does not exist; 58 when the destination file exists; 52 when the name of the destination holds a character that Windows does not allow; 75 when it is the reserved device name `con` (the message ends with the Windows code 87).
+Errors: 53 when a wildcard matches no file, or matches only folders; 76 when the destination folder of a wildcard move does not exist; 58 when the destination file exists; 52 when the name of the destination holds a character that Windows does not allow, or is a reserved device name.
 
 <!-- test: AttributeTests.MoveFile_FolderSource_MovesFolder -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] 2.0.0.0
 > A *source* without a wildcard that names a folder is moved too, with no error: `MoveFile "C:\old", "C:\new"` renames the folder. The Scripting Runtime raises error 53.
 
 <!-- test: ErrorNumberTests.MoveFile_NulDevice_KeepsSourceFile, ErrorNumberTests.FileMove_NulDevice_KeepsSourceFile, ErrorNumberTests.FileSystemObjectMoveFile_NulDevice_KeepsSourceFile -->
-> [!WARNING] 1.9.0.0
-> A *destination* that is the reserved device name `nul`, in any letter case and with or without an extension (`nul`, `NUL`, `nul.txt`), is not refused. **MoveFile** raises no error, and the file is gone: its contents were moved to the NUL device and cannot be recovered. The Scripting Runtime raises error 58 and leaves the file. [**File.Move**](File#move) and the **MoveFile** of [**FileSystemObject**](FileSystemObject#movefile) do the same; **File.Move** then raises error 53.
+A *destination* that is a reserved device name, in any letter case and with or without an extension (`con`, `nul`, `NUL.txt`), raises error 52, and the file stays where it is. [**File.Move**](File#move) and the **MoveFile** of [**FileSystemObject**](FileSystemObject#movefile) do the same. The Scripting Runtime raises error 58 for `nul`.
+<!-- /test -->
 
 ### MoveFolder
 {: .no_toc }
@@ -709,7 +708,7 @@ Returns the full path of the moved folder, or the full path of the destination f
 
 A destination that is an existing folder gets the source with or without a backslash at the end. The Scripting Runtime raises error 58 when the folder has no backslash.
 
-Errors: 76 when *source* names no folder, or a wildcard matches no folder; 5 for a wildcard in *destination*.
+Errors: 76 when *source* names no folder, or a wildcard matches no folder; 5 for a wildcard in *destination*; 52 when *destination* is a reserved device name such as `con` or `nul`, and the folder stays where it is.
 
 ### Rename
 {: .no_toc }
@@ -728,7 +727,7 @@ Returns the full path of the renamed item.
 
 *newName* cannot move the item to another folder. A change of letter case alone is allowed.
 
-Errors: 53 when *source* does not exist (for a folder as well as a file); 58 when *newName* is the name of another item in that folder; 52 when *newName* holds a character that Windows does not allow; 5 for a wildcard, for a *newName* that leads to another folder, and for a reserved device name such as `con`.
+Errors: 53 when *source* does not exist (for a folder as well as a file); 58 when *newName* is the name of another item in that folder; 52 when *newName* holds a character that Windows does not allow, or is a reserved device name such as `con`; 5 for a wildcard, and for a *newName* that leads to another folder.
 
 ```tb check_build check_run
 Dim work As String
@@ -838,7 +837,7 @@ A sample looks like binary data when it holds a zero byte, or more than 2% contr
 The result is an estimate, as every guess about the encoding of a text file is. A file in UTF-16, UTF-32 or UTF-8, with or without a BOM, is found right, except in the cases of the note below; so is a Latin-1 file when the system code page is Latin-1. Pass the encoding to the procedure that reads the file when it is known.
 
 <!-- test: DetectionTests.GetFileEncoding_ShortUtf16WithoutZeroByte_IsSystemAnsi, DetectionTests.GetFileEncoding_ShortUtf16Hiragana_IsUtf8, DetectionTests.GetFileEncoding_Gb18030WithAccent_IsSystemAnsi, DetectionTests.GetFileEncoding_Utf7PureAscii_IsUtf8, DetectionTests.GetFileEncoding_Latin1AccentInLastByte_IsUtf8, DetectionTests.GetFileEncoding_Latin1AccentPastSample_IsUtf8 -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] 2.0.0.0
 > A short file gives little evidence. UTF-16 text with no zero byte, such as eight kanji with no line ending, is reported as **encSystemAnsi**, or as **encUtf8** when its bytes are also valid UTF-8, as for eight hiragana. A few bytes of binary data can be reported as UTF-16. Text in another code page without a BOM is not found: GB18030 text with an accented letter is reported as **encSystemAnsi**, and UTF-7 or Big5 text that is pure ASCII as **encUtf8**. A sample that ends in the first byte of a multi-byte sequence is judged without that byte, so a Latin-1 file whose only accented letter is its last byte is reported as **encUtf8**, and so is a Latin-1 file whose accented letter comes after the first 32,768 bytes.
 
 Raises error 53 when the file does not exist; see [Errors](./#errors).
@@ -1182,7 +1181,7 @@ Syntax: **ReadStream** ( *filePath*, *stream*() [, *maxBytesToRead* ] )
 
 An empty file, and a *maxBytesToRead* of 0, leave *stream* as it was: an array that already has elements keeps them, and one that has none stays without. Test the array with [**IsArrayInitialized**](../../../Modules/Information/IsArrayInitialized) before indexing it.
 
-Raises error 7 when the whole file is longer than 2,147,483,647 bytes; a head of any size can be read from a larger file. Raises error 53 when the file does not exist. A file that is held open with exclusive access raises an unspecified error, number -2147467259; see [Errors](./#errors).
+Raises error 7 when the whole file is longer than 2,147,483,647 bytes; a head of any size can be read from a larger file. Raises error 53 when the file does not exist. A file that is held open with exclusive access raises error 70; see [Errors](./#errors).
 
 ### StringToTextFile
 {: .no_toc }
@@ -1524,7 +1523,7 @@ What the mode does:
 Errors: 53 when the file does not exist for **ForReading**, or for the other modes with *create* **False**; 76 when the folder does not exist; 52 for a name that is not valid when *create* is **True**; 5 for an unknown *ioMode*, and for a binary file as above; 70 when another stream has the file open for writing. The error has an empty **Err.Source** and the standard text of its number, `File not found` for 53, without the path.
 
 <!-- test: TextStreamTests.OpenTextFile_ReadOnlyFileForWriting_Raises70, TextStreamTests.OpenTextFile_Utf7ReadOnlyFileForWriting_Opens, TextStreamTests.TextStreamClose_Utf7ReadOnlyFile_Raises70, TextStreamTests.TextStreamFlush_Utf7ReadOnlyFile_Raises70, TextStreamTests.OpenTextFile_Utf7ForWriting_KeepsTextUntilClose -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] 2.0.0.0
 > A stream in UTF-7 holds the whole file in memory, as [**TextStream**](TextStream#reading-and-writing) describes. For **ForWriting** on a read-only file, the stream opens without an error and the file keeps its text; error 70 comes at the first [**Flush**](TextStream#flush) or [**Close**](TextStream#close). Every other encoding raises error 70 when the stream is opened.
 
 > [!IMPORTANT] timeless

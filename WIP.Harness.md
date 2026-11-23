@@ -1824,8 +1824,11 @@ others are Stage 2's probe lanes:
   five codes `event_output` reads from the compiler's own output, the other for `&HFD0000`, the
   native-exception code. The scenario reads each line's HTML from
   `debugConsoleContent.dataNodes` and the colour its class gives, and `g_TraceMode`. About 15 s.
+- The tbIDE lanes of BETA 1045, `designers`, `menus`, `datasheet` and `ico-cur`, are described in
+  [WIP.tbIDE.md](WIP.tbIDE.md#the-beta-1045-surface), with their times. The lanes `references`,
+  `parent`, `widgets`, `detach`, `help` and `help-offline` are described in their files' headers.
 
-**Timing:** the lanes other than widgets (24 s alone) take about two minutes at the default two at a time
+**Timing:** the lanes before BETA 1045's, other than widgets (24 s alone), take about two minutes at the default two at a time
 (the env lane is 16 s alone, the help lane 15 to 18 s, of which its cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
 about 9 s, a scenario 2 s; the slowest lanes are arch (56 s: two builds and two switches of
 target) and reload (47 s: two builds and two restarts).

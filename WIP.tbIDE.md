@@ -235,8 +235,13 @@ the sources do not is measured by an add-in lane, and the lane's tests are the r
 |---|---|---|
 | `designers` | `test/addin/probes/designers`, `designers-host` | `Register` and the forms of `IconData`, the order of the `Designer` calls, `GetURI`, `SetFileData` and the dirty dot, the toolbox, `Editors.Open` with a designer, `Unregister` |
 | `menus` | `test/addin/probes/menus`, `menus-host`, `unsupported` | `Menu.Id` and `MenuEntry.Id`, placing an entry by `RelativeToCommand`, `BeforeShow`, `AddCustom`, `ShowPopup`, the removals, `SelectedItemPath`, `AddFileUI`, the `Addin*` theme colours, `UnsupportedHostAddin` and `Host.CompilerVersion` |
-| `datasheet` | `test/addin/probes/datasheet` | the element in a tool window, `Ready()`, the four events and their answers, the controller's methods and what they return to twinBASIC, a failed answer |
+| `datasheet` | `test/addin/probes/datasheet` | the element in a tool window, `Ready()`, the four events and their answers, the controller's methods and what they return to twinBASIC, a failed answer, the keys, the colours after a theme change |
 | `ico-cur` | the bundled ICO Designer | it refuses a `.cur` file |
+
+A lane test that asserts an IDE defect says so in a comment and asserts only the defect; the
+correct behaviour around it is a test of its own. A reproducer's `repro.json` names the defect's
+tests only, so that `bug_repro.mjs verify` reports the defect fixed only when it is. Measured on
+BETA 1045, one at a time: `designers` about 120 s, `menus` 56 s, `datasheet` 85 s.
 
 Decisions the pages rest on:
 

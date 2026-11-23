@@ -38,11 +38,11 @@ On parse failure the function raises run-time error 10013 with the source `"UtcC
 <!-- /test -->
 
 <!-- test: DatesTests.ParseIso_OffsetWithoutAColon_IsHoursAndMinutes -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > An offset written without a colon, such as `+0530`, is read as a number of hours: `+0530` is 530 hours, and `2024-06-03T14:30:00+0530` gives 12 May 2024, with no error. Write the offset as `+05:30`.
 
 <!-- test: DatesTests.ParseIso_DateBefore30December1899_AppliesTheZoneRules, DatesTests.ParseIso_DateBefore1601_Raises10013 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > A string with a time on a date before 30 December 1899 gives the wrong day and time, and one before 1 January 1601 gives a meaningless date, with no error: [**ParseUtc**](ParseUtc) cannot convert it.
 
 ### Example

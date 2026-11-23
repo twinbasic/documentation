@@ -1,5 +1,5 @@
 {
-  "version": "2.3.1.1",
+  "version": "2.3.2.1",
   "cases": {
     "ConvertToJsonTests.String_ThatIsNotANumber_IsQuoted": {
       "fails": "3 of 3 checks failed: 16 letters E: expected \"\"EEEEEEEEEEEEEEEE\"\", got \"EEEEEEEEEEEEEEEE\"; 16 periods: expected \"\"................\"\", got \"................\"; 16 digits with leading zeros (not a JSON number): expected \"\"0000123456789012\"\", got \"0000123456789012\""
@@ -49,14 +49,11 @@
     "DatesTests.ConvertToJson_DateBefore1601_Raises10014": {
       "fails": "1 of 1 checks failed: run-time error of ConvertToJson(1 January 1500): expected 10014, got 0"
     },
-    "DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys": {
-      "fails": "2 of 3 checks failed: number of keys after d(\"a\") = 1 and d(\"A\") = 2: expected 2, got 1; d(\"a\") after d(\"A\") = 2: expected 1, got 2"
-    },
     "ParseJsonTests.Strings_NewlineEscape_IsALineFeed": {
       "fails": "1 of 1 checks failed: ParseJson of the string a\\nb (U+000A is one line feed): expected \"a<A>b\", got \"a<D><A>b\""
     },
-    "ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries": {
-      "fails": "2 of 3 checks failed: number of keys of {\"id\":1,\"ID\":2}: expected 2, got 1; r(\"id\"): expected 1, got 2"
+    "ParseJsonTests.EmptyKey_IsAKey": {
+      "fails": "(runtime error 5: Invalid procedure call or argument)"
     },
     "ParseJsonTests.Error_ArrayThatIsNotClosed_Raises10001": {
       "hangs": true

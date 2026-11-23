@@ -9,9 +9,9 @@ has_toc: false
 
 Returns or sets the value stored under a given key in the **Dictionary**.
 
-<!-- test: DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys, ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries -->
-> [!WARNING] 2.3.1.1
-> Keys are compared without regard to case, so `d("a")` and `d("A")` are one entry: the second assignment replaces the first value. **ParseJson** therefore merges the keys `id` and `ID` of one JSON object into one entry that holds the last value, and the other value is lost without an error. JSON keys are case-sensitive, and so are the keys of the **Scripting.Dictionary** that VBA-JSON uses on Windows.
+<!-- test: DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys -->
+Keys are compared with regard to case, so `d("a")` and `d("A")` are two entries.
+<!-- /test -->
 
 ## Get
 
@@ -32,7 +32,7 @@ If *Key* does not exist in the dictionary, the underlying **Collection** raises 
 <!-- /test -->
 
 <!-- test: DictionaryTests.Item_MissingKey_RaisesError5, DictionaryTests.Item_MissingKey_ScriptingDictionaryAddsTheKey -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > Reading a key that is not there raises run-time error 5 and adds nothing. A **Scripting.Dictionary** returns **Empty** and adds the key.
 
 ## Let
@@ -52,7 +52,7 @@ If *Key* already exists, the previous entry is removed before the new value is a
 <!-- /test -->
 
 <!-- test: DictionaryTests.Item_Replace_MovesTheKeyToTheEnd, DictionaryTests.Item_Replace_ScriptingDictionaryKeepsThePosition -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > Assigning to an existing key moves the entry to the end of the **For Each** and **Keys** order. A **Scripting.Dictionary** keeps the entry where it was, so code that writes a value back into a parsed object changes the order of the keys that **ConvertToJson** writes.
 
 ## Set
