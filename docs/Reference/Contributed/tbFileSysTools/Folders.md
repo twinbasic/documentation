@@ -77,7 +77,7 @@ Syntax: *object*.**Add** ( *name* ) **As Folder**
 
 Creates the folder below the folder that the collection was read from, appends it to the collection, and returns it. [**Count**](#count) and [**Item**](#item) show it at once, and **Item** finds it by *name*. Any other **Folders** that was read from the same folder is not changed; reading [**SubFolders**](Folder#subfolders) again includes the new folder.
 
-Errors: 58 when the folder already exists, and for an empty *name*, which names the folder that holds the collection; 5 when *name* holds a slash; 52 for a name with `<`, `>`, `"`, `|`, `?`, `*` or a control character; 75 for a reserved device name such as `con`. The numbers are those of [**CreateFolder**](FileSystemTools#createfolder), which does the work. The Scripting Runtime has this method too. It raises error 58 for an existing folder and error 5 for a path, as here, and also error 5 for an empty *name*.
+Errors: 58 when the folder already exists, and for an empty *name*, which names the folder that holds the collection; 5 when *name* holds a slash; 52 for a name with `<`, `>`, `"`, `|`, `?`, `*` or a control character, and for a reserved device name such as `con`. The numbers are those of [**CreateFolder**](FileSystemTools#createfolder), which does the work. The Scripting Runtime has this method too. It raises error 58 for an existing folder and error 5 for a path, as here, and also error 5 for an empty *name*.
 
 ```tb check_build check_run
 Dim work As String, fs As Folders, nf As Folder

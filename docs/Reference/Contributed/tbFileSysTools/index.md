@@ -6,14 +6,14 @@ exclude_from_docs:
   - FSTShared
   - TextCodec
   - WinAPI
-indexed_from: 1.9.0.0
+indexed_from: 2.0.0.0
 permalink: /tB/Packages/Contributed/tbFileSysTools/
 ---
 
 # tbFileSysTools Package
 {: .no_toc }
 
-**Author:** GCuser99. **Version:** 1.9.0.0. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
+**Author:** GCuser99. **Version:** 2.0.0.0. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
 
 The **tbFileSysTools** contributed package, listed on the Available Packages tab of Project Settings as *File System Tools - Modern Replacement for FSO*, reads and changes files, folders and drives, as the **FileSystemObject** of the Scripting Runtime does, and is written in twinBASIC. It reads and writes text files in any Windows code page, with detection of the encoding and handling of byte-order marks (BOMs), detects and converts line endings, streams files of any size, and works with paths longer than 260 characters.
 
@@ -123,13 +123,8 @@ The procedures raise the error numbers that VB6 uses for the same failures. **Er
 
 Windows reports a failure with its own code, and the package maps it to one of those numbers: *file not found* (2) to 53, *path not found* (3) and *bad directory name* (267) to 76, *file exists* (80 and 183) to 58, *access denied* and the sharing violations (5, 32 and 33) to 70, and *invalid name* (123) to 52.
 
-<!-- test: ErrorNumberTests.TextFileToString_ExclusiveFile_Raises70, ErrorNumberTests.GetFileEncoding_ExclusiveFile_Raises70, ErrorNumberTests.GetFileLineEnding_ExclusiveFile_Raises70, ErrorNumberTests.ReadStream_ExclusiveFile_Raises70, ErrorNumberTests.TextFileToArray_ExclusiveFile_Raises70, ErrorNumberTests.FileContainsText_ExclusiveFile_Raises70, ErrorNumberTests.StringToTextFile_ExclusiveFile_Raises70, ErrorNumberTests.StringToTextFile_ReservedName_Raises52, ErrorNumberTests.ArrayToTextFile_ReservedName_Raises52, ErrorNumberTests.CreateTextFile_ReservedName_Raises52, ErrorNumberTests.OpenTextFile_ReservedName_Raises52, ErrorNumberTests.FolderCreateTextFile_ReservedName_Raises52, ErrorNumberTests.CopyFile_ReservedName_Raises52, ErrorNumberTests.CreateFolder_ReservedName_Raises52, ErrorNumberTests.MoveFile_ReservedName_Raises52, ErrorNumberTests.MoveFolder_ReservedName_Raises52, ErrorNumberTests.Rename_ReservedName_Raises52, LongPathTests.FolderFiles_Path258_ListsFiles, LongPathTests.FolderFiles_Path270_ListsFiles, LongPathTests.FolderSubFolders_Path258_ListsFolders, LongPathTests.FolderSize_Path258_AddsFiles, LongPathTests.FolderSize_SubfolderPath258_AddsFiles, LongPathTests.FolderFilesAndSubFolders_Path256_Work, LongPathTests.FolderSize_Path256_Works -->
-> [!NOTE] 1.9.0.0
-> A few failures raise a number that is not the one the same failure raises elsewhere in the package. The sample shows the first two.
->
-> - A file that is held open with exclusive access raises the unspecified error -2147467259 when it is read, by [**TextFileToString**](FileSystemTools#textfiletostring), [**GetFileEncoding**](FileSystemTools#getfileencoding), [**ReadStream**](FileSystemTools#readstream) and the other procedures that read a whole file. Writing to it raises 70.
-> - A reserved device name, such as `con` or `nul`, raises 52 in the procedures that write a file ([**StringToTextFile**](FileSystemTools#stringtotextfile), [**ArrayToTextFile**](FileSystemTools#arraytotextfile), [**CreateTextFile**](FileSystemTools#createtextfile), [**OpenTextFile**](FileSystemTools#opentextfile) with *create* **True**, [**Folder.CreateTextFile**](Folder#createtextfile)) and in [**CopyFile**](FileSystemTools#copyfile). It raises other numbers elsewhere. [**CreateFolder**](FileSystemTools#createfolder) raises 75 for `con` and 76 for `nul`; [**MoveFile**](FileSystemTools#movefile) raises 75 for `con`, and for `nul` it raises nothing, which has a warning of its own; [**MoveFolder**](FileSystemTools#movefolder) raises 75 for `con` and 70 for `nul`; [**Rename**](FileSystemTools#rename) raises 5.
-> - [**Folder.Files**](Folder#files), [**SubFolders**](Folder#subfolders) and [**Size**](Folder#size) raise error 76 for a folder whose path has 258 characters or more.
+<!-- test: ErrorNumberTests.TextFileToString_ExclusiveFile_Raises70, ErrorNumberTests.GetFileEncoding_ExclusiveFile_Raises70, ErrorNumberTests.GetFileLineEnding_ExclusiveFile_Raises70, ErrorNumberTests.ReadStream_ExclusiveFile_Raises70, ErrorNumberTests.TextFileToArray_ExclusiveFile_Raises70, ErrorNumberTests.FileContainsText_ExclusiveFile_Raises70, ErrorNumberTests.StringToTextFile_ExclusiveFile_Raises70, ErrorNumberTests.StringToTextFile_ReservedName_Raises52, ErrorNumberTests.ArrayToTextFile_ReservedName_Raises52, ErrorNumberTests.CreateTextFile_ReservedName_Raises52, ErrorNumberTests.OpenTextFile_ReservedName_Raises52, ErrorNumberTests.FolderCreateTextFile_ReservedName_Raises52, ErrorNumberTests.CopyFile_ReservedName_Raises52, ErrorNumberTests.CreateFolder_ReservedName_Raises52, ErrorNumberTests.MoveFile_ReservedName_Raises52, ErrorNumberTests.MoveFolder_ReservedName_Raises52, ErrorNumberTests.Rename_ReservedName_Raises52 -->
+A file that is held open with exclusive access raises error 70 when it is read, by [**TextFileToString**](FileSystemTools#textfiletostring), [**GetFileEncoding**](FileSystemTools#getfileencoding), [**ReadStream**](FileSystemTools#readstream) and the other procedures that read a whole file, and when it is written. A reserved device name, such as `con` or `nul`, raises error 52 in the procedures that write a file, in [**CopyFile**](FileSystemTools#copyfile), [**CreateFolder**](FileSystemTools#createfolder), [**MoveFile**](FileSystemTools#movefile), [**MoveFolder**](FileSystemTools#movefolder) and [**Rename**](FileSystemTools#rename), and nothing is created or moved.
 
 ```tb check_build check_run
 Dim work As String, p As String, s As String, fn As Long
@@ -142,7 +137,7 @@ On Error Resume Next
 fn = FreeFile()
 Open p For Binary Access Read Write Lock Read Write As #fn
 s = TextFileToString(p)
-Debug.Print Err.Number                              ' -2147467259
+Debug.Print Err.Number                              ' 70
 Err.Clear
 StringToTextFile "y", p
 Debug.Print Err.Number                              ' 70
@@ -153,15 +148,16 @@ StringToTextFile "x", BuildPath(work, "con")
 Debug.Print Err.Number                              ' 52
 Err.Clear
 CreateFolder BuildPath(work, "con")
-Debug.Print Err.Number                              ' 75
+Debug.Print Err.Number                              ' 52
 Err.Clear
 Rename p, "con"
-Debug.Print Err.Number                              ' 5
+Debug.Print Err.Number                              ' 52
 Err.Clear
 On Error GoTo 0
 
 DeleteFolder work
 ```
+<!-- /test -->
 
 In the procedures that read or write the text or the bytes of a file, a file that does not exist raises error 53, and a folder that does not exist raises 76.
 

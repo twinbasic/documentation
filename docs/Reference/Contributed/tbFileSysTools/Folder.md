@@ -106,27 +106,25 @@ Syntax: *object*.**Files** **As Files**
 Returns a [**Files**](Files) collection of the files directly in the folder. Hidden and system files are in it, which differs from [**GetFilePaths**](FileSystemTools#getfilepaths). The folder is read when the property is read, and the collection does not change afterwards. Raises error 70 when the folder cannot be read, as the Scripting Runtime does.
 
 <!-- test: LongPathTests.FolderFiles_Path258_ListsFiles, LongPathTests.FolderFiles_Path270_ListsFiles, LongPathTests.FolderSubFolders_Path258_ListsFolders, LongPathTests.FolderSize_Path258_AddsFiles, LongPathTests.FolderSize_SubfolderPath258_AddsFiles, LongPathTests.FolderFilesAndSubFolders_Path256_Work, LongPathTests.FolderSize_Path256_Works, LongPathTests.FolderFilesAndSubFolders_Path257_Work, LongPathTests.FolderSize_Path257_Works -->
-> [!NOTE] 1.9.0.0
-> **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
+**Files**, [**SubFolders**](#subfolders) and [**Size**](#size) work for a folder whose path is longer than 260 characters.
 
 ```tb check_build check_run
-Dim work As String, deep As String, n As Long
+Dim work As String, deep As String
 work = BuildPath(Environ$("TEMP"), GetTempName("fst", ""))
 deep = work
 Do While Len(deep) < 270
     deep = BuildPath(deep, String$(25, "d"))
 Loop
 CreateFolder deep, True
+StringToTextFile "abc", BuildPath(deep, "a.txt")
 
-Debug.Print Len(GetFolder(deep).Name)      ' 25
-On Error Resume Next
-n = GetFolder(deep).Files.Count
-Debug.Print Err.Number                     ' 76
-Err.Clear
-On Error GoTo 0
+Debug.Print Len(deep) > 260                ' True
+Debug.Print GetFolder(deep).Files.Count    ' 1
+Debug.Print GetFolder(deep).Size           ' 3
 
 DeleteFolder work
 ```
+<!-- /test -->
 
 ### HasAttribute
 {: .no_toc }
@@ -203,7 +201,7 @@ Syntax: *object*.**Size** **As LongLong**
 
 The tree is read again on every call, which takes time for a large tree. Hidden and system files are counted. A directory junction or symbolic link is not entered, so each file is counted once, where it is stored. The Scripting Runtime enters a link, and counts the files below its target twice when the link leads to a folder in the same tree: for a folder that holds 1,500 bytes, with a junction to one of its subfolders, **Size** returns 1,500 here and 2,500 with the Scripting Runtime (the sample under [Junctions and symbolic links](FileSystemTools#junctions-and-symbolic-links) shows it).
 
-Raises error 70 when a folder in the tree cannot be read, as the Scripting Runtime does. Raises error 76 when the folder, or a folder below it, has a path of 258 characters or more; see [Files](#files).
+Raises error 70 when a folder in the tree cannot be read, as the Scripting Runtime does.
 
 ### SubFolders
 {: .no_toc }
