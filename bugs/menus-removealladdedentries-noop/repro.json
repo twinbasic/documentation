@@ -2,7 +2,7 @@
   "mode": "lane",
   "lane": "addin:menus",
   "tests": [
-    "Menus.RemoveAllAddedEntries changes nothing; a compiler restart drops every entry, the add-in adds its own again, and the dead ProbeFirst item stays"
+    "Menus.RemoveAllAddedEntries changes nothing: the entries and the custom menus stay"
   ],
   "steps": "1. An add-in that adds an entry to `Host.Menus.FileMenu`, one to `Host.Menus.ProjectExplorerFileViewContextMenu`, and a menu with `Host.Menus.AddCustom`.\n2. Call `Host.Menus.RemoveAllAddedEntries`.\n3. Open the **File** menu, and right-click a file in the Project Explorer. Both entries are still there, and so is the custom menu."
 }

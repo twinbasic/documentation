@@ -55,7 +55,7 @@ The designer keeps the [**DesignerHost**](DesignerHost) it is given, builds its 
 | The project is saved, or the tab with <kbd>Ctrl</kbd>+<kbd>S</kbd> | [**OnSaveCompleted**](#onsavecompleted). |
 | A tab with no changes is closed | [**OnClosing**](#onclosing), **OnDeactivated**, [**OnClosed**](#onclosed). |
 | A tab with changes is closed, and the user answers **Discard Changes** | **OnClosing**, **OnDeactivated**, **OnClosed**. The file keeps the bytes it was saved with. |
-| A tab with changes is closed, and the user answers **Save** | **OnDeactivated**, **OnClosed**, then **OnSaveCompleted**. There is no **OnClosing**. |
+| A tab with changes is closed, and the user answers **Save** | **OnDeactivated**, **OnClosed**, then **OnSaveCompleted**. There is no **OnClosing**. The bytes go into the project the IDE holds, and reach the disk at the next save of the project. |
 | The compiler restarts | The designer is gone with the compiler. The addin is loaded again, and for each tab of its designers the IDE calls **CreateDesigner**, **OnAttached** and **OnFileDataChanged**, with the tab's bytes, the changes not saved yet included. There is no **OnActivated**, though the tab may be the active one. |
 
 **OnActivated** comes before the first **OnFileDataChanged**, so a designer has to be ready for it with no data yet.
@@ -113,7 +113,7 @@ Syntax: *designer*.**OnFileDataChanged**( *byteData* )
 ### OnSaveCompleted
 {: .no_toc }
 
-The file has been written with the bytes the designer gave last. A designer that marks its changes can clear the marks here.
+The IDE has taken the bytes the designer gave last as the file's saved contents. After <kbd>Ctrl</kbd>+<kbd>S</kbd> or a save of the project, the file on disk holds them. After a changed tab is closed with **Save**, the project the IDE holds has them, and the disk has them at the next save of the project. A designer that marks its changes can clear the marks here.
 
 Syntax: *designer*.**OnSaveCompleted**()
 

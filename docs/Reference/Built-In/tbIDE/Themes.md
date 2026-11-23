@@ -59,9 +59,9 @@ myToolWindow.ApplyCss _
 
 Give each `var()` a second value, as here, for an IDE whose theme does not set the colour.
 
-<!-- test: bug toolwindow-addin-colours-stale, lane addin:menus -->
+<!-- test: bug toolwindow-addin-colours-stale, lane addin:menus, lane addin:datasheet -->
 > [!NOTE] BETA 1045
-> A [**ToolWindow**](ToolWindow) keeps the colours of the theme it was made in: after the user chooses another theme, its variables still hold the old values. A tool window made after the change has the new ones. For a tool window that follows the theme, set its colours in [**Host.OnChangedTheme**](Host#onchangedtheme), as the example at the top of this page does.
+> A [**ToolWindow**](ToolWindow) keeps the colours of the theme it was made in: after the user chooses another theme, its variables still hold the old values, and what is drawn with them, a [**datasheet**](Datasheet) included, keeps the old colours. A tool window made after the change, with an id no window has had, has the new ones. For elements of a tool window that follow the theme, set their colours in [**Host.OnChangedTheme**](Host#onchangedtheme), as the example at the top of this page does, rather than through the variables.
 
 | Variable | For | Dark | Light |
 |---|---|---|---|

@@ -14136,7 +14136,7 @@ Steps to reproduce the behavior:
 2. Load it and open a project. **ProbeFirst** is on the menu bar after **Help**.
 3. Click **ProbeFirst**. Nothing opens.
 4. `m.Caption = "ProbeFirst2"` leaves the bar item's text as it was; `m.Caption` reads `ProbeFirst2`.
-5. Restart the compiler. The bar now shows **ProbeFirst** twice.
+5. Restart the compiler. The bar now shows **ProbeFirst** twice, and neither opens.
 
 **Expected behavior**
 The menu opens on a click and lists its entries, as it does when the add-in has added an entry somewhere else first; its `Caption` and `Visible` change the bar item; a compiler restart removes it.
@@ -14150,7 +14150,7 @@ In `ide/main.js`, the `addMenu` handler, for a menu with no parent, inserts the 
 
 Severity: medium. An add-in whose only menu is its own gets a menu that does nothing, and a growing row of them.
 
-<!-- Reproducer: bugs/addcustom-first-menu-dead/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "AddCustom"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/addcustom-first-menu-dead/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the tests "AddCustom: a menu-bar item after Help; the add-in's first menu call gives one that does not open, and whose Caption and Visible do not change it" and "after a compiler restart the dead ProbeFirst item stays beside the new one, which does not open either", which pass on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "AddCustom"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14177,7 +14177,7 @@ The page has a handler for one menu's removal (`removeAllMenuChildren`) and none
 
 Severity: low. An add-in can remove its entries one menu at a time.
 
-<!-- Reproducer: bugs/menus-removealladdedentries-noop/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "Menus.RemoveAllAddedEntries changes nothing; a compiler restart drops every entry, the add-in adds its own again, and the dead ProbeFirst item stays", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "RemoveAllAddedEntries"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/menus-removealladdedentries-noop/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "Menus.RemoveAllAddedEntries changes nothing: the entries and the custom menus stay", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Menus.md carries a NOTE (BETA 1045) for it under "RemoveAllAddedEntries"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14283,9 +14283,11 @@ The variables in an open tool window change with the theme, as they do in a desi
 **Additional context**
 `createToolWindowById` in `ide/main.js` copies the eight values onto the tool window's body as inline styles when it makes the window, and nothing copies them again; `resyncTheme`, which `notifyChangedTheme` calls, does it for designers only. The inline values hide the page's own, which do change.
 
-Severity: low. An add-in can make its windows again in `OnChangedTheme`.
+A `datasheet` in such a tool window keeps the old theme too: it reads the variables from its root, which computes the window's stale values, so after a switch from Dark to Light it goes on painting Dark's colours.
 
-<!-- Reproducer: bugs/toolwindow-addin-colours-stale/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "--themeAddin*: a tool window keeps the colours of the theme it was made in; High Contrast Dark has Dark's", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Themes.md carries a NOTE (BETA 1045) for it under "Colours for addins"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+Severity: low. An add-in can set its own elements' colours in `OnChangedTheme`, but not a datasheet's, which reads only the variables.
+
+<!-- Reproducer: bugs/toolwindow-addin-colours-stale/ (mode lane: asserted by `addin-test.bat --only menus` (test/addin/menus.test.mjs), the test "--themeAddin*: a tool window keeps the values of the theme it was made in", which passes on BETA 1045; the datasheet's part by the datasheet lane's test "a theme change: a grid in a tool window keeps the colours of the theme the window was made in"). No project and no zip: the lane's probe add-in is test/addin/probes/menus. docs/Reference/Built-In/tbIDE/Themes.md carries a NOTE (BETA 1045) for it under "Colours for addins"; when a fixed build is released, the NOTE goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14312,35 +14314,36 @@ A cell is drawn by fin-hypergrid's default renderer (`ide/fin-hypergrid.min.js`)
 
 Severity: medium. A table of numbers shows blanks where its zeros are, with nothing to say so.
 
-<!-- Reproducer: bugs/datasheet-zero-drawn-blank/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "what the grid draws: the header, a 0 as nothing, no number formatting, a tick only for true", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a WARNING (BETA 1045) for it under "onGetRows", and docs/IDE/AddIns/DataExplorer.md one under "The grid"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/datasheet-zero-drawn-blank/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "a 0 draws nothing, in an integer column and in a string column", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a WARNING (BETA 1045) for it under "onGetRows", and docs/IDE/AddIns/DataExplorer.md one under "The grid"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
-## Right, Left, Tab, Home and End in a datasheet throw in the IDE's page and move nothing
+## Home and End in a datasheet throw, and after Up or Down so do Right, Left, Tab and Shift+Down
 
 **Describe the bug**
-In a `datasheet` with a data cell current, Up and Down move the current record. Right, Left and Tab each throw `TypeError: Cannot read properties of null (reading 'x')` from `ide/fin-hypergrid.min.js`, and Home, End, Ctrl+Home and Ctrl+End throw `page left not yet implemented` or `page right not yet implemented`. None of them moves the cell, the record or the scroll. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/datasheet`) that shows a datasheet in a tool window.
+In a `datasheet`, Home, End, Ctrl+Home and Ctrl+End always throw `page left not yet implemented` or `page right not yet implemented` from `ide/fin-hypergrid.min.js`, and move nothing. Right, Left and Tab move the current cell, and Shift+Down the current record, after a click on a data cell; but once Up or Down has moved the current record, each of the four throws `TypeError: Cannot read properties of null (reading 'x')` from the same file and moves nothing, until the next click. Up and Down go on working. None of the keys that throw moves the cell, the record or the scroll. It was observed in an IDE started with an `APPDATA` of its own, with a probe add-in (`test/addin/probes/datasheet`) that shows a datasheet in a tool window.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. A datasheet with a few columns and rows. Click a data cell.
-2. Press Right. Nothing moves; the page reports an uncaught TypeError.
-3. Press Home. Nothing moves; the page reports `page left not yet implemented`.
-Control: Down moves the current record by one.
+2. Press Home. Nothing moves; the page reports `page left not yet implemented`. End, Ctrl+Home and Ctrl+End do the same.
+3. Click a data cell, then press Down: the current record moves down one.
+4. Press Right. Nothing moves; the page reports an uncaught TypeError. Left, Tab and Shift+Down do the same, until the next click.
+Control: Right pressed straight after a click moves the current cell one column right.
 
 **Expected behavior**
-Right, Left and Tab move to the next or previous cell, scrolling the columns into view, and Home and End to the first or last column; or the keys do nothing without an error.
+Right, Left, Tab and Shift+Down do what they do after a click whichever key moved the current record, and Home and End move to the first or last column; or the keys do nothing without an error.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 1045
 
 **Additional context**
-The two strings are fin-hypergrid's own unfinished handlers. The TypeError is in its cell navigation, which finds no cell selection of its own: the datasheet keeps its current record itself and handles Up and Down.
+The two strings are fin-hypergrid's own unfinished handlers. The TypeError is in its cell navigation, which finds no cell selection of its own: the datasheet keeps its current record itself and handles Up and Down, and a click sets fin-hypergrid's selection again.
 
-Severity: low. A grid wider than its window can be scrolled sideways only with the scroll bar.
+Severity: low. A grid wider than its window can be scrolled sideways only with the scroll bar once Up or Down has been used.
 
-<!-- Reproducer: bugs/datasheet-keys-throw/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "keys: Up and Down move the current record; PageDown scrolls without moving it", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a NOTE (BETA 1045) for it under "What the user does"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/datasheet-keys-throw/ (mode lane: asserted by `addin-test.bat --only datasheet` (test/addin/datasheet.test.mjs), the test "keys: Home and End throw; after Up or Down, Right, Left, Tab and Shift+Down throw and move nothing", which passes on BETA 1045; its control is the test "keys after a click: Right, Left and Tab move the current cell, Shift+Down the current record". Narrowed 2026-11-23: the first account said Right, Left and Tab always throw, which held only after Up or Down). No project and no zip: the lane's probe add-in is test/addin/probes/datasheet. docs/Reference/Built-In/tbIDE/Datasheet.md carries a NOTE (BETA 1045) for it under "What the user does"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 
@@ -14394,7 +14397,7 @@ In `ide/main.js`, `fileHandler_CustomDesigner.isDirty` sets `cachedIsDirtyState`
 
 Severity: low. The tab says it has changes it does not have.
 
-<!-- Reproducer: bugs/designer-dirty-dot-stays/ (mode lane: asserted by `addin-test.bat --only designers` (test/addin/designers.test.mjs), the test "SetFileData with the saved bytes: the page holds the tab unchanged, but its dot stays", which passes on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/designers. docs/Reference/Built-In/tbIDE/DesignerHost.md carries a NOTE (BETA 1045) for it under "SetFileData"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
+<!-- Reproducer: bugs/designer-dirty-dot-stays/ (mode lane: asserted by `addin-test.bat --only designers` (test/addin/designers.test.mjs), the tests "SetFileData with the saved bytes: the page holds the tab unchanged, but its dot stays" and "closing a tab the page holds unchanged: no question; OnClosing, OnDeactivated, OnClosed", which pass on BETA 1045). No project and no zip: the lane's probe add-in is test/addin/probes/designers. docs/Reference/Built-In/tbIDE/DesignerHost.md carries a NOTE (BETA 1045) for it under "SetFileData"; when a fixed build is released, the callout goes and the lane's test asserts the fixed behaviour. Found 2026-11-22 in the update of the docs to BETA 1045. -->
 
 ---
 

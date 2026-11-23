@@ -60,7 +60,11 @@ Three steps make a datasheet, all of them on its **parent** element, not on the 
 
 Then set what the controller is to show, such as `setZoom` or `setColumnWidths`, and call `controller.loadData()`. The datasheet then asks for the columns through **onGetInfo**, and for the rows on screen through **onGetRows**. Until the columns have come, it shows nothing.
 
-A parent holds one datasheet. Its colours are the theme's [colours for addins](Themes#colours-for-addins), and follow a change of the IDE's theme. Its text is Tahoma, 12 pixels high at 100 percent.
+A parent holds one datasheet. Its colours are the theme's [colours for addins](Themes#colours-for-addins), as its parent has them, and in a designer's tab they follow a change of the IDE's theme. Its text is Tahoma, 12 pixels high at 100 percent.
+
+<!-- test: bug toolwindow-addin-colours-stale, lane addin:datasheet -->
+> [!NOTE] BETA 1045
+> A datasheet in a [tool window](ToolWindow) keeps the colours of the theme the window was made in, because the window keeps that theme's colours for addins. After a change from Dark to Light it is still drawn in Dark's colours. A tool window made after the change, with an id no window has had, has the new theme's colours.
 
 ## Events
 
@@ -183,7 +187,7 @@ Before `loadData()`, a method that sets how the grid looks keeps the value for w
 | `setColumnIsSorted(index, on)`, `setColumnIsFiltered(index, on)` | Shows or hides the sort mark or the filter mark in the header of a column, by its number from 0. A filter mark also shows *(filtered)* in the bar at the bottom. The datasheet itself neither sorts nor filters: the addin does that in the rows it gives, and calls `refresh()`. |
 | `getSelectedRows()` | Returns the selected rows as `"first:last"`, both counted from 0 and both included: `"3:5"` for three rows. With no row selected, it returns the current row as `"r:r"`, and `"-1:-1"` when there is none. |
 | `selectAllRows()` | Selects every row. |
-| `navigateToRecord(n)` | Makes row *n* the current row, counted from 1, and scrolls to it. A number past either end goes to the first or the last row. |
+| `navigateToRecord(n)` | Makes row *n* the current row, counted from 1, and scrolls to it. A fraction is dropped: 12.7 is row 12. A number past either end goes to the first or the last row. |
 | `flashMessage(text, ms)` | Shows *text* in the bar at the bottom for *ms* milliseconds, 3,000 by default. An empty text clears it. |
 | `getState()` | Returns `"created"`, `"loading"`, `"ready"`, `"refreshing"`, `"error"` or `"disposed"`. |
 | `getLastError()` | Returns the reason for the last failure, or an empty string. |
@@ -192,11 +196,11 @@ Before `loadData()`, a method that sets how the grid looks keeps the value for w
 
 ## What the user does
 
-The bar at the bottom moves to the first, previous, next and last row, or to the row whose number is typed into its box, and says how many rows there are. <kbd>Up</kbd> and <kbd>Down</kbd> move the current row, and so does <kbd>Enter</kbd>, down. <kbd>Page Down</kbd> and <kbd>Page Up</kbd> scroll, and leave the current row where it was. The mouse wheel scrolls, with <kbd>Ctrl</kbd> held too: it does not zoom.
+The bar at the bottom moves to the first, previous, next and last row, or to the row whose number is typed into its box, and says how many rows there are. <kbd>Up</kbd> and <kbd>Down</kbd> move the current row, and so does <kbd>Enter</kbd>, down. <kbd>Page Down</kbd> and <kbd>Page Up</kbd> scroll, and leave the current row where it was. After a click on a cell, <kbd>Right</kbd>, <kbd>Left</kbd> and <kbd>Tab</kbd> move to the next or previous cell, and <kbd>Shift</kbd>+<kbd>Down</kbd> moves the current row down. The mouse wheel scrolls, with <kbd>Ctrl</kbd> held too: it does not zoom.
 
 <!-- test: bug datasheet-keys-throw, lane addin:datasheet -->
 > [!NOTE] BETA 1045
-> <kbd>Right</kbd>, <kbd>Left</kbd>, <kbd>Tab</kbd>, <kbd>Home</kbd> and <kbd>End</kbd> move nothing in a datasheet, and each raises an error in the IDE's page. Scroll sideways with the scroll bar.
+> <kbd>Home</kbd> and <kbd>End</kbd>, with or without <kbd>Ctrl</kbd>, move nothing in a datasheet, and each raises an error in the IDE's page. Once <kbd>Up</kbd> or <kbd>Down</kbd> has moved the current row, <kbd>Right</kbd>, <kbd>Left</kbd>, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Down</kbd> do the same, until the next click on a cell. Click a cell first, or scroll sideways with the scroll bar.
 
 No cell can be edited: a double-click, or a key typed on a cell, opens no editor.
 

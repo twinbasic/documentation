@@ -34,8 +34,15 @@ const SRC = (name) => `/DesignersHost/Sources/${name}`;
 // What the probe printed since a mark, without its prefix, its counter and the number of the
 // designer instance ("Probe Default#3" is "Probe Default#"). The counter is in the order the
 // lines were printed, which is the console's order.
+// The add-in's first line names the build, Host.CompilerVersion: it reads "loaded <version>" here,
+// so that a new build fails only the test that checks the version (menus.test.mjs).
 const probeLines = async (c, mark) =>
-  (await linesSince(c, mark, { prefix: "[DesignersProbe] " })).map((l) => l.replace(/^\d+ /, "").replace(/#\d+/, "#"));
+  (await linesSince(c, mark, { prefix: "[DesignersProbe] " })).map((l) =>
+    l
+      .replace(/^\d+ /, "")
+      .replace(/#\d+/, "#")
+      .replace(/^loaded 0\.15\.\d+$/, "loaded <version>"),
+  );
 
 // The lines a designer prints in OnAttached, for one whose GetURI is `uri`.
 const ATTACHED = (d, uri) => [
@@ -153,7 +160,11 @@ scenario("The custom-designer API of BETA 1045", (lane) => {
     const t = await waitFor(c, async () => (await tab(name))?.close ?? null, { timeout: 10 * 1000 });
     assert.ok(t, `the tab ${name} has no close icon: ${J(await tab(name))}`);
     await kit.clickAt(t.x, t.y);
-    await sleep(700);
+    // Either the IDE asks about the changes, or the tab goes.
+    await waitFor(c, async () => (await kit.questions()).length > 0 || (await tab(name)) === null, {
+      timeout: 5000,
+      interval: 100,
+    });
     const asked = await kit.questions();
     if (asked.length) {
       assert.ok(reply, `closing ${name} asked ${J(asked)}`);
@@ -210,7 +221,7 @@ scenario("The custom-designer API of BETA 1045", (lane) => {
     const names = (await loadedAddins(c)).map((a) => a.name);
     assert.ok(names.includes("DesignersProbe AddIn"), `loaded: ${J(names)}`);
     const lines = await waitLine(null, /^ready$/);
-    assert.deepEqual(lines, ["loaded 0.15.1045", ...REGISTERED, "ready"]);
+    assert.deepEqual(lines, ["loaded <version>", ...REGISTERED, "ready"]);
   });
 
   test("Register: the page keeps each registration as given, the extension unchanged and the IconData as base64", async () => {
@@ -392,7 +403,14 @@ scenario("The custom-designer API of BETA 1045", (lane) => {
       "Probe Default# activated",
       "Probe Default# data n=5 hex=5550504552",
     ]);
-    await closeTab("UPPER.PRB");
+    // A tab whose bytes were never changed closes as one whose bytes were put back does.
+    const closing = await consoleMark(c);
+    assert.equal(await closeTab("UPPER.PRB"), null);
+    assert.deepEqual(await settled(closing), [
+      "Probe Default# closing",
+      "Probe Default# deactivated",
+      "Probe Default# closed",
+    ]);
     // Only ".*", not a default, matches Other.xyz: the text editor opens it.
     assert.deepEqual(await openByDoubleClick("Other.xyz"), []);
     assert.equal((await selected()).type, "TextEditor");
@@ -459,7 +477,7 @@ scenario("The custom-designer API of BETA 1045", (lane) => {
     const mark = await consoleMark(c);
     await lane.restartCompiler();
     assert.deepEqual(await settled(mark), [
-      "loaded 0.15.1045",
+      "loaded <version>",
       ...REGISTERED,
       "ready",
       "create Probe Default",
@@ -499,7 +517,7 @@ scenario("The custom-designer API of BETA 1045", (lane) => {
   }
 
   test("Unregister ends the compiler with an access violation, for a registered extension or not, with an error handler or not", async (t) => {
-    for (const mode of ["resume .prb", "plain .zzz"]) {
+    for (const mode of ["resume .prb", "plain .prb", "resume .zzz", "plain .zzz"]) {
       const r = await unregisterRun(mode);
       const [how, ext] = mode.split(" ");
       t.diagnostic(`${mode}: ${r.opened}`);

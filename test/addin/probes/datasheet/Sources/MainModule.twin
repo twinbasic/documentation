@@ -236,6 +236,7 @@ Private Class DatasheetProbeAddin
                 Case "sorted": v = .controller.setColumnIsSorted(CLng(p(1)), CBool(p(2)))
                 Case "filtered": v = .controller.setColumnIsFiltered(CLng(p(1)), CBool(p(2)))
                 Case "nav": v = .controller.navigateToRecord(CLng(p(1)))
+                Case "navdouble": v = .controller.navigateToRecord(CDbl(Val(p(1))))
                 Case "selected": v = .controller.getSelectedRows()
                 Case "selectall": v = .controller.selectAllRows()
                 Case "flash": v = .controller.flashMessage(p(1), CLng(p(2)))

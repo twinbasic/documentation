@@ -1,6 +1,5 @@
 // The Menus, ProjectExplorer and theme-colour features of tbIDE new in BETA 1045, measured rather
-// than read off the IDE's code (.claude/beta1045/facts-host.md, "Needs a probe" 9, 11 to 15, 17
-// and 19). The MenusProbe add-in (probes/menus) adds entries to the Project Explorer's file-view
+// than read off the IDE's code. The MenusProbe add-in (probes/menus) adds entries to the Project Explorer's file-view
 // context menu and the File menu, two custom menu-bar menus (ProbeFirst as its very first menu
 // call, ProbeAfter after entries elsewhere) and an invisible one for ShowPopup; its toolbar
 // buttons change and remove entries, print SelectedItemPath, call AddFileUI and open tool windows
@@ -8,15 +7,17 @@
 // returns tbIDE's UnsupportedHostAddin. The project opened is probes/menus-host, which has a folder
 // inside Sources and two beside it.
 //
-// Input is real input: menus are opened with real clicks and right clicks and read from the page's
-// DOM (#contextMenu, #contextMenuSUB, the menu bar). Themes are switched through the Window >
-// Theme list, as test/ide/customising.test.mjs does; the IDE runs with --no-save-ide-settings, so
-// the choice is not saved. Neither add-in calls SaveSetting.
+// Menus are opened with real clicks and right clicks and read from the page's DOM (#contextMenu,
+// #contextMenuSUB, the menu bar). The theme list is opened with its command, tbThemes_ShowList,
+// and a theme in it chosen with a real click, as test/ide/customising.test.mjs does; the IDE runs
+// with --no-save-ide-settings, so the choice is not saved. Neither add-in calls SaveSetting.
 //
 // Each test states what BETA 1045 does. If one fails after an IDE update, the IDE has changed:
 // update the tbIDE pages that rest on it (docs/Reference/Built-In/tbIDE/Menus.md, Menu.md,
-// MenuEntry.md, ProjectExplorer.md, Themes.md, AddIn.md) and docs/IDE/Customising/Themes.md, and
-// then this file.
+// MenuEntry.md, ProjectExplorer.md, Themes.md, AddIn.md) and docs/IDE/Customising/Themes.md, then
+// the steps of the reproducers that name a test here (bugs/*/repro.json with "addin:menus"), and
+// then this file. A test whose comment names an IDE defect asserts the defect: it fails once it
+// is fixed.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -258,10 +259,15 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
 
   test("UnsupportedHostAddin: listed with an empty name, drawn as a separator in the Add-Ins menu, and nothing in the console", async () => {
     const all = await linesSince(c, null);
-    // The only console line about it is the probe's own: no load failure.
+    // Its only console line is its own, and no line reports an add-in that failed or a load
+    // error, whether or not it names the DLL.
     assert.deepEqual(
       all.filter((l) => /UnsupportedProbe/i.test(l)),
       ["[UnsupportedProbe] returning UnsupportedHostAddin"],
+    );
+    assert.deepEqual(
+      all.filter((l) => /fail|error|entry point|addin|add-in/i.test(l) && !/^\[(Menus|Unsupported)Probe\] /.test(l)),
+      [],
     );
     await clickBar("Add-Ins");
     assert.deepEqual(await texts(), ["---", "MenusProbe AddIn"]);
@@ -319,6 +325,13 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     assert.equal(item("P checked").icon, 'url("data:image;base64,iVBORw0KGgoAAAANS');
     assert.equal(item("P icon").icon, 'url("data:image/svg+xml;base64,PHN2ZyB4b');
     assert.deepEqual(await lines(mark), ["beforeshow 1"]);
+    // Enabled = False: a click on the entry sends no Click.
+    const m1 = await consoleMark(c);
+    const disabled = item("P disabled");
+    await clickAt(c, disabled.x, disabled.y);
+    await sleep(1000);
+    assert.deepEqual(await lines(m1), []);
+    if (!(await menuOpen())) await openRowMenu(PE_FILE);
     const m2 = await consoleMark(c);
     await pick("P after Open 0");
     assert.ok(await waitLine(m2, /^click after open 0$/), J(await lines(m2)));
@@ -346,14 +359,12 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     assert.deepEqual(await texts(true), ["P child 1", "P child 2"]);
     // A child's BeforeShow fires when its submenu opens.
     assert.deepEqual(await lines(mark), ["beforeshow 2", "beforeshow child 2"]);
-    // A click on the entry that holds the submenu sends no Click, and the menu stays open.
+    // A click on the entry that holds the submenu sends no Click, and the menu stays open; the
+    // child's BeforeShow fires again.
     const m2 = await consoleMark(c);
     await pick("P submenu");
     await sleep(1000);
-    assert.deepEqual(
-      (await lines(m2)).filter((l) => l.startsWith("click")),
-      [],
-    );
+    assert.deepEqual(await lines(m2), ["beforeshow child 2"]);
     assert.equal(await menuOpen(), true);
     if (!(await texts(true)).length) {
       await hover("P submenu");
@@ -397,7 +408,7 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     await closeMenus();
     // ProbeAfter opens with its entry, whose Click fires.
     await clickBar("ProbeAfter");
-    assert.equal(await menuOpen(), true);
+    assert.ok(await waitFor(c, menuOpen, { timeout: 3000, interval: 100 }), "ProbeAfter did not open");
     assert.deepEqual(await texts(), ["After item"]);
     mark = await consoleMark(c);
     await pick("After item");
@@ -497,6 +508,11 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     return { mark, box };
   }
   const read = (p) => c.evaluate(READ_JS(p), { awaitPromise: true });
+  // The names in a folder of the project, as the page holds them.
+  const folder = (p) =>
+    c.evaluate(
+      `(() => { const n = fs.tree.resolvePath("twinbasic:" + ${J(p)}); return n ? Object.keys(n.entries || {}).sort() : null; })()`,
+    );
 
   test("AddFileUI: the name box; Enter returns the new file's path without twinbasic:, and Escape, an empty name and an invalid one return an empty string rather than raise an error", async () => {
     const inner = `${P}/Sources/Inner`;
@@ -511,18 +527,28 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     await pressKey(c, "Escape");
     assert.equal(await waitLine(mark, /^addfile/), "addfile ok <>");
     assert.equal(await read(`${inner}/MyFile2.prb`), null);
-    // An empty name.
+    // An empty name, and an invalid one, which the IDE says so of: each returns "" and makes no
+    // file anywhere in the project's folders.
+    const tree = async () => ({
+      inner: await folder(inner),
+      sources: await folder(`${P}/Sources`),
+      root: await folder(P),
+    });
+    const t0 = await tree();
+    // The page keys a folder's entries in lower case.
+    assert.ok(t0.inner?.includes("myfile.prb"), J(t0));
     ({ mark } = await startAddFile(`${inner}/Inner.twin`));
     await pressKey(c, "a", { ctrl: true });
     await pressKey(c, "Backspace");
     await pressKey(c, "Enter");
     assert.equal(await waitLine(mark, /^addfile/), "addfile ok <>");
-    // An invalid name: the IDE says so, and the call returns "".
+    assert.deepEqual(await tree(), t0);
     ({ mark } = await startAddFile(`${inner}/Inner.twin`));
     await typeText(c, "bad\\name");
     await pressKey(c, "Enter");
     assert.equal(await waitLine(mark, /^addfile/), "addfile ok <>");
     assert.ok((await c.evaluate("window.__msg")).includes("Cannot create: the new name entered is invalid."));
+    assert.deepEqual(await tree(), t0);
     // A name typed with the extension keeps one extension.
     ({ mark } = await startAddFile(`${inner}/Inner.twin`));
     await pressKey(c, "a", { ctrl: true });
@@ -543,15 +569,18 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
   const DARK = ["#2b2b2b", "#494343", "#575050", "#666060", "#eeeeee", "#BCB5B5", "#AC947A", "#1F1B18"];
   const LIGHT = ["#FFFFFF", "#F0F0F0", "#E1E4E6", "#C3CDDA", "#20232B", "#606A79", "#3E6FC1", "#FFFFFF"];
 
-  test("--themeAddin*: a tool window keeps the colours of the theme it was made in; High Contrast Dark has Dark's", async () => {
+  // What the two tool windows hold after each switch, for the test after this one.
+  const seen = {};
+
+  test("--themeAddin*: the page's values follow the theme; OnChangedTheme gets its name in lower case; a tool window made now has the theme's values; High Contrast Dark has Dark's", async () => {
     const theme = (id) => c.evaluate(THEME_JS(id));
     let s = await theme("MenusProbeWin");
     assert.deepEqual([s.theme, s.root, s.inline, s.computed, s.box], ["dark", DARK, DARK, DARK, "rgb(43, 43, 43)"]);
     const mark = await consoleMark(c);
     await chooseTheme("Light");
     s = await theme("MenusProbeWin");
-    assert.deepEqual([s.theme, s.root, s.inline, s.computed, s.box], ["light", LIGHT, DARK, DARK, "rgb(43, 43, 43)"]);
-    // OnChangedTheme is told the theme's name in lower case.
+    seen.lightOld = s;
+    assert.deepEqual([s.theme, s.root], ["light", LIGHT]);
     assert.ok(await waitLine(mark, /^theme changed light$/), J(await lines(mark)));
     await button("MenusProbeShow2", /^shown MenusProbeWin2$/);
     s = await theme("MenusProbeWin2");
@@ -559,34 +588,58 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     // Chosen from Light, so the values are not left over from the theme before.
     await chooseTheme("High Contrast Dark");
     s = await theme("MenusProbeWin2");
-    assert.deepEqual([s.theme, s.root, s.inline], ["high contrast dark", DARK, LIGHT]);
+    seen.hcNew = s;
+    assert.deepEqual([s.theme, s.root], ["high contrast dark", DARK]);
     await chooseTheme("Dark");
   });
 
-  test("Menus.RemoveAllAddedEntries changes nothing; a compiler restart drops every entry, the add-in adds its own again, and the dead ProbeFirst item stays", async () => {
+  // An IDE defect, toolwindow-addin-colours-stale.
+  test("--themeAddin*: a tool window keeps the values of the theme it was made in", () => {
+    assert.ok(seen.lightOld && seen.hcNew, "the test before this one did not switch the themes");
+    // Made in Dark, after the switch to Light.
+    const s = seen.lightOld;
+    assert.deepEqual([s.inline, s.computed, s.box], [DARK, DARK, "rgb(43, 43, 43)"]);
+    // Made in Light, after the switch to High Contrast Dark.
+    assert.deepEqual(seen.hcNew.inline, LIGHT);
+  });
+
+  // An IDE defect, menus-removealladdedentries-noop.
+  test("Menus.RemoveAllAddedEntries changes nothing: the entries and the custom menus stay", async () => {
     const store = () => c.evaluate(STORE_JS);
     await button("MenusProbeLate", /^added late/);
     const before = await store();
+    const barBefore = await bar();
+    await openRowMenu(PE_FILE);
+    const peBefore = (await texts()).filter((t) => t.startsWith("P "));
+    await closeMenus();
     await button("MenusProbeRemoveAll", /^removed all/);
     await sleep(800);
     assert.deepEqual(await store(), before);
+    // The custom menus are still on the bar, each as it was.
+    assert.deepEqual(await bar(), barBefore);
     await clickBar("File");
     assert.deepEqual(
       (await texts()).filter((t) => t.startsWith("P ")),
       ["P late"],
     );
     await closeMenus();
+    // The Project Explorer's entries are still there: only BeforeShow's caption changes with each opening.
+    await openRowMenu(PE_FILE);
+    const peAfter = (await texts()).filter((t) => t.startsWith("P "));
+    await closeMenus();
+    const plain = (l) =>
+      l.map((t) => t.replace(/^P before show \d+$/, "P before show")).filter((t) => t !== "P toggled");
+    assert.deepEqual(plain(peAfter), plain(peBefore));
+  });
+
+  test("a compiler restart drops every entry, and the add-in adds its own again", async () => {
     const mark = await consoleMark(c);
     await lane.restartCompiler();
     assert.ok(await waitLine(mark, /^loaded/, 30 * 1000), "the probe did not load again");
-    await sleep(1000);
-    const b = (await bar()).filter((i) => i.shown).map((i) => i.text);
-    assert.deepEqual(b.slice(b.indexOf("Help"), b.indexOf("Help") + 4), [
-      "Help",
-      "ProbeFirst",
-      "ProbeFirst",
-      "ProbeAfter",
-    ]);
+    assert.ok(
+      await waitFor(c, async () => (await bar()).some((i) => i.text === "ProbeAfter" && i.shown), { timeout: 5000 }),
+      J(await bar()),
+    );
     await clickBar("File");
     assert.deepEqual(
       (await texts()).filter((t) => t.startsWith("P ")),
@@ -597,5 +650,26 @@ scenario("tbIDE Menus, ProjectExplorer and theme colours (BETA 1045)", (lane) =>
     const all = await texts();
     assert.ok(all.includes("P before show 1") && all.includes("P remove me"), J(all));
     await closeMenus();
+  });
+
+  // An IDE defect, addcustom-first-menu-dead: the dead item is not dropped, and the new one is dead too.
+  test("after a compiler restart the dead ProbeFirst item stays beside the new one, which does not open either", async () => {
+    const b = (await bar()).filter((i) => i.shown).map((i) => i.text);
+    assert.deepEqual(b.slice(b.indexOf("Help"), b.indexOf("Help") + 4), [
+      "Help",
+      "ProbeFirst",
+      "ProbeFirst",
+      "ProbeAfter",
+    ]);
+    const items =
+      await c.evaluate(`[...rootMenuFile.parentNode.children].filter((e) => e.innerText.trim() === "ProbeFirst")
+      .map((e) => { const q = e.getBoundingClientRect(); return { x: q.x + q.width / 2, y: q.y + q.height / 2 }; })`);
+    assert.equal(items.length, 2);
+    for (const p of items) {
+      await clickAt(c, p.x, p.y);
+      await sleep(800);
+      assert.equal(await menuOpen(), false);
+      await closeMenus();
+    }
   });
 });
