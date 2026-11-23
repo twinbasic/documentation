@@ -851,6 +851,12 @@
     "Reference/Built-In/tbIDE/Images/DebugConsole_PrintText.png": {
       "build": 1042
     },
+    "Reference/Built-In/tbIDE/Images/Restart_Without_Addins.light.png": {
+      "build": 1045
+    },
+    "Reference/Built-In/tbIDE/Images/Restart_Without_Addins.png": {
+      "build": 1045
+    },
     "Reference/Built-In/tbIDE/Images/Sample10.light.png": {
       "build": 1042
     },
