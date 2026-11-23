@@ -23,7 +23,7 @@ On Windows, **ConvertToUtc** calls the Win32 `GetTimeZoneInformation` and `TzSpe
 <!-- /test -->
 
 <!-- test: DatesTests.ConvertToUtc_DateBefore30December1899_AppliesTheZoneRules, DatesTests.ConvertToUtc_DateBefore1601_Raises10012 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > A **Date** before 30 December 1899 gets the wrong day and time, and one before 1 January 1601 gives a meaningless date, with no error: Windows cannot convert it, and the function returns a date that bears no relation to the argument. Run-time error 10012 is not raised for it.
 
 

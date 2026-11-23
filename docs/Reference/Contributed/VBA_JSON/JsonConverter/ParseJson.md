@@ -25,28 +25,28 @@ All carriage returns, line feeds, and tab characters are removed from *JsonStrin
 ### Remarks
 
 <!-- test: ParseJsonTests.Strings_NewlineEscape_IsALineFeed -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > The escape `\n` is read as a carriage return followed by a line feed, two characters, and not as the one line feed that JSON defines. The text `"a\nb"` gives `"a" & vbCr & vbLf & "b"`, and a text read and written again with **ConvertToJson** changes from `\n` to `\r\n`.
 
 <!-- test: ParseJsonTests.Error_ArrayThatIsNotClosed_Raises10001, ParseJsonTests.Error_StringInAnArrayThatIsNotClosed_Raises10001, ParseJsonTests.Error_ObjectThatIsNotClosed_Raises10001 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > Text that ends before an array is closed, such as `[1,2` or `["abc`, does not return: the parser keeps adding empty items to the array. An object that is not closed raises error 10001, but an unclosed array inside an object hangs the same way.
 
-<!-- test: DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys, ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries -->
-> [!WARNING] 2.3.1.1
-> Keys that differ only in case, such as `id` and `ID` in one JSON object, become one entry of the **Dictionary**, which holds the last value; the other value is lost without an error.
-
 <!-- test: ParseJsonTests.Error_NumberBeyondTheRangeOfADouble_RaisesOverflow -->
-> [!NOTE] 2.3.1.1
+> [!NOTE] 2.3.2.1
 > A number outside the range of a **Double**, such as `1e999`, raises run-time error 6 (Overflow) and not error 10001.
 
 <!-- test: ParseJsonTests.Error_EmptyText_Raises10001, ParseJsonTests.Error_TopLevelValueThatIsNotAnObjectOrArray_Raises10001, ParseJsonTests.Error_UnquotedKey_Raises10001, ParseJsonTests.Error_MissingColon_Raises10001, ParseJsonTests.Error_UnrecognisedValue_Raises10001, ParseJsonTests.Error_Message_ShowsTheTextAndACaret, ParseJsonTests.Error_Message_ShowsTenCharactersEachSideOfTheError -->
 If *JsonString* does not begin with `{` or `[` after leading spaces are skipped, **ParseJson** raises run-time error **10001** with source `JSONConverter` and a message that shows a short excerpt of the surrounding text with a caret under the position of the unexpected character. The excerpt holds up to ten characters on each side of the position. The same error is raised when the parser meets other text it cannot read inside the document, such as an unquoted key, a missing colon, a trailing comma or a value it does not know.
 <!-- /test -->
 
-<!-- test: ParseJsonTests.Lenient_MissingCommas_AreAccepted, ParseJsonTests.Lenient_TextAfterTheTopLevelValue_IsIgnored, ParseJsonTests.Lenient_SingleQuotedStringsAndKeys_AreAccepted, ParseJsonTests.Lenient_NumbersJsonDoesNotAllow_AreAccepted, ParseJsonTests.Lenient_UnknownEscape_DropsTheBackslash, ParseJsonTests.DuplicateKeys_LastValueWins, ParseJsonTests.EmptyKey_IsAKey -->
-The parser does not check for commas between items, and it ignores any text after the top-level value. It also accepts text that JSON does not allow: strings and keys in single quotes, a number with a leading zero or a leading plus sign or ending in a period, and an escape it does not know, which it reads as the character after the backslash. A `\u` followed by four characters that are not hexadecimal digits is read as the character U+0000. A key that appears twice keeps its last value, at the end of the order of the keys. The empty string is a key like any other.
+<!-- test: ParseJsonTests.Lenient_MissingCommas_AreAccepted, ParseJsonTests.Lenient_TextAfterTheTopLevelValue_IsIgnored, ParseJsonTests.Lenient_SingleQuotedStringsAndKeys_AreAccepted, ParseJsonTests.Lenient_NumbersJsonDoesNotAllow_AreAccepted, ParseJsonTests.Lenient_UnknownEscape_DropsTheBackslash, ParseJsonTests.DuplicateKeys_LastValueWins, ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries -->
+The parser does not check for commas between items, and it ignores any text after the top-level value. It also accepts text that JSON does not allow: strings and keys in single quotes, a number with a leading zero or a leading plus sign or ending in a period, and an escape it does not know, which it reads as the character after the backslash. A `\u` followed by four characters that are not hexadecimal digits is read as the character U+0000. A key that appears twice keeps its last value, at the end of the order of the keys. Keys that differ only in case, such as `id` and `ID`, are separate entries.
 <!-- /test -->
+
+<!-- test: ParseJsonTests.EmptyKey_IsAKey, bug collection-binary-nullstring-key -->
+> [!WARNING] BETA 1045
+> An entry whose key is the empty string, as in `{"":1}`, is lost: the **Dictionary** that **ParseJson** returns does not list the key in **Keys**, and reading it raises run-time error 5. The cause is a defect of twinBASIC's **Collection**, which the **Dictionary** keeps its entries in.
 
 <!-- test: ParseJsonTests.LargeNumbers_16CharactersOrMore_AreStrings, ParseJsonTests.LargeNumbers_WithADecimalPoint_NeedSeventeenCharacters, OptionsTests.UseDoubleForLargeNumbers_True_ParseGivesDoubles -->
 Large numbers in JSON (a number whose text is 16 or more characters long; 17 or more when it contains a decimal point) are returned as **String** by default to avoid the 15-significant-digit limit of **Double**. Set `JsonConverter.JsonOptions.UseDoubleForLargeNumbers = True` to force all numbers to **Double** regardless of length.

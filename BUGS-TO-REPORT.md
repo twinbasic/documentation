@@ -14492,3 +14492,91 @@ Severity: high for 32-bit drivers: no `__fastcall` routine of the kernel can be 
 
 <!-- Reproducer: bugs/declare-fastcall-static-binding-32bit/ (mode run, exe; expect is tbrun exit 5, a byte swap other than &H78563412 from the IDE run and the exe's access violation). The two-parameter case and the run-time-binding control were run with tbrun --exe on scratch trees that are not kept, against tbKMode's stand-in for ntoskrnl.exe (test/package-tests/tbKMode/exe/fake-kernel). Found 2026-11-22 moving the tbKMode section to 0.3.0.6. docs/Reference/Contributed/tbKMode/index.md carries a WARNING labelled BETA 1042 under "Building a driver"; when a fixed build is released, the WARNING goes, and tbKMode's 32-bit exe cases run past their FastCall routines again. -->
 
+---
+
+## A `Collection` whose `KeyCompareMode` is `vbBinaryCompare` adds an item with a `vbNullString` key with no key at all
+
+**Describe the bug**
+`Collection.Add Item, Key` with a *Key* that is `vbNullString` (a `String` variable never assigned, whose `StrPtr` is 0) stores the item under the key `""` when the collection's `KeyCompareMode` is `vbTextCompare`, the default. When it is `vbBinaryCompare`, the same call adds the item with no key: `Count` goes up, but `Exists("")` is `False`, `Item("")` raises 5, *Invalid procedure call or argument*, and `Keys` has no entry for it. No error is raised by the `Add`. The literal `""` works in both modes, and `vbNullString = ""` is `True`, so the two values are one key everywhere else.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `collection-binary-nullstring-key.twinproj` (attached as `collection-binary-nullstring-key.zip`).
+2. Run its test cases, the module below. On BETA 1045 the two controls pass and the three other cases fail.
+
+The module is meant to be adapted as a regression test.
+```vb
+' Regression tests: a Collection whose KeyCompareMode is vbBinaryCompare keeps an item added
+' with a vbNullString key under the key "", as the same Collection does with
+' vbTextCompare, and as it does with the key "" written as a literal. On BETA 1045 the item
+' is added with no key: Count goes up, but Exists("") is False, Item("") raises 5 and Keys
+' has no entry. vbNullString and "" are the same String value (vbNullString = "" is True);
+' they differ only in StrPtr, which is 0 for vbNullString.
+' tbrun --tests runs each case and prints PASS or FAIL.
+[TestFixture]
+Module RegressionTests
+
+    ' A Collection with one item, 1, added under `Key` with the compare mode given.
+    Private Function OneItem(ByVal Mode As VbCompareMethod, ByVal Key As String) As Collection
+        Dim c As New Collection
+        c.KeyCompareMode = Mode
+        c.Add 1, Key
+        Return c
+    End Function
+
+    ' The item under the key "", or the error number that reading it raises, negated.
+    Private Function ItemOfEmptyKey(ByVal c As Collection) As Long
+        On Error Resume Next
+        ItemOfEmptyKey = c.Item("")
+        If Err.Number Then ItemOfEmptyKey = -Err.Number
+    End Function
+
+    [TestCase]
+    Public Sub Control_TextCompare_NullStringKey_IsTheEmptyKey()
+        Dim c As Collection = OneItem(vbTextCompare, vbNullString)
+        Assert.Strict.IsTrue c.Exists("")
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(c)
+    End Sub
+
+    [TestCase]
+    Public Sub Control_BinaryCompare_LiteralEmptyKey_IsTheEmptyKey()
+        Dim c As Collection = OneItem(vbBinaryCompare, "")
+        Assert.Strict.IsTrue c.Exists("")
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(c)
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_Exists()
+        Assert.Strict.IsTrue OneItem(vbBinaryCompare, vbNullString).Exists("")
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_ItemReadsIt()
+        Assert.Strict.AreEqual 1&, ItemOfEmptyKey(OneItem(vbBinaryCompare, vbNullString))
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryCompare_NullStringKey_IsInKeys()
+        Dim k As Variant = OneItem(vbBinaryCompare, vbNullString).Keys
+        Assert.Strict.AreEqual 1&, CLng(UBound(k) - LBound(k) + 1)
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+The item is stored under the key `""`, as with `vbTextCompare` and as with the literal `""` in either mode: `Exists("")` is `True`, `Item("")` returns it, and `Keys` lists `""`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1045
+
+**Additional context**
+Severity: medium: the item is still counted and still enumerated, so nothing fails until a lookup by its key, which then raises 5 for a key the program did add. A `String` that holds text a program built up from nothing is often `vbNullString`. The contributed package VBA_JSON 2.3.2.1 meets it: its `Dictionary` class now sets `vbBinaryCompare` on its backing `Collection`, and its parser builds an object's key from nothing, so `ParseJson("{"""":1}")` gives a `Dictionary` with no keys, and reading the key `""` raises 5. VBA_JSON 2.3.1.1, on the text compare, kept the key.
+
+A 64-bit build gives the same results. VB6 and VBA cannot be compared: their `Collection` has no `KeyCompareMode`, and always compares keys as text.
+
+What does not reproduce it: the literal `""` as the key with `vbBinaryCompare`, and `vbNullString` as the key with `vbTextCompare` or with the compare mode left at its default.
+
+<!-- Reproducer: bugs/collection-binary-nullstring-key/ (mode test: `tbrun --tests`; expect lists the two PASS and three FAIL lines); run on BETA 1045, 32-bit and 64-bit, with `bug_repro.mjs run`, and `verify` says it reproduces. Found 2026-11-23 moving the VBA_JSON section to 2.3.2.1, whose test case ParseJsonTests.EmptyKey_IsAKey started to fail; narrowed by copying the package's Dictionary and JsonConverter into a probe, then to a Collection alone. docs/Reference/Contributed/VBA_JSON/JsonConverter/ParseJson.md and JsonConverter/index.md carry a NOTE labelled BETA 1045 naming this reproducer; when a fixed build is released, the NOTE goes, and the case passes again (its expect.json entry goes with `package-tests.bat VBA_JSON --update`). -->
+

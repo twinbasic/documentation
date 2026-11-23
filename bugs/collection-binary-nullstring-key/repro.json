@@ -1,0 +1,13 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RegressionTests.Control_TextCompare_NullStringKey_IsTheEmptyKey$",
+      "^PASS RegressionTests.Control_BinaryCompare_LiteralEmptyKey_IsTheEmptyKey$",
+      "^FAIL RegressionTests.BinaryCompare_NullStringKey_Exists: .*Expected: True Actual: False",
+      "^FAIL RegressionTests.BinaryCompare_NullStringKey_ItemReadsIt: .*Expected: 1 \\[Long\\] Actual: -5 \\[Long\\]",
+      "^FAIL RegressionTests.BinaryCompare_NullStringKey_IsInKeys: .*Expected: 1 \\[Long\\] Actual: 0 \\[Long\\]"
+    ]
+  }
+}

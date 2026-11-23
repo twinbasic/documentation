@@ -25,7 +25,7 @@ Returns a **String** in the form `yyyy-mm-ddTHH:mm:ss.000Z` representing the equ
 <!-- /test -->
 
 <!-- test: DatesTests.ConvertToIso_DateBefore30December1899_AppliesTheZoneRules, DatesTests.ConvertToIso_DateBefore1601_Raises10014, DatesTests.ConvertToJson_DateBefore1601_Raises10014 -->
-> [!WARNING] 2.3.1.1
+> [!WARNING] 2.3.2.1
 > A **Date** before 30 December 1899 gets the wrong day and time, and one before 1 January 1601 gives a meaningless date, with no error: [**ConvertToUtc**](ConvertToUtc) cannot convert it. Run-time error 10014 is not raised for it, and neither is it by [**ConvertToJson**](ConvertToJson) for such a **Date**.
 
 <!-- test: DatesTests.ConvertToJson_Date_IsAQuotedIsoString, DatesTests.ConvertToJson_Date_InsideADictionaryACollectionAndAnArray -->
